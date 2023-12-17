@@ -1,11 +1,19 @@
 from redis.asyncio import Redis
-from fastapi import APIRouter, Depends, WebSocket, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from partygame import schemas
+from partygame import schemas, service
 from partygame.api import deps
-from partygame.utils import get_unique_join_code
 
 router = APIRouter()
+
+
+@router.get("/{game_id}", response_model=schemas.Lobby)
+async def get_lobby(
+    game_id: str,
+    *,
+    redis: Redis = Depends(deps.get_redis)
+):
+    return await service.lobby.get(redis, game_id)
 
 
 @router.post("/join", response_model=schemas.ConnectedToLobby)
@@ -14,34 +22,20 @@ async def join_lobby(
     redis: Redis = Depends(deps.get_redis),
     join_request: schemas.JoinRequest
 ):
-    game_id = await redis.get(f"join.{join_request.join_code}")
+    game_id = await service.lobby.get_id(redis, join_request.join_code)
     if game_id is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
     if join_request.player_id is not None:
-        if await redis.hexists(f"player.{join_request.player_id}", "name"):
-            joined_player = schemas.Player.model_validate(await redis.hgetall(f"player.{join_request.player_id}"))
-        else:
-            raise HTTPException(status_code=404, detail="Reconnect failed. Player data not found.")
+        joined_player = await service.player.get(redis, join_request.player_id)
     else:
-        joined_player = schemas.Player(
-            name=join_request.player_name,
+        joined_player = await service.player.create(
+            redis,
+            join_request=join_request,
+            game_id=game_id,
         )
-        await redis.hset(f"player.{joined_player.id}", mapping=joined_player.model_dump(exclude={"score"}))
-        await redis.zadd(f"scores.{game_id}", mapping={joined_player.id: joined_player.score})
 
-    player_ids = await redis.zrange(f"scores.{game_id}", 0, -1, withscores=True)
-    players = []
-    for id_, score in player_ids:
-        player = schemas.Player.model_validate(await redis.hgetall(f"player.{id_}"))
-        player.score = int(score)
-        players.append(player)
-
-    lobby = schemas.Lobby(
-        id=game_id,
-        join_code=join_request.join_code,
-        players=players
-    )
+    lobby = await service.lobby.get(redis, game_id)
     return schemas.ConnectedToLobby(player=joined_player, lobby=lobby)
 
 
@@ -50,17 +44,4 @@ async def create_lobby(
     *,
     redis: Redis = Depends(deps.get_redis),
 ):
-    lobby = schemas.Lobby(
-        join_code=await get_unique_join_code(redis),
-    )
-    await redis.set(f"join.{lobby.join_code}", lobby.id)
-    return lobby
-
-
-@router.websocket("/session")
-async def game_websocket(
-    websocket: WebSocket,
-    id: int,
-    redis: Redis = Depends(deps.get_redis)
-):
-    ...
+    return await service.lobby.create(redis)

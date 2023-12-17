@@ -1,13 +1,19 @@
 from uuid import uuid4
 from typing import List
-from enum import StrEnum
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
 
 
 class ConnectionStatus(StrEnum):
-    CONNECTED = "CONNECTED"
-    DISCONNECTED = "DISCONNECTED"
+    CONNECTED = auto()
+    DISCONNECTED = auto()
+
+
+class GameState(StrEnum):
+    WAITING_FOR_PLAYERS = auto()
+    RUNNING = auto()
+    PAUSED = auto()
 
 
 class CreateGame(BaseModel):
@@ -32,6 +38,7 @@ class Lobby(BaseModel):
     join_code: str
     players: List[Player] = []
     host_id: str = None
+    state: GameState = GameState.WAITING_FOR_PLAYERS
 
 
 class ConnectedToLobby(BaseModel):
