@@ -28,6 +28,7 @@ class JoinRequest(BaseModel):
 
 class Player(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
+    game_id: str
     name: str = Field(min_length=1, max_length=32)
     score: int = 0
     status: ConnectionStatus = ConnectionStatus.DISCONNECTED

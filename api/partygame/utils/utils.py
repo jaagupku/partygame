@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 from pydantic import BaseModel
 
 
-def id_generator(size=5, chars=string.ascii_uppercase + string.digits):
+def id_generator(size=5, chars=string.ascii_uppercase):
     return "".join(random.choice(chars) for _ in range(size))
 
 

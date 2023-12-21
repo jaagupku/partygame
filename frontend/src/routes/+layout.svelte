@@ -7,4 +7,8 @@
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 </script>
 
-<slot />
+<div class="flex h-screen">
+	<div class="m-auto">
+		<slot />
+	</div>
+</div>

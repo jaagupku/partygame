@@ -1,8 +1,14 @@
+import logging
+import asyncio
+
 from redis.asyncio import Redis
-from fastapi import HTTPException
+from redis.asyncio.client import PubSub
+from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
 from partygame.utils import get_unique_join_code
+
+log = logging.getLogger(__name__)
 
 
 async def get_players(redis: Redis, game_id: str):
@@ -37,6 +43,34 @@ async def get_id(redis: Redis, join_code: str):
 
 
 class GameController:
-    def __init__(self, redis: Redis, lobby: schemas.Lobby):
+    def __init__(self, websocket: WebSocket, redis: Redis, lobby: schemas.Lobby):
+        self.websocket = websocket
         self.redis = redis
         self.lobby = lobby
+
+        self.game_channel = f"game.{self.lobby.id}.host"
+
+    async def connect(self):
+        await self.websocket.accept()
+        self.pubsub = self.redis.pubsub()
+        await self.pubsub.subscribe(self.game_channel)
+        self.send_task = asyncio.create_task(self.publish_websocket())
+        # Game Running
+
+    async def disconnect(self):
+        if self.send_task is not None:
+            self.send_task.cancel()
+        if self.pubsub is not None:
+            self.pubsub.unsubscribe(self.game_channel)
+        # Game Paused
+
+    async def publish_websocket(self):
+        while True:
+            message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
+            if message is None:
+                continue
+            if message["type"] == "message":
+                await self.websocket.send_text(message["data"])
+
+    async def process_input(self, msg):
+        log.info(msg)

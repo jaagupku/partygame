@@ -1,10 +1,15 @@
+import logging
+from time import time
+
 from redis.asyncio import Redis
-from fastapi import APIRouter, Depends, WebSocket
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from partygame import service
 from partygame.api import deps
 from partygame.service.player import ClientController
+from partygame.service.lobby import GameController
 
+log = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -15,23 +20,18 @@ async def game_websocket(
     redis: Redis = Depends(deps.get_redis),
 ):
     lobby = await service.lobby.get(redis, game_id)
+    server = GameController(websocket, redis, lobby)
 
-    pubsub = redis.pubsub()
-    channel = f"game.{game_id}.host"
-    await pubsub.subscribe(channel)
-
-    await websocket.accept()
+    await server.connect()
     # Game Running
     try:
         while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=58)
-            if message is None:
-                # Just send ping message
-                continue
-            if message["type"] == "message":
-                await websocket.send_text(message["data"])
+            msg = await websocket.receive_json()
+            await server.process_input(msg)
+    except WebSocketDisconnect:
+        log.warn(f"Host for game < {lobby.id} > disconnected.")
     finally:
-        await pubsub.unsubscribe(channel)
+        await server.disconnect()
         # Game paused
 
 
@@ -45,19 +45,15 @@ async def game_websocket(
     player = await service.player.get(redis, player_id)
     lobby = await service.lobby.get(redis, game_id)
 
-    client = ClientController(redis, lobby, player)
+    client = ClientController(websocket, redis, lobby, player)
 
-    pubsub = redis.pubsub()
-    channel = f"game.{game_id}.{player_id}"
-    await pubsub.subscribe(channel)
-
-    await websocket.accept()
-    await client.connected()
+    log.warn(f"Player < {player.name} > connected.")
+    await client.connect()
     try:
         while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True)
-            if message["type"] == "message":
-                await websocket.send_text(message["data"])
+            msg = await websocket.receive_json()
+            await client.process_input(msg)
+    except WebSocketDisconnect:
+        log.warn(f"Player < {player.name} > disconnected.")
     finally:
-        await pubsub.unsubscribe(channel)
-        await client.disconnected()
+        await client.disconnect()

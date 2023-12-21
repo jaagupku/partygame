@@ -1,8 +1,14 @@
+import logging
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from partygame.api.api_v1.api import api_router
 from partygame.core.config import settings
+
+logging.basicConfig(
+    level=logging.INFO, format="[%(asctime)s] %(name)s - %(levelname)s: %(message)s"
+)
 
 app = FastAPI(
     title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
