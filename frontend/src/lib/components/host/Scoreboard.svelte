@@ -1,12 +1,11 @@
 <script lang="ts">
 	export let players: Player[];
+	export let playerMap: Map<string, Player>;
 
-	$: map = players.reduce(function (map, player) {
-		map.set(player.id, player);
-		return map;
-	}, new Map<string, Player>());
-
-	$: ordered = players.toSorted((a, b) => a.score - b.score).map((player) => player.id);
+	$: ordered = players
+		.toSorted((a, b) => a.score - b.score)
+		.filter((player) => !player.isHost)
+		.map((player) => player.id);
 </script>
 
 <h1 class="h1">Scoreboard:</h1>
@@ -16,12 +15,12 @@
 			<div class="w-full grid grid-cols-[auto_1fr_auto]">
 				<div class="bg-surface-500/30 p-4 rounded-l-xl">{i + 1}</div>
 				<div class="bg-surface-500/30 p-4">
-					{#if map.get(playerId)?.status === 'disconnected'}
+					{#if playerMap.get(playerId)?.status === 'disconnected'}
 						<iconify-icon icon="fluent:plug-disconnected-16-filled" />
 					{/if}
-					{map.get(playerId)?.name}
+					{playerMap.get(playerId)?.name}
 				</div>
-				<div class="bg-surface-500/30 p-4 rounded-r-xl">{map.get(playerId)?.score}</div>
+				<div class="bg-surface-500/30 p-4 rounded-r-xl">{playerMap.get(playerId)?.score}</div>
 			</div>
 		</li>
 	{/each}

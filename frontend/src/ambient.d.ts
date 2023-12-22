@@ -58,6 +58,11 @@ type BuzzerStateEvent = {
     state: "active" | "deactive"
 }
 
+type BuzzerClickedEvent = {
+    type_: "buzzer_clicked"
+    player_id: string;
+}
+
 type ControllerState = {
     id: string;
     isHost: boolean;

@@ -43,6 +43,7 @@ export function createGameStore(initialState: Lobby) {
                     player.isHost = false;
                 }
             }
+            state.host_id = playerId;
             return state;
         });
     }

@@ -7,7 +7,6 @@
 
     let isActive = false;
 
-	console.log('render', websocket);
 	onMount(() => {
 		websocket.addEventListener('message', function (event): void {
 			const data = JSON.parse(event.data);

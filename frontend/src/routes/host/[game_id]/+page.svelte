@@ -3,11 +3,13 @@
 	import PlayerComponent from '$lib/components/Player.svelte';
 	import { createGameStore } from '$lib/game-store.js';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
+	import BuzzerStatus from '$lib/components/host/BuzzerStatus.svelte';
 
 	export let data;
 	const websocket = new WebSocket(`ws://${window.location.host}/api/v1/game/${data.lobby.id}/host`);
 
 	const game = createGameStore(data.lobby);
+	$: playerMap = new Map($game.players.map((e) => [e.id, e]));
 
 	onMount(() => {
 		websocket.onmessage = (ev: MessageEvent<any>) => {
@@ -61,5 +63,6 @@
 		{/if}
 	</div>
 {:else if $game.state == 'running'}
-	<Scoreboard players={$game.players} />
+	<Scoreboard players={$game.players} {playerMap} />
+	<BuzzerStatus {websocket} players={playerMap} />
 {/if}
