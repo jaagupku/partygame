@@ -12,7 +12,6 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 
     function onMessage(msg: string) {
         const messageData = JSON.parse(msg);
-        console.log(messageData);
         switch (messageData.type_) {
             case 'set_host': {
                 const event: SetHostEvent = messageData;

@@ -53,6 +53,11 @@ type StartGameEvent = {
     type_: "start_game"
 }
 
+type BuzzerStateEvent = {
+    type_: "buzzer_state"
+    state: "active" | "deactive"
+}
+
 type ControllerState = {
     id: string;
     isHost: boolean;

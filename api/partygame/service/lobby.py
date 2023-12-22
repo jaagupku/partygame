@@ -96,8 +96,12 @@ class GameController:
     async def to_controller(self, msg: dict | BaseModel | str, players=None):
         if players is None:
             players = await get_player_ids(self.redis, self.lobby.id, withscores=False)
-        for player_id in players:
-            await publish(self.redis, player_channel(self.lobby.id, player_id), msg)
+        await asyncio.gather(
+            *[
+                publish(self.redis, player_channel(self.lobby.id, player_id), msg)
+                for player_id in players
+            ]
+        )
 
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:
@@ -140,5 +144,14 @@ class GameController:
                 await self.redis.hset(self.hkey, "state", schemas.GameState.RUNNING)
                 self.lobby.state = schemas.GameState.RUNNING
                 await self.to_controller(msg)
+            case Event.BUZZER_STATE:
+                await self.websocket.send_text(msg)
+                await self.to_controller(msg)
+            case Event.BUZZER_CLICKED:
+                deactivate_buzzer = schemas.events.BuzzerStateEvent(state="deactive")
+                await self.to_controller(deactivate_buzzer)
+                await self.send(deactivate_buzzer)
+                await self.websocket.send_text(msg)
             case _:
+                log.info(msg)
                 await self.websocket.send_text(msg)

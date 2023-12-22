@@ -2,23 +2,22 @@
 	import { onMount } from 'svelte';
 	import PlayerComponent from '$lib/components/Player.svelte';
 	import { createGameStore } from '$lib/game-store.js';
+	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 
 	export let data;
-	let websocket: WebSocket;
+	const websocket = new WebSocket(`ws://${window.location.host}/api/v1/game/${data.lobby.id}/host`);
 
 	const game = createGameStore(data.lobby);
 
 	onMount(() => {
-		const ws = new WebSocket(`ws://${window.location.host}/api/v1/game/${data.lobby.id}/host`);
-		ws.onmessage = (ev: MessageEvent<any>) => {
+		websocket.onmessage = (ev: MessageEvent<any>) => {
 			if (ev.type === 'message') {
 				game.onMessage(ev.data);
 			}
 		};
-		ws.onclose = (ev: CloseEvent) => {
+		websocket.onclose = (ev: CloseEvent) => {
 			console.log('disconnected Please refesh');
 		};
-		websocket = ws;
 	});
 
 	function setHost(player: Player) {
@@ -62,5 +61,5 @@
 		{/if}
 	</div>
 {:else if $game.state == 'running'}
-	<div>Game is running</div>
+	<Scoreboard players={$game.players} />
 {/if}
