@@ -108,9 +108,7 @@ class ClientController:
 
     async def process_input(self, msg: dict):
         match msg["type_"]:
-            case Event.START_GAME:
-                await publish(
-                    self.redis, self.game_channel, schemas.events.StartGameEvent()
-                )
             case _:
-                log.info(msg)
+                await publish(
+                    self.redis, self.game_channel, msg
+                )
