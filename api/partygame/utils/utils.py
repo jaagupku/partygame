@@ -17,9 +17,11 @@ async def get_unique_join_code(redis: Redis) -> str:
     return join_code
 
 
-async def publish(redis: Redis, channel: str, payload: dict | BaseModel):
+async def publish(redis: Redis, channel: str, payload: dict | BaseModel | str):
     if isinstance(payload, BaseModel):
         data = payload.model_dump_json()
-    else:
+    elif isinstance(payload, dict):
         data = json.dumps(payload)
+    else:
+        data = payload
     await redis.publish(channel, data)

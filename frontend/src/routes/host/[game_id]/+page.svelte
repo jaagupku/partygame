@@ -22,21 +22,45 @@
 	});
 
 	function setHost(player: Player) {
-		websocket.send(JSON.stringify({
-			"type_": "set_host",
-			"player_id": player.id,
-		}));
+		websocket.send(
+			JSON.stringify({
+				type_: 'set_host',
+				player_id: player.id
+			})
+		);
+	}
+
+	function kickPlayer(player: Player) {
+		websocket.send(
+			JSON.stringify({
+				type_: 'kick_player',
+				player_id: player.id
+			})
+		);
 	}
 </script>
 
-<span class="h3">
-	Join using code <span class="h1 font-bold">{$game.join_code}</span>
-</span>
+{#if $game.state == 'waiting_for_players'}
+	<div class="h-full grid grid-rows-[auto_1fr_auto] gap-1">
+		<span class="h3">
+			Join using code <span class="h1 font-bold">{$game.join_code}</span>
+		</span>
 
-{#if $game.players.length > 0}
-	<ul class="list">
-		{#each $game.players as player}
-			<li><PlayerComponent {player} on:click={() => setHost(player)} /></li>
-		{/each}
-	</ul>
+		{#if $game.players.length > 0}
+			<ul class="list">
+				{#each $game.players as player}
+					<li>
+						<PlayerComponent {player} on:click={() => setHost(player)} />
+						<button
+							type="button"
+							class="btn variant-filled-error"
+							on:click={() => kickPlayer(player)}>Kick</button
+						>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</div>
+{:else if $game.state == 'running'}
+	<div>Game is running</div>
 {/if}

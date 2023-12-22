@@ -26,6 +26,10 @@ async def join_lobby(
     if game_id is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
+    lobby = await service.lobby.get(redis, game_id)
+    if lobby.state != schemas.lobby.GameState.WAITING_FOR_PLAYERS:
+        raise HTTPException(status_code=403, detail="Game already started")
+
     if join_request.player_id is not None:
         joined_player = await service.player.get(redis, join_request.player_id)
     else:
@@ -35,7 +39,6 @@ async def join_lobby(
             game_id=game_id,
         )
 
-    lobby = await service.lobby.get(redis, game_id)
     return schemas.ConnectedToLobby(player=joined_player, lobby=lobby)
 
 

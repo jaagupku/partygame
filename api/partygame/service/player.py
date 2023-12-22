@@ -2,14 +2,28 @@ import asyncio
 import logging
 
 from redis.asyncio import Redis
-from redis.asyncio.client import PubSub
 from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
+from partygame.schemas.events import Event
 from partygame.schemas import Lobby, Player, ConnectionStatus
-from partygame.utils.utils import publish
+from partygame.utils import publish
 
 log = logging.getLogger(__name__)
+
+
+def player_channel(game_id: str, player_id: str):
+    return f"game.{game_id}.{player_id}"
+
+
+async def remove(
+    redis: Redis,
+    *,
+    lobby_id: str,
+    player_id: str,
+):
+    await redis.zrem(f"scores.{lobby_id}", player_id)
+    await redis.delete(f"player.{player_id}")
 
 
 async def create(
@@ -23,13 +37,12 @@ async def create(
         game_id=game_id,
     )
     await redis.hset(
-        f"player.{player.id}", mapping=player.model_dump(exclude={"score"}, exclude_none=True)
+        f"player.{player.id}",
+        mapping=player.model_dump(exclude={"score"}, exclude_none=True),
     )
     await redis.zadd(f"scores.{game_id}", mapping={player.id: player.score})
     await publish(
-        redis,
-        f"game.{game_id}.host",
-        schemas.PlayerJoinedEvent(player=player)
+        redis, f"game.{game_id}.host", schemas.PlayerJoinedEvent(player=player)
     )
     return player
 
@@ -52,7 +65,7 @@ class ClientController:
         self.player = player
 
         self.game_channel = f"game.{self.lobby.id}.host"
-        self.player_channel = f"game.{self.lobby.id}.{self.player.id}"
+        self.player_channel = player_channel(self.lobby.id, self.player.id)
         self.player_key = f"player.{self.player.id}"
 
     async def connect(self):
@@ -73,7 +86,7 @@ class ClientController:
         if self.send_task is not None:
             self.send_task.cancel()
         if self.pubsub is not None:
-            self.pubsub.unsubscribe(self.player_channel)
+            await self.pubsub.unsubscribe(self.player_channel)
 
         self.player.status = ConnectionStatus.DISCONNECTED
         await self.redis.hset(self.player_key, "status", self.player.status)
@@ -85,11 +98,19 @@ class ClientController:
 
     async def publish_websocket(self):
         while True:
-            message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
+            message = await self.pubsub.get_message(
+                ignore_subscribe_messages=True, timeout=1
+            )
             if message is None:
                 continue
             if message["type"] == "message":
                 await self.websocket.send_text(message["data"])
 
-    async def process_input(self, msg):
-        log.info(msg)
+    async def process_input(self, msg: dict):
+        match msg["type_"]:
+            case Event.START_GAME:
+                await publish(
+                    self.redis, self.game_channel, schemas.events.StartGameEvent()
+                )
+            case _:
+                log.info(msg)

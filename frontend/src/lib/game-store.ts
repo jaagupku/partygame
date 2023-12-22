@@ -3,10 +3,10 @@ import { writable } from 'svelte/store';
 export function createGameStore(initialState: Lobby) {
     const lobby = writable(initialState);
 
-    function playerConnected(player_id: string) {
+    function playerConnected(playerId: string) {
         lobby.update(state => {
             for (const player of state.players) {
-                if (player.id !== player_id) {
+                if (player.id !== playerId) {
                     continue;
                 }
                 player.status = 'connected';
@@ -22,16 +22,36 @@ export function createGameStore(initialState: Lobby) {
         });
     }
 
-    function playerDisconnected(player_id: string) {
+    function playerDisconnected(playerId: string) {
         lobby.update(state => {
             for (const player of state.players) {
-                if (player.id !== player_id) {
+                if (player.id !== playerId) {
                     continue;
                 }
                 player.status = 'disconnected';
             }
             return state;
         });
+    }
+
+    function setHost(playerId: string) {
+        lobby.update(state => {
+            for (const player of state.players) {
+                if (player.id === playerId) {
+                    player.isHost = true;
+                } else {
+                    player.isHost = false;
+                }
+            }
+            return state;
+        });
+    }
+
+    function removePlayer(playerId: string) {
+        lobby.update(state => {
+            state.players = state.players.filter(player => player.id !== playerId);
+            return state;
+        })
     }
 
     function onMessage(msg: string) {
@@ -52,7 +72,27 @@ export function createGameStore(initialState: Lobby) {
                 playerDisconnected(event.player_id);
                 break;
             }
+            case 'set_host': {
+                const event: SetHostEvent = messageData;
+                setHost(event.player_id);
+                break;
+            }
+            case 'kick_player': {
+                const event: KickPlayerEvent = messageData;
+                removePlayer(event.player_id);
+                break;
+            }
+            case 'start_game': {
+                lobby.update(state => {
+                    state.state = 'running';
+                    return state;
+                });
+                break;
+            }
         }
+    }
+    if (initialState.host_id) {
+        setHost(initialState.host_id);
     }
 
     return {

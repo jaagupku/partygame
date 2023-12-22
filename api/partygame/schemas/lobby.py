@@ -40,6 +40,7 @@ class Lobby(BaseModel):
     players: List[Player] = []
     host_id: str = None
     state: GameState = GameState.WAITING_FOR_PLAYERS
+    connection: ConnectionStatus = ConnectionStatus.CONNECTED
 
 
 class ConnectedToLobby(BaseModel):

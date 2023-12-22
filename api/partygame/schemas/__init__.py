@@ -13,4 +13,6 @@ from .events import (
     PlayerConnectedEvent,
     PlayerDisconnectedEvent,
     PlayerJoinedEvent,
+    SetHostEvent,
+    KickPlayerEvent,
 )
