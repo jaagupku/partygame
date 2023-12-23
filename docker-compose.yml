@@ -1,4 +1,43 @@
+version: "3"
+
 services:
+  api:
+    build:
+      context: ./api
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s
+  
+  frontend:
+    build:
+      context: ./frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s
+  
+  gateway:
+    build:
+      context: ./gateway
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    ports:
+      - 80:80
+
   redis:
     image: redis
     ports:
