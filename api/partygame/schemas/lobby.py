@@ -42,14 +42,6 @@ class BaseGame(BaseModel):
     type_: GameType
 
 
-class BuzzerGame(BaseGame):
-    buzzer_active: Literal["active"] | Literal["deactive"]
-    buzzed_player: str
-
-
-Game = Union[BuzzerGame, None]
-
-
 class Lobby(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     join_code: str
@@ -57,7 +49,7 @@ class Lobby(BaseModel):
     host_id: str = None
     state: GameState = GameState.WAITING_FOR_PLAYERS
     connection: ConnectionStatus = ConnectionStatus.CONNECTED
-    active_game: Game = None
+    active_game: str = None
 
 
 class ConnectedToLobby(BaseModel):

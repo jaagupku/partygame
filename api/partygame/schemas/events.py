@@ -4,6 +4,7 @@ from enum import StrEnum, auto
 from pydantic import BaseModel
 
 from .lobby import Player
+from .buzzer import BuzzerState
 
 
 class Event(StrEnum):
@@ -15,6 +16,7 @@ class Event(StrEnum):
     START_GAME = auto()
     BUZZER_STATE = auto()
     BUZZER_CLICKED = auto()
+    UPDATE_SCORE = auto()
 
 
 class BaseEvent(BaseModel):
@@ -52,9 +54,16 @@ class StartGameEvent(BaseEvent):
 
 class BuzzerStateEvent(BaseEvent):
     type_: str = Event.BUZZER_STATE
-    state: Literal["active"] | Literal["deactive"]
+    state: BuzzerState
 
 
 class BuzzerClickedEvent(BaseEvent):
     type_: str = Event.BUZZER_CLICKED
     player_id: str
+
+
+class UpadteScoreEvent(BaseEvent):
+    type_: str = Event.UPDATE_SCORE
+    player_id: str
+    add_score: int = 0
+    set_score: int | None = None

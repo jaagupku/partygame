@@ -10,6 +10,7 @@ from partygame import schemas
 from partygame.schemas.events import Event
 from partygame.utils import get_unique_join_code, publish
 from partygame.service.player import player_channel, remove as remove_player
+from partygame.service.game import init_game, load_game, GameABC
 
 log = logging.getLogger(__name__)
 
@@ -60,12 +61,17 @@ class GameController:
 
         self.game_channel = f"game.{self.lobby.id}.host"
         self.hkey = f"lobby.{self.lobby.id}"
+        self.running_game: GameABC | None = None
 
     async def connect(self):
         await self.websocket.accept()
         self.pubsub = self.redis.pubsub()
         await self.pubsub.subscribe(self.game_channel)
         self.send_task = asyncio.create_task(self.publish_websocket())
+
+        if self.lobby.active_game is not None:
+            self.running_game = await load_game(self.redis, self, schemas.GameType.BUZZER_GAME, self.lobby.active_game)
+            await self.running_game.broadcast_state_host()
         # Game Running
 
     async def disconnect(self):
@@ -93,7 +99,7 @@ class GameController:
         else:
             await self.websocket.send_text(payload)
 
-    async def to_controller(self, msg: dict | BaseModel | str, players=None):
+    async def broadcast(self, msg: dict | BaseModel | str, players=None):
         if players is None:
             players = await get_player_ids(self.redis, self.lobby.id, withscores=False)
         await asyncio.gather(
@@ -109,7 +115,7 @@ class GameController:
         await remove_player(
             self.redis, lobby_id=self.lobby.id, player_id=event.player_id
         )
-        await self.to_controller(event, [event.player_id])
+        await self.broadcast(event, [event.player_id])
         self.lobby = await get(self.redis, self.lobby.id)
         await self.send(event)
 
@@ -117,7 +123,7 @@ class GameController:
         prev_host = self.lobby.host_id
         self.lobby.host_id = event.player_id
         await self.redis.hset(f"lobby.{self.lobby.id}", "host_id", event.player_id)
-        await self.to_controller(event, [prev_host, event.player_id])
+        await self.broadcast(event, [prev_host, event.player_id])
         await self.send(event)
 
     async def process_input(self, msg: dict):
@@ -128,6 +134,11 @@ class GameController:
                 await self.set_host(schemas.SetHostEvent.model_validate(msg))
             case Event.KICK_PLAYER:
                 await self.kick_player(schemas.KickPlayerEvent.model_validate(msg))
+
+    async def activate_game(self, game_type: schemas.GameType):
+        self.running_game = await init_game(self.redis, self, game_type)
+        self.lobby.active_game = self.running_game.id
+        await self.redis.hset(f"lobby.{self.lobby.id}", "active_game", self.running_game.id)
 
     async def process_controller(self, msg: str):
         data = json.loads(msg)
@@ -143,15 +154,20 @@ class GameController:
                 await self.websocket.send_text(msg)
                 await self.redis.hset(self.hkey, "state", schemas.GameState.RUNNING)
                 self.lobby.state = schemas.GameState.RUNNING
-                await self.to_controller(msg)
-            case Event.BUZZER_STATE:
-                await self.websocket.send_text(msg)
-                await self.to_controller(msg)
-            case Event.BUZZER_CLICKED:
-                deactivate_buzzer = schemas.events.BuzzerStateEvent(state="deactive")
-                await self.to_controller(deactivate_buzzer)
-                await self.send(deactivate_buzzer)
+
+                await self.activate_game(schemas.GameType.BUZZER_GAME)
+
+                await self.broadcast(msg)
+            case Event.PLAYER_CONNECTED:
+                if self.running_game is None:
+                    return
+                event = schemas.PlayerConnectedEvent.model_validate(data)
+                await self.running_game.broadcast_state_controller([event.player_id])
                 await self.websocket.send_text(msg)
             case _:
-                log.info(msg)
-                await self.websocket.send_text(msg)
+                is_handled = False
+                if self.running_game is not None:
+                    is_handled = await self.running_game.handle(data)
+
+                if not is_handled:
+                    await self.websocket.send_text(msg)

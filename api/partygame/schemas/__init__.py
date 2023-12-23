@@ -6,6 +6,7 @@ from .lobby import (
     ConnectedToLobby,
     ConnectionStatus,
     GameState,
+    GameType,
 )
 
 from .events import (
