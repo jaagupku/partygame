@@ -16,4 +16,5 @@ from .events import (
     PlayerJoinedEvent,
     SetHostEvent,
     KickPlayerEvent,
+    UpadteScoreEvent
 )

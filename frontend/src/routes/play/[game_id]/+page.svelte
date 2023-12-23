@@ -71,7 +71,7 @@
 	{/if}
 {:else if $controller.gameState === 'running'}
 	{#if $controller.isHost}
-		<HostPlayer {websocket} playerId={$controller.id} />
+		<HostPlayer {websocket} playerId={$controller.id} players={data.lobby.players} />
 	{:else}
 		<Buzzer {websocket} onBuzz={sendAction} />
 	{/if}

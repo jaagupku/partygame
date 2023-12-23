@@ -13,6 +13,9 @@
             if (data.type_ === 'buzzer_state') {
                 const event: BuzzerStateEvent = data;
                 isActive = event.state === 'active';
+                if (isActive) {
+                    activePlayer = undefined;
+                }
             } else if (data.type_ === 'buzzer_clicked') {
                 const event: BuzzerClickedEvent = data;
                 activePlayer = players.get(event.player_id);

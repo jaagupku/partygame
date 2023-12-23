@@ -55,6 +55,18 @@ export function createGameStore(initialState: Lobby) {
         })
     }
 
+    function updateScore(playerId: string, score: number) {
+        lobby.update(state => {
+            for (const player of state.players) {
+                if (player.id !== playerId) {
+                    continue;
+                }
+                player.score = score;
+            }
+            return state;
+        });
+    }
+
     function onMessage(msg: string) {
         const messageData = JSON.parse(msg);
         switch (messageData.type_) {
@@ -89,6 +101,12 @@ export function createGameStore(initialState: Lobby) {
                     return state;
                 });
                 break;
+            }
+            case 'update_score': {
+                const event: UpdateScoreEvent = messageData;
+                if (event.set_score !== undefined) {
+                    updateScore(event.player_id, event.set_score)
+                }
             }
         }
     }

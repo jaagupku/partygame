@@ -70,7 +70,9 @@ class GameController:
         self.send_task = asyncio.create_task(self.publish_websocket())
 
         if self.lobby.active_game is not None:
-            self.running_game = await load_game(self.redis, self, schemas.GameType.BUZZER_GAME, self.lobby.active_game)
+            self.running_game = await load_game(
+                self.redis, self, schemas.GameType.BUZZER_GAME, self.lobby.active_game
+            )
             await self.running_game.broadcast_state_host()
         # Game Running
 
@@ -98,6 +100,15 @@ class GameController:
             await self.websocket.send_json(payload)
         else:
             await self.websocket.send_text(payload)
+
+    async def get_player_score(self, player_id: str) -> int:
+        return await self.redis.zscore(f"scores.{self.lobby.id}", player_id)
+
+    async def set_player_score(self, player_id: str, score: int):
+        await self.redis.zadd(f"scores.{self.lobby.id}", mapping={player_id: score})
+        event = schemas.UpadteScoreEvent(player_id=player_id, set_score=score)
+        await self.send(event)
+        await self.broadcast(event, [player_id])
 
     async def broadcast(self, msg: dict | BaseModel | str, players=None):
         if players is None:
@@ -138,7 +149,9 @@ class GameController:
     async def activate_game(self, game_type: schemas.GameType):
         self.running_game = await init_game(self.redis, self, game_type)
         self.lobby.active_game = self.running_game.id
-        await self.redis.hset(f"lobby.{self.lobby.id}", "active_game", self.running_game.id)
+        await self.redis.hset(
+            f"lobby.{self.lobby.id}", "active_game", self.running_game.id
+        )
 
     async def process_controller(self, msg: str):
         data = json.loads(msg)
@@ -162,7 +175,9 @@ class GameController:
                 if self.running_game is None:
                     return
                 event = schemas.PlayerConnectedEvent.model_validate(data)
-                await self.running_game.broadcast_state_controller([event.player_id])
+                await self.running_game.broadcast_state_controller(
+                    [event.player_id], self.lobby.host_id == event.player_id
+                )
                 await self.websocket.send_text(msg)
             case _:
                 is_handled = False

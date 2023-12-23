@@ -3,8 +3,8 @@
 	export let playerMap: Map<string, Player>;
 
 	$: ordered = players
-		.toSorted((a, b) => a.score - b.score)
 		.filter((player) => !player.isHost)
+		.toSorted((a, b) => b.score - a.score)
 		.map((player) => player.id);
 </script>
 

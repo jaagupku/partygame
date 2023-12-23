@@ -4,7 +4,7 @@ type GameState = "waiting_for_players" | "running" | "paused"
 type Lobby = {
     id: string;
     join_code: string;
-    host_id: string?;
+    host_id?: string;
     players: Player[];
     connection: ConnectionStatus;
     state: GameState;
@@ -16,7 +16,7 @@ type Player = {
     game_id: string;
     score: number;
     status: ConnectionStatus;
-    isHost: boolean?;
+    isHost?: boolean;
 }
 
 type ConnectedToLobby = {
@@ -67,4 +67,11 @@ type ControllerState = {
     id: string;
     isHost: boolean;
     gameState: GameState;
+}
+
+type UpdateScoreEvent = {
+    type_: "update_score";
+    player_id: string;
+    add_score: number;
+    set_score?: number;
 }
