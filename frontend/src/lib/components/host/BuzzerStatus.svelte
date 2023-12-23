@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+    import { Sound  } from "svelte-sound";
+    import buzzerWav from "$lib/assets/sounds/buzzer.wav";
 
 	export let websocket: WebSocket;
     export let players: Map<string, Player>;
+    
+    const buzzerSound = new Sound(buzzerWav);
 
     let isActive = false;
     let activePlayer: Player | undefined;
@@ -19,6 +23,7 @@
             } else if (data.type_ === 'buzzer_clicked') {
                 const event: BuzzerClickedEvent = data;
                 activePlayer = players.get(event.player_id);
+                buzzerSound.play();
             }
 		});
 	});

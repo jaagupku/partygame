@@ -97,14 +97,17 @@ class ClientController:
         )
 
     async def publish_websocket(self):
-        while True:
-            message = await self.pubsub.get_message(
-                ignore_subscribe_messages=True, timeout=1
-            )
-            if message is None:
-                continue
-            if message["type"] == "message":
-                await self.websocket.send_text(message["data"])
+        try:
+            while True:
+                message = await self.pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1
+                )
+                if message is None:
+                    continue
+                if message["type"] == "message":
+                    await self.websocket.send_text(message["data"])
+        except Exception as e:
+            log.error(e)
 
     async def process_input(self, msg: dict):
         match msg["type_"]:

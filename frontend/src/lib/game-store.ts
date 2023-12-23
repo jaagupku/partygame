@@ -1,4 +1,10 @@
 import { writable } from 'svelte/store';
+import { Sound  } from "svelte-sound";
+import correctWav from "$lib/assets/sounds/correct.wav";
+import wrongWav from "$lib/assets/sounds/wrong.wav";
+
+const correctSound = new Sound(correctWav);
+const wrongSound = new Sound(wrongWav);
 
 export function createGameStore(initialState: Lobby) {
     const lobby = writable(initialState);
@@ -60,6 +66,11 @@ export function createGameStore(initialState: Lobby) {
             for (const player of state.players) {
                 if (player.id !== playerId) {
                     continue;
+                }
+                if (player.score < score) {
+                    correctSound.play();
+                } else {
+                    wrongSound.play();
                 }
                 player.score = score;
             }

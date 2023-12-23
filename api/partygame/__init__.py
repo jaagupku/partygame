@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
 from partygame.api.api_v1.api import api_router
@@ -24,4 +24,10 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+router = APIRouter()
+@router.get("/api/health")
+async def get_health():
+    return {"status": "ok"}
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(router)

@@ -84,14 +84,17 @@ class GameController:
         # Game Paused
 
     async def publish_websocket(self):
-        while True:
-            message = await self.pubsub.get_message(
-                ignore_subscribe_messages=True, timeout=1
-            )
-            if message is None:
-                continue
-            if message["type"] == "message":
-                await self.process_controller(message["data"])
+        try:
+            while True:
+                message = await self.pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1
+                )
+                if message is None:
+                    continue
+                if message["type"] == "message":
+                    await self.process_controller(message["data"])
+        except Exception as e:
+            log.error(e)
 
     async def send(self, payload: dict | BaseModel | str):
         if isinstance(payload, BaseModel):
@@ -172,12 +175,11 @@ class GameController:
 
                 await self.broadcast(msg)
             case Event.PLAYER_CONNECTED:
-                if self.running_game is None:
-                    return
-                event = schemas.PlayerConnectedEvent.model_validate(data)
-                await self.running_game.broadcast_state_controller(
-                    [event.player_id], self.lobby.host_id == event.player_id
-                )
+                if self.running_game is not None:
+                    event = schemas.PlayerConnectedEvent.model_validate(data)
+                    await self.running_game.broadcast_state_controller(
+                        [event.player_id], self.lobby.host_id == event.player_id
+                    )
                 await self.websocket.send_text(msg)
             case _:
                 is_handled = False
