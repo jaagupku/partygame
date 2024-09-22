@@ -1,5 +1,8 @@
 type ConnectionStatus = "connected" | "disconnected"
 type GameState = "waiting_for_players" | "running" | "paused"
+type Controller = "buzzer"
+type Display = "questionare"
+
 
 type Lobby = {
     id: string;
@@ -8,7 +11,13 @@ type Lobby = {
     players: Player[];
     connection: ConnectionStatus;
     state: GameState;
-};
+}
+
+type Component = {
+    type_: "component_spec"
+    display: Display
+    controller: Controller
+}
 
 type Player = {
     id: string;

@@ -119,6 +119,9 @@ export function createGameStore(initialState: Lobby) {
                     updateScore(event.player_id, event.set_score)
                 }
             }
+            case 'component_spec': {
+
+            }
         }
     }
     if (initialState.host_id) {

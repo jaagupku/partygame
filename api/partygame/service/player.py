@@ -5,15 +5,22 @@ from redis.asyncio import Redis
 from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
-from partygame.schemas.events import Event
 from partygame.schemas import Lobby, Player, ConnectionStatus
 from partygame.utils import publish
 
 log = logging.getLogger(__name__)
 
 
-def player_channel(game_id: str, player_id: str):
-    return f"game.{game_id}.{player_id}"
+def score_key(lobby_id: str) -> str:
+    return f"lobby:{lobby_id}:score"
+
+
+def player_channel(game_id: str, player_id: str) -> str:
+    return f"lobby:{game_id}:channel:{player_id}"
+
+
+def key(game_id: str, player_id: str) -> str:
+    return f"lobby:{game_id}:players:{player_id}"
 
 
 async def remove(
@@ -22,8 +29,8 @@ async def remove(
     lobby_id: str,
     player_id: str,
 ):
-    await redis.zrem(f"scores.{lobby_id}", player_id)
-    await redis.delete(f"player.{player_id}")
+    await redis.zrem(score_key(lobby_id), player_id)
+    await redis.delete(key(lobby_id, player_id))
 
 
 async def create(
@@ -37,20 +44,20 @@ async def create(
         game_id=game_id,
     )
     await redis.hset(
-        f"player.{player.id}",
+        key(game_id, player.id),
         mapping=player.model_dump(exclude={"score"}, exclude_none=True),
     )
-    await redis.zadd(f"scores.{game_id}", mapping={player.id: player.score})
+    await redis.zadd(score_key(game_id), mapping={player.id: player.score})
     await publish(
-        redis, f"game.{game_id}.host", schemas.PlayerJoinedEvent(player=player)
+        redis, f"lobby:{game_id}:host", schemas.PlayerJoinedEvent(player=player)
     )
     return player
 
 
-async def get(redis: Redis, player_id: str):
-    if await redis.hexists(f"player.{player_id}", "name"):
-        player = Player.model_validate(await redis.hgetall(f"player.{player_id}"))
-        player.score = await redis.zscore(f"scores.{player.game_id}", player_id)
+async def get(redis: Redis, game_id: str, player_id: str):
+    if await redis.hexists(key(game_id, player_id), "name"):
+        player = Player.model_validate(await redis.hgetall(key(game_id, player_id)))
+        player.score = await redis.zscore(score_key(player.game_id), player_id)
         return player
     raise HTTPException(status_code=404, detail="Player data not found.")
 
@@ -64,9 +71,9 @@ class ClientController:
         self.lobby = lobby
         self.player = player
 
-        self.game_channel = f"game.{self.lobby.id}.host"
+        self.game_channel = f"lobby:{self.lobby.id}:host"
         self.player_channel = player_channel(self.lobby.id, self.player.id)
-        self.player_key = f"player.{self.player.id}"
+        self.player_key = key(lobby.id, player.id)
 
     async def connect(self):
         await self.websocket.accept()

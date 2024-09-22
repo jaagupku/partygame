@@ -1,3 +1,3 @@
-from . import lobby, player
+from . import lobby, player, game
 
-__all__ = ("lobby", "player")
+__all__ = ("lobby", "player", "game")

@@ -1,23 +1,49 @@
 import logging
-from typing import List
 from uuid import uuid4
+from enum import StrEnum, auto
 
 from redis.asyncio import Redis
 
-from partygame.service.game.base_class import GameABC
+from partygame.service.components.base_class import ComponentABC
 from partygame.service.lobby import GameController
-from partygame.schemas.buzzer import BuzzerGameSchema, BuzzerState
 from partygame.schemas.events import (
-    BuzzerClickedEvent,
-    BuzzerStateEvent,
+    BaseEvent,
     Event,
     UpadteScoreEvent,
+)
+from partygame.schemas.lobby import (
+    ControllerComponent,
+    BaseComponent,
+    ComponentSpec,
+    ComponentType,
 )
 
 log = logging.getLogger(__name__)
 
 
-class BuzzerGame(GameABC):
+class BuzzerState(StrEnum):
+    ACTIVE = auto()
+    DEACTIVE = auto()
+
+
+class BuzzerGameSchema(BaseComponent):
+    type_: str = ControllerComponent.BUZZER_GAME
+    id: str
+    buzzer_state: BuzzerState
+    buzzed_player: str
+
+
+class BuzzerStateEvent(BaseEvent):
+    type_: str = Event.BUZZER_STATE
+    state: BuzzerState
+
+
+class BuzzerClickedEvent(BaseEvent):
+    type_: str = Event.BUZZER_CLICKED
+    player_id: str
+
+
+class BuzzerComponent(ComponentABC):
     def __init__(
         self,
         *,
@@ -40,14 +66,14 @@ class BuzzerGame(GameABC):
 
     @staticmethod
     def key(id_: str):
-        return f"buzzergame.{id_}"
+        return f"buzzergame:{id_}"
 
     @staticmethod
     async def load(redis: Redis, controller: GameController, id_: str):
         schema = BuzzerGameSchema.model_validate(
-            await redis.hgetall(BuzzerGame.key(id_))
+            await redis.hgetall(BuzzerComponent.key(id_))
         )
-        return BuzzerGame(
+        return BuzzerComponent(
             redis=redis,
             controller=controller,
             id_=schema.id,
@@ -57,15 +83,20 @@ class BuzzerGame(GameABC):
 
     @staticmethod
     async def new(redis: Redis, controller: GameController):
-        game = BuzzerGame(
+        game = BuzzerComponent(
             redis=redis,
             controller=controller,
             id_=uuid4().hex,
             state=BuzzerState.DEACTIVE,
             player_id="",
         )
-        await redis.hset(BuzzerGame.key(game.id), mapping=game.schema().model_dump())
+        await redis.hset(
+            BuzzerComponent.key(game.id), mapping=game.schema().model_dump()
+        )
         return game
+
+    async def delete(self):
+        await self.redis.delete(self.key(self.id))
 
     async def activate(self, event=None):
         await self.redis.hset(self.key(self.id), "buzzer_state", BuzzerState.ACTIVE)
@@ -125,8 +156,8 @@ class BuzzerGame(GameABC):
         return False
 
     async def broadcast_state_controller(self, players=None, is_host=False):
-        buzzer_state = BuzzerStateEvent(state=self.state)
         if players is not None:
+            buzzer_state = BuzzerStateEvent(state=self.state)
             await self.controller.broadcast(buzzer_state, players)
         if is_host:
             player_clicked = BuzzerClickedEvent(player_id=self.player_id)
