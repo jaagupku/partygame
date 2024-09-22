@@ -1,10 +1,8 @@
-from typing import Literal
 from enum import StrEnum, auto
 
 from pydantic import BaseModel
 
 from .lobby import Player
-from .buzzer import BuzzerState
 
 
 class Event(StrEnum):
@@ -50,16 +48,6 @@ class KickPlayerEvent(BaseEvent):
 
 class StartGameEvent(BaseEvent):
     type_: str = Event.START_GAME
-
-
-class BuzzerStateEvent(BaseEvent):
-    type_: str = Event.BUZZER_STATE
-    state: BuzzerState
-
-
-class BuzzerClickedEvent(BaseEvent):
-    type_: str = Event.BUZZER_CLICKED
-    player_id: str
 
 
 class UpadteScoreEvent(BaseEvent):

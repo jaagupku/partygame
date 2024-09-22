@@ -22,7 +22,7 @@ async def join_lobby(
     redis: Redis = Depends(deps.get_redis),
     join_request: schemas.JoinRequest
 ):
-    game_id = await service.lobby.get_id(redis, join_request.join_code)
+    game_id = await service.lobby.get_id_from_join_code(redis, join_request.join_code)
     if game_id is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
@@ -31,7 +31,7 @@ async def join_lobby(
         raise HTTPException(status_code=403, detail="Game already started")
 
     if join_request.player_id is not None:
-        joined_player = await service.player.get(redis, join_request.player_id)
+        joined_player = await service.player.get(redis, lobby.id, join_request.player_id)
     else:
         joined_player = await service.player.create(
             redis,

@@ -42,7 +42,7 @@ async def game_websocket(
     player_id: str,
     redis: Redis = Depends(deps.get_redis),
 ):
-    player = await service.player.get(redis, player_id)
+    player = await service.player.get(redis, game_id, player_id)
     lobby = await service.lobby.get(redis, game_id)
 
     client = ClientController(websocket, redis, lobby, player)

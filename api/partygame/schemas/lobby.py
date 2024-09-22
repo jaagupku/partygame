@@ -1,5 +1,5 @@
 from uuid import uuid4
-from typing import List, Literal, Union
+from typing import List, Literal
 from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
@@ -16,18 +16,33 @@ class GameState(StrEnum):
     PAUSED = auto()
 
 
-class GameType(StrEnum):
+class ControllerComponent(StrEnum):
     BUZZER_GAME = auto()
+
+
+class DisplayComponent(StrEnum):
+    QUESTIONARE = auto()
 
 
 class CreateGame(BaseModel):
     ...
 
 
+class ComponentType(StrEnum):
+    DISPLAY = auto()
+    CONTROLLER = auto()
+
+
+class ComponentSpec(BaseModel):
+    type_: Literal["component_spec"] = "component_spec"
+    display: DisplayComponent
+    controller: ControllerComponent
+
+
 class JoinRequest(BaseModel):
     join_code: str
     player_name: str
-    player_id: str = None
+    player_id: str | None = None
 
 
 class Player(BaseModel):
@@ -38,18 +53,18 @@ class Player(BaseModel):
     status: ConnectionStatus = ConnectionStatus.DISCONNECTED
 
 
-class BaseGame(BaseModel):
-    type_: GameType
+class BaseComponent(BaseModel):
+    type_: ControllerComponent
 
 
 class Lobby(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     join_code: str
     players: List[Player] = []
-    host_id: str = None
+    host_id: str | None = None
     state: GameState = GameState.WAITING_FOR_PLAYERS
     connection: ConnectionStatus = ConnectionStatus.CONNECTED
-    active_game: str = None
+    active_game: str | None = None
 
 
 class ConnectedToLobby(BaseModel):

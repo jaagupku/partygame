@@ -6,7 +6,9 @@ from .lobby import (
     ConnectedToLobby,
     ConnectionStatus,
     GameState,
-    GameType,
+    ControllerComponent,
+    DisplayComponent,
+    ComponentSpec,
 )
 
 from .events import (
