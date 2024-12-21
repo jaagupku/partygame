@@ -7,6 +7,7 @@
 
 	$: playerMap = new Map(players.map((e) => [e.id, e]));
 
+	let inputScore = 0;
 	let isBuzzerActive = false;
 	let activatedPlayerid: string | undefined;
 
@@ -31,10 +32,11 @@
 		});
 	});
 
-	function setBuzzerState(state: 'active' | 'deactive') {
+	function setBuzzerState(state: 'active' | 'deactive', disable_activator=false) {
 		const event: BuzzerStateEvent = {
 			type_: 'buzzer_state',
-			state: state
+			state: state,
+			disable_activator: disable_activator,
 		};
 		websocket.send(JSON.stringify(event));
 	}
@@ -58,6 +60,11 @@
 			<button type="button" on:click={() => setBuzzerState('deactive')}>Turn buzzer off</button>
 		{:else}
 			<button type="button" on:click={() => setBuzzerState('active')}>Activate Buzzers</button>
+			{#if activatedPlayerid}
+				<button type="button" on:click={() => setBuzzerState('active', true)}
+					>Wrong answer, disable buzzed player</button
+				>
+			{/if}
 		{/if}
 	</div>
 	{#if activatedPlayerid && !isBuzzerActive}
@@ -65,10 +72,10 @@
 			<span>Player "{playerMap.get(activatedPlayerid)?.name}" pressed.</span>
 		</div>
 		<div class="btn-group-vertical variant-filled">
-			<button type="button" on:click={() => awardScore(100)}>+100</button>
-			<button type="button" on:click={() => awardScore(250)}>+250</button>
-			<button type="button" on:click={() => awardScore(500)}>+500</button>
-			<button type="button" on:click={() => awardScore(-100)}>-100</button>
+			<button type="button" on:click={() => awardScore(10)}>+10</button>
+			<button type="button" on:click={() => awardScore(-10)}>-10</button>
+			<input class="text-1xl p-2" type="number" bind:value={inputScore} min="-500" max="500" />
+			<button type="button" on:click={() => awardScore(inputScore)}>Add custom amount</button>
 		</div>
 	{/if}
 </div>

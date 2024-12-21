@@ -1,7 +1,7 @@
-type ConnectionStatus = "connected" | "disconnected"
-type GameState = "waiting_for_players" | "running" | "paused"
-type Controller = "buzzer"
-type Display = "questionare"
+type ConnectionStatus = "connected" | "disconnected";
+type GameState = "waiting_for_players" | "running" | "paused";
+type Controller = "buzzer";
+type Display = "questionare";
 
 
 type Lobby = {
@@ -14,9 +14,9 @@ type Lobby = {
 }
 
 type Component = {
-    type_: "component_spec"
-    display: Display
-    controller: Controller
+    type_: "component_spec";
+    display: Display;
+    controller: Controller;
 }
 
 type Player = {
@@ -54,21 +54,22 @@ type SetHostEvent = {
 }
 
 type KickPlayerEvent = {
-    type_: "kick_player"
+    type_: "kick_player";
     player_id: string;
 }
 
 type StartGameEvent = {
-    type_: "start_game"
+    type_: "start_game";
 }
 
 type BuzzerStateEvent = {
-    type_: "buzzer_state"
-    state: "active" | "deactive"
+    type_: "buzzer_state";
+    state: "active" | "deactive";
+    disable_activator: boolean;
 }
 
 type BuzzerClickedEvent = {
-    type_: "buzzer_clicked"
+    type_: "buzzer_clicked";
     player_id: string;
 }
 

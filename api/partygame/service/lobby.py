@@ -24,7 +24,7 @@ def key(lobby_id: str) -> str:
     return f"lobby:{lobby_id}:state"
 
 
-async def get_player_ids(redis: Redis, game_id: str, withscores=True):
+async def get_player_ids(redis: Redis, game_id: str, withscores=True) -> list[str]:
     return await redis.zrange(score_key(game_id), 0, -1, withscores=withscores)
 
 
@@ -74,6 +74,7 @@ class GameController:
         self.hkey = key(self.lobby.id)
 
         from partygame.service.components.empty import EmptyComponent
+
         self.controller_component: ComponentABC = EmptyComponent()
         self.display_component: ComponentABC = EmptyComponent()
 
@@ -130,13 +131,19 @@ class GameController:
         await self.send(event)
         await self.broadcast(event, [player_id])
 
-    async def broadcast(self, msg: dict | BaseModel | str, players=None):
+    async def broadcast(
+        self,
+        msg: dict | BaseModel | str,
+        players: list[str] | None = None,
+        exclude: str | None = None,
+    ):
         if players is None:
             players = await get_player_ids(self.redis, self.lobby.id, withscores=False)
+        log.info(f"{players}  {exclude}")
         await asyncio.gather(
             *[
                 publish(self.redis, player_channel(self.lobby.id, player_id), msg)
-                for player_id in players
+                for player_id in players if player_id != exclude
             ]
         )
 
