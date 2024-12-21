@@ -1,4 +1,5 @@
 import logging
+from time import time
 from uuid import uuid4
 from enum import StrEnum, auto
 
@@ -14,8 +15,6 @@ from partygame.schemas.events import (
 from partygame.schemas.lobby import (
     ControllerComponent,
     BaseComponent,
-    ComponentSpec,
-    ComponentType,
 )
 
 log = logging.getLogger(__name__)
@@ -31,11 +30,13 @@ class BuzzerGameSchema(BaseComponent):
     id: str
     buzzer_state: BuzzerState
     buzzed_player: str
+    player_disabled_until: float
 
 
 class BuzzerStateEvent(BaseEvent):
     type_: str = Event.BUZZER_STATE
     state: BuzzerState
+    disable_activator: bool = False
 
 
 class BuzzerClickedEvent(BaseEvent):
@@ -52,16 +53,18 @@ class BuzzerComponent(ComponentABC):
         id_: str,
         state: BuzzerState,
         player_id: str,
+        player_disabled_until: float,
     ):
         self.redis = redis
         self.controller = controller
         self.id = id_
         self.state = state
         self.player_id = player_id
+        self.player_disabled_until = player_disabled_until
 
     def schema(self):
         return BuzzerGameSchema(
-            id=self.id, buzzer_state=self.state, buzzed_player=self.player_id
+            id=self.id, buzzer_state=self.state, buzzed_player=self.player_id, player_disabled_until=self.player_disabled_until
         )
 
     @staticmethod
@@ -79,6 +82,7 @@ class BuzzerComponent(ComponentABC):
             id_=schema.id,
             state=schema.buzzer_state,
             player_id=schema.buzzed_player,
+            player_disabled_until=schema.player_disabled_until
         )
 
     @staticmethod
@@ -89,7 +93,9 @@ class BuzzerComponent(ComponentABC):
             id_=uuid4().hex,
             state=BuzzerState.DEACTIVE,
             player_id="",
+            player_disabled_until=0,
         )
+
         await redis.hset(
             BuzzerComponent.key(game.id), mapping=game.schema().model_dump()
         )
@@ -98,17 +104,25 @@ class BuzzerComponent(ComponentABC):
     async def delete(self):
         await self.redis.delete(self.key(self.id))
 
-    async def activate(self, event=None):
+    async def activate(self, event=None, disable_buzzed_player=False):
         await self.redis.hset(self.key(self.id), "buzzer_state", BuzzerState.ACTIVE)
-        await self.redis.hset(self.key(self.id), "buzzed_player", "")
+        exclude_player = None
+        if disable_buzzed_player:
+            self.player_disabled_until = time() + 15
+            await self.redis.hset(self.key(self.id), "buzzed_player_disabled_until", self.player_disabled_until)
+            exclude_player = self.player_id
+        else:
+            await self.redis.hset(self.key(self.id), "buzzed_player", "")
+            await self.redis.hset(self.key(self.id), "buzzed_player_disabled_until", 0)
+            self.player_id = ""
+            self.player_disabled_until = 0
         self.state = BuzzerState.ACTIVE
-        self.player_id = ""
 
         if event is None:
             event = BuzzerStateEvent(state=self.state)
 
         await self.controller.send(event)
-        await self.controller.broadcast(event)
+        await self.controller.broadcast(event, exclude=exclude_player)
 
     async def deactivate(self, event=None):
         await self.redis.hset(self.key(self.id), "buzzer_state", BuzzerState.DEACTIVE)
@@ -140,7 +154,7 @@ class BuzzerComponent(ComponentABC):
             case Event.BUZZER_STATE:
                 buzzer_state = BuzzerStateEvent.model_validate(event)
                 if buzzer_state.state == BuzzerState.ACTIVE:
-                    await self.activate()
+                    await self.activate(disable_buzzed_player=buzzer_state.disable_activator)
                 else:
                     await self.deactivate()
                 return True
