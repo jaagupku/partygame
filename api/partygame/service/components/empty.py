@@ -7,21 +7,22 @@ from partygame.service.lobby import GameController
 
 log = logging.getLogger(__name__)
 
+
 class EmptyComponent(ComponentABC):
     def __init__(self):
-        ...
+        self.id = ""
 
     @staticmethod
     def key(id_: str):
         return f"empty:{id_}"
 
-    @staticmethod
-    async def load(redis: Redis, controller: GameController, id_: str):
-        return EmptyComponent()
+    @classmethod
+    async def load(cls, redis: Redis, controller: GameController, id_: str) -> "EmptyComponent":
+        return cls()
 
-    @staticmethod
-    async def new(redis: Redis, controller: GameController):
-        return EmptyComponent()
+    @classmethod
+    async def new(cls, redis: Redis, controller: GameController) -> "EmptyComponent":
+        return cls()
 
     async def delete(self):
         pass

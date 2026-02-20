@@ -18,5 +18,25 @@ from .events import (
     PlayerJoinedEvent,
     SetHostEvent,
     KickPlayerEvent,
-    UpadteScoreEvent
+    UpdateScoreEvent,
+)
+
+__all__ = (
+    "JoinRequest",
+    "CreateGame",
+    "Lobby",
+    "Player",
+    "ConnectedToLobby",
+    "ConnectionStatus",
+    "GameState",
+    "ControllerComponent",
+    "DisplayComponent",
+    "ComponentSpec",
+    "Event",
+    "PlayerConnectedEvent",
+    "PlayerDisconnectedEvent",
+    "PlayerJoinedEvent",
+    "SetHostEvent",
+    "KickPlayerEvent",
+    "UpdateScoreEvent",
 )

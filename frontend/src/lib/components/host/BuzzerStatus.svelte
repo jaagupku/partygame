@@ -4,14 +4,18 @@
 	import Timer from '$lib/components/util/Timer.svelte';
 	import buzzerWav from '$lib/assets/sounds/buzzer.wav';
 
-	export let websocket: WebSocket;
-	export let players: Map<string, Player>;
+	interface BuzzerStatusProps {
+		websocket: WebSocket;
+		players: Map<string, Player>;
+	}
+
+	let { websocket, players }: BuzzerStatusProps = $props();
 
 	const buzzerSound = new Sound(buzzerWav, { volume: 0.55 });
 
-	let isActive = false;
-	let activePlayer: Player | undefined;
-	let countdown: number = 8;
+	let isActive = $state(false);
+	let activePlayer: Player | undefined = $state(undefined);
+	let countdown: number = $state(8);
 
 	onMount(() => {
 		websocket.addEventListener('message', function (event): void {
@@ -31,11 +35,16 @@
 	});
 </script>
 
-{#if isActive}
-	<h2 class="h2">Buzzer is active!</h2>
-{:else if activePlayer}
-	<h2 class="h2">Activated by {activePlayer.name}</h2>
-	<Timer
-		{countdown}
-	/>
-{/if}
+<section class="card text-center">
+	{#if isActive}
+		<h2 class="label-title text-4xl">Buzzer is active!</h2>
+		<p class="mt-2 text-lg text-slate-600">Waiting for the fastest player...</p>
+	{:else if activePlayer}
+		<h2 class="label-title text-4xl">Buzzed by {activePlayer.name}</h2>
+		<div class="mx-auto mt-3 max-w-60">
+			<Timer {countdown} />
+		</div>
+	{:else}
+		<h2 class="label-title text-3xl">Buzzer is idle</h2>
+	{/if}
+</section>

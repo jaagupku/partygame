@@ -1,49 +1,52 @@
 <script lang="ts">
-	import { createEventDispatcher, onDestroy } from 'svelte';
-	import { tweened } from 'svelte/motion';
+	import { onDestroy } from 'svelte';
+	import { Tween } from 'svelte/motion';
 	import { linear as easing } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 
-	const dispatch = createEventDispatcher();
+	interface TimerProps {
+		countdown: number;
+	}
 
-	export let countdown: number;
+	let { countdown }: TimerProps = $props();
 
-	let now = Date.now();
-	let end = now + countdown * 1000;
+	let now = $state(Date.now());
+	let startedAt = $state(Date.now());
+	let end = $derived(startedAt + countdown * 1000);
 
-	$: count = Math.round((end - now) / 1000);
-	$: h = Math.floor(count / 3600);
-	$: m = Math.floor((count - h * 3600) / 60);
-	$: s = count - h * 3600 - m * 60;
+	const count = $derived(Math.max(Math.ceil((end - now) / 1000), 0));
+	const h = $derived(Math.floor(count / 3600));
+	const m = $derived(Math.floor((count - h * 3600) / 60));
+	const s = $derived(count - h * 3600 - m * 60);
 
 	function updateTimer() {
 		now = Date.now();
 	}
 
 	let interval = setInterval(updateTimer, 1000);
-	$: if (count === 0) clearInterval(interval);
 
-	let isPaused: boolean;
 	const duration = 1000;
+	const offset = new Tween(1, { duration, easing });
+	const rotation = new Tween(360, { duration, easing });
 
-	let offset = tweened(1, { duration, easing });
-	let rotation = tweened(360, { duration, easing });
+	$effect(() => {
+		// Reset the countdown whenever a new duration is provided.
+		countdown;
+		startedAt = Date.now();
+		now = startedAt;
+	});
 
-	$: offset.set(Math.max(count - 1, 0) / countdown);
-	$: rotation.set((Math.max(count - 1, 0) / countdown) * 360);
-
-	function handleStart() {
-		now = Date.now();
-		end = now + count * 1000;
-		interval = setInterval(updateTimer, 1000);
-		offset.set(Math.max(count - 1, 0) / countdown);
-		rotation.set((Math.max(count - 1, 0) / countdown) * 360);
-		isPaused = false;
-	}
+	$effect(() => {
+		const safeCountdown = Math.max(countdown, 1);
+		offset.set(Math.max(count - 1, 0) / safeCountdown);
+		rotation.set((Math.max(count - 1, 0) / safeCountdown) * 360);
+	});
 
 	function padValue(value: number, length = 2, char = '0') {
 		const { length: currentLength } = value.toString();
-		if (currentLength >= length) return value.toString();
+		if (currentLength >= length) {
+			return value.toString();
+		}
 		return `${char.repeat(length - currentLength)}${value}`;
 	}
 
@@ -58,15 +61,15 @@
 		<g fill="none" stroke="currentColor" stroke-width="2">
 			<circle stroke="currentColor" r="46" />
 			<path
-				stroke="hsl(208, 100%, 50%)"
+				stroke="hsl(199, 89%, 48%)"
 				d="M 0 -46 a 46 46 0 0 0 0 92 46 46 0 0 0 0 -92"
 				pathLength="1"
 				stroke-dasharray="1"
-				stroke-dashoffset={$offset}
+				stroke-dashoffset={offset.current}
 			/>
 		</g>
-		<g fill="hsl(208, 100%, 50%)" stroke="none">
-			<g transform="rotate({$rotation})">
+		<g fill="hsl(199, 89%, 48%)" stroke="none">
+			<g transform="rotate({rotation.current})">
 				<g transform="translate(0 -46)">
 					<circle r="4" />
 				</g>
@@ -89,22 +92,14 @@
 
 <style>
 	main {
-		padding: 0rem 1rem;
+		padding: 0.25rem 1rem;
+		color: #0f172a;
 	}
 
 	main > svg {
 		width: 100%;
 		height: auto;
 		display: block;
-		margin: 0 auto 2rem;
-	}
-
-	@supports (display: grid) {
-		div {
-			display: grid;
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-			justify-content: initial;
-			justify-items: center;
-		}
+		margin: 0 auto;
 	}
 </style>

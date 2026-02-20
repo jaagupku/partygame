@@ -50,7 +50,7 @@ class StartGameEvent(BaseEvent):
     type_: str = Event.START_GAME
 
 
-class UpadteScoreEvent(BaseEvent):
+class UpdateScoreEvent(BaseEvent):
     type_: str = Event.UPDATE_SCORE
     player_id: str
     add_score: int = 0

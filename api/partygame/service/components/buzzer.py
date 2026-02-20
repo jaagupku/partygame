@@ -10,7 +10,7 @@ from partygame.service.lobby import GameController
 from partygame.schemas.events import (
     BaseEvent,
     Event,
-    UpadteScoreEvent,
+    UpdateScoreEvent,
 )
 from partygame.schemas.lobby import (
     ControllerComponent,
@@ -64,7 +64,10 @@ class BuzzerComponent(ComponentABC):
 
     def schema(self):
         return BuzzerGameSchema(
-            id=self.id, buzzer_state=self.state, buzzed_player=self.player_id, player_disabled_until=self.player_disabled_until
+            id=self.id,
+            buzzer_state=self.state,
+            buzzed_player=self.player_id,
+            player_disabled_until=self.player_disabled_until,
         )
 
     @staticmethod
@@ -73,16 +76,14 @@ class BuzzerComponent(ComponentABC):
 
     @staticmethod
     async def load(redis: Redis, controller: GameController, id_: str):
-        schema = BuzzerGameSchema.model_validate(
-            await redis.hgetall(BuzzerComponent.key(id_))
-        )
+        schema = BuzzerGameSchema.model_validate(await redis.hgetall(BuzzerComponent.key(id_)))
         return BuzzerComponent(
             redis=redis,
             controller=controller,
             id_=schema.id,
             state=schema.buzzer_state,
             player_id=schema.buzzed_player,
-            player_disabled_until=schema.player_disabled_until
+            player_disabled_until=schema.player_disabled_until,
         )
 
     @staticmethod
@@ -96,9 +97,7 @@ class BuzzerComponent(ComponentABC):
             player_disabled_until=0,
         )
 
-        await redis.hset(
-            BuzzerComponent.key(game.id), mapping=game.schema().model_dump()
-        )
+        await redis.hset(BuzzerComponent.key(game.id), mapping=game.schema().model_dump())
         return game
 
     async def delete(self):
@@ -109,7 +108,9 @@ class BuzzerComponent(ComponentABC):
         exclude_player = None
         if disable_buzzed_player:
             self.player_disabled_until = time() + 15
-            await self.redis.hset(self.key(self.id), "buzzed_player_disabled_until", self.player_disabled_until)
+            await self.redis.hset(
+                self.key(self.id), "buzzed_player_disabled_until", self.player_disabled_until
+            )
             exclude_player = self.player_id
         else:
             await self.redis.hset(self.key(self.id), "buzzed_player", "")
@@ -140,7 +141,7 @@ class BuzzerComponent(ComponentABC):
         await self.controller.send(event)
         await self.controller.broadcast(event, [self.controller.lobby.host_id])
 
-    async def update_score(self, event: UpadteScoreEvent):
+    async def update_score(self, event: UpdateScoreEvent):
         if event.set_score is not None:
             score = event.set_score
         else:
@@ -164,7 +165,7 @@ class BuzzerComponent(ComponentABC):
                 await self.press(buzzer_clicked)
                 return True
             case Event.UPDATE_SCORE:
-                update_score = UpadteScoreEvent.model_validate(event)
+                update_score = UpdateScoreEvent.model_validate(event)
                 await self.update_score(update_score)
                 return True
         return False

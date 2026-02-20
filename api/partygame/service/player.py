@@ -48,9 +48,7 @@ async def create(
         mapping=player.model_dump(exclude={"score"}, exclude_none=True),
     )
     await redis.zadd(score_key(game_id), mapping={player.id: player.score})
-    await publish(
-        redis, f"lobby:{game_id}:host", schemas.PlayerJoinedEvent(player=player)
-    )
+    await publish(redis, f"lobby:{game_id}:host", schemas.PlayerJoinedEvent(player=player))
     return player
 
 
@@ -63,9 +61,7 @@ async def get(redis: Redis, game_id: str, player_id: str):
 
 
 class ClientController:
-    def __init__(
-        self, websocket: WebSocket, redis: Redis, lobby: Lobby, player: Player
-    ):
+    def __init__(self, websocket: WebSocket, redis: Redis, lobby: Lobby, player: Player):
         self.websocket = websocket
         self.redis = redis
         self.lobby = lobby
@@ -106,9 +102,7 @@ class ClientController:
     async def publish_websocket(self):
         try:
             while True:
-                message = await self.pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1
-                )
+                message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
                 if message is None:
                     continue
                 if message["type"] == "message":
@@ -119,6 +113,4 @@ class ClientController:
     async def process_input(self, msg: dict):
         match msg["type_"]:
             case _:
-                await publish(
-                    self.redis, self.game_channel, msg
-                )
+                await publish(self.redis, self.game_channel, msg)
