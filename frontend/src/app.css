@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
+@import 'tailwindcss';
+
+:root {
+	--party-bg-a: #f8fff1;
+	--party-bg-b: #ddf2ff;
+	--party-bg-c: #fff4db;
+	--party-surface: rgba(255, 255, 255, 0.78);
+	--party-surface-strong: rgba(255, 255, 255, 0.92);
+	--party-border: rgba(17, 24, 39, 0.12);
+	--party-ink: #1f2937;
+	--party-subtle: #526078;
+	--party-primary: #0ea5e9;
+	--party-primary-strong: #0284c7;
+	--party-accent: #f97316;
+	--party-accent-strong: #ea580c;
+	--party-danger: #ef4444;
+	--party-danger-strong: #dc2626;
+}
+
+@layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--party-border);
+	}
+
+	html,
+	body {
+		min-height: 100%;
+	}
+
+	body {
+		color: var(--party-ink);
+		font-family: 'Nunito', system-ui, sans-serif;
+		background:
+			radial-gradient(circle at 10% 15%, #c7f1ff 0, transparent 30%),
+			radial-gradient(circle at 85% 10%, #fff0c9 0, transparent 32%),
+			radial-gradient(circle at 78% 84%, #d7ffda 0, transparent 30%),
+			linear-gradient(135deg, var(--party-bg-a), var(--party-bg-b) 42%, var(--party-bg-c));
+		background-attachment: fixed;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	button,
+	.label-title {
+		font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+	}
+
+	button {
+		cursor: pointer;
+	}
+}
+
+@layer components {
+	.app-shell {
+		@apply min-h-screen p-4 md:p-8;
+	}
+
+	.page-panel {
+		background: var(--party-surface);
+		backdrop-filter: blur(8px);
+		@apply mx-auto w-full max-w-3xl rounded-[2rem] border p-6 shadow-xl md:p-10;
+	}
+
+	.page-title {
+		@apply text-center text-4xl font-extrabold tracking-tight md:text-5xl;
+	}
+
+	.page-subtitle {
+		color: var(--party-subtle);
+		@apply mt-2 text-center text-lg md:text-xl;
+	}
+
+	.stack-lg {
+		@apply mt-8 flex flex-col gap-4;
+	}
+
+	.stack-md {
+		@apply flex flex-col gap-3;
+	}
+
+	.btn {
+		@apply inline-flex items-center justify-center rounded-2xl border px-5 py-3 text-lg font-bold tracking-wide transition-transform duration-150;
+		background: var(--party-surface-strong);
+	}
+
+	.btn:hover:not(:disabled) {
+		transform: translateY(-1px) scale(1.01);
+	}
+
+	.btn:active:not(:disabled) {
+		transform: translateY(0) scale(0.99);
+	}
+
+	.btn:disabled {
+		@apply cursor-not-allowed opacity-50;
+	}
+
+	.btn-primary {
+		@apply text-white;
+		background: linear-gradient(140deg, var(--party-primary), var(--party-primary-strong));
+	}
+
+	.btn-accent {
+		@apply text-white;
+		background: linear-gradient(140deg, var(--party-accent), var(--party-accent-strong));
+	}
+
+	.btn-danger {
+		@apply text-white;
+		background: linear-gradient(140deg, var(--party-danger), var(--party-danger-strong));
+	}
+
+	.btn-ghost {
+		background: var(--party-surface-strong);
+	}
+
+	.input-wrap {
+		@apply flex flex-col gap-2;
+	}
+
+	.label-title {
+		@apply text-2xl font-bold;
+	}
+
+	.input {
+		background: var(--party-surface-strong);
+		@apply w-full rounded-2xl border px-4 py-3 text-2xl outline-none transition;
+	}
+
+	.input:focus {
+		box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.24);
+	}
+
+	.card {
+		background: var(--party-surface-strong);
+		@apply rounded-2xl border p-4 shadow-sm;
+	}
+
+	.badge {
+		@apply rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide;
+	}
+}

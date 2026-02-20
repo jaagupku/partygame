@@ -1,0 +1,46 @@
+---
+repos:
+  # General file fixes
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+
+  # Frontend formatting with Prettier (using frontend workspace deps)
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: bash .hooks/prettier-wrapper.sh
+        language: system
+        files: ^frontend/
+        types_or: [javascript, json, markdown, svelte, css, yaml]
+        exclude: ^(api/|gateway/|.*lock\.yaml|.*lock\.json)
+        pass_filenames: true
+        stages: [pre-commit]
+
+  # Backend Python formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 26.1.0
+    hooks:
+      - id: black
+        language_version: python3
+        exclude: ^(frontend/|gateway/)
+
+  # Python linting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.2
+    hooks:
+      - id: ruff
+        exclude: ^(frontend/|gateway/)
+
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [-d, "{extends: default, rules: {line-length: {max: 120}}}"]
+        exclude: ^(.*lock\.yaml|.*lock\.json)

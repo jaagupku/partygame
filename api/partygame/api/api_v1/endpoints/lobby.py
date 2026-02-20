@@ -8,20 +8,12 @@ router = APIRouter()
 
 
 @router.get("/{game_id}", response_model=schemas.Lobby)
-async def get_lobby(
-    game_id: str,
-    *,
-    redis: Redis = Depends(deps.get_redis)
-):
+async def get_lobby(game_id: str, *, redis: Redis = Depends(deps.get_redis)):
     return await service.lobby.get(redis, game_id)
 
 
 @router.post("/join", response_model=schemas.ConnectedToLobby)
-async def join_lobby(
-    *,
-    redis: Redis = Depends(deps.get_redis),
-    join_request: schemas.JoinRequest
-):
+async def join_lobby(*, redis: Redis = Depends(deps.get_redis), join_request: schemas.JoinRequest):
     game_id = await service.lobby.get_id_from_join_code(redis, join_request.join_code)
     if game_id is None:
         raise HTTPException(status_code=404, detail="Game not found")

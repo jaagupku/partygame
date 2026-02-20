@@ -3,26 +3,24 @@
 
 	async function createGame() {
 		const res = await fetch('/api/v1/lobby/create', {
-			method: 'POST',
+			method: 'POST'
 		});
 		const lobby: Lobby = await res.json();
 		goto(`/host/${lobby.id}`);
 	}
 </script>
 
-<div class="container">
-	<button class="btn btn-blue" on:click={createGame}> Create Game </button>
-	<button class="btn btn-blue" on:click={() => goto('/play')}> Join Game </button>
-</div>
+<h1 class="page-title">Party Quiz Arena</h1>
+<p class="page-subtitle">Run a game on the big screen or jump in as a player.</p>
 
-<style lang="postcss">
-	.btn {
-		@apply font-bold h-32 w-96 rounded text-6xl m-1;
-	}
-	.btn-blue {
-		@apply bg-primary-500 text-white;
-	}
-	.btn-blue:hover {
-		@apply bg-primary-700;
-	}
-</style>
+<div class="stack-lg">
+	<button class="btn btn-primary min-h-24 text-4xl md:min-h-28 md:text-5xl" onclick={createGame}>
+		Create Game
+	</button>
+	<button
+		class="btn btn-accent min-h-24 text-4xl md:min-h-28 md:text-5xl"
+		onclick={() => goto('/play')}
+	>
+		Join Game
+	</button>
+</div>

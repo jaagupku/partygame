@@ -8,6 +8,7 @@ async def init_game(redis: Redis, lobby, game_type: ControllerComponent) -> Comp
     match game_type:
         case ControllerComponent.BUZZER_GAME:
             from partygame.service.components.buzzer import BuzzerComponent
+
             return await BuzzerComponent.new(redis, lobby)
 
 
@@ -15,4 +16,5 @@ async def load_game(redis: Redis, lobby, game_type: ControllerComponent, id_: st
     match game_type:
         case ControllerComponent.BUZZER_GAME:
             from partygame.service.components.buzzer import BuzzerComponent
+
             return await BuzzerComponent.load(redis, lobby, id_)

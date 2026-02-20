@@ -32,9 +32,7 @@ async def get_players(redis: Redis, game_id: str):
     player_ids = await get_player_ids(redis, game_id)
     players = []
     for id_, score in player_ids:
-        player = schemas.Player.model_validate(
-            await redis.hgetall(player_key(game_id, id_))
-        )
+        player = schemas.Player.model_validate(await redis.hgetall(player_key(game_id, id_)))
         player.score = int(score)
         players.append(player)
     return players
@@ -104,9 +102,7 @@ class GameController:
     async def publish_websocket(self):
         try:
             while True:
-                message = await self.pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1
-                )
+                message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
                 if message is None:
                     continue
                 if message["type"] == "message":
@@ -127,7 +123,7 @@ class GameController:
 
     async def set_player_score(self, player_id: str, score: int):
         await self.redis.zadd(score_key(self.lobby.id), mapping={player_id: score})
-        event = schemas.UpadteScoreEvent(player_id=player_id, set_score=score)
+        event = schemas.UpdateScoreEvent(player_id=player_id, set_score=score)
         await self.send(event)
         await self.broadcast(event, [player_id])
 
@@ -143,16 +139,15 @@ class GameController:
         await asyncio.gather(
             *[
                 publish(self.redis, player_channel(self.lobby.id, player_id), msg)
-                for player_id in players if player_id != exclude
+                for player_id in players
+                if player_id != exclude
             ]
         )
 
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:
             return
-        await remove_player(
-            self.redis, lobby_id=self.lobby.id, player_id=event.player_id
-        )
+        await remove_player(self.redis, lobby_id=self.lobby.id, player_id=event.player_id)
         await self.broadcast(event, [event.player_id])
         self.lobby = await get(self.redis, self.lobby.id)
         await self.send(event)

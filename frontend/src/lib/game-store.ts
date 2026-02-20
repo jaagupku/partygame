@@ -118,9 +118,11 @@ export function createGameStore(initialState: Lobby) {
                 if (event.set_score !== undefined) {
                     updateScore(event.player_id, event.set_score)
                 }
+                break;
             }
             case 'component_spec': {
-
+                // TODO: handle component spec
+                break;
             }
         }
     }

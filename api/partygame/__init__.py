@@ -10,9 +10,7 @@ logging.basicConfig(
     level=logging.INFO, format="[%(asctime)s] %(name)s - %(levelname)s: %(message)s"
 )
 
-app = FastAPI(
-    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
-)
+app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
@@ -25,9 +23,12 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 router = APIRouter()
+
+
 @router.get("/api/health")
 async def get_health():
     return {"status": "ok"}
+
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(router)

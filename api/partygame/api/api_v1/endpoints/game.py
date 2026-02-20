@@ -1,5 +1,4 @@
 import logging
-from time import time
 
 from redis.asyncio import Redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -14,7 +13,7 @@ router = APIRouter()
 
 
 @router.websocket("/{game_id}/host")
-async def game_websocket(
+async def game_websocket_host(
     websocket: WebSocket,
     game_id: str,
     redis: Redis = Depends(deps.get_redis),
@@ -36,7 +35,7 @@ async def game_websocket(
 
 
 @router.websocket("/{game_id}/controller/{player_id}")
-async def game_websocket(
+async def game_websocket_controller(
     websocket: WebSocket,
     game_id: str,
     player_id: str,

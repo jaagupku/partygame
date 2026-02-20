@@ -1,22 +1,23 @@
 <script lang="ts">
 	import 'iconify-icon';
 
-	export let player: Player;
+	interface PlayerComponentProps {
+		player: Player;
+		onclick: () => void;
+	}
 
-	$: host = player.isHost ? 'is host' : '';
+	let { player, onclick }: PlayerComponentProps = $props();
 </script>
 
-<button on:click>
+<button class="btn btn-ghost w-full justify-start gap-3 text-left" {onclick}>
 	{#if player.status === 'connected'}
-		<div class="card p-4 bg-secondary-900 w-36">
-			{player.name}
-			{host}
-		</div>
+		<iconify-icon class="text-2xl text-emerald-600" icon="fluent:person-16-filled"></iconify-icon>
 	{:else}
-		<div class="card p-4 variant-filled-surface w-36">
-			<iconify-icon icon="fluent:plug-disconnected-16-filled" />
-			<span class="text-secondary-400">{player.name}</span>
-			{host}
-		</div>
+		<iconify-icon class="text-2xl text-gray-500" icon="fluent:plug-disconnected-16-filled"
+		></iconify-icon>
+	{/if}
+	<span class="text-xl font-bold">{player.name}</span>
+	{#if player.isHost}
+		<span class="badge bg-sky-100 text-sky-700">Host</span>
 	{/if}
 </button>

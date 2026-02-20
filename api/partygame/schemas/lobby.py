@@ -24,8 +24,7 @@ class DisplayComponent(StrEnum):
     QUESTIONARE = auto()
 
 
-class CreateGame(BaseModel):
-    ...
+class CreateGame(BaseModel): ...
 
 
 class ComponentType(StrEnum):

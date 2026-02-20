@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from .lobby import ControllerComponent, DisplayComponent
 
+
 class QuestionSchema(BaseModel):
     type_: DisplayComponent
     title: str
