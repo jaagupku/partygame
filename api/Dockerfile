@@ -8,7 +8,10 @@ ENV POETRY_HOME=/opt/poetry \
     POETRY_CACHE_DIR=/tmp/poetry_cache \
     PATH="$POETRY_HOME/bin:$PATH"
 
-RUN curl -sSL https://install.python-poetry.org | python3 - && poetry --version
+# Ensure curl is available so the Poetry installer can be fetched
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sSL https://install.python-poetry.org | python3 - && /opt/poetry/bin/poetry --version && ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry
 
 WORKDIR /app
 
