@@ -9,67 +9,56 @@ from fastapi import HTTPException, WebSocket
 from partygame import schemas
 from partygame.schemas.events import Event
 from partygame.utils import get_unique_join_code, publish
-from partygame.service.player import (
-    player_channel,
-    remove as remove_player,
-    score_key,
-    key as player_key,
-)
+from partygame.service.player import remove as remove_player
 from partygame.service.components import init_game, load_game, ComponentABC
+from partygame.service.game import GameRuntimeService
+from partygame.state import GameStateRepository, GameKeyFactory
 
 log = logging.getLogger(__name__)
 
 
-def key(lobby_id: str) -> str:
-    return f"lobby:{lobby_id}:state"
-
-
 async def get_player_ids(redis: Redis, game_id: str, withscores=True) -> list[str]:
-    return await redis.zrange(score_key(game_id), 0, -1, withscores=withscores)
+    repo = GameStateRepository(redis)
+    return await repo.get_player_ids(game_id, withscores=withscores)
 
 
 async def get_players(redis: Redis, game_id: str):
-    player_ids = await get_player_ids(redis, game_id)
-    players = []
-    for id_, score in player_ids:
-        player = schemas.Player.model_validate(await redis.hgetall(player_key(game_id, id_)))
-        player.score = int(score)
-        players.append(player)
-    return players
+    repo = GameStateRepository(redis)
+    return await repo.get_players(game_id)
 
 
 async def create(redis: Redis):
+    repo = GameStateRepository(redis)
     lobby = schemas.Lobby(
         join_code=await get_unique_join_code(redis),
     )
-    await redis.set(f"join.{lobby.join_code}", lobby.id)
-    await redis.hset(
-        key(lobby.id),
-        mapping=lobby.model_dump(exclude={"players"}, exclude_none=True),
-    )
+    await repo.create_lobby(lobby)
     return lobby
 
 
 async def get(redis: Redis, game_id: str):
-    if await redis.hexists(key(game_id), "id"):
-        lobby = schemas.Lobby.model_validate(await redis.hgetall(key(game_id)))
-        lobby.players = await get_players(redis, game_id)
-        return lobby
-    raise HTTPException(status_code=404, detail="Lobby data not found.")
+    repo = GameStateRepository(redis)
+    lobby = await repo.get_lobby_meta(game_id)
+    if lobby is None:
+        raise HTTPException(status_code=404, detail="Lobby data not found.")
+    lobby.players = await repo.get_players(game_id)
+    return lobby
 
 
 async def get_id_from_join_code(redis: Redis, join_code: str):
-    return await redis.get(f"join.{join_code}")
+    repo = GameStateRepository(redis)
+    return await repo.get_game_id_from_join_code(join_code)
 
 
 class GameController:
     def __init__(self, websocket: WebSocket, redis: Redis, lobby: schemas.Lobby):
         self.websocket = websocket
         self.redis = redis
+        self.repo = GameStateRepository(redis)
+        self.runtime = GameRuntimeService(self.repo)
         self.lobby = lobby
 
-        self.game_channel = f"lobby:{self.lobby.id}:host"
-        self.hkey = key(self.lobby.id)
+        self.game_channel = GameKeyFactory.host_channel(self.lobby.id)
 
         from partygame.service.components.empty import EmptyComponent
 
@@ -84,20 +73,19 @@ class GameController:
 
         if self.lobby.active_game is not None:
             self.controller_component = await load_game(
-                self.redis,
+                self.repo,
                 self,
                 schemas.ControllerComponent.BUZZER_GAME,
+                self.lobby.id,
                 self.lobby.active_game,
             )
             await self.controller_component.broadcast_state_host()
-        # Game Running
 
     async def disconnect(self):
         if self.send_task is not None:
             self.send_task.cancel()
         if self.pubsub is not None:
             await self.pubsub.unsubscribe(self.game_channel)
-        # Game Paused
 
     async def publish_websocket(self):
         try:
@@ -107,8 +95,8 @@ class GameController:
                     continue
                 if message["type"] == "message":
                     await self.process_controller(message["data"])
-        except Exception as e:
-            log.error(e)
+        except Exception as error:
+            log.error(error)
 
     async def send(self, payload: dict | BaseModel | str):
         if isinstance(payload, BaseModel):
@@ -119,10 +107,10 @@ class GameController:
             await self.websocket.send_text(payload)
 
     async def get_player_score(self, player_id: str) -> int:
-        return await self.redis.zscore(score_key(self.lobby.id), player_id)
+        return await self.repo.get_player_score(self.lobby.id, player_id)
 
     async def set_player_score(self, player_id: str, score: int):
-        await self.redis.zadd(score_key(self.lobby.id), mapping={player_id: score})
+        await self.repo.set_player_score(self.lobby.id, player_id, score)
         event = schemas.UpdateScoreEvent(player_id=player_id, set_score=score)
         await self.send(event)
         await self.broadcast(event, [player_id])
@@ -134,11 +122,12 @@ class GameController:
         exclude: str | None = None,
     ):
         if players is None:
-            players = await get_player_ids(self.redis, self.lobby.id, withscores=False)
-        log.info(f"{players}  {exclude}")
+            players = await self.repo.get_player_ids(self.lobby.id, withscores=False)
+
+        players = [player_id for player_id in players if player_id]
         await asyncio.gather(
             *[
-                publish(self.redis, player_channel(self.lobby.id, player_id), msg)
+                publish(self.redis, GameKeyFactory.player_channel(self.lobby.id, player_id), msg)
                 for player_id in players
                 if player_id != exclude
             ]
@@ -155,7 +144,7 @@ class GameController:
     async def set_host(self, event: schemas.SetHostEvent):
         prev_host = self.lobby.host_id
         self.lobby.host_id = event.player_id
-        await self.redis.hset(self.hkey, "host_id", event.player_id)
+        await self.repo.set_lobby_fields(self.lobby.id, host_id=event.player_id)
         await self.broadcast(event, [prev_host, event.player_id])
         await self.send(event)
 
@@ -167,19 +156,28 @@ class GameController:
                 await self.set_host(schemas.SetHostEvent.model_validate(msg))
             case Event.KICK_PLAYER:
                 await self.kick_player(schemas.KickPlayerEvent.model_validate(msg))
+            case _:
+                await publish(self.redis, self.game_channel, msg)
 
     async def activate_game(self, game_type: schemas.ControllerComponent):
-        self.controller_component = await init_game(self.redis, self, game_type)
+        self.controller_component = await init_game(self.repo, self, game_type, self.lobby.id)
         self.lobby.active_game = self.controller_component.id
-        await self.redis.hset(self.hkey, "active_game", self.lobby.active_game)
+        await self.repo.set_lobby_fields(self.lobby.id, active_game=self.lobby.active_game)
 
     async def start_game(self):
-        await self.redis.hset(self.hkey, "state", schemas.GameState.RUNNING)
-        self.lobby.state = schemas.GameState.RUNNING
+        self.lobby, step = await self.runtime.start_game(self.lobby)
         await self.activate_game(schemas.ControllerComponent.BUZZER_GAME)
-        await self.controller_component.broadcast_state_controller(self.lobby.players)
+
+        if step is not None:
+            component_events = await self.runtime.activate_step_components(self.lobby.id, step)
+            for event in component_events:
+                await self.send(event)
+                await self.broadcast(event)
+
+        await self.controller_component.broadcast_state_controller(
+            [player.id for player in self.lobby.players]
+        )
         await self.display_component.broadcast_state_host()
-        # TODO: Send what components are active.
 
     async def process_controller(self, msg: str):
         data = json.loads(msg)
@@ -191,7 +189,6 @@ class GameController:
                     event = schemas.PlayerJoinedEvent.model_validate(data)
                     await self.set_host(schemas.SetHostEvent(player_id=event.player.id))
             case Event.START_GAME:
-                # TODO: Check that this comes from host
                 await self.websocket.send_text(msg)
                 await self.broadcast(msg)
                 await self.start_game()
@@ -202,9 +199,14 @@ class GameController:
                 )
                 await self.websocket.send_text(msg)
             case _:
+                runtime_events, handled = await self.runtime.handle_runtime_event(self.lobby, data)
+                if handled:
+                    for event in runtime_events:
+                        await self.send(event)
+                        await self.broadcast(event)
+                    return
                 if await self.controller_component.handle(data):
                     return
                 if await self.display_component.handle(data):
                     return
-                else:
-                    await self.websocket.send_text(msg)
+                await self.websocket.send_text(msg)

@@ -1,0 +1,71 @@
+{
+  "id": "quiz_demo",
+  "title": "Demo Quiz",
+  "rounds": [
+    {
+      "id": "round1",
+      "title": "Warmup",
+      "steps": [
+        {
+          "id": "step1",
+          "title": "Capital City",
+          "components": [
+            {
+              "id": "display_1",
+              "type_": "display_text_image",
+              "props": {
+                "text": "What is the capital of France?",
+                "image": null
+              }
+            },
+            {
+              "id": "input_1",
+              "type_": "player_input",
+              "props": {
+                "kind": "text"
+              }
+            },
+            {
+              "id": "buzzer_1",
+              "type_": "buzzer",
+              "props": {}
+            }
+          ],
+          "evaluation": {
+            "type_": "host_judged",
+            "points": 1,
+            "config": {}
+          }
+        },
+        {
+          "id": "step2",
+          "title": "Closest Number",
+          "components": [
+            {
+              "id": "display_2",
+              "type_": "display_text_image",
+              "props": {
+                "text": "How many countries are in the EU?",
+                "image": null
+              }
+            },
+            {
+              "id": "input_2",
+              "type_": "player_input",
+              "props": {
+                "kind": "number"
+              }
+            }
+          ],
+          "evaluation": {
+            "type_": "closest_number",
+            "points": 2,
+            "config": {
+              "target": 27
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

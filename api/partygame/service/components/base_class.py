@@ -1,34 +1,44 @@
-from typing import Self, List, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from abc import ABC, abstractmethod
 
-from redis.asyncio import Redis
+from partygame.state import GameStateRepository
 
 if TYPE_CHECKING:
     from partygame.service.lobby import GameController
 
 
 class ComponentABC(ABC):
+    component_type: str
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def key(id_: str) -> str: ...
+    async def load(
+        cls,
+        repo: GameStateRepository,
+        controller: "GameController",
+        game_id: str,
+        component_id: str,
+    ) -> "ComponentABC": ...
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    async def new(redis: Redis, lobby: "GameController") -> Self: ...
-
-    @staticmethod
-    @abstractmethod
-    async def load(redis: Redis, lobby: "GameController", id_: str) -> Self: ...
+    async def new(
+        cls,
+        repo: GameStateRepository,
+        controller: "GameController",
+        game_id: str,
+    ) -> "ComponentABC": ...
 
     @abstractmethod
     async def delete(self): ...
 
     @abstractmethod
-    async def handle(self, event: dict) -> bool: ...
+    async def handle(self, event: dict[str, Any]) -> bool: ...
 
     @abstractmethod
-    async def broadcast_state_controller(self, players: List[str] | None = None): ...
+    async def broadcast_state_controller(
+        self, players: list[str] | None = None, is_host: bool = False
+    ): ...
 
     @abstractmethod
     async def broadcast_state_host(self): ...

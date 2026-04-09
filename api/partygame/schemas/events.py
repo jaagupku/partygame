@@ -1,6 +1,7 @@
 from enum import StrEnum, auto
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .lobby import Player
 
@@ -15,6 +16,10 @@ class Event(StrEnum):
     BUZZER_STATE = auto()
     BUZZER_CLICKED = auto()
     UPDATE_SCORE = auto()
+    COMPONENT_STATE_UPDATED = auto()
+    PLAYER_INPUT_SUBMITTED = auto()
+    STEP_ADVANCED = auto()
+    SCORES_UPDATED = auto()
 
 
 class BaseEvent(BaseModel):
@@ -55,3 +60,26 @@ class UpdateScoreEvent(BaseEvent):
     player_id: str
     add_score: int = 0
     set_score: int | None = None
+
+
+class ComponentStateUpdatedEvent(BaseEvent):
+    type_: str = Event.COMPONENT_STATE_UPDATED
+    component_id: str
+    state: dict[str, Any] = Field(default_factory=dict)
+
+
+class PlayerInputSubmittedEvent(BaseEvent):
+    type_: str = Event.PLAYER_INPUT_SUBMITTED
+    component_id: str
+    player_id: str
+    value: Any
+
+
+class StepAdvancedEvent(BaseEvent):
+    type_: str = Event.STEP_ADVANCED
+    step_index: int
+
+
+class ScoresUpdatedEvent(BaseEvent):
+    type_: str = Event.SCORES_UPDATED
+    updates: dict[str, int] = Field(default_factory=dict)
