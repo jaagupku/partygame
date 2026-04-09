@@ -2,9 +2,9 @@ import os
 
 import redis.asyncio as redis
 
-REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+VALKEY_HOST = os.environ.get("VALKEY_HOST") or os.environ.get("REDIS_HOST", "localhost")
 
-pool = redis.ConnectionPool.from_url(f"redis://{REDIS_HOST}", decode_responses=True)
+pool = redis.ConnectionPool.from_url(f"redis://{VALKEY_HOST}", decode_responses=True)
 
 
 def get_connection():
