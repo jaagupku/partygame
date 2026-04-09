@@ -4,9 +4,9 @@ services:
     build:
       context: ./api
     environment:
-      - REDIS_HOST=redis
+      - VALKEY_HOST=valkey
     depends_on:
-      - redis
+      - valkey
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 1m30s
@@ -37,7 +37,7 @@ services:
     ports:
       - 80:80
 
-  redis:
-    image: redis
+  valkey:
+    image: valkey/valkey:9-alpine
     ports:
       - "6379:6379"
