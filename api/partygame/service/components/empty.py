@@ -1,37 +1,48 @@
 import logging
-
-from redis.asyncio import Redis
+from typing import TYPE_CHECKING
 
 from partygame.service.components.base_class import ComponentABC
-from partygame.service.lobby import GameController
+from partygame.state import GameStateRepository
+
+if TYPE_CHECKING:
+    from partygame.service.lobby import GameController
 
 log = logging.getLogger(__name__)
 
 
 class EmptyComponent(ComponentABC):
+    component_type = "empty"
+
     def __init__(self):
         self.id = ""
 
-    @staticmethod
-    def key(id_: str):
-        return f"empty:{id_}"
-
     @classmethod
-    async def load(cls, redis: Redis, controller: GameController, id_: str) -> "EmptyComponent":
+    async def load(
+        cls,
+        repo: GameStateRepository,
+        controller: "GameController",
+        game_id: str,
+        component_id: str,
+    ) -> "EmptyComponent":
         return cls()
 
     @classmethod
-    async def new(cls, redis: Redis, controller: GameController) -> "EmptyComponent":
+    async def new(
+        cls,
+        repo: GameStateRepository,
+        controller: "GameController",
+        game_id: str,
+    ) -> "EmptyComponent":
         return cls()
 
     async def delete(self):
-        pass
+        return None
 
     async def handle(self, event: dict) -> bool:
         return False
 
     async def broadcast_state_controller(self, players=None, is_host=False):
-        pass
+        return None
 
     async def broadcast_state_host(self):
-        pass
+        return None

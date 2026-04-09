@@ -4,6 +4,7 @@
 	import { createGameStore } from '$lib/game-store.js';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import BuzzerStatus from '$lib/components/host/BuzzerStatus.svelte';
+	import QuestionCard from '$lib/components/QuestionCard.svelte';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
@@ -40,6 +41,22 @@
 			})
 		);
 	}
+
+	function nextStep() {
+		websocket.send(
+			JSON.stringify({
+				type_: 'step_advanced'
+			})
+		);
+	}
+
+	function evaluateStep() {
+		websocket.send(
+			JSON.stringify({
+				type_: 'scores_updated'
+			})
+		);
+	}
 </script>
 
 {#if $game.state == 'waiting_for_players'}
@@ -62,8 +79,13 @@
 	{/if}
 {:else if $game.state == 'running'}
 	<h1 class="page-title">Game Running</h1>
-	<p class="page-subtitle">Live scoreboard and buzzer feed.</p>
+	<p class="page-subtitle">Live scoreboard, buzzer feed and active question.</p>
 	<div class="mt-8 stack-lg">
+		<QuestionCard text={$game.questionText} image={$game.questionImage} title="Current Question" />
+		<div class="card flex flex-wrap gap-3">
+			<button type="button" class="btn btn-primary" onclick={evaluateStep}>Evaluate Answers</button>
+			<button type="button" class="btn btn-accent" onclick={nextStep}>Next Step</button>
+		</div>
 		<Scoreboard players={$game.players} {playerMap} />
 		<BuzzerStatus {websocket} players={playerMap} />
 	</div>

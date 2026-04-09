@@ -19,6 +19,21 @@ from .events import (
     SetHostEvent,
     KickPlayerEvent,
     UpdateScoreEvent,
+    ComponentStateUpdatedEvent,
+    PlayerInputSubmittedEvent,
+    StepAdvancedEvent,
+    ScoresUpdatedEvent,
+)
+
+from .game_definition import (
+    GameDefinition,
+    RoundDefinition,
+    StepDefinition,
+    ComponentDefinition,
+    EvaluationRule,
+    EvaluationType,
+    ComponentType,
+    InputKind,
 )
 
 __all__ = (
@@ -39,4 +54,16 @@ __all__ = (
     "SetHostEvent",
     "KickPlayerEvent",
     "UpdateScoreEvent",
+    "ComponentStateUpdatedEvent",
+    "PlayerInputSubmittedEvent",
+    "StepAdvancedEvent",
+    "ScoresUpdatedEvent",
+    "GameDefinition",
+    "RoundDefinition",
+    "StepDefinition",
+    "ComponentDefinition",
+    "EvaluationRule",
+    "EvaluationType",
+    "ComponentType",
+    "InputKind",
 )

@@ -64,6 +64,9 @@ class Lobby(BaseModel):
     state: GameState = GameState.WAITING_FOR_PLAYERS
     connection: ConnectionStatus = ConnectionStatus.CONNECTED
     active_game: str | None = None
+    definition_id: str | None = None
+    current_step: int = 0
+    phase: str = "waiting"
 
 
 class ConnectedToLobby(BaseModel):

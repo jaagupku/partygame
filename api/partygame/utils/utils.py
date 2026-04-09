@@ -5,6 +5,8 @@ import string
 from redis.asyncio import Redis
 from pydantic import BaseModel
 
+from partygame.state import GameKeyFactory
+
 
 def id_generator(size=5, chars=string.ascii_uppercase):
     return "".join(random.choice(chars) for _ in range(size))
@@ -12,7 +14,7 @@ def id_generator(size=5, chars=string.ascii_uppercase):
 
 async def get_unique_join_code(redis: Redis) -> str:
     join_code = id_generator()
-    while await redis.get(f"join.{join_code}") is not None:
+    while await redis.get(GameKeyFactory.join_code(join_code)) is not None:
         join_code = id_generator()
     return join_code
 
