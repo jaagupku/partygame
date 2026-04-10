@@ -133,7 +133,27 @@
 
 	.input {
 		background: var(--party-surface-strong);
+		color: var(--party-ink);
 		@apply w-full rounded-2xl border px-4 py-3 text-2xl outline-none transition;
+	}
+
+	.select-shell {
+		@apply relative;
+	}
+
+	.select-input {
+		appearance: none;
+		padding-right: 3.5rem;
+	}
+
+	.select-input option {
+		color: var(--party-ink);
+		background: white;
+	}
+
+	.select-chevron {
+		color: var(--party-subtle);
+		@apply pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xl;
 	}
 
 	.input:focus {

@@ -24,6 +24,10 @@ class GameKeyFactory:
         return f"game:{game_id}:channels:host"
 
     @staticmethod
+    def display_channel(game_id: str) -> str:
+        return f"game:{game_id}:channels:display"
+
+    @staticmethod
     def player_channel(game_id: str, player_id: str) -> str:
         return f"game:{game_id}:channels:player:{player_id}"
 

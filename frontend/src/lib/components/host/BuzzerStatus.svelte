@@ -22,7 +22,7 @@
 			const data = JSON.parse(event.data);
 			if (data.type_ === 'buzzer_state') {
 				const event: BuzzerStateEvent = data;
-				isActive = event.state === 'active';
+				isActive = event.active;
 				if (isActive) {
 					activePlayer = undefined;
 				}

@@ -28,7 +28,9 @@ async def game_websocket_host(
             msg = await websocket.receive_json()
             await server.process_input(msg)
     except WebSocketDisconnect:
-        log.warn(f"Host for game < {lobby.id} > disconnected.")
+        log.warning(f"Host for game < {lobby.id} > disconnected.")
+    except Exception:
+        log.exception("Display websocket failed for game < %s >", lobby.id)
     finally:
         await server.disconnect()
         # Game paused
@@ -46,13 +48,15 @@ async def game_websocket_controller(
 
     client = ClientController(websocket, redis, lobby, player)
 
-    log.warn(f"Player < {player.name} > connected.")
+    log.warning(f"Player < {player.name} > connected.")
     await client.connect()
     try:
         while True:
             msg = await websocket.receive_json()
             await client.process_input(msg)
     except WebSocketDisconnect:
-        log.warn(f"Player < {player.name} > disconnected.")
+        log.warning(f"Player < {player.name} > disconnected.")
+    except Exception:
+        log.exception("Controller websocket failed for player < %s >", player.name)
     finally:
         await client.disconnect()

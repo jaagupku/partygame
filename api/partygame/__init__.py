@@ -1,10 +1,13 @@
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
 from partygame.api.api_v1.api import api_router
 from partygame.core.config import settings
+from partygame.schemas import MediaKind
+from partygame.service.media import get_media_storage
 
 logging.basicConfig(
     level=logging.INFO, format="[%(asctime)s] %(name)s - %(levelname)s: %(message)s"
@@ -23,6 +26,34 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 router = APIRouter()
+
+media_storage = get_media_storage()
+seed_dir = Path(__file__).resolve().parents[1] / "media_seed"
+for asset_id, kind, filename, content_type in (
+    ("demo-city-skyline", MediaKind.IMAGE, "city-skyline.svg", "image/svg+xml"),
+    ("demo-animal-closeup", MediaKind.IMAGE, "animal-closeup.svg", "image/svg+xml"),
+    ("demo-movie-poster", MediaKind.IMAGE, "movie-poster.svg", "image/svg+xml"),
+    ("demo-landmark-detail", MediaKind.IMAGE, "landmark-detail.svg", "image/svg+xml"),
+    ("demo-jellybeans-jar", MediaKind.IMAGE, "jellybeans-jar.svg", "image/svg+xml"),
+    ("demo-theme-song", MediaKind.AUDIO, "theme-song.mp3", "audio/mpeg"),
+    ("demo-mystery-sound", MediaKind.AUDIO, "mystery-sound.mp3", "audio/mpeg"),
+    ("demo-rating-clip", MediaKind.AUDIO, "rating-clip.mp3", "audio/mpeg"),
+    ("demo-finale-sting", MediaKind.AUDIO, "finale-sting.mp3", "audio/mpeg"),
+    ("demo-looping-clip", MediaKind.VIDEO, "looping-clip.mp4", "video/mp4"),
+    ("demo-one-shot-clip", MediaKind.VIDEO, "one-shot-clip.mp4", "video/mp4"),
+):
+    source = seed_dir / filename
+    if source.exists():
+        target = media_storage.seed_dir / filename
+        if not target.exists():
+            target.write_bytes(source.read_bytes())
+        media_storage.ensure_seed_asset(
+            asset_id=asset_id,
+            kind=kind,
+            filename=filename,
+            content_type=content_type,
+            seed_relative_path=filename,
+        )
 
 
 @router.get("/api/health")

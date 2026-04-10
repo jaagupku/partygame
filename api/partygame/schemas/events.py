@@ -3,7 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from .lobby import Player
+from .lobby import GameState, Player
+from .game_definition import PlayerInputKind
 
 
 class Event(StrEnum):
@@ -13,13 +14,17 @@ class Event(StrEnum):
     SET_HOST = auto()
     KICK_PLAYER = auto()
     START_GAME = auto()
-    BUZZER_STATE = auto()
-    BUZZER_CLICKED = auto()
     UPDATE_SCORE = auto()
-    COMPONENT_STATE_UPDATED = auto()
-    PLAYER_INPUT_SUBMITTED = auto()
     STEP_ADVANCED = auto()
     SCORES_UPDATED = auto()
+    PLAYER_INPUT_SUBMITTED = auto()
+    BUZZER_STATE = auto()
+    BUZZER_CLICKED = auto()
+    RUNTIME_SNAPSHOT = auto()
+    SUBMISSIONS_UPDATED = auto()
+    REVEALED_SUBMISSION = auto()
+    CLOSE_STEP = auto()
+    REVIEW_SUBMISSION = auto()
 
 
 class BaseEvent(BaseModel):
@@ -62,15 +67,9 @@ class UpdateScoreEvent(BaseEvent):
     set_score: int | None = None
 
 
-class ComponentStateUpdatedEvent(BaseEvent):
-    type_: str = Event.COMPONENT_STATE_UPDATED
-    component_id: str
-    state: dict[str, Any] = Field(default_factory=dict)
-
-
 class PlayerInputSubmittedEvent(BaseEvent):
     type_: str = Event.PLAYER_INPUT_SUBMITTED
-    component_id: str
+    component_id: str | None = None
     player_id: str
     value: Any
 
@@ -83,3 +82,98 @@ class StepAdvancedEvent(BaseEvent):
 class ScoresUpdatedEvent(BaseEvent):
     type_: str = Event.SCORES_UPDATED
     updates: dict[str, int] = Field(default_factory=dict)
+
+
+class CloseStepEvent(BaseEvent):
+    type_: str = Event.CLOSE_STEP
+
+
+class ReviewSubmissionEvent(BaseEvent):
+    type_: str = Event.REVIEW_SUBMISSION
+    player_id: str
+    accepted: bool
+    points_override: int | None = None
+
+
+class BuzzerStateEvent(BaseEvent):
+    type_: str = Event.BUZZER_STATE
+    active: bool
+
+
+class BuzzerClickedEvent(BaseEvent):
+    type_: str = Event.BUZZER_CLICKED
+    player_id: str
+
+
+class RuntimeTimerState(BaseModel):
+    seconds: int | None = None
+    enforced: bool = False
+    started_at: float | None = None
+    ends_at: float | None = None
+
+
+class RuntimeMediaState(BaseModel):
+    type_: str
+    src: str
+    reveal: str | None = None
+    loop: bool = False
+
+
+class RuntimeStepState(BaseModel):
+    id: str
+    title: str
+    body: str | None = None
+    evaluation_type: str = ""
+    evaluation_points: int = 0
+    input_kind: PlayerInputKind = PlayerInputKind.NONE
+    input_prompt: str | None = None
+    input_placeholder: str | None = None
+    input_options: list[str] = Field(default_factory=list)
+    slider_min: float | None = None
+    slider_max: float | None = None
+    slider_step: float | None = None
+    media: RuntimeMediaState | None = None
+    timer: RuntimeTimerState = Field(default_factory=RuntimeTimerState)
+
+
+class RuntimeLobbyState(BaseModel):
+    id: str
+    join_code: str
+    definition_id: str | None = None
+    host_enabled: bool = True
+    host_id: str | None = None
+    state: GameState
+    phase: str = "waiting"
+    current_step: int = 0
+
+
+class RevealedSubmission(BaseModel):
+    player_id: str
+    value: Any
+
+
+class RuntimeSnapshotEvent(BaseEvent):
+    type_: str = Event.RUNTIME_SNAPSHOT
+    lobby: RuntimeLobbyState
+    active_step: RuntimeStepState | None = None
+    buzzer_active: bool = False
+    buzzed_player_id: str | None = None
+    submission_count: int = 0
+    pending_review_count: int = 0
+    revealed_submission: RevealedSubmission | None = None
+
+
+class SubmissionItem(BaseModel):
+    player_id: str
+    value: Any
+    reviewed: bool = False
+
+
+class SubmissionsUpdatedEvent(BaseEvent):
+    type_: str = Event.SUBMISSIONS_UPDATED
+    items: list[SubmissionItem] = Field(default_factory=list)
+
+
+class RevealedSubmissionEvent(BaseEvent):
+    type_: str = Event.REVEALED_SUBMISSION
+    submission: RevealedSubmission | None = None

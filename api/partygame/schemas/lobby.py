@@ -24,7 +24,9 @@ class DisplayComponent(StrEnum):
     QUESTIONARE = auto()
 
 
-class CreateGame(BaseModel): ...
+class CreateGame(BaseModel):
+    definition_id: str = "quiz_demo"
+    host_enabled: bool = True
 
 
 class ComponentType(StrEnum):
@@ -59,8 +61,9 @@ class BaseComponent(BaseModel):
 class Lobby(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     join_code: str
-    players: List[Player] = []
+    players: List[Player] = Field(default_factory=list)
     host_id: str | None = None
+    host_enabled: bool = True
     state: GameState = GameState.WAITING_FOR_PLAYERS
     connection: ConnectionStatus = ConnectionStatus.CONNECTED
     active_game: str | None = None

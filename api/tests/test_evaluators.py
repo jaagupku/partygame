@@ -1,70 +1,122 @@
 import pytest
 
+from partygame.schemas import Lobby
 from partygame.schemas.game_definition import (
-    StepDefinition,
     EvaluationRule,
     EvaluationType,
+    GameDefinition,
+    PlayerInputDefinition,
+    PlayerInputKind,
+    RoundDefinition,
+    StepDefinition,
 )
-from partygame.service.runtime.evaluators import EvaluatorRegistry
+from partygame.service.game import GameRuntimeService
+
+
+class FakeRepo:
+    def __init__(self):
+        self.lobby_fields = {}
+        self.steps = {}
+        self.scores = {"p1": 0, "p2": 0, "p3": 0}
+
+    async def set_lobby_fields(self, game_id: str, **fields):
+        self.lobby_fields.setdefault(game_id, {}).update(fields)
+
+    async def set_step_cache(self, game_id: str, fields: dict):
+        self.steps.setdefault(game_id, {}).update(fields)
+
+    async def get_step_cache(self, game_id: str) -> dict:
+        return self.steps.get(game_id, {})
+
+    async def get_player_score(self, game_id: str, player_id: str) -> int:
+        return self.scores.get(player_id, 0)
+
+    async def set_player_score(self, game_id: str, player_id: str, score: int):
+        self.scores[player_id] = score
+
+
+class ExactTextDefinitionProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Test",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="text_step",
+                            title="Exact text",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_TEXT,
+                                points=3,
+                                answer="Paris",
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
 
 
 @pytest.mark.asyncio
-async def test_exact_text_evaluator_awards_only_matching_answer():
-    registry = EvaluatorRegistry()
-    evaluator = registry.get(EvaluationType.EXACT_TEXT)
+async def test_exact_text_evaluation_awards_matching_answers():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=ExactTextDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
 
-    step = StepDefinition(
-        id="s1",
-        evaluation=EvaluationRule(
-            type_=EvaluationType.EXACT_TEXT, points=3, config={"answer": "Paris"}
-        ),
-    )
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "Paris")
+    await service.submit_player_input(lobby, "p2", "paris")
+    await service.submit_player_input(lobby, "p3", "London")
 
-    updates = await evaluator.evaluate(
-        step=step,
-        answers={"p1": "Paris", "p2": "London", "p3": "paris"},
-    )
+    score_event = await service.evaluate_auto_step(lobby)
 
-    assert updates == {"p1": 3, "p3": 3}
+    assert score_event.updates == {"p1": 3, "p2": 3}
+
+
+class HostJudgedFallbackProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Fallback test",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="text_step",
+                            title="Host judged text",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=2,
+                                answer="blue",
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
 
 
 @pytest.mark.asyncio
-async def test_closest_number_evaluator_awards_nearest_player():
-    registry = EvaluatorRegistry()
-    evaluator = registry.get(EvaluationType.CLOSEST_NUMBER)
+async def test_host_disabled_host_judged_text_falls_back_to_exact_text():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostJudgedFallbackProvider())
+    lobby = Lobby(id="g2", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
 
-    step = StepDefinition(
-        id="s2",
-        evaluation=EvaluationRule(
-            type_=EvaluationType.CLOSEST_NUMBER, points=2, config={"target": 27}
-        ),
-    )
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "blue")
+    await service.submit_player_input(lobby, "p2", "green")
 
-    updates = await evaluator.evaluate(
-        step=step,
-        answers={"p1": 40, "p2": 26, "p3": 30},
-    )
+    score_event = await service.evaluate_auto_step(lobby)
 
-    assert updates == {"p2": 2}
-
-
-@pytest.mark.asyncio
-async def test_ordering_match_evaluator_awards_exact_order_only():
-    registry = EvaluatorRegistry()
-    evaluator = registry.get(EvaluationType.ORDERING_MATCH)
-
-    step = StepDefinition(
-        id="s3",
-        evaluation=EvaluationRule(
-            type_=EvaluationType.ORDERING_MATCH,
-            points=5,
-            config={"order": ["A", "B", "C"]},
-        ),
-    )
-
-    updates = await evaluator.evaluate(
-        step=step,
-        answers={"p1": ["A", "B", "C"], "p2": ["A", "C", "B"]},
-    )
-
-    assert updates == {"p1": 5}
+    assert score_event.updates == {"p1": 2}

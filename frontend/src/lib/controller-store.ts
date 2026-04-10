@@ -10,21 +10,21 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 		});
 	}
 
-	function updateComponent(event: ComponentStateUpdatedEvent) {
+	function applySnapshot(event: RuntimeSnapshotEvent) {
 		controller.update((state) => {
-			if (event.state.type_ === 'display_text_image') {
-				state.questionText = String(event.state.props?.text ?? '');
-				const image = event.state.props?.image;
-				state.questionImage = typeof image === 'string' ? image : undefined;
-			}
-			if (event.state.type_ === 'player_input') {
-				state.activeInputComponentId = event.component_id;
-				const kind = String(event.state.props?.kind ?? 'text').toLowerCase();
-				if (kind === 'number' || kind === 'ordering') {
-					state.inputKind = kind;
-				} else {
-					state.inputKind = 'text';
-				}
+			state.gameState = event.lobby.state;
+			state.lobbyPhase = event.lobby.phase;
+			state.currentStep = event.lobby.current_step;
+			state.hostEnabled = event.lobby.host_enabled;
+			state.isHost = event.lobby.host_id === state.id;
+			state.activeStep = event.active_step;
+			state.buzzerActive = event.buzzer_active;
+			state.buzzedPlayerId = event.buzzed_player_id;
+			state.submissionCount = event.submission_count;
+			state.pendingReviewCount = event.pending_review_count;
+			state.revealedSubmission = event.revealed_submission;
+			if (event.active_step?.input_kind !== 'ordering') {
+				state.submissions = state.submissions;
 			}
 			return state;
 		});
@@ -42,24 +42,24 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				onKick();
 				break;
 			}
-			case 'start_game': {
+			case 'runtime_snapshot': {
+				applySnapshot(messageData as RuntimeSnapshotEvent);
+				break;
+			}
+			case 'submissions_updated': {
+				const event: SubmissionsUpdatedEvent = messageData;
 				controller.update((state) => {
-					state.gameState = 'running';
+					state.submissions = event.items;
 					return state;
 				});
 				break;
 			}
-			case 'step_advanced': {
-				const event: StepAdvancedEvent = messageData;
+			case 'revealed_submission': {
+				const event: RevealedSubmissionEvent = messageData;
 				controller.update((state) => {
-					state.currentStep = event.step_index;
+					state.revealedSubmission = event.submission;
 					return state;
 				});
-				break;
-			}
-			case 'component_state_updated': {
-				const event: ComponentStateUpdatedEvent = messageData;
-				updateComponent(event);
 				break;
 			}
 		}

@@ -38,5 +38,6 @@ async def join_lobby(*, redis: Redis = Depends(deps.get_redis), join_request: sc
 async def create_lobby(
     *,
     redis: Redis = Depends(deps.get_redis),
+    create_game: schemas.CreateGame = schemas.CreateGame(),
 ):
-    return await service.lobby.create(redis)
+    return await service.lobby.create(redis, create_game)

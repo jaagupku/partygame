@@ -21,9 +21,11 @@ class GameStateRepository:
         await self.reserve_join_code(lobby.join_code, lobby.id)
         meta = lobby.model_dump(mode="json", exclude={"players"}, exclude_none=True)
         meta.setdefault("definition_id", "quiz_demo")
+        meta.setdefault("host_enabled", True)
         meta.setdefault("current_step", 0)
         meta.setdefault("phase", "waiting")
-        await self.redis.hset(GameKeyFactory.game_meta(lobby.id), mapping=meta)
+        serialized = {key: str(value) for key, value in meta.items()}
+        await self.redis.hset(GameKeyFactory.game_meta(lobby.id), mapping=serialized)
 
     async def lobby_exists(self, game_id: str) -> bool:
         return await self.redis.hexists(GameKeyFactory.game_meta(game_id), "id")
@@ -38,6 +40,7 @@ class GameStateRepository:
                 "id",
                 "join_code",
                 "host_id",
+                "host_enabled",
                 "state",
                 "connection",
                 "active_game",
@@ -147,10 +150,34 @@ class GameStateRepository:
         await self.redis.delete(GameKeyFactory.game_component(game_id, component_id))
 
     async def set_step_cache(self, game_id: str, fields: dict):
-        await self.redis.hset(GameKeyFactory.game_steps(game_id), mapping=fields)
+        serialized = {}
+        for key, value in fields.items():
+            if isinstance(value, (dict, list)):
+                serialized[key] = json.dumps(value)
+            elif value is None:
+                serialized[key] = ""
+            else:
+                serialized[key] = str(value)
+        await self.redis.hset(GameKeyFactory.game_steps(game_id), mapping=serialized)
 
     async def get_step_cache(self, game_id: str) -> dict:
-        return await self.redis.hgetall(GameKeyFactory.game_steps(game_id))
+        data = await self.redis.hgetall(GameKeyFactory.game_steps(game_id))
+        if not data:
+            return {}
+        decoded = {}
+        for key, value in data.items():
+            if isinstance(value, str) and value and value[0] in "[{":
+                try:
+                    decoded[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    decoded[key] = value
+            elif value == "True":
+                decoded[key] = True
+            elif value == "False":
+                decoded[key] = False
+            else:
+                decoded[key] = value
+        return decoded
 
     async def publish_many(
         self,
