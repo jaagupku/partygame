@@ -6,54 +6,18 @@ import wrongWav from '$lib/assets/sounds/wrong.wav';
 const correctSound = new Sound(correctWav);
 const wrongSound = new Sound(wrongWav);
 
-type HostGameState = Lobby & {
-	questionText: string;
-	questionImage?: string;
-	currentStep: number;
-	components: Record<string, ComponentRuntimeState>;
-};
-
 export function createGameStore(initialState: Lobby) {
 	const initial: HostGameState = {
 		...initialState,
-		questionText: '',
-		questionImage: undefined,
-		currentStep: initialState.current_step ?? 0,
-		components: {}
+		activeStep: undefined,
+		buzzerActive: false,
+		buzzedPlayerId: undefined,
+		submissionCount: 0,
+		pendingReviewCount: 0,
+		revealedSubmission: undefined
 	};
 
 	const lobby = writable(initial);
-
-	function playerConnected(playerId: string) {
-		lobby.update((state) => {
-			for (const player of state.players) {
-				if (player.id !== playerId) {
-					continue;
-				}
-				player.status = 'connected';
-			}
-			return state;
-		});
-	}
-
-	function playerJoined(player: Player) {
-		lobby.update((state) => {
-			state.players = [...state.players, player];
-			return state;
-		});
-	}
-
-	function playerDisconnected(playerId: string) {
-		lobby.update((state) => {
-			for (const player of state.players) {
-				if (player.id !== playerId) {
-					continue;
-				}
-				player.status = 'disconnected';
-			}
-			return state;
-		});
-	}
 
 	function setHost(playerId: string) {
 		lobby.update((state) => {
@@ -61,13 +25,6 @@ export function createGameStore(initialState: Lobby) {
 				player.isHost = player.id === playerId;
 			}
 			state.host_id = playerId;
-			return state;
-		});
-	}
-
-	function removePlayer(playerId: string) {
-		lobby.update((state) => {
-			state.players = state.players.filter((player) => player.id !== playerId);
 			return state;
 		});
 	}
@@ -80,7 +37,7 @@ export function createGameStore(initialState: Lobby) {
 				}
 				if (player.score < score) {
 					correctSound.play();
-				} else {
+				} else if (player.score > score) {
 					wrongSound.play();
 				}
 				player.score = score;
@@ -89,13 +46,21 @@ export function createGameStore(initialState: Lobby) {
 		});
 	}
 
-	function updateComponentState(event: ComponentStateUpdatedEvent) {
+	function applySnapshot(event: RuntimeSnapshotEvent) {
 		lobby.update((state) => {
-			state.components[event.component_id] = event.state;
-			if (event.state.type_ === 'display_text_image') {
-				state.questionText = String(event.state.props?.text ?? '');
-				const image = event.state.props?.image;
-				state.questionImage = typeof image === 'string' ? image : undefined;
+			state.state = event.lobby.state;
+			state.phase = event.lobby.phase;
+			state.current_step = event.lobby.current_step;
+			state.host_enabled = event.lobby.host_enabled;
+			state.host_id = event.lobby.host_id;
+			state.activeStep = event.active_step;
+			state.buzzerActive = event.buzzer_active;
+			state.buzzedPlayerId = event.buzzed_player_id;
+			state.submissionCount = event.submission_count;
+			state.pendingReviewCount = event.pending_review_count;
+			state.revealedSubmission = event.revealed_submission;
+			for (const player of state.players) {
+				player.isHost = player.id === state.host_id;
 			}
 			return state;
 		});
@@ -106,17 +71,34 @@ export function createGameStore(initialState: Lobby) {
 		switch (messageData.type_) {
 			case 'player_joined': {
 				const event: PlayerJoinedEvent = messageData;
-				playerJoined(event.player);
+				lobby.update((state) => {
+					state.players = [...state.players, event.player];
+					return state;
+				});
 				break;
 			}
 			case 'player_connected': {
 				const event: PlayerConnectedEvent = messageData;
-				playerConnected(event.player_id);
+				lobby.update((state) => {
+					for (const player of state.players) {
+						if (player.id === event.player_id) {
+							player.status = 'connected';
+						}
+					}
+					return state;
+				});
 				break;
 			}
 			case 'player_disconnected': {
 				const event: PlayerDisconnectedEvent = messageData;
-				playerDisconnected(event.player_id);
+				lobby.update((state) => {
+					for (const player of state.players) {
+						if (player.id === event.player_id) {
+							player.status = 'disconnected';
+						}
+					}
+					return state;
+				});
 				break;
 			}
 			case 'set_host': {
@@ -126,27 +108,14 @@ export function createGameStore(initialState: Lobby) {
 			}
 			case 'kick_player': {
 				const event: KickPlayerEvent = messageData;
-				removePlayer(event.player_id);
-				break;
-			}
-			case 'start_game': {
 				lobby.update((state) => {
-					state.state = 'running';
+					state.players = state.players.filter((player) => player.id !== event.player_id);
 					return state;
 				});
 				break;
 			}
-			case 'step_advanced': {
-				const event: StepAdvancedEvent = messageData;
-				lobby.update((state) => {
-					state.currentStep = event.step_index;
-					return state;
-				});
-				break;
-			}
-			case 'component_state_updated': {
-				const event: ComponentStateUpdatedEvent = messageData;
-				updateComponentState(event);
+			case 'runtime_snapshot': {
+				applySnapshot(messageData as RuntimeSnapshotEvent);
 				break;
 			}
 			case 'scores_updated': {
@@ -165,6 +134,7 @@ export function createGameStore(initialState: Lobby) {
 			}
 		}
 	}
+
 	if (initialState.host_id) {
 		setHost(initialState.host_id);
 	}

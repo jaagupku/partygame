@@ -31,5 +31,7 @@ ENV VIRTUAL_ENV=/app/.venv \
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
 COPY partygame ./partygame
+COPY games ./games
+COPY media_seed ./media_seed
 
 CMD ["uvicorn", "partygame:app", "--host", "0.0.0.0", "--port", "8000"]

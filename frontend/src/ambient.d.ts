@@ -1,12 +1,19 @@
 type ConnectionStatus = 'connected' | 'disconnected';
 type GameState = 'waiting_for_players' | 'running' | 'paused';
-type Controller = 'buzzer_game';
-type Display = 'questionare';
+type PlayerInputKind = 'none' | 'buzzer' | 'text' | 'number' | 'ordering';
+type EvaluationType =
+	| 'none'
+	| 'host_judged'
+	| 'exact_text'
+	| 'exact_number'
+	| 'closest_number'
+	| 'ordering_match';
 
 type Lobby = {
 	id: string;
 	join_code: string;
 	host_id?: string;
+	host_enabled: boolean;
 	players: Player[];
 	connection: ConnectionStatus;
 	state: GameState;
@@ -14,12 +21,6 @@ type Lobby = {
 	current_step?: number;
 	phase?: string;
 	active_game?: string;
-};
-
-type Component = {
-	type_: 'component_spec';
-	display: Display;
-	controller: Controller;
 };
 
 type Player = {
@@ -34,6 +35,55 @@ type Player = {
 type ConnectedToLobby = {
 	player: Player;
 	lobby: Lobby;
+};
+
+type DefinitionSummary = {
+	id: string;
+	title: string;
+	description?: string;
+};
+
+type GameDefinition = {
+	id: string;
+	title: string;
+	description?: string;
+	rounds: RoundDefinition[];
+};
+
+type RoundDefinition = {
+	id: string;
+	title?: string;
+	steps: StepDefinition[];
+};
+
+type StepDefinition = {
+	id: string;
+	title: string;
+	body?: string;
+	media?: {
+		type_: string;
+		src: string;
+		reveal: string;
+		loop: boolean;
+	};
+	timer: {
+		seconds?: number;
+		enforced: boolean;
+	};
+	player_input: {
+		kind: PlayerInputKind;
+		prompt?: string;
+		placeholder?: string;
+		options: string[];
+		min_value?: number;
+		max_value?: number;
+		step?: number;
+	};
+	evaluation: {
+		type_: EvaluationType;
+		points: number;
+		answer?: unknown;
+	};
 };
 
 type PlayerJoinedEvent = {
@@ -67,8 +117,7 @@ type StartGameEvent = {
 
 type BuzzerStateEvent = {
 	type_: 'buzzer_state';
-	state: 'active' | 'deactive';
-	disable_activator: boolean;
+	active: boolean;
 };
 
 type BuzzerClickedEvent = {
@@ -76,19 +125,78 @@ type BuzzerClickedEvent = {
 	player_id: string;
 };
 
-type ComponentRuntimeState = {
-	type_: 'display_text_image' | 'player_input' | 'buzzer' | string;
-	props?: Record<string, unknown>;
-	answers?: Record<string, unknown>;
-	step_id?: string;
-	state?: string;
-	buzzed_player?: string;
+type RuntimeTimerState = {
+	seconds?: number;
+	enforced: boolean;
+	started_at?: number;
+	ends_at?: number;
 };
 
-type ComponentStateUpdatedEvent = {
-	type_: 'component_state_updated';
-	component_id: string;
-	state: ComponentRuntimeState;
+type RuntimeMediaState = {
+	type_: string;
+	src: string;
+	reveal?: string;
+	loop: boolean;
+};
+
+type RuntimeStepState = {
+	id: string;
+	title: string;
+	body?: string;
+	evaluation_type: string;
+	evaluation_points: number;
+	input_kind: PlayerInputKind;
+	input_prompt?: string;
+	input_placeholder?: string;
+	input_options: string[];
+	slider_min?: number;
+	slider_max?: number;
+	slider_step?: number;
+	media?: RuntimeMediaState;
+	timer: RuntimeTimerState;
+};
+
+type RuntimeLobbyState = {
+	id: string;
+	join_code: string;
+	definition_id?: string;
+	host_enabled: boolean;
+	host_id?: string;
+	state: GameState;
+	phase: string;
+	current_step: number;
+};
+
+type RevealedSubmission = {
+	player_id: string;
+	value: unknown;
+};
+
+type RuntimeSnapshotEvent = {
+	type_: 'runtime_snapshot';
+	lobby: RuntimeLobbyState;
+	active_step?: RuntimeStepState;
+	buzzer_active: boolean;
+	buzzed_player_id?: string;
+	submission_count: number;
+	pending_review_count: number;
+	revealed_submission?: RevealedSubmission;
+};
+
+type SubmissionItem = {
+	player_id: string;
+	value: unknown;
+	reviewed: boolean;
+};
+
+type SubmissionsUpdatedEvent = {
+	type_: 'submissions_updated';
+	items: SubmissionItem[];
+};
+
+type RevealedSubmissionEvent = {
+	type_: 'revealed_submission';
+	submission?: RevealedSubmission;
 };
 
 type StepAdvancedEvent = {
@@ -101,15 +209,15 @@ type ScoresUpdatedEvent = {
 	updates: Record<string, number>;
 };
 
-type ControllerState = {
-	id: string;
-	isHost: boolean;
-	gameState: GameState;
-	currentStep: number;
-	questionText: string;
-	questionImage?: string;
-	activeInputComponentId?: string;
-	inputKind: 'text' | 'number' | 'ordering';
+type CloseStepEvent = {
+	type_: 'close_step';
+};
+
+type ReviewSubmissionEvent = {
+	type_: 'review_submission';
+	player_id: string;
+	accepted: boolean;
+	points_override?: number;
 };
 
 type UpdateScoreEvent = {
@@ -117,4 +225,29 @@ type UpdateScoreEvent = {
 	player_id: string;
 	add_score: number;
 	set_score?: number;
+};
+
+type HostGameState = Lobby & {
+	activeStep?: RuntimeStepState;
+	buzzerActive: boolean;
+	buzzedPlayerId?: string;
+	submissionCount: number;
+	pendingReviewCount: number;
+	revealedSubmission?: RevealedSubmission;
+};
+
+type ControllerState = {
+	id: string;
+	isHost: boolean;
+	gameState: GameState;
+	lobbyPhase: string;
+	currentStep: number;
+	hostEnabled: boolean;
+	activeStep?: RuntimeStepState;
+	buzzerActive: boolean;
+	buzzedPlayerId?: string;
+	submissionCount: number;
+	pendingReviewCount: number;
+	revealedSubmission?: RevealedSubmission;
+	submissions: SubmissionItem[];
 };

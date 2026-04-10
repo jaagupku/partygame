@@ -1,68 +1,100 @@
 {
   "id": "quiz_demo",
   "title": "Demo Quiz",
+  "description": "A mixed-format sample game used for development.",
   "rounds": [
     {
-      "id": "round1",
+      "id": "warmup",
       "title": "Warmup",
       "steps": [
         {
-          "id": "step1",
-          "title": "Capital City",
-          "components": [
-            {
-              "id": "display_1",
-              "type_": "display_text_image",
-              "props": {
-                "text": "What is the capital of France?",
-                "image": null
-              }
-            },
-            {
-              "id": "input_1",
-              "type_": "player_input",
-              "props": {
-                "kind": "text"
-              }
-            },
-            {
-              "id": "buzzer_1",
-              "type_": "buzzer",
-              "props": {}
-            }
-          ],
+          "id": "intro_slide",
+          "title": "Welcome",
+          "body": "Phones out. Fast fingers help, but the host controls the pace.",
+          "player_input": {
+            "kind": "none"
+          },
           "evaluation": {
-            "type_": "host_judged",
-            "points": 1,
-            "config": {}
+            "type_": "none",
+            "points": 0
           }
         },
         {
-          "id": "step2",
+          "id": "capital_city",
+          "title": "Capital City",
+          "body": "What is the capital of France?",
+          "timer": {
+            "seconds": 20,
+            "enforced": false
+          },
+          "player_input": {
+            "kind": "text",
+            "prompt": "Type your answer",
+            "placeholder": "Paris"
+          },
+          "evaluation": {
+            "type_": "host_judged",
+            "points": 2
+          }
+        },
+        {
+          "id": "closest_number",
           "title": "Closest Number",
-          "components": [
-            {
-              "id": "display_2",
-              "type_": "display_text_image",
-              "props": {
-                "text": "How many countries are in the EU?",
-                "image": null
-              }
-            },
-            {
-              "id": "input_2",
-              "type_": "player_input",
-              "props": {
-                "kind": "number"
-              }
-            }
-          ],
+          "body": "How many countries are in the European Union?",
+          "timer": {
+            "seconds": 15,
+            "enforced": true
+          },
+          "player_input": {
+            "kind": "number",
+            "prompt": "Enter your guess",
+            "placeholder": "27"
+          },
           "evaluation": {
             "type_": "closest_number",
-            "points": 2,
-            "config": {
-              "target": 27
-            }
+            "points": 3,
+            "answer": 27
+          }
+        },
+        {
+          "id": "order_planets",
+          "title": "Order The Planets",
+          "body": "Arrange these planets from closest to farthest from the Sun.",
+          "timer": {
+            "seconds": 25,
+            "enforced": false
+          },
+          "player_input": {
+            "kind": "ordering",
+            "prompt": "Put them in order",
+            "options": ["Earth", "Venus", "Mars", "Mercury"]
+          },
+          "evaluation": {
+            "type_": "ordering_match",
+            "points": 4,
+            "answer": ["Mercury", "Venus", "Earth", "Mars"]
+          }
+        },
+        {
+          "id": "music_buzzer",
+          "title": "Buzzer Round",
+          "body": "Buzz in when you know the artist.",
+          "media": {
+            "type_": "audio",
+            "src": "/api/v1/media/demo-theme-song",
+            "loop": false
+          },
+          "timer": {
+            "seconds": 10,
+            "enforced": false
+          },
+          "player_input": {
+            "kind": "buzzer",
+            "prompt": "Buzz now"
+          },
+          "evaluation": {
+            "type_": "host_judged",
+            "points": 5
           }
         }
       ]

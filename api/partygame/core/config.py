@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Union
 
 from pydantic import field_validator, AnyHttpUrl
@@ -11,7 +12,14 @@ class Settings(BaseSettings):
     # BACKEND_CORS_ORIGINS is a JSON-formatted list of origins
     # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000", \
     # "http://localhost:8080", "http://local.dockertoolbox.tiangolo.com"]'
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5123",
+        "http://127.0.0.1:5123",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -23,6 +31,9 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     PROJECT_NAME: str = "partygame"
+    MEDIA_ROOT: Path = Path(__file__).resolve().parents[2] / "media"
+    MEDIA_PUBLIC_BASE: str = "/api/v1/media"
+    MEDIA_MAX_UPLOAD_MB: int = 25
 
     model_config = SettingsConfigDict(case_sensitive=True)
 

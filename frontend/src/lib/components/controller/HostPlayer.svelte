@@ -21,7 +21,7 @@
 			switch (data.type_) {
 				case 'buzzer_state': {
 					const event: BuzzerStateEvent = data;
-					isBuzzerActive = event.state === 'active';
+					isBuzzerActive = event.active;
 					if (isBuzzerActive) {
 						activatedPlayerid = undefined;
 					}
@@ -36,11 +36,10 @@
 		});
 	});
 
-	function setBuzzerState(state: 'active' | 'deactive', disable_activator = false) {
+	function setBuzzerState(active: boolean) {
 		const event: BuzzerStateEvent = {
 			type_: 'buzzer_state',
-			state,
-			disable_activator
+			active
 		};
 		websocket.send(JSON.stringify(event));
 	}
@@ -62,16 +61,16 @@
 	<section class="card stack-md">
 		<h2 class="label-title text-3xl">Buzzer Controls</h2>
 		{#if isBuzzerActive}
-			<button type="button" class="btn btn-danger" onclick={() => setBuzzerState('deactive')}>
+			<button type="button" class="btn btn-danger" onclick={() => setBuzzerState(false)}>
 				Turn Buzzer Off
 			</button>
 		{:else}
-			<button type="button" class="btn btn-primary" onclick={() => setBuzzerState('active')}>
+			<button type="button" class="btn btn-primary" onclick={() => setBuzzerState(true)}>
 				Activate Buzzers
 			</button>
 			{#if activatedPlayerid}
-				<button type="button" class="btn btn-accent" onclick={() => setBuzzerState('active', true)}>
-					Wrong answer: disable buzzed player
+				<button type="button" class="btn btn-accent" onclick={() => setBuzzerState(true)}>
+					Re-open buzzer
 				</button>
 			{/if}
 		{/if}

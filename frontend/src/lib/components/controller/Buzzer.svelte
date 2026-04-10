@@ -16,7 +16,7 @@
 			const data = JSON.parse(event.data);
 			if (data.type_ === 'buzzer_state') {
 				const buzzerEvent: BuzzerStateEvent = data;
-				isActive = buzzerEvent.state === 'active';
+				isActive = buzzerEvent.active;
 			}
 		});
 	});
