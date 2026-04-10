@@ -120,3 +120,49 @@ async def test_host_disabled_host_judged_text_falls_back_to_exact_text():
     score_event = await service.evaluate_auto_step(lobby)
 
     assert score_event.updates == {"p1": 2}
+
+
+class RadioFallbackProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Radio fallback",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="radio_step",
+                            title="Pick one",
+                            player_input=PlayerInputDefinition(
+                                kind=PlayerInputKind.RADIO,
+                                options=["Blue", "Green"],
+                            ),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=2,
+                                answer="Blue",
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
+@pytest.mark.asyncio
+async def test_host_disabled_host_judged_radio_falls_back_to_exact_text():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=RadioFallbackProvider())
+    lobby = Lobby(id="g3", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "Blue")
+    await service.submit_player_input(lobby, "p2", "Green")
+
+    score_event = await service.evaluate_auto_step(lobby)
+
+    assert score_event.updates == {"p1": 2}

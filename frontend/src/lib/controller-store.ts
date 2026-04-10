@@ -20,6 +20,8 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 			state.activeStep = event.active_step;
 			state.buzzerActive = event.buzzer_active;
 			state.buzzedPlayerId = event.buzzed_player_id;
+			state.submittedPlayerIds = event.submitted_player_ids;
+			state.hasSubmitted = event.submitted_player_ids.includes(state.id);
 			state.submissionCount = event.submission_count;
 			state.pendingReviewCount = event.pending_review_count;
 			state.revealedSubmission = event.revealed_submission;

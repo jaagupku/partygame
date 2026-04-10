@@ -94,7 +94,7 @@ class GameRuntimeService:
         value: Any,
     ) -> tuple[list[schemas.BaseEvent], bool]:
         step = await self.get_current_step(lobby)
-        if step is None or player_id == lobby.host_id:
+        if step is None or player_id == lobby.host_id or lobby.phase != "question_active":
             return [], False
 
         state = await self.get_step_state(lobby.id)
@@ -114,6 +114,8 @@ class GameRuntimeService:
             ], True
 
         answers = state.get("answers", {})
+        if player_id in answers:
+            return [], False
         answers[player_id] = value
         await self.repo.set_step_cache(lobby.id, {"answers": answers})
         return [], True
@@ -348,6 +350,7 @@ class GameRuntimeService:
                 body=step.body,
                 evaluation_type=str(self._resolve_evaluation_type(lobby, step)),
                 evaluation_points=step.evaluation.points,
+                input_enabled=lobby.phase == "question_active",
                 input_kind=step.player_input.kind,
                 input_prompt=step.player_input.prompt,
                 input_placeholder=step.player_input.placeholder,
@@ -386,6 +389,7 @@ class GameRuntimeService:
             active_step=active_step,
             buzzer_active=bool(step_state.get("buzzer_active")),
             buzzed_player_id=step_state.get("buzzed_player_id") or None,
+            submitted_player_ids=list(step_state.get("answers", {}).keys()),
             submission_count=len(step_state.get("answers", {})),
             pending_review_count=self._pending_review_count(step_state),
             revealed_submission=revealed_submission,
@@ -438,6 +442,8 @@ class GameRuntimeService:
         player_input: PlayerInputDefinition,
     ) -> EvaluationType:
         if player_input.kind == PlayerInputKind.TEXT:
+            return EvaluationType.EXACT_TEXT
+        if player_input.kind == PlayerInputKind.RADIO:
             return EvaluationType.EXACT_TEXT
         if player_input.kind == PlayerInputKind.NUMBER:
             return EvaluationType.EXACT_NUMBER

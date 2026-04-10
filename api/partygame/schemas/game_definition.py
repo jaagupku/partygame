@@ -23,6 +23,8 @@ class PlayerInputKind(StrEnum):
     TEXT = auto()
     NUMBER = auto()
     ORDERING = auto()
+    RADIO = auto()
+    CHECKBOX = auto()
 
 
 class EvaluationType(StrEnum):
@@ -61,8 +63,16 @@ class PlayerInputDefinition(BaseModel):
 
     @model_validator(mode="after")
     def validate_input_shape(self) -> "PlayerInputDefinition":
-        if self.kind == PlayerInputKind.ORDERING and len(self.options) < 2:
-            raise ValueError("Ordering inputs require at least two options")
+        if (
+            self.kind
+            in (
+                PlayerInputKind.ORDERING,
+                PlayerInputKind.RADIO,
+                PlayerInputKind.CHECKBOX,
+            )
+            and len(self.options) < 2
+        ):
+            raise ValueError(f"{self.kind.value.capitalize()} inputs require at least two options")
         if self.kind == PlayerInputKind.BUZZER and self.options:
             raise ValueError("Buzzer inputs cannot define options")
         if (

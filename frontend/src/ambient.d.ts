@@ -1,6 +1,6 @@
 type ConnectionStatus = 'connected' | 'disconnected';
 type GameState = 'waiting_for_players' | 'running' | 'paused';
-type PlayerInputKind = 'none' | 'buzzer' | 'text' | 'number' | 'ordering';
+type PlayerInputKind = 'none' | 'buzzer' | 'text' | 'number' | 'ordering' | 'radio' | 'checkbox';
 type EvaluationType =
 	| 'none'
 	| 'host_judged'
@@ -84,6 +84,21 @@ type StepDefinition = {
 		points: number;
 		answer?: unknown;
 	};
+	host_behavior: {
+		reveal_answers: boolean;
+		show_submissions: boolean;
+		allow_custom_points: boolean;
+	};
+};
+
+type MediaAsset = {
+	id: string;
+	kind: 'image' | 'audio' | 'video';
+	storage_path: string;
+	original_filename: string;
+	content_type: string;
+	size_bytes: number;
+	public_url: string;
 };
 
 type PlayerJoinedEvent = {
@@ -145,6 +160,7 @@ type RuntimeStepState = {
 	body?: string;
 	evaluation_type: string;
 	evaluation_points: number;
+	input_enabled: boolean;
 	input_kind: PlayerInputKind;
 	input_prompt?: string;
 	input_placeholder?: string;
@@ -178,6 +194,7 @@ type RuntimeSnapshotEvent = {
 	active_step?: RuntimeStepState;
 	buzzer_active: boolean;
 	buzzed_player_id?: string;
+	submitted_player_ids: string[];
 	submission_count: number;
 	pending_review_count: number;
 	revealed_submission?: RevealedSubmission;
@@ -246,6 +263,8 @@ type ControllerState = {
 	activeStep?: RuntimeStepState;
 	buzzerActive: boolean;
 	buzzedPlayerId?: string;
+	submittedPlayerIds: string[];
+	hasSubmitted: boolean;
 	submissionCount: number;
 	pendingReviewCount: number;
 	revealedSubmission?: RevealedSubmission;
