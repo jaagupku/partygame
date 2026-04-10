@@ -125,6 +125,7 @@ class RuntimeStepState(BaseModel):
     body: str | None = None
     evaluation_type: str = ""
     evaluation_points: int = 0
+    input_enabled: bool = False
     input_kind: PlayerInputKind = PlayerInputKind.NONE
     input_prompt: str | None = None
     input_placeholder: str | None = None
@@ -158,6 +159,7 @@ class RuntimeSnapshotEvent(BaseEvent):
     active_step: RuntimeStepState | None = None
     buzzer_active: bool = False
     buzzed_player_id: str | None = None
+    submitted_player_ids: list[str] = Field(default_factory=list)
     submission_count: int = 0
     pending_review_count: int = 0
     revealed_submission: RevealedSubmission | None = None

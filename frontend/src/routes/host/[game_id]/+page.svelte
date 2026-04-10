@@ -46,6 +46,15 @@
 		socket?.close();
 		socket = null;
 	});
+
+	function setHost(playerId: string) {
+		socket?.send(
+			JSON.stringify({
+				type_: 'set_host',
+				player_id: playerId
+			})
+		);
+	}
 </script>
 
 {#if $game.state === 'waiting_for_players'}
@@ -67,7 +76,13 @@
 		<ul class="stack-md mt-8">
 			{#each $game.players as player}
 				<li class="card flex items-center justify-between gap-3">
-					<div class="text-xl font-bold">{player.name}</div>
+					<button
+						type="button"
+						class="text-left text-xl font-bold text-slate-800 transition-opacity hover:opacity-75"
+						onclick={() => setHost(player.id)}
+					>
+						{player.name}
+					</button>
 					<div class="flex items-center gap-2">
 						{#if player.isHost}
 							<span class="badge bg-sky-100 text-sky-700">Host</span>
@@ -103,6 +118,6 @@
 			</div>
 		{/if}
 
-		<Scoreboard players={$game.players} {playerMap} />
+		<Scoreboard players={$game.players} {playerMap} onSelectPlayer={setHost} />
 	</div>
 {/if}

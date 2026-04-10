@@ -61,10 +61,17 @@
 	}
 </script>
 
-<h1 class="page-title">Create Game</h1>
-<p class="page-subtitle">
-	Pick a definition, review it, and choose whether a host phone runs the show.
-</p>
+<div class="flex flex-wrap items-start justify-between gap-4">
+	<div>
+		<h1 class="page-title text-left">Create Game</h1>
+		<p class="page-subtitle text-left">
+			Pick a definition, review it, and choose whether a host phone runs the show.
+		</p>
+	</div>
+	<button class="btn btn-ghost text-lg" onclick={() => goto('/definitions')}
+		>Manage Definitions</button
+	>
+</div>
 
 <div class="stack-lg">
 	<section class="card stack-md">

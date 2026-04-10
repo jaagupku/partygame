@@ -136,3 +136,63 @@ async def test_review_submission_awards_points_and_completes_review():
     assert events[0].type_ == "update_score"
     assert repo.scores["p1"] == 2
     assert lobby.phase == "step_complete"
+
+
+@pytest.mark.asyncio
+async def test_submit_player_input_is_rejected_after_step_closes():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.close_step(lobby)
+
+    events, handled = await service.submit_player_input(lobby, "p1", 27)
+
+    assert events == []
+    assert handled is False
+
+
+@pytest.mark.asyncio
+async def test_snapshot_disables_input_when_step_is_not_active():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.close_step(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.input_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_player_cannot_submit_twice_for_same_step():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    first_events, first_handled = await service.submit_player_input(lobby, "p1", 27)
+    second_events, second_handled = await service.submit_player_input(lobby, "p1", 28)
+
+    assert first_events == []
+    assert first_handled is True
+    assert second_events == []
+    assert second_handled is False
+    assert repo.steps["g1"]["answers"] == {"p1": 27}
+
+
+@pytest.mark.asyncio
+async def test_snapshot_includes_submitted_player_ids():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.submit_player_input(lobby, "p2", 26)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.submitted_player_ids == ["p1", "p2"]

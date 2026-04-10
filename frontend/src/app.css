@@ -67,7 +67,7 @@
 	.page-panel {
 		background: var(--party-surface);
 		backdrop-filter: blur(8px);
-		@apply mx-auto w-full max-w-3xl rounded-[2rem] border p-6 shadow-xl md:p-10;
+		@apply relative mx-auto w-full max-w-3xl rounded-[2rem] border p-6 shadow-xl md:p-10;
 	}
 
 	.page-title {
@@ -167,5 +167,30 @@
 
 	.badge {
 		@apply rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide;
+	}
+
+	.page-top-chips {
+		@apply mb-4 flex flex-wrap items-center justify-end gap-2 md:absolute md:right-6 md:top-6 md:mb-0;
+	}
+
+	.chip-button,
+	.chip-select {
+		background: rgba(255, 255, 255, 0.9);
+		box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+		@apply inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-bold tracking-wide text-slate-700;
+	}
+
+	.chip-button:hover,
+	.chip-select:hover {
+		transform: translateY(-1px);
+	}
+
+	.chip-select {
+		@apply pr-3;
+	}
+
+	.chip-select select {
+		background: transparent;
+		@apply border-0 pr-2 outline-none;
 	}
 }

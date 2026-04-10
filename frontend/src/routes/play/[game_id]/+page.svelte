@@ -26,6 +26,8 @@
 			activeStep: undefined,
 			buzzerActive: false,
 			buzzedPlayerId: undefined,
+			submittedPlayerIds: [],
+			hasSubmitted: false,
 			submissionCount: 0,
 			pendingReviewCount: 0,
 			revealedSubmission: undefined,
@@ -37,14 +39,34 @@
 	let isConnected = $state(false);
 	let answerValue = $state<string | number>('');
 	let orderingItems = $state<string[]>([]);
+	let selectedRadioOption = $state<string | null>(null);
+	let selectedCheckboxOptions = $state<string[]>([]);
 	let customScore = $state(0);
 	let orderingStepId = $state<string | undefined>(undefined);
+	let inputStepId = $state<string | undefined>(undefined);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 
 	const playerMap = $derived(new Map(lobby().players.map((entry) => [entry.id, entry])));
+	const playerInputDisabled = $derived(
+		!$controller.isHost &&
+			($controller.lobbyPhase !== 'question_active' ||
+				!$controller.activeStep?.input_enabled ||
+				$controller.hasSubmitted)
+	);
+	const submittedPlayerNames = $derived(
+		$controller.submittedPlayerIds
+			.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
+			.filter(Boolean)
+	);
 
 	$effect(() => {
 		const step = $controller.activeStep;
+		if (step?.id !== inputStepId) {
+			answerValue = '';
+			selectedRadioOption = null;
+			selectedCheckboxOptions = [];
+			inputStepId = step?.id;
+		}
 		if (step?.input_kind !== 'ordering') {
 			orderingItems = [];
 			orderingStepId = undefined;
@@ -140,7 +162,7 @@
 
 	function submitAnswer() {
 		const step = $controller.activeStep;
-		if (!step) {
+		if (!step || playerInputDisabled) {
 			return;
 		}
 		let value: unknown = answerValue;
@@ -148,6 +170,10 @@
 			value = Number(answerValue);
 		} else if (step.input_kind === 'ordering') {
 			value = orderingItems;
+		} else if (step.input_kind === 'radio') {
+			value = selectedRadioOption;
+		} else if (step.input_kind === 'checkbox') {
+			value = selectedCheckboxOptions;
 		} else if (step.input_kind === 'text') {
 			value = String(answerValue);
 		}
@@ -159,6 +185,9 @@
 	}
 
 	function buzz() {
+		if (playerInputDisabled) {
+			return;
+		}
 		sendAction({
 			type_: 'player_input_submitted',
 			value: 'buzz'
@@ -181,6 +210,20 @@
 		[next[index], next[nextIndex]] = [next[nextIndex], next[index]];
 		orderingItems = next;
 	}
+
+	function submitRadioOption(option: string) {
+		selectedRadioOption = option;
+		answerValue = option;
+		submitAnswer();
+	}
+
+	function toggleCheckboxOption(option: string) {
+		if (selectedCheckboxOptions.includes(option)) {
+			selectedCheckboxOptions = selectedCheckboxOptions.filter((entry) => entry !== option);
+			return;
+		}
+		selectedCheckboxOptions = [...selectedCheckboxOptions, option];
+	}
 </script>
 
 <h1 class="page-title">Party Controller</h1>
@@ -201,10 +244,18 @@
 		{#if !$controller.isHost && $controller.activeStep?.input_kind === 'buzzer'}
 			<section class="card stack-md text-center">
 				<h2 class="label-title text-2xl">Buzzer</h2>
-				<p>{$controller.buzzerActive ? 'Buzz now!' : 'Wait for the host to continue.'}</p>
+				<p>
+					{playerInputDisabled
+						? $controller.hasSubmitted
+							? 'Answer received. Waiting for the next step.'
+							: 'This step is closed.'
+						: $controller.buzzerActive
+							? 'Buzz now!'
+							: 'Wait for the host to continue.'}
+				</p>
 				<button
 					type="button"
-					disabled={!$controller.buzzerActive}
+					disabled={playerInputDisabled || !$controller.buzzerActive}
 					class="btn btn-accent text-4xl"
 					onclick={buzz}
 				>
@@ -214,17 +265,39 @@
 		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'text'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Your Answer</h2>
+				{#if playerInputDisabled}
+					<p class="text-sm text-slate-600">
+						{$controller.hasSubmitted
+							? 'Your answer is in. You can submit again on the next step.'
+							: 'This step has been closed. New answers are disabled.'}
+					</p>
+				{/if}
 				<input
 					class="input"
 					type="text"
 					bind:value={answerValue}
+					disabled={playerInputDisabled}
 					placeholder={$controller.activeStep?.input_placeholder ?? 'Type your answer'}
 				/>
-				<button type="button" class="btn btn-primary" onclick={submitAnswer}>Submit Answer</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					onclick={submitAnswer}
+					disabled={playerInputDisabled}
+				>
+					Submit Answer
+				</button>
 			</section>
 		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'number'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Your Answer</h2>
+				{#if playerInputDisabled}
+					<p class="text-sm text-slate-600">
+						{$controller.hasSubmitted
+							? 'Your answer is in. You can submit again on the next step.'
+							: 'This step has been closed. New answers are disabled.'}
+					</p>
+				{/if}
 				<input
 					class="input"
 					type="number"
@@ -232,14 +305,28 @@
 					max={$controller.activeStep?.slider_max}
 					step={$controller.activeStep?.slider_step ?? 1}
 					bind:value={answerValue}
+					disabled={playerInputDisabled}
 					placeholder={$controller.activeStep?.input_placeholder ?? 'Enter a number'}
 				/>
-				<button type="button" class="btn btn-primary" onclick={submitAnswer}>Submit Answer</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					onclick={submitAnswer}
+					disabled={playerInputDisabled}
+				>
+					Submit Answer
+				</button>
 			</section>
 		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'ordering'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Ordering Answer</h2>
-				<p class="text-sm text-slate-600">Move the items until they are in the correct order.</p>
+				<p class="text-sm text-slate-600">
+					{playerInputDisabled
+						? $controller.hasSubmitted
+							? 'Your order is submitted. You can reorder again on the next step.'
+							: 'This step has been closed. Reordering is disabled.'
+						: 'Move the items until they are in the correct order.'}
+				</p>
 				<div class="stack-md">
 					{#each orderingItems as item, index (item)}
 						<div class="flex items-center gap-3 rounded-2xl bg-white/70 p-3">
@@ -249,7 +336,7 @@
 								<button
 									type="button"
 									class="btn btn-ghost px-3 py-2 text-sm"
-									disabled={index === 0}
+									disabled={playerInputDisabled || index === 0}
 									onclick={() => moveOrderingItem(index, -1)}
 								>
 									Up
@@ -257,7 +344,7 @@
 								<button
 									type="button"
 									class="btn btn-ghost px-3 py-2 text-sm"
-									disabled={index === orderingItems.length - 1}
+									disabled={playerInputDisabled || index === orderingItems.length - 1}
 									onclick={() => moveOrderingItem(index, 1)}
 								>
 									Down
@@ -266,7 +353,70 @@
 						</div>
 					{/each}
 				</div>
-				<button type="button" class="btn btn-primary" onclick={submitAnswer}>Submit Order</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					onclick={submitAnswer}
+					disabled={playerInputDisabled}
+				>
+					Submit Order
+				</button>
+			</section>
+		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'radio'}
+			<section class="card stack-md">
+				<h2 class="label-title text-2xl">Choose One</h2>
+				<p class="text-sm text-slate-600">
+					{playerInputDisabled
+						? $controller.hasSubmitted
+							? 'Your choice is locked in. You can choose again on the next step.'
+							: 'This step has been closed. New selections are disabled.'
+						: 'Tap one option to submit it immediately.'}
+				</p>
+				<div class="grid gap-3">
+					{#each $controller.activeStep.input_options as option}
+						<button
+							type="button"
+							class="btn btn-ghost justify-start text-left text-xl"
+							disabled={playerInputDisabled}
+							onclick={() => submitRadioOption(option)}
+						>
+							{option}
+						</button>
+					{/each}
+				</div>
+			</section>
+		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'checkbox'}
+			<section class="card stack-md">
+				<h2 class="label-title text-2xl">Choose One or More</h2>
+				<p class="text-sm text-slate-600">
+					{playerInputDisabled
+						? $controller.hasSubmitted
+							? 'Your selection is submitted. You can choose again on the next step.'
+							: 'This step has been closed. New selections are disabled.'
+						: 'Tap options to highlight them, then submit when you are ready.'}
+				</p>
+				<div class="grid gap-3">
+					{#each $controller.activeStep.input_options as option}
+						<button
+							type="button"
+							class={`btn justify-start text-left text-xl ${
+								selectedCheckboxOptions.includes(option) ? 'btn-primary text-white' : 'btn-ghost'
+							}`}
+							disabled={playerInputDisabled}
+							onclick={() => toggleCheckboxOption(option)}
+						>
+							{option}
+						</button>
+					{/each}
+				</div>
+				<button
+					type="button"
+					class="btn btn-primary"
+					onclick={submitAnswer}
+					disabled={playerInputDisabled || selectedCheckboxOptions.length === 0}
+				>
+					Submit Selection
+				</button>
 			</section>
 		{:else if !$controller.isHost}
 			<section class="card text-center">
@@ -281,6 +431,13 @@
 					Phase: {$controller.lobbyPhase} · Submissions: {$controller.submissionCount} · Pending review:
 					{$controller.pendingReviewCount}
 				</p>
+				{#if submittedPlayerNames.length > 0}
+					<div class="flex flex-wrap gap-2">
+						{#each submittedPlayerNames as name}
+							<span class="badge bg-emerald-100 text-emerald-800">{name} answered</span>
+						{/each}
+					</div>
+				{/if}
 				<div class="flex flex-wrap gap-3">
 					{#if $controller.lobbyPhase === 'question_active'}
 						<button type="button" class="btn btn-primary" onclick={closeStep}>Close Step</button>
