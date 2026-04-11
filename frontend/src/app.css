@@ -64,10 +64,22 @@
 		@apply min-h-screen p-4 md:p-8;
 	}
 
+	.app-shell-editor {
+		@apply h-screen overflow-hidden p-0;
+	}
+
 	.page-panel {
 		background: var(--party-surface);
 		backdrop-filter: blur(8px);
 		@apply relative mx-auto w-full max-w-3xl rounded-[2rem] border p-6 shadow-xl md:p-10;
+	}
+
+	.page-panel-editor {
+		@apply h-screen min-h-0 max-w-none overflow-hidden rounded-none border-0 p-0 shadow-none;
+	}
+
+	.page-panel-wide {
+		@apply max-w-[96rem];
 	}
 
 	.page-title {

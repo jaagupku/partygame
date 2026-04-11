@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
-	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
-	import Timer from '$lib/components/util/Timer.svelte';
+	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 
@@ -94,29 +93,17 @@
 		</ul>
 	{/if}
 {:else}
-	<h1 class="page-title">Big Screen View</h1>
-	<p class="page-subtitle">
-		Phase: <span class="font-bold">{$game.phase}</span> · Submissions: {$game.submissionCount} · Pending
-		review:
-		{$game.pendingReviewCount}
-	</p>
-	<p class="page-subtitle mt-2">Connection: {isConnected ? 'Live' : 'Reconnecting...'}</p>
-
-	<div class="mt-8 stack-lg">
-		<QuestionCard
+	<div class="stack-lg">
+		<StepDisplayPreview
 			step={$game.activeStep}
 			revealedSubmission={$game.revealedSubmission}
-			title="Now Playing"
+			title="Big Screen View"
+			phaseLabel={$game.phase ?? 'question_active'}
+			connectionLabel={isConnected ? 'Live' : 'Reconnecting...'}
+			submissionCount={$game.submissionCount}
+			pendingReviewCount={$game.pendingReviewCount}
+			{countdown}
 		/>
-
-		{#if countdown > 0}
-			<div class="card mx-auto max-w-64">
-				<Timer {countdown} />
-				<p class="text-center text-sm text-slate-600">
-					{$game.activeStep?.timer.enforced ? 'Timer is enforced' : 'Timer is advisory'}
-				</p>
-			</div>
-		{/if}
 
 		<Scoreboard players={$game.players} {playerMap} onSelectPlayer={setHost} />
 	</div>
