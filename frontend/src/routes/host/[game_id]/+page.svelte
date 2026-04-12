@@ -105,6 +105,7 @@
 				step={$game.activeStep}
 				revealedSubmission={$game.revealedSubmission}
 				revealedAnswer={$game.revealedAnswer}
+				buzzerActive={$game.buzzerActive}
 				displayPhase={$game.displayPhase}
 				phaseLabel={$game.phase ?? 'question_active'}
 				connectionLabel={isConnected ? 'Live' : 'Disconnected'}

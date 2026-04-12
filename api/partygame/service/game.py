@@ -160,10 +160,7 @@ class GameRuntimeService:
             await self.repo.set_lobby_fields(lobby.id, phase="host_review")
             lobby.phase = "host_review"
         await self.repo.set_step_cache(lobby.id, updates)
-        events = [schemas.BuzzerStateEvent(active=active)]
-        if active:
-            events.append(await self.build_snapshot(lobby))
-        return events
+        return [schemas.BuzzerStateEvent(active=active), await self.build_snapshot(lobby)]
 
     async def reveal_submission(
         self,
@@ -272,11 +269,16 @@ class GameRuntimeService:
         events: list[schemas.BaseEvent] = []
 
         if step.player_input.kind == PlayerInputKind.BUZZER:
-            events.append(
-                schemas.BuzzerReviewedEvent(player_id=event.player_id, accepted=event.accepted)
-            )
             updates: dict[str, Any] = {"reviewed_player_ids": reviewed_player_ids}
+            disabled_player_ids = list(state.get("disabled_buzzer_player_ids", []))
             if event.accepted:
+                events.append(
+                    schemas.BuzzerReviewedEvent(
+                        player_id=event.player_id,
+                        accepted=event.accepted,
+                        disabled_buzzer_player_ids=disabled_player_ids,
+                    )
+                )
                 points = (
                     step.evaluation.points
                     if event.points_override is None
@@ -293,9 +295,15 @@ class GameRuntimeService:
                 lobby.phase = "step_complete"
                 events.append(score_event)
             else:
-                disabled_player_ids = list(state.get("disabled_buzzer_player_ids", []))
                 if event.player_id not in disabled_player_ids:
                     disabled_player_ids.append(event.player_id)
+                events.append(
+                    schemas.BuzzerReviewedEvent(
+                        player_id=event.player_id,
+                        accepted=event.accepted,
+                        disabled_buzzer_player_ids=disabled_player_ids,
+                    )
+                )
                 updates.update(
                     {
                         "disabled_buzzer_player_ids": disabled_player_ids,
@@ -531,6 +539,10 @@ class GameRuntimeService:
         if step_state.get("revealed_answer_value") not in (None, ""):
             revealed_answer = schemas.RevealedAnswer(value=step_state.get("revealed_answer_value"))
 
+        host_answer = None
+        if step is not None and self._step_has_revealable_answer(step):
+            host_answer = schemas.RevealedAnswer(value=step.evaluation.answer)
+
         return schemas.RuntimeSnapshotEvent(
             lobby=schemas.RuntimeLobbyState(
                 id=lobby.id,
@@ -553,6 +565,7 @@ class GameRuntimeService:
             pending_review_count=self._pending_review_count(step_state),
             revealed_submission=revealed_submission,
             revealed_answer=revealed_answer,
+            host_answer=host_answer,
         )
 
     async def build_submissions_event(

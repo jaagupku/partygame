@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import { getYouTubeMedia } from '$lib/media/youtube.js';
 	import {
 		EVALUATION_DETAILS,
 		IMAGE_REVEALS,
@@ -128,6 +129,19 @@
 
 	function getMediaTypeLabel(mediaType: (typeof MEDIA_TYPES)[number]) {
 		return mediaType.charAt(0).toUpperCase() + mediaType.slice(1);
+	}
+
+	function getPreviewYouTubeEmbed(step: StepDefinition): string | null {
+		if (step.media?.type_ !== 'video') {
+			return null;
+		}
+		return (
+			getYouTubeMedia(step.media.src, {
+				controls: false,
+				loop: step.media.loop,
+				origin: typeof window !== 'undefined' ? window.location.origin : undefined
+			})?.embedUrl ?? null
+		);
 	}
 
 	function getRevealLabel(revealMode: (typeof IMAGE_REVEALS)[number]) {
@@ -350,8 +364,15 @@
 										<input
 											bind:value={selectedStep.media.src}
 											class="input text-lg"
-											placeholder="/api/v1/media/..."
+											placeholder={selectedStep.media.type_ === 'video'
+												? '/api/v1/media/... or https://youtu.be/...'
+												: '/api/v1/media/...'}
 										/>
+										{#if selectedStep.media.type_ === 'video'}
+											<p class="text-sm text-slate-500">
+												Use a direct video URL, an uploaded file, or a YouTube link.
+											</p>
+										{/if}
 									</label>
 
 									{#if selectedStep.media.type_ === 'image'}
@@ -426,14 +447,26 @@
 										{:else if selectedStep.media.type_ === 'audio'}
 											<audio class="mt-3 w-full" controls src={selectedStep.media.src}></audio>
 										{:else if selectedStep.media.type_ === 'video'}
-											<video
-												class="mt-3 max-h-64 w-full rounded-2xl"
-												controls
-												loop={selectedStep.media.loop}
-												src={selectedStep.media.src}
-											>
-												<track kind="captions" />
-											</video>
+											{@const youtubeEmbedUrl = getPreviewYouTubeEmbed(selectedStep)}
+											{#if youtubeEmbedUrl}
+												<iframe
+													class="mt-3 aspect-video w-full rounded-2xl border-0"
+													src={youtubeEmbedUrl}
+													title={`${selectedStep.title || 'Question'} video preview`}
+													allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+													referrerpolicy="strict-origin-when-cross-origin"
+													allowfullscreen
+												></iframe>
+											{:else}
+												<video
+													class="mt-3 max-h-64 w-full rounded-2xl"
+													controls
+													loop={selectedStep.media.loop}
+													src={selectedStep.media.src}
+												>
+													<track kind="captions" />
+												</video>
+											{/if}
 										{/if}
 										<p class="mt-3 text-xs text-slate-500">{selectedStep.media.src}</p>
 									{:else}

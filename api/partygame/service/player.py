@@ -108,6 +108,16 @@ class ClientController:
         self.send_task: asyncio.Task | None = None
         self.timer_task: asyncio.Task | None = None
 
+    def _snapshot_for_viewer(
+        self,
+        snapshot: schemas.RuntimeSnapshotEvent,
+        *,
+        include_host_answer: bool,
+    ) -> schemas.RuntimeSnapshotEvent:
+        if include_host_answer:
+            return snapshot
+        return snapshot.model_copy(update={"host_answer": None})
+
     def is_host(self) -> bool:
         return self.lobby.host_id == self.player.id
 
@@ -187,6 +197,8 @@ class ClientController:
             log.error(error)
 
     async def send(self, payload: dict | BaseModel | str):
+        if isinstance(payload, schemas.RuntimeSnapshotEvent):
+            payload = self._snapshot_for_viewer(payload, include_host_answer=self.is_host())
         if isinstance(payload, BaseModel):
             await self.websocket.send_text(payload.model_dump_json())
         elif isinstance(payload, dict):
@@ -195,6 +207,8 @@ class ClientController:
             await self.websocket.send_text(payload)
 
     async def publish_display(self, msg: dict | BaseModel | str):
+        if isinstance(msg, schemas.RuntimeSnapshotEvent):
+            msg = self._snapshot_for_viewer(msg, include_host_answer=False)
         await publish(self.redis, self.display_channel, msg)
 
     async def _safe_send(self, label: str, operation):
@@ -209,6 +223,8 @@ class ClientController:
         players: list[str] | None = None,
         exclude: str | list[str] | set[str] | tuple[str, ...] | None = None,
     ):
+        if isinstance(msg, schemas.RuntimeSnapshotEvent):
+            msg = self._snapshot_for_viewer(msg, include_host_answer=False)
         if players is None:
             players = await self.repo.get_player_ids(self.lobby.id, withscores=False)
         players = [player_id for player_id in players if player_id]
@@ -398,7 +414,10 @@ class ClientController:
                 schemas.ReviewSubmissionEvent.model_validate(data),
             )
             for event in review_events:
-                await self.relay_event(event, exclude=getattr(event, "player_id", None))
+                exclude = None
+                if not isinstance(event, schemas.BuzzerReviewedEvent):
+                    exclude = getattr(event, "player_id", None)
+                await self.relay_event(event, exclude=exclude)
             await self.broadcast_snapshot()
             return
 

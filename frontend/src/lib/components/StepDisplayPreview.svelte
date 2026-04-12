@@ -7,6 +7,7 @@
 		step?: RuntimeStepState;
 		revealedSubmission?: RevealedSubmission;
 		revealedAnswer?: RevealedAnswer;
+		buzzerActive?: boolean;
 		displayPhase?: string;
 		title?: string;
 		phaseLabel?: string;
@@ -23,6 +24,7 @@
 		step,
 		revealedSubmission,
 		revealedAnswer,
+		buzzerActive = false,
 		displayPhase = 'question_active',
 		title = '',
 		phaseLabel = 'question_active',
@@ -64,8 +66,8 @@
 		{step}
 		{revealedSubmission}
 		{revealedAnswer}
+		{buzzerActive}
 		{displayPhase}
-		{phaseLabel}
 		title={showingAnswerReveal ? 'Answer Reveal' : 'Now Playing'}
 		variant={stageLayout ? 'stage' : 'default'}
 	/>

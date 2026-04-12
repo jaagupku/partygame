@@ -29,6 +29,7 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 			state.pendingReviewCount = event.pending_review_count;
 			state.revealedSubmission = event.revealed_submission;
 			state.revealedAnswer = event.revealed_answer;
+			state.hostAnswer = event.host_answer;
 			return state;
 		});
 	}
@@ -49,6 +50,28 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				applySnapshot(messageData as RuntimeSnapshotEvent);
 				break;
 			}
+			case 'buzzer_state': {
+				const event: BuzzerStateEvent = messageData;
+				controller.update((state) => {
+					state.buzzerActive = event.active;
+					state.lobbyPhase = event.active ? 'question_active' : 'host_review';
+					if (event.active) {
+						state.buzzedPlayerId = undefined;
+					}
+					return state;
+				});
+				break;
+			}
+			case 'buzzer_clicked': {
+				const event: BuzzerClickedEvent = messageData;
+				controller.update((state) => {
+					state.buzzerActive = false;
+					state.buzzedPlayerId = event.player_id;
+					state.lobbyPhase = 'host_review';
+					return state;
+				});
+				break;
+			}
 			case 'submissions_updated': {
 				const event: SubmissionsUpdatedEvent = messageData;
 				controller.update((state) => {
@@ -61,6 +84,16 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				const event: RevealedSubmissionEvent = messageData;
 				controller.update((state) => {
 					state.revealedSubmission = event.submission;
+					return state;
+				});
+				break;
+			}
+			case 'buzzer_reviewed': {
+				const event: BuzzerReviewedEvent = messageData;
+				controller.update((state) => {
+					state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
+					state.buzzedPlayerId = event.accepted ? event.player_id : undefined;
+					state.buzzerActive = false;
 					return state;
 				});
 				break;

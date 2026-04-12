@@ -171,6 +171,7 @@ type BuzzerReviewedEvent = {
 	type_: 'buzzer_reviewed';
 	player_id: string;
 	accepted: boolean;
+	disabled_buzzer_player_ids: string[];
 };
 
 type RuntimeTimerState = {
@@ -244,6 +245,7 @@ type RuntimeSnapshotEvent = {
 	pending_review_count: number;
 	revealed_submission?: RevealedSubmission;
 	revealed_answer?: RevealedAnswer;
+	host_answer?: RevealedAnswer;
 };
 
 type SubmissionItem = {
@@ -322,5 +324,38 @@ type ControllerState = {
 	pendingReviewCount: number;
 	revealedSubmission?: RevealedSubmission;
 	revealedAnswer?: RevealedAnswer;
+	hostAnswer?: RevealedAnswer;
 	submissions: SubmissionItem[];
 };
+
+type YouTubePlayerState = -1 | 0 | 1 | 2 | 3 | 5;
+
+type YouTubePlayer = {
+	destroy: () => void;
+	getPlayerState: () => YouTubePlayerState;
+	pauseVideo: () => void;
+	playVideo: () => void;
+};
+
+type YouTubeNamespace = {
+	PlayerState: {
+		BUFFERING: YouTubePlayerState;
+		PLAYING: YouTubePlayerState;
+	};
+	Player: new (
+		element: HTMLElement,
+		config: {
+			videoId: string;
+			playerVars?: Record<string, string | number>;
+			events?: {
+				onReady?: () => void;
+				onStateChange?: (event: { data: YouTubePlayerState }) => void;
+			};
+		}
+	) => YouTubePlayer;
+};
+
+interface Window {
+	YT?: YouTubeNamespace;
+	onYouTubeIframeAPIReady?: () => void;
+}

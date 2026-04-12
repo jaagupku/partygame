@@ -1,0 +1,200 @@
+<script lang="ts">
+	import { onDestroy } from 'svelte';
+	import type { YouTubeMedia } from '$lib/media/youtube.js';
+	import { loadYouTubeIframeApi } from '$lib/media/youtube.js';
+
+	interface YouTubePlayerProps {
+		media: YouTubeMedia;
+		loop?: boolean;
+		stageVariant?: boolean;
+		shouldPauseMedia?: boolean;
+		shouldResumePausedMedia?: boolean;
+	}
+
+	let {
+		media,
+		loop = false,
+		stageVariant = false,
+		shouldPauseMedia = false,
+		shouldResumePausedMedia = false
+	}: YouTubePlayerProps = $props();
+
+	let youtubeContainerElement = $state<HTMLDivElement | null>(null);
+	let youtubePlayer: YouTubePlayer | null = null;
+	let youtubePlayerReady = $state(false);
+	let youtubeMaskVisible = $state(true);
+	let shouldResumeMedia = $state(false);
+	let initializedYouTubeKey = '';
+
+	function destroyYouTubePlayer() {
+		youtubePlayerReady = false;
+		youtubeMaskVisible = false;
+		youtubePlayer?.destroy();
+		youtubePlayer = null;
+		initializedYouTubeKey = '';
+	}
+
+	const playerKey = $derived(`${media.videoId}:${media.startSeconds}:${loop ? 'loop' : 'once'}`);
+
+	$effect(() => {
+		if (!shouldPauseMedia && !shouldResumePausedMedia) {
+			shouldResumeMedia = false;
+		}
+	});
+
+	$effect(() => {
+		console.log('YouTubePlayer: shouldPauseMedia changed', {
+			shouldPauseMedia,
+			shouldResumePausedMedia
+		});
+		const currentPlayer = youtubePlayer;
+		if (!currentPlayer || !youtubePlayerReady || !window.YT) {
+			return;
+		}
+
+		if (shouldPauseMedia) {
+			const playerState = currentPlayer.getPlayerState();
+			if (playerState !== 2 && playerState !== 0 && playerState !== 5 && playerState !== -1) {
+				shouldResumeMedia = true;
+			}
+			currentPlayer.pauseVideo();
+			return;
+		}
+
+		if (!shouldResumePausedMedia || !shouldResumeMedia) {
+			return;
+		}
+
+		currentPlayer.playVideo();
+		shouldResumeMedia = false;
+	});
+
+	$effect(() => {
+		if (!youtubeContainerElement || !playerKey) {
+			destroyYouTubePlayer();
+			return;
+		}
+		if (youtubePlayer && initializedYouTubeKey === playerKey) {
+			return;
+		}
+
+		let cancelled = false;
+		destroyYouTubePlayer();
+		youtubeMaskVisible = true;
+		initializedYouTubeKey = playerKey;
+
+		loadYouTubeIframeApi()
+			.then((YT) => {
+				if (cancelled || !youtubeContainerElement) {
+					return;
+				}
+
+				const playerVars: Record<string, string | number> = {
+					autoplay: 1,
+					controls: 0,
+					disablekb: 1,
+					fs: 0,
+					iv_load_policy: 3,
+					modestbranding: 1,
+					playsinline: 1,
+					rel: 0,
+					origin: window.location.origin
+				};
+				if (loop) {
+					playerVars.loop = 1;
+					playerVars.playlist = media.videoId;
+				}
+				if (media.startSeconds > 0) {
+					playerVars.start = media.startSeconds;
+				}
+
+				youtubePlayer = new YT.Player(youtubeContainerElement, {
+					videoId: media.videoId,
+					playerVars,
+					events: {
+						onReady: () => {
+							if (cancelled || !youtubePlayer) {
+								return;
+							}
+							youtubePlayerReady = true;
+							youtubeMaskVisible = false;
+							if (shouldPauseMedia) {
+								shouldResumeMedia = true;
+								youtubePlayer.pauseVideo();
+								return;
+							}
+							youtubePlayer.playVideo();
+						},
+						onStateChange: (event) => {
+							if (!window.YT) {
+								return;
+							}
+							if (
+								event.data === window.YT.PlayerState.PLAYING ||
+								event.data === window.YT.PlayerState.BUFFERING
+							) {
+								youtubeMaskVisible = false;
+							}
+						}
+					}
+				});
+			})
+			.catch(() => {
+				youtubePlayerReady = false;
+				initializedYouTubeKey = '';
+			});
+
+		return () => {
+			cancelled = true;
+			if (initializedYouTubeKey === playerKey) {
+				destroyYouTubePlayer();
+			}
+		};
+	});
+
+	onDestroy(() => {
+		destroyYouTubePlayer();
+	});
+</script>
+
+<div class={`youtube-frame ${stageVariant ? 'youtube-frame-stage' : ''}`}>
+	<div bind:this={youtubeContainerElement} class="youtube-player"></div>
+	{#if youtubeMaskVisible}
+		<div class="youtube-mask" aria-hidden="true"></div>
+	{/if}
+</div>
+
+<style lang="postcss">
+	.youtube-frame {
+		position: relative;
+		overflow: hidden;
+		border-radius: 1rem;
+		background: rgb(15 23 42 / 0.08);
+		aspect-ratio: 16 / 9;
+	}
+
+	.youtube-frame-stage {
+		max-height: 65vh;
+	}
+
+	.youtube-player {
+		width: 100%;
+		height: 100%;
+	}
+
+	.youtube-player :global(iframe) {
+		width: 100%;
+		height: 100%;
+		border: 0;
+		pointer-events: none;
+	}
+
+	.youtube-mask {
+		position: absolute;
+		inset: 0;
+		background:
+			radial-gradient(circle at 50% 50%, rgb(30 41 59 / 0.12), rgb(15 23 42 / 0.88)),
+			linear-gradient(180deg, rgb(15 23 42 / 0.96), rgb(15 23 42 / 0.85));
+		pointer-events: none;
+	}
+</style>

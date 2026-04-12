@@ -126,6 +126,28 @@ export function createGameStore(initialState: Lobby) {
 				applySnapshot(messageData as RuntimeSnapshotEvent);
 				break;
 			}
+			case 'buzzer_state': {
+				const event: BuzzerStateEvent = messageData;
+				lobby.update((state) => {
+					state.buzzerActive = event.active;
+					state.phase = event.active ? 'question_active' : 'host_review';
+					if (event.active) {
+						state.buzzedPlayerId = undefined;
+					}
+					return state;
+				});
+				break;
+			}
+			case 'buzzer_clicked': {
+				const event: BuzzerClickedEvent = messageData;
+				lobby.update((state) => {
+					state.buzzerActive = false;
+					state.buzzedPlayerId = event.player_id;
+					state.phase = 'host_review';
+					return state;
+				});
+				break;
+			}
 			case 'scores_updated': {
 				const event: ScoresUpdatedEvent = messageData;
 				for (const [playerId, score] of Object.entries(event.updates)) {
@@ -142,6 +164,12 @@ export function createGameStore(initialState: Lobby) {
 			}
 			case 'buzzer_reviewed': {
 				const event: BuzzerReviewedEvent = messageData;
+				lobby.update((state) => {
+					state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
+					state.buzzedPlayerId = event.accepted ? event.player_id : undefined;
+					state.buzzerActive = false;
+					return state;
+				});
 				if (event.accepted) {
 					correctSound.play();
 				} else {
