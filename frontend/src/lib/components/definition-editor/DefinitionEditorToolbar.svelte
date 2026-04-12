@@ -4,12 +4,13 @@
 	type Props = {
 		title: string;
 		subtitle: string;
+		breadcrumbCurrentLabel: string;
 		editingTitle: boolean;
 		saving: boolean;
 		loadingEditor: boolean;
-		onBack: () => void;
+		onGoHome: () => void;
+		onManageDefinitions: () => void;
 		onSave: () => void;
-		onPreview: () => void;
 		onAddStep: () => void;
 		onAddRound: () => void;
 		onOpenDetails: () => void;
@@ -21,12 +22,13 @@
 	let {
 		title,
 		subtitle,
+		breadcrumbCurrentLabel,
 		editingTitle,
 		saving,
 		loadingEditor,
-		onBack,
+		onGoHome,
+		onManageDefinitions,
 		onSave,
-		onPreview,
 		onAddStep,
 		onAddRound,
 		onOpenDetails,
@@ -52,8 +54,25 @@
 	class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white/80 px-5 py-4"
 >
 	<div class="min-w-0 flex-1">
-		<div class="flex items-center gap-3">
-			<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onBack}> Back </button>
+		<nav
+			class="mb-2 flex flex-wrap items-center gap-2 text-sm text-slate-500"
+			aria-label="Breadcrumb"
+		>
+			<button class="transition hover:text-slate-700" type="button" onclick={onGoHome}>Home</button>
+			<span aria-hidden="true">/</span>
+			<button class="transition hover:text-slate-700" type="button" onclick={onManageDefinitions}>
+				Manage Definitions
+			</button>
+			<span aria-hidden="true">/</span>
+			<span aria-current="page" class="font-semibold text-slate-700">{breadcrumbCurrentLabel}</span>
+		</nav>
+		<div class="flex flex-wrap items-center gap-3">
+			<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onManageDefinitions}>
+				Manage Definitions
+			</button>
+			<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onGoHome}>
+				Home
+			</button>
 			{#if editingTitle}
 				<input
 					bind:this={titleInput}
@@ -87,9 +106,6 @@
 		</button>
 		<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onOpenDetails}>
 			Definition Details
-		</button>
-		<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onPreview}>
-			Preview
 		</button>
 		<button
 			class="btn btn-primary px-5 py-2 text-sm"

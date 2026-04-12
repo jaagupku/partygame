@@ -283,6 +283,27 @@ class GameRuntimeService:
                         )
                         await self.repo.set_player_score(lobby.id, player_id, new_score)
                         updates[player_id] = new_score
+        elif evaluation_type == EvaluationType.MULTI_SELECT_WEIGHTED:
+            answer = step.evaluation.answer
+            option_scores = answer.get("option_scores") if isinstance(answer, dict) else None
+            if isinstance(option_scores, list):
+                score_by_option: dict[str, int] = {}
+                for entry in option_scores:
+                    if not isinstance(entry, dict):
+                        continue
+                    option = entry.get("option")
+                    points = entry.get("points")
+                    if isinstance(option, str) and isinstance(points, int):
+                        score_by_option[option] = points
+                for player_id, value in answers.items():
+                    if not isinstance(value, list):
+                        continue
+                    delta = sum(score_by_option.get(option, 0) for option in set(value))
+                    if delta == 0:
+                        continue
+                    new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                    await self.repo.set_player_score(lobby.id, player_id, new_score)
+                    updates[player_id] = new_score
 
         await self.repo.set_step_cache(lobby.id, {"evaluated": True})
         return schemas.ScoresUpdatedEvent(updates=updates)
@@ -299,6 +320,7 @@ class GameRuntimeService:
             EvaluationType.EXACT_NUMBER,
             EvaluationType.CLOSEST_NUMBER,
             EvaluationType.ORDERING_MATCH,
+            EvaluationType.MULTI_SELECT_WEIGHTED,
         ):
             scores_event = await self.evaluate_auto_step(lobby)
             if scores_event.updates:
@@ -449,6 +471,8 @@ class GameRuntimeService:
             return EvaluationType.EXACT_NUMBER
         if player_input.kind == PlayerInputKind.ORDERING:
             return EvaluationType.ORDERING_MATCH
+        if player_input.kind == PlayerInputKind.CHECKBOX:
+            return EvaluationType.NONE
         return EvaluationType.NONE
 
     def _pending_review_count(self, step_state: dict[str, Any]) -> int:

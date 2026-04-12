@@ -34,6 +34,7 @@ class EvaluationType(StrEnum):
     EXACT_NUMBER = auto()
     CLOSEST_NUMBER = auto()
     ORDERING_MATCH = auto()
+    MULTI_SELECT_WEIGHTED = auto()
 
 
 class MediaDefinition(BaseModel):
@@ -105,6 +106,67 @@ class StepDefinition(BaseModel):
     player_input: PlayerInputDefinition = Field(default_factory=PlayerInputDefinition)
     evaluation: EvaluationRule = Field(default_factory=EvaluationRule)
     host_behavior: HostBehavior = Field(default_factory=HostBehavior)
+
+    @model_validator(mode="after")
+    def validate_evaluation_shape(self) -> "StepDefinition":
+        allowed_evaluations = {
+            PlayerInputKind.NONE: {EvaluationType.NONE},
+            PlayerInputKind.BUZZER: {EvaluationType.HOST_JUDGED},
+            PlayerInputKind.TEXT: {
+                EvaluationType.NONE,
+                EvaluationType.HOST_JUDGED,
+                EvaluationType.EXACT_TEXT,
+            },
+            PlayerInputKind.NUMBER: {
+                EvaluationType.NONE,
+                EvaluationType.HOST_JUDGED,
+                EvaluationType.EXACT_NUMBER,
+                EvaluationType.CLOSEST_NUMBER,
+            },
+            PlayerInputKind.ORDERING: {
+                EvaluationType.NONE,
+                EvaluationType.HOST_JUDGED,
+                EvaluationType.ORDERING_MATCH,
+            },
+            PlayerInputKind.RADIO: {
+                EvaluationType.NONE,
+                EvaluationType.HOST_JUDGED,
+                EvaluationType.EXACT_TEXT,
+            },
+            PlayerInputKind.CHECKBOX: {
+                EvaluationType.NONE,
+                EvaluationType.HOST_JUDGED,
+                EvaluationType.MULTI_SELECT_WEIGHTED,
+            },
+        }
+        allowed = allowed_evaluations[self.player_input.kind]
+        if self.evaluation.type_ not in allowed:
+            raise ValueError(
+                f"{self.evaluation.type_.value} evaluation is not allowed for {self.player_input.kind.value} input"
+            )
+
+        if self.evaluation.type_ == EvaluationType.MULTI_SELECT_WEIGHTED:
+            if not isinstance(self.evaluation.answer, dict):
+                raise ValueError("multi_select_weighted evaluation requires an answer object")
+            option_scores = self.evaluation.answer.get("option_scores")
+            if not isinstance(option_scores, list):
+                raise ValueError("multi_select_weighted answer must include option_scores")
+            seen_options: set[str] = set()
+            for entry in option_scores:
+                if not isinstance(entry, dict):
+                    raise ValueError("option_scores entries must be objects")
+                option = entry.get("option")
+                points = entry.get("points")
+                if not isinstance(option, str) or option not in self.player_input.options:
+                    raise ValueError(
+                        "option_scores entries must reference defined checkbox options"
+                    )
+                if option in seen_options:
+                    raise ValueError("option_scores entries must be unique")
+                if not isinstance(points, int):
+                    raise ValueError("option_scores points must be integers")
+                seen_options.add(option)
+        return self
 
 
 class RoundDefinition(BaseModel):

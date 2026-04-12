@@ -9,7 +9,15 @@
 	};
 
 	let { step, countdown, onClose }: Props = $props();
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			onClose();
+		}
+	}
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-4 md:p-8">
 	<div

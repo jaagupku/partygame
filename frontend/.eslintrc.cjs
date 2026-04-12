@@ -35,6 +35,12 @@ module.exports = {
 			parserOptions: {
 				parser: '@typescript-eslint/parser'
 			}
+		},
+		{
+			files: ['*.ts', '*.tsx', '*.svelte', '*.vue'],
+			rules: {
+				'no-undef': 'off'
+			}
 		}
 	]
 };

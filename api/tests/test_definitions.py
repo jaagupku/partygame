@@ -152,3 +152,91 @@ async def test_update_definition_rejects_id_mismatch(tmp_path):
         )
 
     assert error.value.status_code == 400
+
+
+def test_none_input_rejects_non_none_evaluation():
+    with pytest.raises(ValueError):
+        GameDefinition.model_validate(
+            {
+                "id": "broken_none",
+                "title": "Broken None",
+                "rounds": [
+                    {
+                        "id": "round1",
+                        "steps": [
+                            {
+                                "id": "step1",
+                                "title": "No input",
+                                "player_input": {"kind": "none"},
+                                "evaluation": {"type_": "host_judged", "points": 1},
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+
+def test_checkbox_weighted_evaluation_requires_checkbox_input():
+    with pytest.raises(ValueError):
+        GameDefinition.model_validate(
+            {
+                "id": "broken_weighted",
+                "title": "Broken Weighted",
+                "rounds": [
+                    {
+                        "id": "round1",
+                        "steps": [
+                            {
+                                "id": "step1",
+                                "title": "Wrong shape",
+                                "player_input": {"kind": "radio", "options": ["A", "B"]},
+                                "evaluation": {
+                                    "type_": "multi_select_weighted",
+                                    "points": 1,
+                                    "answer": {
+                                        "option_scores": [
+                                            {"option": "A", "points": 1},
+                                            {"option": "B", "points": -1},
+                                        ]
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+
+def test_checkbox_weighted_evaluation_accepts_negative_points():
+    definition = GameDefinition.model_validate(
+        {
+            "id": "weighted_checkbox",
+            "title": "Weighted Checkbox",
+            "rounds": [
+                {
+                    "id": "round1",
+                    "steps": [
+                        {
+                            "id": "step1",
+                            "title": "Pick options",
+                            "player_input": {"kind": "checkbox", "options": ["A", "B"]},
+                            "evaluation": {
+                                "type_": "multi_select_weighted",
+                                "points": 1,
+                                "answer": {
+                                    "option_scores": [
+                                        {"option": "A", "points": 2},
+                                        {"option": "B", "points": -1},
+                                    ]
+                                },
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert definition.rounds[0].steps[0].evaluation.type_ == "multi_select_weighted"

@@ -1,9 +1,11 @@
 <script lang="ts">
+	import 'iconify-icon';
 	import {
-		EVALUATION_TYPES,
 		IMAGE_REVEALS,
+		INPUT_KIND_EVALUATIONS,
 		INPUT_KINDS,
 		MEDIA_TYPES,
+		getCheckboxOptionScores,
 		getNumberAnswer,
 		getOrderingAnswer,
 		getTextAnswer
@@ -21,11 +23,16 @@
 		onSelectStep: (stepKey: string | undefined) => void;
 		onAddStepAfter: () => void;
 		onRemoveSelectedStep: () => void;
+		onPreview: () => void;
+		onOpenShortcutHelp: () => void;
 		onSetPlayerInputKind: (step: StepDefinition, kind: PlayerInputKind) => void;
 		onSetEvaluationType: (step: StepDefinition, evaluationType: EvaluationType) => void;
 		onAddInputOption: (step: StepDefinition) => void;
 		onRemoveInputOption: (step: StepDefinition, optionIndex: number) => void;
+		onSetInputOptionValue: (step: StepDefinition, optionIndex: number, value: string) => void;
 		onSetOrderingAnswer: (step: StepDefinition, optionIndex: number, value: string) => void;
+		onSetRadioCorrectOption: (step: StepDefinition, option: string) => void;
+		onSetCheckboxOptionPoints: (step: StepDefinition, optionIndex: number, points: number) => void;
 		onAddMedia: (step: StepDefinition) => void;
 		onRemoveMedia: (step: StepDefinition) => void;
 		onUpdateMediaType: (step: StepDefinition, mediaType: (typeof MEDIA_TYPES)[number]) => void;
@@ -44,17 +51,80 @@
 		onSelectStep,
 		onAddStepAfter,
 		onRemoveSelectedStep,
+		onPreview,
+		onOpenShortcutHelp,
 		onSetPlayerInputKind,
 		onSetEvaluationType,
 		onAddInputOption,
 		onRemoveInputOption,
+		onSetInputOptionValue,
 		onSetOrderingAnswer,
+		onSetRadioCorrectOption,
+		onSetCheckboxOptionPoints,
 		onAddMedia,
 		onRemoveMedia,
 		onUpdateMediaType,
 		onUploadMedia,
 		flatSteps
 	}: Props = $props();
+
+	const availableEvaluationTypes = $derived(INPUT_KIND_EVALUATIONS[selectedStep.player_input.kind]);
+	const checkboxOptionScores = $derived(getCheckboxOptionScores(selectedStep));
+
+	type HeaderAction = {
+		label: string;
+		shortcut?: string;
+		icon: string;
+		onClick: () => void;
+		disabled?: boolean;
+		variant?: 'default' | 'danger';
+	};
+
+	function getTooltipText(action: HeaderAction) {
+		return action.shortcut ? `${action.label} — ${action.shortcut}` : action.label;
+	}
+
+	const headerActions = $derived<HeaderAction[]>([
+		{
+			label: showAdvancedFields ? 'Hide Advanced' : 'Show Advanced',
+			shortcut: 'Cmd/Ctrl + ,',
+			icon: 'fluent:settings-16-filled',
+			onClick: onToggleAdvancedFields
+		},
+		{
+			label: 'Previous Step',
+			shortcut: 'Alt + ArrowUp',
+			icon: 'fluent:chevron-left-16-filled',
+			onClick: () => onSelectStep(flatSteps[selectedStepPosition - 1]?.stepKey),
+			disabled: selectedStepPosition <= 0
+		},
+		{
+			label: 'Next Step',
+			shortcut: 'Alt + ArrowDown',
+			icon: 'fluent:chevron-right-16-filled',
+			onClick: () => onSelectStep(flatSteps[selectedStepPosition + 1]?.stepKey),
+			disabled: selectedStepPosition < 0 || selectedStepPosition >= totalSteps - 1
+		},
+		{
+			label: 'Preview',
+			shortcut: 'Cmd/Ctrl + Shift + P',
+			icon: 'fluent:desktop-16-filled',
+			onClick: onPreview
+		},
+		{
+			label: 'Delete Step',
+			shortcut: 'Cmd/Ctrl + Backspace/Delete',
+			icon: 'fluent:delete-16-filled',
+			onClick: onRemoveSelectedStep,
+			variant: 'danger'
+		},
+		{
+			label: 'Shortcuts',
+			shortcut: '?',
+			icon: 'fluent:question-circle-16-filled',
+			onClick: onOpenShortcutHelp
+		}
+	]);
 </script>
 
 <section class="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200 bg-white/70 p-4">
@@ -65,35 +135,31 @@
 			</p>
 			<h2 class="label-title text-2xl">{selectedStep.title || 'Selected Step'}</h2>
 		</div>
-		<div class="flex flex-wrap gap-2">
+		<div class="flex flex-wrap items-center gap-2">
+			{#each headerActions as action}
+				<button
+					class={`inline-flex h-11 w-11 items-center justify-center rounded-full border text-lg transition ${
+						action.variant === 'danger'
+							? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:border-red-100 disabled:bg-red-50/60 disabled:text-red-300'
+							: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300'
+					}`}
+					type="button"
+					aria-label={getTooltipText(action)}
+					title={getTooltipText(action)}
+					onclick={action.onClick}
+					disabled={action.disabled}
+				>
+					<iconify-icon icon={action.icon}></iconify-icon>
+				</button>
+			{/each}
 			<button
-				class="btn btn-ghost px-4 py-2 text-sm"
+				class="btn btn-accent inline-flex items-center gap-2 px-4 py-2 text-sm"
 				type="button"
-				onclick={onToggleAdvancedFields}
+				onclick={onAddStepAfter}
+				title="Add Step After — Cmd/Ctrl + Shift + A"
 			>
-				{showAdvancedFields ? 'Hide Advanced' : 'Show Advanced'}
-			</button>
-			<button
-				class="btn btn-ghost px-4 py-2 text-sm"
-				type="button"
-				onclick={() => onSelectStep(flatSteps[selectedStepPosition - 1]?.stepKey)}
-				disabled={selectedStepPosition <= 0}
-			>
-				Previous
-			</button>
-			<button
-				class="btn btn-ghost px-4 py-2 text-sm"
-				type="button"
-				onclick={() => onSelectStep(flatSteps[selectedStepPosition + 1]?.stepKey)}
-				disabled={selectedStepPosition < 0 || selectedStepPosition >= totalSteps - 1}
-			>
-				Next
-			</button>
-			<button class="btn btn-accent px-4 py-2 text-sm" type="button" onclick={onAddStepAfter}>
+				<iconify-icon icon="fluent:add-16-filled"></iconify-icon>
 				Add Step After
-			</button>
-			<button class="btn btn-danger px-4 py-2 text-sm" type="button" onclick={onRemoveSelectedStep}>
-				Delete Step
 			</button>
 		</div>
 	</div>
@@ -148,7 +214,7 @@
 								(event.currentTarget as HTMLSelectElement).value as EvaluationType
 							)}
 					>
-						{#each EVALUATION_TYPES as evaluationType}
+						{#each availableEvaluationTypes as evaluationType}
 							<option value={evaluationType}>{evaluationType}</option>
 						{/each}
 					</select>
@@ -182,10 +248,12 @@
 				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Placeholder</span>
 				<input bind:value={selectedStep.player_input.placeholder} class="input text-lg" />
 			</label>
-			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Points</span>
-				<input bind:value={selectedStep.evaluation.points} type="number" class="input text-lg" />
-			</label>
+			{#if selectedStep.evaluation.type_ !== 'multi_select_weighted'}
+				<label class="input-wrap">
+					<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Points</span>
+					<input bind:value={selectedStep.evaluation.points} type="number" class="input text-lg" />
+				</label>
+			{/if}
 		</div>
 
 		{#if selectedStep.player_input.kind === 'number'}
@@ -237,12 +305,63 @@
 					</button>
 				</div>
 				<div class="mt-3 grid gap-3">
-					{#each selectedStep.player_input.options as option, optionIndex}
-						<div class="grid gap-3 md:grid-cols-[1fr_auto]">
+					{#each selectedStep.player_input.options as _, optionIndex}
+						<div
+							class={`grid gap-3 ${
+								selectedStep.player_input.kind === 'checkbox' &&
+								selectedStep.evaluation.type_ === 'multi_select_weighted'
+									? 'md:grid-cols-[1fr_8rem_auto]'
+									: selectedStep.player_input.kind === 'radio' &&
+										  selectedStep.evaluation.type_ === 'exact_text'
+										? 'md:grid-cols-[1fr_auto_auto]'
+										: 'md:grid-cols-[1fr_auto]'
+							}`}
+						>
 							<input
-								bind:value={selectedStep.player_input.options[optionIndex]}
+								value={selectedStep.player_input.options[optionIndex]}
 								class="input text-lg"
+								oninput={(event) =>
+									onSetInputOptionValue(
+										selectedStep,
+										optionIndex,
+										(event.currentTarget as HTMLInputElement).value
+									)}
 							/>
+							{#if selectedStep.player_input.kind === 'radio' && selectedStep.evaluation.type_ === 'exact_text'}
+								<label
+									class="flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+								>
+									<input
+										type="radio"
+										name={`radio-correct-${selectedStep.id}`}
+										checked={selectedStep.evaluation.answer ===
+											selectedStep.player_input.options[optionIndex]}
+										onchange={() =>
+											onSetRadioCorrectOption(
+												selectedStep,
+												selectedStep.player_input.options[optionIndex] ?? ''
+											)}
+									/>
+									Correct
+								</label>
+							{:else if selectedStep.player_input.kind === 'checkbox' && selectedStep.evaluation.type_ === 'multi_select_weighted'}
+								<label class="input-wrap">
+									<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
+										Points
+									</span>
+									<input
+										class="input text-lg"
+										type="number"
+										value={checkboxOptionScores[optionIndex]?.points ?? 0}
+										oninput={(event) =>
+											onSetCheckboxOptionPoints(
+												selectedStep,
+												optionIndex,
+												Number((event.currentTarget as HTMLInputElement).value || 0)
+											)}
+									/>
+								</label>
+							{/if}
 							<button
 								class="btn btn-danger text-sm"
 								type="button"
@@ -285,6 +404,20 @@
 						(selectedStep.evaluation.answer = (event.currentTarget as HTMLInputElement).value)}
 				/>
 			</label>
+		{:else if selectedStep.evaluation.type_ === 'multi_select_weighted'}
+			<div class="mt-4 rounded-2xl bg-white/80 p-4">
+				<p class="text-lg font-bold">Checkbox scoring</p>
+				<p class="mt-2 text-sm text-slate-600">
+					Each selected option awards its configured points. Negative values subtract points.
+				</p>
+			</div>
+		{:else if selectedStep.evaluation.type_ === 'exact_text' && selectedStep.player_input.kind === 'radio'}
+			<div class="mt-4 rounded-2xl bg-white/80 p-4">
+				<p class="text-lg font-bold">Correct option</p>
+				<p class="mt-2 text-sm text-slate-600">
+					Mark the correct choice directly in the option list above.
+				</p>
+			</div>
 		{:else if selectedStep.evaluation.type_ !== 'none'}
 			<label class="input-wrap mt-4">
 				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Answer / rubric</span
