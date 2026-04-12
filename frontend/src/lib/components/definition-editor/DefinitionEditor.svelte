@@ -674,11 +674,37 @@
 		};
 	}
 
+	function getStepKeyByIdentity(
+		definition: GameDefinition,
+		target: {
+			stepId?: string;
+			roundIndex: number;
+			stepIndex: number;
+		}
+	): string | null {
+		const steps = buildFlatSteps(definition, getStepKey);
+		if (target.stepId) {
+			const matchingStep = steps.find((item) => item.step.id === target.stepId);
+			if (matchingStep) {
+				return matchingStep.stepKey;
+			}
+		}
+		const fallbackStep = definition.rounds[target.roundIndex]?.steps[target.stepIndex];
+		return fallbackStep ? getStepKey(fallbackStep) : (steps[0]?.stepKey ?? null);
+	}
+
 	async function saveDefinition() {
 		finishTitleEdit();
 		saving = true;
 		errorMessage = '';
 		statusMessage = '';
+		const selectionBeforeSave = selectedFlatStep
+			? {
+					stepId: selectedFlatStep.step.id,
+					roundIndex: selectedFlatStep.roundIndex,
+					stepIndex: selectedFlatStep.stepIndex
+				}
+			: null;
 		const payload = buildPayload();
 		const endpoint = isNewDefinition
 			? '/api/v1/definitions'
@@ -700,7 +726,9 @@
 		draft = structuredClone(await response.json());
 		persistedDefinitionId = draft.id;
 		isNewDefinition = false;
-		selectedStepKey = buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null;
+		selectedStepKey = selectionBeforeSave
+			? getStepKeyByIdentity(draft, selectionBeforeSave)
+			: (buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null);
 		statusMessage = 'Definition saved.';
 		if (wasNewDefinition) {
 			goto(`/definitions/${draft.id}`, { replaceState: true });

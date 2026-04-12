@@ -131,6 +131,7 @@ class BuzzerReviewedEvent(BaseEvent):
     type_: str = Event.BUZZER_REVIEWED
     player_id: str
     accepted: bool
+    disabled_buzzer_player_ids: list[str] = Field(default_factory=list)
 
 
 class RuntimeTimerState(BaseModel):
@@ -204,6 +205,7 @@ class RuntimeSnapshotEvent(BaseEvent):
     pending_review_count: int = 0
     revealed_submission: RevealedSubmission | None = None
     revealed_answer: RevealedAnswer | None = None
+    host_answer: RevealedAnswer | None = None
 
 
 class SubmissionItem(BaseModel):

@@ -36,6 +36,7 @@
 			pendingReviewCount: 0,
 			revealedSubmission: undefined,
 			revealedAnswer: undefined,
+			hostAnswer: undefined,
 			submissions: []
 		},
 		onKick
@@ -213,7 +214,7 @@
 	}
 
 	function buzz() {
-		if (playerInputDisabled) {
+		if (playerInputDisabled || buzzerLockedOut || !$controller.buzzerActive) {
 			return;
 		}
 		sendAction({
@@ -251,6 +252,16 @@
 			return;
 		}
 		selectedCheckboxOptions = [...selectedCheckboxOptions, option];
+	}
+
+	function formatRevealValue(value: unknown): string {
+		if (Array.isArray(value)) {
+			return value.map((entry) => String(entry)).join(' · ');
+		}
+		if (value && typeof value === 'object') {
+			return JSON.stringify(value);
+		}
+		return String(value ?? '');
 	}
 </script>
 
@@ -522,6 +533,16 @@
 
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Review Queue</h2>
+				{#if $controller.hostAnswer}
+					<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+						<p class="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
+							Correct answer
+						</p>
+						<p class="mt-2 text-lg font-extrabold leading-tight text-slate-950">
+							{formatRevealValue($controller.hostAnswer.value)}
+						</p>
+					</div>
+				{/if}
 				{#if $controller.activeStep?.input_kind === 'buzzer' && $controller.buzzedPlayerId}
 					<div class="rounded-2xl bg-white/70 p-3">
 						<p class="font-bold">{playerMap.get($controller.buzzedPlayerId)?.name}</p>
