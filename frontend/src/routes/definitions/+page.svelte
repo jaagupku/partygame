@@ -18,6 +18,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Manage Definitions | Party Game</title>
+</svelte:head>
+
 <div class="flex flex-wrap items-start justify-between gap-4">
 	<div>
 		<nav

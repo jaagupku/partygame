@@ -61,6 +61,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Create Game | Party Game</title>
+</svelte:head>
+
 <div class="flex flex-wrap items-start justify-between gap-4">
 	<div>
 		<h1 class="page-title text-left">Create Game</h1>

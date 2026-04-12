@@ -19,6 +19,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Party Game</title>
+</svelte:head>
+
 <div class:app-shell-editor={definitionsEditorRoute} class="app-shell">
 	<div
 		class:page-panel-editor={definitionsEditorRoute}

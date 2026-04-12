@@ -37,6 +37,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Join Game | Party Game</title>
+</svelte:head>
+
 <h1 class="page-title">Join Game</h1>
 <p class="page-subtitle">Enter your player name and 5-letter lobby code.</p>
 

@@ -41,7 +41,7 @@
 		<p class="mt-2 text-lg text-slate-600">Waiting for the fastest player...</p>
 	{:else if activePlayer}
 		<h2 class="label-title text-4xl">Buzzed by {activePlayer.name}</h2>
-		<div class="mx-auto mt-3 max-w-60">
+		<div class="mx-auto mt-4 w-full max-w-xl">
 			<Timer {countdown} />
 		</div>
 	{:else}

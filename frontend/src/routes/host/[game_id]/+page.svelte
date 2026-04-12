@@ -8,6 +8,8 @@
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
+	const definitionTitle = () =>
+		data.definitionTitle || data.lobby.definition_id || 'Untitled Definition';
 
 	const game = createGameStore(lobby());
 	let isConnected = $state(false);
@@ -56,14 +58,20 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{definitionTitle()} | Host Lobby | Party Game</title>
+</svelte:head>
+
 {#if $game.state === 'waiting_for_players'}
-	<h1 class="page-title">Host Lobby</h1>
+	<h1 class="page-title">{definitionTitle()}</h1>
 	<p class="page-subtitle">
-		Join code: <span class="h2 font-extrabold tracking-[0.24em]">{$game.join_code}</span>
+		Join code:
+		<span class="mt-2 block text-5xl font-black tracking-[0.28em] text-slate-950 sm:text-6xl">
+			{$game.join_code}
+		</span>
 	</p>
 	<p class="page-subtitle mt-2">
-		Definition: <span class="font-bold">{$game.definition_id}</span> · Host mode:
-		<span class="font-bold">{$game.host_enabled ? 'On' : 'Off'}</span>
+		Host mode: <span class="font-bold">{$game.host_enabled ? 'On' : 'Off'}</span>
 	</p>
 	<p class="page-subtitle mt-2">
 		Use the host controller to start and run the game. Connection: {isConnected
