@@ -14,6 +14,10 @@ class Event(StrEnum):
     SET_HOST = auto()
     KICK_PLAYER = auto()
     START_GAME = auto()
+    RESET_STEP = auto()
+    SHOW_ANSWER_REVEAL = auto()
+    SHOW_QUESTION = auto()
+    SCOREBOARD_VISIBILITY = auto()
     UPDATE_SCORE = auto()
     STEP_ADVANCED = auto()
     SCORES_UPDATED = auto()
@@ -23,6 +27,7 @@ class Event(StrEnum):
     RUNTIME_SNAPSHOT = auto()
     SUBMISSIONS_UPDATED = auto()
     REVEALED_SUBMISSION = auto()
+    BUZZER_REVIEWED = auto()
     CLOSE_STEP = auto()
     REVIEW_SUBMISSION = auto()
 
@@ -58,6 +63,23 @@ class KickPlayerEvent(BaseEvent):
 
 class StartGameEvent(BaseEvent):
     type_: str = Event.START_GAME
+
+
+class ResetStepEvent(BaseEvent):
+    type_: str = Event.RESET_STEP
+
+
+class ShowAnswerRevealEvent(BaseEvent):
+    type_: str = Event.SHOW_ANSWER_REVEAL
+
+
+class ShowQuestionEvent(BaseEvent):
+    type_: str = Event.SHOW_QUESTION
+
+
+class ScoreboardVisibilityEvent(BaseEvent):
+    type_: str = Event.SCOREBOARD_VISIBILITY
+    visible: bool
 
 
 class UpdateScoreEvent(BaseEvent):
@@ -105,11 +127,18 @@ class BuzzerClickedEvent(BaseEvent):
     player_id: str
 
 
+class BuzzerReviewedEvent(BaseEvent):
+    type_: str = Event.BUZZER_REVIEWED
+    player_id: str
+    accepted: bool
+
+
 class RuntimeTimerState(BaseModel):
     seconds: int | None = None
     enforced: bool = False
     started_at: float | None = None
     ends_at: float | None = None
+    remaining_seconds: float | None = None
 
 
 class RuntimeMediaState(BaseModel):
@@ -117,6 +146,10 @@ class RuntimeMediaState(BaseModel):
     src: str
     reveal: str | None = None
     loop: bool = False
+    reveal_state: str = "idle"
+    reveal_started_at: float | None = None
+    reveal_elapsed_seconds: float = 0.0
+    reveal_duration_seconds: float | None = None
 
 
 class RuntimeStepState(BaseModel):
@@ -153,16 +186,24 @@ class RevealedSubmission(BaseModel):
     value: Any
 
 
+class RevealedAnswer(BaseModel):
+    value: Any
+
+
 class RuntimeSnapshotEvent(BaseEvent):
     type_: str = Event.RUNTIME_SNAPSHOT
     lobby: RuntimeLobbyState
     active_step: RuntimeStepState | None = None
+    display_phase: str = "question_active"
+    scoreboard_visible: bool = False
     buzzer_active: bool = False
     buzzed_player_id: str | None = None
+    disabled_buzzer_player_ids: list[str] = Field(default_factory=list)
     submitted_player_ids: list[str] = Field(default_factory=list)
     submission_count: int = 0
     pending_review_count: int = 0
     revealed_submission: RevealedSubmission | None = None
+    revealed_answer: RevealedAnswer | None = None
 
 
 class SubmissionItem(BaseModel):

@@ -6,6 +6,8 @@
 	interface StepDisplayPreviewProps {
 		step?: RuntimeStepState;
 		revealedSubmission?: RevealedSubmission;
+		revealedAnswer?: RevealedAnswer;
+		displayPhase?: string;
 		title?: string;
 		phaseLabel?: string;
 		connectionLabel?: string;
@@ -20,6 +22,8 @@
 	let {
 		step,
 		revealedSubmission,
+		revealedAnswer,
+		displayPhase = 'question_active',
 		title = '',
 		phaseLabel = 'question_active',
 		connectionLabel = 'Preview',
@@ -33,15 +37,20 @@
 
 	const showTitle = $derived(Boolean(title?.trim()));
 	const stageLayout = $derived(layoutMode === 'host-stage');
+	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 </script>
 
-<div class={`mt-0 ${stageLayout ? 'flex h-full min-h-0 flex-col gap-5' : 'stack-lg'}`}>
-	<div class={stageLayout ? 'px-1' : ''}>
+<div
+	class={`mt-0 ${stageLayout ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4 overflow-hidden' : 'stack-lg'}`}
+>
+	<div class={stageLayout ? 'px-1 pb-1' : ''}>
 		{#if showTitle}
-			<h1 class="page-title">{title}</h1>
+			<h1 class={`page-title ${stageLayout ? 'text-left text-3xl md:text-4xl' : ''}`}>{title}</h1>
 		{/if}
-		<p class={`page-subtitle ${stageLayout ? 'text-left' : ''}`}>
-			Phase: <span class="font-bold">{phaseLabel}</span> · Submissions: {submissionCount} · Pending review:
+		<p class={`page-subtitle ${stageLayout ? 'text-left text-base md:text-lg' : ''}`}>
+			Phase:
+			<span class="font-bold">{showingAnswerReveal ? 'answer_reveal' : phaseLabel}</span>
+			· Submissions: {submissionCount} · Pending review:
 			{pendingReviewCount}
 		</p>
 		<GameConnectionStatus
@@ -54,13 +63,20 @@
 	<QuestionCard
 		{step}
 		{revealedSubmission}
-		title="Now Playing"
+		{revealedAnswer}
+		{displayPhase}
+		{phaseLabel}
+		title={showingAnswerReveal ? 'Answer Reveal' : 'Now Playing'}
 		variant={stageLayout ? 'stage' : 'default'}
 	/>
 
-	{#if countdown > 0}
+	{#if countdown > 0 && !showingAnswerReveal}
 		<div class={`card w-full p-4 md:p-5 ${stageLayout ? '' : 'mx-auto max-w-3xl'}`}>
-			<Timer {countdown} />
+			<Timer
+				{countdown}
+				totalDuration={step?.timer.seconds ?? countdown}
+				paused={phaseLabel !== 'question_active'}
+			/>
 			<p class="mt-3 text-center text-sm text-slate-600">
 				{step?.timer.enforced ? 'Timer is enforced' : 'Timer is advisory'}
 			</p>

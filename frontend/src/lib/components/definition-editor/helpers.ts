@@ -581,14 +581,19 @@ export function buildRuntimePreviewStep(step: StepDefinition): RuntimeStepState 
 					type_: step.media.type_,
 					src: step.media.src,
 					reveal: step.media.reveal,
-					loop: step.media.loop
+					loop: step.media.loop,
+					reveal_state: step.media.reveal === 'none' ? 'idle' : 'running',
+					reveal_elapsed_seconds: 0,
+					reveal_started_at: Date.now() / 1000,
+					reveal_duration_seconds: step.timer.seconds ?? 14
 				}
 			: undefined,
 		timer: {
 			seconds: step.timer.seconds,
 			enforced: step.timer.enforced,
 			started_at: Date.now() / 1000,
-			ends_at: step.timer.seconds ? Date.now() / 1000 + step.timer.seconds : undefined
+			ends_at: step.timer.seconds ? Date.now() / 1000 + step.timer.seconds : undefined,
+			remaining_seconds: step.timer.seconds
 		}
 	};
 }

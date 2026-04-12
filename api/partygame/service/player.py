@@ -304,6 +304,47 @@ class ClientController:
             await self.start_game()
             return
 
+        if event_type == Event.RESET_STEP:
+            events = await self.runtime.reset_current_step(self.lobby)
+            snapshot = None
+            for event in events:
+                await self.relay_event(event)
+                if isinstance(event, schemas.RuntimeSnapshotEvent):
+                    snapshot = event
+            await self.sync_host_runtime_state(snapshot)
+            return
+
+        if event_type == Event.SHOW_ANSWER_REVEAL:
+            events = await self.runtime.show_answer_reveal(self.lobby)
+            snapshot = None
+            for event in events:
+                await self.relay_event(event)
+                if isinstance(event, schemas.RuntimeSnapshotEvent):
+                    snapshot = event
+            await self.sync_host_runtime_state(snapshot)
+            return
+
+        if event_type == Event.SHOW_QUESTION:
+            events = await self.runtime.show_question(self.lobby)
+            snapshot = None
+            for event in events:
+                await self.relay_event(event)
+                if isinstance(event, schemas.RuntimeSnapshotEvent):
+                    snapshot = event
+            await self.sync_host_runtime_state(snapshot)
+            return
+
+        if event_type == Event.SCOREBOARD_VISIBILITY:
+            visibility = schemas.ScoreboardVisibilityEvent.model_validate(data)
+            events = await self.runtime.set_scoreboard_visibility(self.lobby, visibility.visible)
+            snapshot = None
+            for event in events:
+                await self.relay_event(event)
+                if isinstance(event, schemas.RuntimeSnapshotEvent):
+                    snapshot = event
+            await self.sync_host_runtime_state(snapshot)
+            return
+
         if event_type == Event.STEP_ADVANCED:
             events = await self.runtime.advance_step(self.lobby)
             snapshot = None

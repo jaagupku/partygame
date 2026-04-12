@@ -10,11 +10,15 @@ export function createGameStore(initialState: Lobby) {
 	const initial: HostGameState = {
 		...initialState,
 		activeStep: undefined,
+		displayPhase: 'question_active',
+		scoreboardVisible: false,
 		buzzerActive: false,
 		buzzedPlayerId: undefined,
+		disabledBuzzerPlayerIds: [],
 		submissionCount: 0,
 		pendingReviewCount: 0,
-		revealedSubmission: undefined
+		revealedSubmission: undefined,
+		revealedAnswer: undefined
 	};
 
 	const lobby = writable(initial);
@@ -35,9 +39,9 @@ export function createGameStore(initialState: Lobby) {
 				if (player.id !== playerId) {
 					continue;
 				}
-				if (player.score < score) {
+				if (state.activeStep?.input_kind !== 'buzzer' && player.score < score) {
 					correctSound.play();
-				} else if (player.score > score) {
+				} else if (state.activeStep?.input_kind !== 'buzzer' && player.score > score) {
 					wrongSound.play();
 				}
 				player.score = score;
@@ -54,11 +58,15 @@ export function createGameStore(initialState: Lobby) {
 			state.host_enabled = event.lobby.host_enabled;
 			state.host_id = event.lobby.host_id;
 			state.activeStep = event.active_step;
+			state.displayPhase = event.display_phase;
+			state.scoreboardVisible = event.scoreboard_visible;
 			state.buzzerActive = event.buzzer_active;
 			state.buzzedPlayerId = event.buzzed_player_id;
+			state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
 			state.submissionCount = event.submission_count;
 			state.pendingReviewCount = event.pending_review_count;
 			state.revealedSubmission = event.revealed_submission;
+			state.revealedAnswer = event.revealed_answer;
 			for (const player of state.players) {
 				player.isHost = player.id === state.host_id;
 			}
@@ -129,6 +137,15 @@ export function createGameStore(initialState: Lobby) {
 				const event: UpdateScoreEvent = messageData;
 				if (event.set_score !== undefined) {
 					updateScore(event.player_id, event.set_score);
+				}
+				break;
+			}
+			case 'buzzer_reviewed': {
+				const event: BuzzerReviewedEvent = messageData;
+				if (event.accepted) {
+					correctSound.play();
+				} else {
+					wrongSound.play();
 				}
 				break;
 			}

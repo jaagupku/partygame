@@ -18,16 +18,17 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 			state.hostEnabled = event.lobby.host_enabled;
 			state.isHost = event.lobby.host_id === state.id;
 			state.activeStep = event.active_step;
+			state.displayPhase = event.display_phase;
+			state.scoreboardVisible = event.scoreboard_visible;
 			state.buzzerActive = event.buzzer_active;
 			state.buzzedPlayerId = event.buzzed_player_id;
+			state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
 			state.submittedPlayerIds = event.submitted_player_ids;
 			state.hasSubmitted = event.submitted_player_ids.includes(state.id);
 			state.submissionCount = event.submission_count;
 			state.pendingReviewCount = event.pending_review_count;
 			state.revealedSubmission = event.revealed_submission;
-			if (event.active_step?.input_kind !== 'ordering') {
-				state.submissions = state.submissions;
-			}
+			state.revealedAnswer = event.revealed_answer;
 			return state;
 		});
 	}
