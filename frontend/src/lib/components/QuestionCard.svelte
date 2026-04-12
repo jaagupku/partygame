@@ -3,20 +3,31 @@
 		step?: RuntimeStepState;
 		title?: string;
 		revealedSubmission?: RevealedSubmission;
+		variant?: 'default' | 'stage';
 	}
 
-	let { step, title = 'Question', revealedSubmission }: QuestionCardProps = $props();
+	let {
+		step,
+		title = 'Question',
+		revealedSubmission,
+		variant = 'default'
+	}: QuestionCardProps = $props();
 	const imageRevealClass = $derived(
 		step?.media?.reveal ? `reveal-${step.media.reveal}` : 'reveal-none'
 	);
+	const stageVariant = $derived(variant === 'stage');
 </script>
 
-<section class="card stack-md">
-	<h2 class="label-title text-3xl">{title}</h2>
+<section class={`question-card card stack-md ${stageVariant ? 'question-card-stage' : ''}`}>
+	<h2 class={`label-title ${stageVariant ? 'text-4xl md:text-5xl' : 'text-3xl'}`}>{title}</h2>
 	{#if step}
-		<h3 class="text-3xl font-extrabold">{step.title}</h3>
+		<h3 class={stageVariant ? 'text-4xl font-extrabold md:text-6xl' : 'text-3xl font-extrabold'}>
+			{step.title}
+		</h3>
 		{#if step.body}
-			<p class="text-xl">{step.body}</p>
+			<p class={stageVariant ? 'max-w-[60rem] text-2xl leading-relaxed md:text-3xl' : 'text-xl'}>
+				{step.body}
+			</p>
 		{/if}
 		{#if step.media?.type_ === 'image'}
 			<div class={`media-frame ${imageRevealClass}`}>
@@ -28,12 +39,19 @@
 		{:else if step.media?.type_ === 'audio'}
 			<audio class="w-full" controls src={step.media.src}></audio>
 		{:else if step.media?.type_ === 'video'}
-			<video class="w-full rounded-xl" controls loop={step.media.loop} src={step.media.src}>
+			<video
+				class={`w-full rounded-xl ${stageVariant ? 'max-h-[65vh] object-cover' : ''}`}
+				controls
+				loop={step.media.loop}
+				src={step.media.src}
+			>
 				<track kind="captions" />
 			</video>
 		{/if}
 		{#if revealedSubmission}
-			<div class="rounded-2xl bg-sky-50 px-4 py-3 text-lg">
+			<div
+				class={`rounded-2xl bg-sky-50 px-4 py-3 ${stageVariant ? 'text-xl md:text-2xl' : 'text-lg'}`}
+			>
 				<span class="font-bold">Revealed answer:</span>
 				{String(revealedSubmission.value)}
 			</div>
@@ -51,10 +69,19 @@
 		background: rgba(15, 23, 42, 0.08);
 	}
 
+	.question-card-stage {
+		padding: 1.75rem;
+	}
+
 	.media-image {
 		display: block;
 		width: 100%;
 		height: auto;
+		object-fit: cover;
+	}
+
+	.question-card-stage .media-image {
+		max-height: 65vh;
 		object-fit: cover;
 	}
 

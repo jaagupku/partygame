@@ -101,18 +101,26 @@
 		</ul>
 	{/if}
 {:else}
-	<div class="stack-lg">
-		<StepDisplayPreview
-			step={$game.activeStep}
-			revealedSubmission={$game.revealedSubmission}
-			title="Big Screen View"
-			phaseLabel={$game.phase ?? 'question_active'}
-			connectionLabel={isConnected ? 'Live' : 'Reconnecting...'}
-			submissionCount={$game.submissionCount}
-			pendingReviewCount={$game.pendingReviewCount}
-			{countdown}
-		/>
+	<div
+		class="grid gap-6 xl:min-h-[calc(100vh-8rem)] xl:grid-cols-[minmax(0,1.85fr)_minmax(22rem,0.85fr)] xl:items-start"
+	>
+		<section class="min-w-0">
+			<StepDisplayPreview
+				step={$game.activeStep}
+				revealedSubmission={$game.revealedSubmission}
+				phaseLabel={$game.phase ?? 'question_active'}
+				connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+				layoutMode="host-stage"
+				showConnectionInline={false}
+				showDisconnectedChip={true}
+				submissionCount={$game.submissionCount}
+				pendingReviewCount={$game.pendingReviewCount}
+				{countdown}
+			/>
+		</section>
 
-		<Scoreboard players={$game.players} {playerMap} onSelectPlayer={setHost} />
+		<aside class="min-w-0">
+			<Scoreboard players={$game.players} {playerMap} onSelectPlayer={setHost} variant="rail" />
+		</aside>
 	</div>
 {/if}

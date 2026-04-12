@@ -9,6 +9,7 @@
 	const definitionsEditorRoute = $derived(
 		page.url.pathname.startsWith('/definitions/') && page.url.pathname !== '/definitions/'
 	);
+	const hostGameRoute = $derived(/^\/host\/[^/]+$/.test(page.url.pathname));
 
 	$effect(() => {
 		if (!browser) {
@@ -27,6 +28,7 @@
 	<div
 		class:page-panel-editor={definitionsEditorRoute}
 		class:page-panel-wide={page.url.pathname.startsWith('/definitions')}
+		class:page-panel-host-game={hostGameRoute}
 		class="page-panel"
 	>
 		{@render children()}

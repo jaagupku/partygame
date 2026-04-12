@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { createControllerStore } from '$lib/controller-store.js';
+	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { onDestroy, onMount } from 'svelte';
@@ -230,7 +231,11 @@
 	<title>{$controller.isHost ? 'Host Controller' : 'Player Controller'} | Party Game</title>
 </svelte:head>
 
-<p class="page-subtitle">Connection: {isConnected ? 'Live' : 'Connecting...'}</p>
+<GameConnectionStatus
+	connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+	showInline={false}
+	showDisconnectedChip={true}
+/>
 
 {#if $controller.gameState === 'waiting_for_players'}
 	<div class="card mt-8 text-center">

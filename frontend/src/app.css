@@ -82,6 +82,10 @@
 		@apply max-w-[96rem];
 	}
 
+	.page-panel-host-game {
+		@apply max-w-[120rem] p-4 md:p-6 xl:p-8;
+	}
+
 	.page-title {
 		@apply text-center text-4xl font-extrabold tracking-tight md:text-5xl;
 	}

@@ -13,9 +13,10 @@
 		players: ScoreboardPlayer[];
 		playerMap: Map<string, ScoreboardPlayer>;
 		onSelectPlayer?: (playerId: string) => void;
+		variant?: 'default' | 'rail';
 	}
 
-	let { players, playerMap, onSelectPlayer }: ScoreboardProps = $props();
+	let { players, playerMap, onSelectPlayer, variant = 'default' }: ScoreboardProps = $props();
 
 	const ordered = $derived(
 		players
@@ -23,37 +24,56 @@
 			.toSorted((a, b) => b.score - a.score)
 			.map((player) => player.id)
 	);
+	const railVariant = $derived(variant === 'rail');
 </script>
 
-<section class="card">
-	<h2 class="label-title mb-4 text-3xl">Scoreboard</h2>
+<section class={`card ${railVariant ? 'xl:sticky xl:top-6' : ''}`}>
+	<h2 class={`label-title mb-4 ${railVariant ? 'text-2xl md:text-3xl' : 'text-3xl'}`}>
+		Scoreboard
+	</h2>
 	{#if onSelectPlayer}
 		<p class="mb-4 text-sm text-slate-600">Click a player name to make them the host controller.</p>
 	{/if}
 	<ol class="stack-md">
 		{#each ordered as playerId, i (i)}
-			<li class="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-xl bg-white/70 p-3">
+			<li
+				class={`grid items-center gap-2 rounded-xl bg-white/70 ${
+					railVariant
+						? 'grid-cols-[auto_minmax(0,1fr)_auto] p-3.5'
+						: 'grid-cols-[auto_1fr_auto] p-3'
+				}`}
+			>
 				<div class="badge bg-slate-100 text-slate-700">#{i + 1}</div>
 				{#if onSelectPlayer}
 					<button
 						type="button"
-						class="flex items-center gap-2 text-left text-lg font-bold text-slate-800 transition-opacity hover:opacity-75"
+						class={`flex min-w-0 items-center gap-2 text-left font-bold text-slate-800 transition-opacity hover:opacity-75 ${
+							railVariant ? 'text-base md:text-lg' : 'text-lg'
+						}`}
 						onclick={() => onSelectPlayer(playerId)}
 					>
 						{#if playerMap.get(playerId)?.status === 'disconnected'}
 							<iconify-icon icon="fluent:plug-disconnected-16-filled"></iconify-icon>
 						{/if}
-						{playerMap.get(playerId)?.name}
+						<span class="truncate">{playerMap.get(playerId)?.name}</span>
 					</button>
 				{:else}
-					<div class="flex items-center gap-2 text-lg font-bold">
+					<div
+						class={`flex min-w-0 items-center gap-2 font-bold ${
+							railVariant ? 'text-base md:text-lg' : 'text-lg'
+						}`}
+					>
 						{#if playerMap.get(playerId)?.status === 'disconnected'}
 							<iconify-icon icon="fluent:plug-disconnected-16-filled"></iconify-icon>
 						{/if}
-						{playerMap.get(playerId)?.name}
+						<span class="truncate">{playerMap.get(playerId)?.name}</span>
 					</div>
 				{/if}
-				<div class="text-2xl font-extrabold text-sky-700">{playerMap.get(playerId)?.score}</div>
+				<div
+					class={`font-extrabold text-sky-700 ${railVariant ? 'text-xl md:text-2xl' : 'text-2xl'}`}
+				>
+					{playerMap.get(playerId)?.score}
+				</div>
 			</li>
 		{/each}
 	</ol>
