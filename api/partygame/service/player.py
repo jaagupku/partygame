@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
+from partygame.core.config import settings
 from partygame.schemas.events import Event
 from partygame.schemas import Lobby, Player, ConnectionStatus
 from partygame.utils import publish
@@ -16,6 +17,15 @@ from . import realtime
 from partygame.state import GameStateRepository, GameKeyFactory
 
 log = logging.getLogger(__name__)
+
+
+async def refresh_idle_ttl(
+    repo: GameStateRepository,
+    lobby: Lobby | None,
+):
+    if lobby is None or lobby.phase == "finished":
+        return
+    await repo.apply_game_ttl(lobby.id, settings.GAME_IDLE_TTL_SECONDS)
 
 
 def score_key(lobby_id: str) -> str:
@@ -53,6 +63,7 @@ async def create(
     )
     await repo.create_player(player)
     lobby = await repo.get_lobby_meta(game_id)
+    await refresh_idle_ttl(repo, lobby)
     await publish(
         redis,
         GameKeyFactory.display_channel(game_id),
@@ -116,6 +127,7 @@ class ClientController:
         realtime.register_player(self.lobby.id, self.player.id, self)
         self.player.status = ConnectionStatus.CONNECTED
         await self.repo.set_player_status(self.lobby.id, self.player.id, self.player.status)
+        await refresh_idle_ttl(self.repo, self.lobby)
         await publish(
             self.redis,
             self.display_channel,
@@ -145,6 +157,12 @@ class ClientController:
 
         self.player.status = ConnectionStatus.DISCONNECTED
         await self.repo.set_player_status(self.lobby.id, self.player.id, self.player.status)
+        connected_players = await self.repo.count_connected_players(self.lobby.id)
+        if self.lobby.phase != "finished":
+            # Both active and abandoned lobbies keep the standard idle TTL;
+            # the count check makes the zero-connected branch explicit.
+            _ = connected_players
+            await self.repo.apply_game_ttl(self.lobby.id, settings.GAME_IDLE_TTL_SECONDS)
         await publish(
             self.redis,
             self.display_channel,
@@ -280,6 +298,7 @@ class ClientController:
     async def process_controller(self, msg: str):
         data = json.loads(msg)
         event_type = data.get("type_")
+        await refresh_idle_ttl(self.repo, self.lobby)
 
         if event_type == Event.START_GAME:
             await self.start_game()

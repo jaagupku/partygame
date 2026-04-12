@@ -4,6 +4,7 @@ from time import time
 from typing import Any
 
 from partygame import schemas
+from partygame.core.config import settings
 from partygame.schemas.game_definition import (
     EvaluationType,
     MediaDefinition,
@@ -56,6 +57,7 @@ class GameRuntimeService:
         if step is None:
             lobby.phase = "finished"
             await self.repo.set_lobby_fields(lobby.id, phase="finished")
+            await self.repo.apply_game_ttl(lobby.id, settings.GAME_FINISHED_TTL_SECONDS)
             return lobby, None
         await self.initialize_step_state(lobby, step)
         return lobby, step
@@ -351,6 +353,7 @@ class GameRuntimeService:
         if step is None:
             await self.repo.set_lobby_fields(lobby.id, phase="finished")
             lobby.phase = "finished"
+            await self.repo.apply_game_ttl(lobby.id, settings.GAME_FINISHED_TTL_SECONDS)
             return [
                 schemas.StepAdvancedEvent(step_index=next_step),
                 await self.build_snapshot(lobby),

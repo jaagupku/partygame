@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     MEDIA_ROOT: Path = Path(__file__).resolve().parents[2] / "media"
     MEDIA_PUBLIC_BASE: str = "/api/v1/media"
     MEDIA_MAX_UPLOAD_MB: int = 25
+    GAME_IDLE_TTL_SECONDS: int = 3600
+    GAME_FINISHED_TTL_SECONDS: int = 900
 
     model_config = SettingsConfigDict(case_sensitive=True)
 

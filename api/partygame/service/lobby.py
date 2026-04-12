@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
+from partygame.core.config import settings
 from partygame.schemas.events import Event
 from partygame.utils import get_unique_join_code, publish
 from partygame.service.player import remove as remove_player
@@ -35,6 +36,7 @@ async def create(redis: Redis, create_game: schemas.CreateGame | None = None):
         host_enabled=payload.host_enabled,
     )
     await repo.create_lobby(lobby)
+    await repo.apply_game_ttl(lobby.id, settings.GAME_IDLE_TTL_SECONDS)
     return lobby
 
 

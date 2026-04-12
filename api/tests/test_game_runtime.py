@@ -20,6 +20,7 @@ class FakeRepo:
         self.lobby_fields = {}
         self.steps = {}
         self.scores = {"p1": 0, "p2": 5}
+        self.applied_ttls = []
 
     async def set_lobby_fields(self, game_id: str, **fields):
         self.lobby_fields.setdefault(game_id, {}).update(fields)
@@ -35,6 +36,9 @@ class FakeRepo:
 
     async def set_player_score(self, game_id: str, player_id: str, score: int):
         self.scores[player_id] = score
+
+    async def apply_game_ttl(self, game_id: str, ttl_seconds: int):
+        self.applied_ttls.append((game_id, ttl_seconds))
 
 
 class MixedDefinitionProvider:
@@ -196,3 +200,37 @@ async def test_snapshot_includes_submitted_player_ids():
     snapshot = await service.build_snapshot(lobby)
 
     assert snapshot.submitted_player_ids == ["p1", "p2"]
+
+
+@pytest.mark.asyncio
+async def test_start_game_applies_finished_ttl_when_definition_has_no_steps():
+    class EmptyDefinitionProvider:
+        async def load(self, definition_id: str) -> GameDefinition:
+            return GameDefinition(id=definition_id, title="Empty", rounds=[])
+
+        async def list_definitions(self):
+            return []
+
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=EmptyDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    updated_lobby, step = await service.start_game(lobby)
+
+    assert step is None
+    assert updated_lobby.phase == "finished"
+    assert repo.applied_ttls == [("g1", 900)]
+
+
+@pytest.mark.asyncio
+async def test_advance_step_applies_finished_ttl_at_end_of_game():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    events = await service.advance_step(lobby)
+
+    assert lobby.phase == "finished"
+    assert [event.type_ for event in events] == ["step_advanced", "runtime_snapshot"]
+    assert repo.applied_ttls == [("g1", 900)]
