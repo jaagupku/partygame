@@ -5,6 +5,10 @@
 	import { messages } from '$lib/i18n';
 </script>
 
+<svelte:head>
+	<title>{$messages.home.title} | Party Game</title>
+</svelte:head>
+
 <PageTopChips />
 
 <div class="md:pt-8">

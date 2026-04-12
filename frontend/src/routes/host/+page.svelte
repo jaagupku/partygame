@@ -3,3 +3,7 @@
 
 	goto('/');
 </script>
+
+<svelte:head>
+	<title>Host | Party Game</title>
+</svelte:head>

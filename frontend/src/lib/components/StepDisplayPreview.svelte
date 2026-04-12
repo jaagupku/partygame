@@ -38,9 +38,9 @@
 	<QuestionCard {step} {revealedSubmission} title="Now Playing" />
 
 	{#if countdown > 0}
-		<div class="card mx-auto max-w-64">
+		<div class="card mx-auto w-full max-w-3xl p-4 md:p-5">
 			<Timer {countdown} />
-			<p class="text-center text-sm text-slate-600">
+			<p class="mt-3 text-center text-sm text-slate-600">
 				{step?.timer.enforced ? 'Timer is enforced' : 'Timer is advisory'}
 			</p>
 		</div>

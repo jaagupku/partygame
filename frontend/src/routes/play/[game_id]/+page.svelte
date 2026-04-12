@@ -226,7 +226,10 @@
 	}
 </script>
 
-<h1 class="page-title">Party Controller</h1>
+<svelte:head>
+	<title>{$controller.isHost ? 'Host Controller' : 'Player Controller'} | Party Game</title>
+</svelte:head>
+
 <p class="page-subtitle">Connection: {isConnected ? 'Live' : 'Connecting...'}</p>
 
 {#if $controller.gameState === 'waiting_for_players'}
