@@ -13,7 +13,7 @@
 		players: ScoreboardPlayer[];
 		playerMap: Map<string, ScoreboardPlayer>;
 		onSelectPlayer?: (playerId: string) => void;
-		variant?: 'default' | 'rail';
+		variant?: 'default' | 'rail' | 'overlay';
 	}
 
 	let { players, playerMap, onSelectPlayer, variant = 'default' }: ScoreboardProps = $props();
@@ -25,16 +25,21 @@
 			.map((player) => player.id)
 	);
 	const railVariant = $derived(variant === 'rail');
+	const overlayVariant = $derived(variant === 'overlay');
 </script>
 
-<section class={`card ${railVariant ? 'xl:sticky xl:top-6' : ''}`}>
+<section
+	class={`card ${railVariant ? 'xl:sticky xl:top-6' : ''} ${
+		overlayVariant ? 'flex h-full min-h-0 flex-col overflow-hidden' : ''
+	}`}
+>
 	<h2 class={`label-title mb-4 ${railVariant ? 'text-2xl md:text-3xl' : 'text-3xl'}`}>
 		Scoreboard
 	</h2>
 	{#if onSelectPlayer}
 		<p class="mb-4 text-sm text-slate-600">Click a player name to make them the host controller.</p>
 	{/if}
-	<ol class="stack-md">
+	<ol class={`stack-md ${overlayVariant ? 'min-h-0 flex-1 overflow-y-auto pr-1' : ''}`}>
 		{#each ordered as playerId, i (i)}
 			<li
 				class={`grid items-center gap-2 rounded-xl bg-white/70 ${

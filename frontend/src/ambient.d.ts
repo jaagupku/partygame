@@ -140,6 +140,23 @@ type StartGameEvent = {
 	type_: 'start_game';
 };
 
+type ResetStepEvent = {
+	type_: 'reset_step';
+};
+
+type ShowAnswerRevealEvent = {
+	type_: 'show_answer_reveal';
+};
+
+type ShowQuestionEvent = {
+	type_: 'show_question';
+};
+
+type ScoreboardVisibilityEvent = {
+	type_: 'scoreboard_visibility';
+	visible: boolean;
+};
+
 type BuzzerStateEvent = {
 	type_: 'buzzer_state';
 	active: boolean;
@@ -150,11 +167,18 @@ type BuzzerClickedEvent = {
 	player_id: string;
 };
 
+type BuzzerReviewedEvent = {
+	type_: 'buzzer_reviewed';
+	player_id: string;
+	accepted: boolean;
+};
+
 type RuntimeTimerState = {
 	seconds?: number;
 	enforced: boolean;
 	started_at?: number;
 	ends_at?: number;
+	remaining_seconds?: number;
 };
 
 type RuntimeMediaState = {
@@ -162,6 +186,10 @@ type RuntimeMediaState = {
 	src: string;
 	reveal?: string;
 	loop: boolean;
+	reveal_state: string;
+	reveal_started_at?: number;
+	reveal_elapsed_seconds: number;
+	reveal_duration_seconds?: number;
 };
 
 type RuntimeStepState = {
@@ -198,16 +226,24 @@ type RevealedSubmission = {
 	value: unknown;
 };
 
+type RevealedAnswer = {
+	value: unknown;
+};
+
 type RuntimeSnapshotEvent = {
 	type_: 'runtime_snapshot';
 	lobby: RuntimeLobbyState;
 	active_step?: RuntimeStepState;
+	display_phase: string;
+	scoreboard_visible: boolean;
 	buzzer_active: boolean;
 	buzzed_player_id?: string;
+	disabled_buzzer_player_ids: string[];
 	submitted_player_ids: string[];
 	submission_count: number;
 	pending_review_count: number;
 	revealed_submission?: RevealedSubmission;
+	revealed_answer?: RevealedAnswer;
 };
 
 type SubmissionItem = {
@@ -256,11 +292,15 @@ type UpdateScoreEvent = {
 
 type HostGameState = Lobby & {
 	activeStep?: RuntimeStepState;
+	displayPhase: string;
+	scoreboardVisible: boolean;
 	buzzerActive: boolean;
 	buzzedPlayerId?: string;
+	disabledBuzzerPlayerIds: string[];
 	submissionCount: number;
 	pendingReviewCount: number;
 	revealedSubmission?: RevealedSubmission;
+	revealedAnswer?: RevealedAnswer;
 };
 
 type ControllerState = {
@@ -271,12 +311,16 @@ type ControllerState = {
 	currentStep: number;
 	hostEnabled: boolean;
 	activeStep?: RuntimeStepState;
+	displayPhase: string;
+	scoreboardVisible: boolean;
 	buzzerActive: boolean;
 	buzzedPlayerId?: string;
+	disabledBuzzerPlayerIds: string[];
 	submittedPlayerIds: string[];
 	hasSubmitted: boolean;
 	submissionCount: number;
 	pendingReviewCount: number;
 	revealedSubmission?: RevealedSubmission;
+	revealedAnswer?: RevealedAnswer;
 	submissions: SubmissionItem[];
 };

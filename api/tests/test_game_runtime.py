@@ -5,6 +5,9 @@ from partygame.schemas.game_definition import (
     EvaluationRule,
     EvaluationType,
     GameDefinition,
+    ImageRevealMode,
+    MediaDefinition,
+    MediaType,
     PlayerInputDefinition,
     PlayerInputKind,
     RoundDefinition,
@@ -53,8 +56,17 @@ class MixedDefinitionProvider:
                         StepDefinition(
                             id="buzzer_step",
                             title="Buzz in",
+                            media=MediaDefinition(
+                                type_=MediaType.IMAGE,
+                                src="/media/question.png",
+                                reveal=ImageRevealMode.BLUR_TO_CLEAR,
+                            ),
                             player_input=PlayerInputDefinition(kind=PlayerInputKind.BUZZER),
-                            evaluation=EvaluationRule(type_=EvaluationType.HOST_JUDGED, points=2),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=2,
+                                answer="Correct Answer",
+                            ),
                             timer=TimerDefinition(seconds=10, enforced=False),
                         ),
                         StepDefinition(
@@ -103,6 +115,8 @@ async def test_buzzer_submission_locks_first_player():
     assert [event.type_ for event in events] == ["buzzer_state", "buzzer_clicked"]
     assert repo.steps["g1"]["buzzed_player_id"] == "p1"
     assert repo.steps["g1"]["buzzer_active"] is False
+    assert repo.steps["g1"]["media_reveal_state"] == "paused"
+    assert repo.steps["g1"]["display_phase"] == "question_active"
 
 
 @pytest.mark.asyncio
@@ -136,10 +150,184 @@ async def test_review_submission_awards_points_and_completes_review():
         schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
     )
 
-    assert len(events) == 1
-    assert events[0].type_ == "update_score"
+    assert [event.type_ for event in events] == ["buzzer_reviewed", "update_score"]
     assert repo.scores["p1"] == 2
     assert lobby.phase == "step_complete"
+    assert repo.steps["g1"]["media_reveal_state"] == "revealed"
+    assert repo.steps["g1"]["revealed_answer_value"] == "Correct Answer"
+
+
+@pytest.mark.asyncio
+async def test_rejected_buzzer_disables_player_and_keeps_step_in_review():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+
+    events = await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+
+    assert [event.type_ for event in events] == ["buzzer_reviewed"]
+    assert lobby.phase == "host_review"
+    assert repo.steps["g1"]["buzzed_player_id"] == ""
+    assert repo.steps["g1"]["disabled_buzzer_player_ids"] == ["p1"]
+    assert repo.steps["g1"]["media_reveal_state"] == "paused"
+
+
+@pytest.mark.asyncio
+async def test_reactivating_buzzer_keeps_rejected_player_disabled():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+
+    events = await service.set_buzzer_state(lobby, True)
+
+    assert [event.type_ for event in events] == ["buzzer_state", "runtime_snapshot"]
+    assert lobby.phase == "question_active"
+    assert repo.steps["g1"]["buzzed_player_id"] == ""
+    assert repo.steps["g1"]["disabled_buzzer_player_ids"] == ["p1"]
+    assert repo.steps["g1"]["media_reveal_state"] == "running"
+
+
+@pytest.mark.asyncio
+async def test_disabled_player_cannot_buzz_again_after_reactivation():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+    await service.set_buzzer_state(lobby, True)
+
+    blocked_events, blocked_handled = await service.submit_player_input(lobby, "p1", "buzz")
+    allowed_events, allowed_handled = await service.submit_player_input(lobby, "p2", "buzz")
+
+    assert blocked_events == []
+    assert blocked_handled is False
+    assert [event.type_ for event in allowed_events] == ["buzzer_state", "buzzer_clicked"]
+    assert allowed_handled is True
+
+
+@pytest.mark.asyncio
+async def test_accepted_buzzer_review_snapshot_includes_revealed_answer():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
+    )
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.reveal_state == "revealed"
+    assert snapshot.revealed_answer is not None
+    assert snapshot.revealed_answer.value == "Correct Answer"
+
+
+@pytest.mark.asyncio
+async def test_snapshot_starts_in_question_phase_with_hidden_scoreboard():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.display_phase == "question_active"
+    assert snapshot.scoreboard_visible is False
+
+
+@pytest.mark.asyncio
+async def test_show_answer_reveal_moves_auto_step_to_answer_phase_without_advancing():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+
+    events = await service.show_answer_reveal(lobby)
+
+    assert [event.type_ for event in events] == ["runtime_snapshot"]
+    assert lobby.current_step == 0
+    assert lobby.phase == "step_complete"
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert repo.steps["g1"]["revealed_answer_value"] == 27
+
+
+@pytest.mark.asyncio
+async def test_show_question_returns_answer_reveal_to_question_phase():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.show_answer_reveal(lobby)
+
+    events = await service.show_question(lobby)
+
+    assert [event.type_ for event in events] == ["runtime_snapshot"]
+    assert repo.steps["g1"]["display_phase"] == "question_active"
+
+
+@pytest.mark.asyncio
+async def test_scoreboard_visibility_is_reflected_in_snapshot():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.set_scoreboard_visibility(lobby, True)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.scoreboard_visible is True
+
+
+@pytest.mark.asyncio
+async def test_reset_current_step_restarts_active_question_state():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+
+    events = await service.reset_current_step(lobby)
+
+    assert [event.type_ for event in events] == ["runtime_snapshot"]
+    assert lobby.phase == "question_active"
+    assert repo.steps["g1"]["buzzer_active"] is True
+    assert repo.steps["g1"]["buzzed_player_id"] == ""
+    assert repo.steps["g1"]["disabled_buzzer_player_ids"] == []
+    assert repo.steps["g1"]["answers"] == {}
+    assert repo.steps["g1"]["reviewed_player_ids"] == []
+    assert repo.steps["g1"]["revealed_answer_value"] is None
+    assert repo.steps["g1"]["media_reveal_state"] == "running"
 
 
 @pytest.mark.asyncio

@@ -83,7 +83,7 @@
 	}
 
 	.page-panel-host-game {
-		@apply max-w-[120rem] p-4 md:p-6 xl:p-8;
+		@apply h-[calc(100vh-2rem)] max-w-[120rem] overflow-hidden p-4 md:h-[calc(100vh-4rem)] md:p-6 xl:p-8;
 	}
 
 	.page-title {

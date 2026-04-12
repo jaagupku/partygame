@@ -1,44 +1,46 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
 	import { Tween } from 'svelte/motion';
 	import { linear as easing } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 
 	interface TimerProps {
 		countdown: number;
+		totalDuration?: number;
+		paused?: boolean;
 	}
 
-	let { countdown }: TimerProps = $props();
+	let { countdown, totalDuration, paused = false }: TimerProps = $props();
 
-	let now = $state(Date.now());
-	let startedAt = $state(Date.now());
-	let end = $derived(startedAt + countdown * 1000);
-
-	const count = $derived(Math.max(Math.ceil((end - now) / 1000), 0));
+	let count = $state(0);
 	const h = $derived(Math.floor(count / 3600));
 	const m = $derived(Math.floor((count - h * 3600) / 60));
 	const s = $derived(count - h * 3600 - m * 60);
 	const totalSeconds = $derived(h * 3600 + m * 60 + s);
 
-	function updateTimer() {
-		now = Date.now();
-	}
-
-	let interval = setInterval(updateTimer, 1000);
-
 	const duration = 1000;
 	const progress = new Tween(1, { duration, easing });
 
 	$effect(() => {
-		// Reset the countdown whenever a new duration is provided.
-		countdown;
-		startedAt = Date.now();
-		now = startedAt;
+		count = Math.max(Math.ceil(countdown), 0);
 	});
 
 	$effect(() => {
-		const safeCountdown = Math.max(countdown, 1);
-		progress.set(Math.max(count - 1, 0) / safeCountdown);
+		const safeTotal = Math.max(totalDuration ?? countdown, 1);
+		progress.set(Math.max(count - 1, 0) / safeTotal);
+	});
+
+	$effect(() => {
+		if (paused || count <= 0) {
+			return;
+		}
+
+		const interval = setInterval(() => {
+			count = Math.max(count - 1, 0);
+		}, 1000);
+
+		return () => {
+			clearInterval(interval);
+		};
 	});
 
 	function padValue(value: number, length = 2, char = '0') {
@@ -81,10 +83,6 @@
 						pulse: 'bg-sky-500'
 					}
 	);
-
-	onDestroy(() => {
-		clearInterval(interval);
-	});
 </script>
 
 <div

@@ -25,13 +25,17 @@
 			currentStep: lobby().current_step ?? 0,
 			hostEnabled: lobby().host_enabled,
 			activeStep: undefined,
+			displayPhase: 'question_active',
+			scoreboardVisible: false,
 			buzzerActive: false,
 			buzzedPlayerId: undefined,
+			disabledBuzzerPlayerIds: [],
 			submittedPlayerIds: [],
 			hasSubmitted: false,
 			submissionCount: 0,
 			pendingReviewCount: 0,
 			revealedSubmission: undefined,
+			revealedAnswer: undefined,
 			submissions: []
 		},
 		onKick
@@ -54,6 +58,7 @@
 				!$controller.activeStep?.input_enabled ||
 				$controller.hasSubmitted)
 	);
+	const buzzerLockedOut = $derived($controller.disabledBuzzerPlayerIds.includes($controller.id));
 	const submittedPlayerNames = $derived(
 		$controller.submittedPlayerIds
 			.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
@@ -119,15 +124,37 @@
 	}
 
 	function nextStep() {
-		sendAction({ type_: 'step_advanced' });
+		if ($controller.displayPhase === 'answer_reveal') {
+			sendAction({ type_: 'step_advanced' });
+			return;
+		}
+		if ($controller.lobbyPhase === 'question_active') {
+			sendAction({ type_: 'close_step' });
+			return;
+		}
+		sendAction({ type_: 'show_answer_reveal' });
+	}
+
+	function previousStep() {
+		if ($controller.displayPhase !== 'answer_reveal') {
+			return;
+		}
+		sendAction({ type_: 'show_question' });
+	}
+
+	function resetStep() {
+		sendAction({ type_: 'reset_step' });
+	}
+
+	function toggleScoreboardVisibility() {
+		sendAction({
+			type_: 'scoreboard_visibility',
+			visible: !$controller.scoreboardVisible
+		});
 	}
 
 	function evaluateStep() {
 		sendAction({ type_: 'scores_updated' });
-	}
-
-	function closeStep() {
-		sendAction({ type_: 'close_step' });
 	}
 
 	function reviewSubmission(playerId: string, accepted: boolean, pointsOverride?: number) {
@@ -238,7 +265,7 @@
 />
 
 {#if $controller.gameState === 'waiting_for_players'}
-	<div class="card mt-8 text-center">
+	<div class="card mt-0 text-center">
 		<p class="text-xl font-bold">Waiting for game to start.</p>
 		{#if $controller.isHost}
 			<p class="mt-2 text-lg">You are the host controller.</p>
@@ -248,7 +275,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="mt-8 stack-lg">
+	<div class="mt-0 stack-lg">
 		{#if !$controller.isHost && $controller.activeStep?.input_kind === 'buzzer'}
 			<section class="card stack-md text-center">
 				<h2 class="label-title text-2xl">Buzzer</h2>
@@ -257,13 +284,15 @@
 						? $controller.hasSubmitted
 							? 'Answer received. Waiting for the next step.'
 							: 'This step is closed.'
-						: $controller.buzzerActive
-							? 'Buzz now!'
-							: 'Wait for the host to continue.'}
+						: buzzerLockedOut
+							? 'You already used your buzzer chance for this question.'
+							: $controller.buzzerActive
+								? 'Buzz now!'
+								: 'Wait for the host to continue.'}
 				</p>
 				<button
 					type="button"
-					disabled={playerInputDisabled || !$controller.buzzerActive}
+					disabled={playerInputDisabled || !$controller.buzzerActive || buzzerLockedOut}
 					class="btn btn-accent text-4xl"
 					onclick={buzz}
 				>
@@ -447,14 +476,35 @@
 					</div>
 				{/if}
 				<div class="flex flex-wrap gap-3">
-					{#if $controller.lobbyPhase === 'question_active'}
-						<button type="button" class="btn btn-primary" onclick={closeStep}>Close Step</button>
-					{:else if !$controller.hostEnabled || $controller.activeStep?.evaluation_type !== 'host_judged'}
-						<button type="button" class="btn btn-primary" onclick={evaluateStep}
-							>Auto Evaluate</button
+					<button
+						type="button"
+						class="btn btn-ghost"
+						onclick={previousStep}
+						disabled={$controller.displayPhase !== 'answer_reveal'}
+					>
+						Previous
+					</button>
+					<button
+						type="button"
+						class="btn btn-primary"
+						onclick={nextStep}
+						disabled={$controller.lobbyPhase === 'host_review' &&
+							$controller.pendingReviewCount > 0}
+					>
+						{$controller.displayPhase === 'answer_reveal'
+							? 'Advance Step'
+							: $controller.lobbyPhase === 'question_active'
+								? 'Next'
+								: 'Show Answer'}
+					</button>
+					<button type="button" class="btn btn-ghost" onclick={resetStep}>Reset Question</button>
+					<button type="button" class="btn btn-ghost" onclick={toggleScoreboardVisibility}>
+						{$controller.scoreboardVisible ? 'Hide Scoreboard' : 'Show Scoreboard'}
+					</button>
+					{#if !$controller.hostEnabled || $controller.activeStep?.evaluation_type !== 'host_judged'}
+						<button type="button" class="btn btn-ghost" onclick={evaluateStep}>Auto Evaluate</button
 						>
 					{/if}
-					<button type="button" class="btn btn-accent" onclick={nextStep}>Next Step</button>
 					{#if $controller.activeStep?.input_kind === 'buzzer'}
 						<button
 							type="button"
@@ -464,7 +514,7 @@
 									JSON.stringify({ type_: 'buzzer_state', active: !$controller.buzzerActive })
 								)}
 						>
-							{$controller.buzzerActive ? 'Disable Buzzer' : 'Enable Buzzer'}
+							{$controller.buzzerActive ? 'Disable Buzzer' : 'Enable Eligible Buzzers'}
 						</button>
 					{/if}
 				</div>
@@ -499,7 +549,16 @@
 						</div>
 					</div>
 				{:else if $controller.submissions.length === 0}
-					<p class="text-slate-500">No answers submitted yet.</p>
+					{#if $controller.activeStep?.input_kind === 'buzzer' && $controller.disabledBuzzerPlayerIds.length > 0}
+						<p class="text-slate-500">
+							Waiting for the host to reactivate eligible buzzers. Locked out:
+							{$controller.disabledBuzzerPlayerIds
+								.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
+								.join(', ')}
+						</p>
+					{:else}
+						<p class="text-slate-500">No answers submitted yet.</p>
+					{/if}
 				{:else}
 					{#each $controller.submissions as submission}
 						<div

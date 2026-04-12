@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
+	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
@@ -15,13 +16,9 @@
 	let isConnected = $state(false);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	const playerMap = $derived(new Map($game.players.map((player) => [player.id, player])));
-	const countdown = $derived.by(() => {
-		const endsAt = $game.activeStep?.timer.ends_at;
-		if (!endsAt) {
-			return 0;
-		}
-		return Math.max(0, Math.ceil(endsAt - Date.now() / 1000));
-	});
+	const countdown = $derived(
+		Math.max(0, Math.ceil($game.activeStep?.timer.remaining_seconds ?? 0))
+	);
 
 	onMount(() => {
 		if (!browser) {
@@ -73,11 +70,12 @@
 	<p class="page-subtitle mt-2">
 		Host mode: <span class="font-bold">{$game.host_enabled ? 'On' : 'Off'}</span>
 	</p>
-	<p class="page-subtitle mt-2">
-		Use the host controller to start and run the game. Connection: {isConnected
-			? 'Live'
-			: 'Reconnecting...'}
-	</p>
+	<p class="page-subtitle mt-2">Use the host controller to start and run the game.</p>
+	<GameConnectionStatus
+		connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+		showInline={false}
+		showDisconnectedChip={true}
+	/>
 
 	{#if $game.players.length > 0}
 		<ul class="stack-md mt-8">
@@ -101,13 +99,13 @@
 		</ul>
 	{/if}
 {:else}
-	<div
-		class="grid gap-6 xl:min-h-[calc(100vh-8rem)] xl:grid-cols-[minmax(0,1.85fr)_minmax(22rem,0.85fr)] xl:items-start"
-	>
-		<section class="min-w-0">
+	<div class="relative h-full min-h-0 overflow-hidden">
+		<section class="h-full min-w-0 min-h-0">
 			<StepDisplayPreview
 				step={$game.activeStep}
 				revealedSubmission={$game.revealedSubmission}
+				revealedAnswer={$game.revealedAnswer}
+				displayPhase={$game.displayPhase}
 				phaseLabel={$game.phase ?? 'question_active'}
 				connectionLabel={isConnected ? 'Live' : 'Disconnected'}
 				layoutMode="host-stage"
@@ -119,8 +117,19 @@
 			/>
 		</section>
 
-		<aside class="min-w-0">
-			<Scoreboard players={$game.players} {playerMap} onSelectPlayer={setHost} variant="rail" />
+		<aside
+			class={`pointer-events-none absolute inset-y-0 right-0 z-10 w-[min(30rem,38vw)] max-w-full p-3 transition-transform duration-300 ease-out ${
+				$game.scoreboardVisible ? 'translate-x-0' : 'translate-x-[calc(100%+1rem)]'
+			}`}
+		>
+			<div class="pointer-events-auto h-full">
+				<Scoreboard
+					players={$game.players}
+					{playerMap}
+					onSelectPlayer={setHost}
+					variant="overlay"
+				/>
+			</div>
 		</aside>
 	</div>
 {/if}
