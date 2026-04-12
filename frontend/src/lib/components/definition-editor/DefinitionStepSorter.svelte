@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import 'iconify-icon';
 	import { stepBadges, stepPreview } from './helpers';
@@ -18,6 +19,7 @@
 		dragCardWidth: number;
 		onSelectStep: (stepKey: string | undefined) => void;
 		onOpenRoundModal: (roundIndex: number) => void;
+		moveRound: (roundIndex: number, direction: -1 | 1) => void;
 		onRemoveRound: (roundIndex: number) => void;
 		onStepDragStart: (event: PointerEvent, stepKey: string) => void;
 		onStepDragMove: (event: PointerEvent) => void;
@@ -40,6 +42,7 @@
 		dragCardWidth,
 		onSelectStep,
 		onOpenRoundModal,
+		moveRound,
 		onRemoveRound,
 		onStepDragStart,
 		onStepDragMove,
@@ -52,6 +55,29 @@
 	let activeDropTarget = $state<{ key: string; roundIndex: number; stepIndex: number } | null>(
 		null
 	);
+
+	$effect(() => {
+		const stepKey = selectedStepKey;
+		const scroller = sorterScroller;
+		if (!stepKey || !scroller) {
+			return;
+		}
+
+		void tick().then(() => {
+			const selectedCard = scroller.querySelector<HTMLElement>(`[data-step-key="${stepKey}"]`);
+			if (!selectedCard) {
+				return;
+			}
+
+			const scrollerRect = scroller.getBoundingClientRect();
+			const cardRect = selectedCard.getBoundingClientRect();
+			const isVisible = cardRect.top >= scrollerRect.top && cardRect.bottom <= scrollerRect.bottom;
+
+			if (!isVisible) {
+				selectedCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			}
+		});
+	});
 
 	function buildDropTarget(roundIndex: number, stepIndex: number) {
 		return {
@@ -137,18 +163,15 @@
 
 <svelte:window onpointermove={handleWindowPointerMove} onpointerup={handleWindowPointerUp} />
 
-<section class="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200 bg-white/65 p-4">
-	<div>
+<section class="flex h-full min-h-0 flex-col border-slate-200 bg-white/65">
+	<div class="pb-2">
 		<h3 class="label-title text-xl">Step Sorter</h3>
 		<p class="text-sm text-slate-600">
 			Drag slides to change the order or move them between rounds.
 		</p>
 	</div>
 
-	<div
-		bind:this={sorterScroller}
-		class="mt-4 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1"
-	>
+	<div bind:this={sorterScroller} class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-4">
 		{#each rounds as round, roundIndex}
 			<div class="mb-5">
 				<div class="sticky top-0 z-10 mb-2 rounded-2xl bg-sky-50 px-3 py-2 shadow-sm">
@@ -163,17 +186,40 @@
 							<button
 								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
 								type="button"
+								title={`Move ${round.title || `round ${roundIndex + 1}`} up`}
+								aria-label={`Move ${round.title || `round ${roundIndex + 1}`} up`}
+								onclick={() => moveRound(roundIndex, -1)}
+								disabled={roundIndex === 0}
+							>
+								<iconify-icon icon="fluent:arrow-up-16-filled"></iconify-icon>
+							</button>
+							<button
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100 disabled:border-sky-100 disabled:bg-slate-50 disabled:text-slate-300"
+								type="button"
+								title={`Move ${round.title || `round ${roundIndex + 1}`} down`}
+								aria-label={`Move ${round.title || `round ${roundIndex + 1}`} down`}
+								onclick={() => moveRound(roundIndex, 1)}
+								disabled={roundIndex === rounds.length - 1}
+							>
+								<iconify-icon icon="fluent:arrow-down-16-filled"></iconify-icon>
+							</button>
+							<button
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
+								type="button"
 								aria-label={`Edit ${round.title || `round ${roundIndex + 1}`}`}
+								title={`Edit ${round.title || `round ${roundIndex + 1}`}`}
 								onclick={() => onOpenRoundModal(roundIndex)}
 							>
 								<iconify-icon icon="fluent:edit-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="btn btn-danger px-3 py-2 text-xs"
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
 								type="button"
+								title={`Delete ${round.title || `round ${roundIndex + 1}`}`}
+								aria-label={`Delete ${round.title || `round ${roundIndex + 1}`}`}
 								onclick={() => onRemoveRound(roundIndex)}
 							>
-								Remove
+								<iconify-icon icon="fluent:delete-16-filled"></iconify-icon>
 							</button>
 						</div>
 					</div>
@@ -211,6 +257,7 @@
 											: 'border-slate-200 bg-white/90 hover:border-sky-200'
 								}`}
 								data-step-card
+								data-step-key={item.stepKey}
 								data-round-index={roundIndex}
 								data-step-index={itemIndex}
 								onclick={() => onSelectStep(item.stepKey)}

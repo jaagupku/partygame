@@ -3,7 +3,6 @@
 
 	type Props = {
 		title: string;
-		subtitle: string;
 		breadcrumbCurrentLabel: string;
 		editingTitle: boolean;
 		saving: boolean;
@@ -21,7 +20,6 @@
 
 	let {
 		title,
-		subtitle,
 		breadcrumbCurrentLabel,
 		editingTitle,
 		saving,
@@ -67,12 +65,6 @@
 			<span aria-current="page" class="font-semibold text-slate-700">{breadcrumbCurrentLabel}</span>
 		</nav>
 		<div class="flex flex-wrap items-center gap-3">
-			<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onManageDefinitions}>
-				Manage Definitions
-			</button>
-			<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onGoHome}>
-				Home
-			</button>
 			{#if editingTitle}
 				<input
 					bind:this={titleInput}
@@ -94,7 +86,6 @@
 				</button>
 			{/if}
 		</div>
-		<p class="mt-1 text-sm text-slate-500">{subtitle}</p>
 	</div>
 
 	<div class="flex flex-wrap items-center gap-2">

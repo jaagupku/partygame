@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import DefinitionConfirmModal from './DefinitionConfirmModal.svelte';
 	import DefinitionDetailsModal from './DefinitionDetailsModal.svelte';
 	import DefinitionEditorToolbar from './DefinitionEditorToolbar.svelte';
 	import DefinitionPreviewModal from './DefinitionPreviewModal.svelte';
@@ -8,13 +9,16 @@
 	import DefinitionShortcutHelpModal from './DefinitionShortcutHelpModal.svelte';
 	import DefinitionStepEditor from './DefinitionStepEditor.svelte';
 	import DefinitionStepSorter from './DefinitionStepSorter.svelte';
+	import DefinitionStepTemplateModal from './DefinitionStepTemplateModal.svelte';
 	import {
 		DEFAULT_EVALUATION_BY_INPUT_KIND,
 		MEDIA_TYPES,
 		INPUT_KIND_EVALUATIONS,
+		STEP_TEMPLATES,
 		buildCheckboxWeightedAnswer,
 		buildFlatSteps,
 		buildRuntimePreviewStep,
+		createStepFromTemplate,
 		getCheckboxOptionScores,
 		isCheckboxWeightedAnswer,
 		normalizeAnswer
@@ -55,10 +59,28 @@
 	let showPreviewModal = $state(false);
 	let showShortcutHelpModal = $state(false);
 	let showDefinitionDetailsModal = $state(false);
+	let showStepTemplateModal = $state(false);
 	let definitionDescriptionDraft = $state('');
 	let definitionIdDraft = $state('');
 	let showDefinitionAdvancedFields = $state(false);
 	let editingTitle = $state(false);
+	let pendingStepInsert = $state<{ roundIndex: number; stepIndex: number } | null>(null);
+	let pendingDelete = $state<
+		| {
+				type: 'round';
+				roundIndex: number;
+				title: string;
+				message: string;
+				confirmLabel: string;
+		  }
+		| {
+				type: 'step';
+				title: string;
+				message: string;
+				confirmLabel: string;
+		  }
+		| null
+	>(null);
 
 	const displayDefinition = $derived(dragPreviewDefinition ?? draft);
 	const flatSteps = $derived(buildFlatSteps(displayDefinition, getStepKey));
@@ -77,9 +99,6 @@
 	);
 	const previewStep = $derived(selectedStep ? buildRuntimePreviewStep(selectedStep) : undefined);
 	const previewCountdown = $derived(selectedStep?.timer.seconds ?? 0);
-	const toolbarSubtitle = $derived(
-		isNewDefinition ? 'New definition' : `Editing ${draft.id || 'draft definition'}`
-	);
 	const breadcrumbCurrentLabel = $derived(isNewDefinition ? 'New Definition' : 'Edit Definition');
 	const shortcutGroups = [
 		{
@@ -167,38 +186,7 @@
 		return {
 			id: `round_${index}`,
 			title: `Round ${index}`,
-			steps: withInitialStep ? [createEmptyStep(index, 1)] : []
-		};
-	}
-
-	function createEmptyStep(roundIndex: number, stepIndex: number): StepDefinition {
-		return {
-			id: `step_${roundIndex}_${stepIndex}`,
-			title: `Step ${stepIndex}`,
-			body: '',
-			timer: {
-				seconds: 30,
-				enforced: false
-			},
-			player_input: {
-				kind: 'text',
-				prompt: '',
-				placeholder: '',
-				options: [],
-				min_value: undefined,
-				max_value: undefined,
-				step: undefined
-			},
-			evaluation: {
-				type_: 'exact_text',
-				points: 1,
-				answer: ''
-			},
-			host_behavior: {
-				reveal_answers: true,
-				show_submissions: true,
-				allow_custom_points: true
-			}
+			steps: withInitialStep ? [createStepFromTemplate(index, 1, 'blank')] : []
 		};
 	}
 
@@ -293,6 +281,39 @@
 		openRoundModal(draft.rounds.length - 1);
 	}
 
+	function moveRound(roundIndex: number, direction: -1 | 1) {
+		const targetIndex = roundIndex + direction;
+		if (
+			roundIndex < 0 ||
+			targetIndex < 0 ||
+			roundIndex >= draft.rounds.length ||
+			targetIndex >= draft.rounds.length
+		) {
+			return;
+		}
+		const nextRounds = [...draft.rounds];
+		[nextRounds[roundIndex], nextRounds[targetIndex]] = [
+			nextRounds[targetIndex],
+			nextRounds[roundIndex]
+		];
+		draft.rounds = nextRounds;
+	}
+
+	function requestRemoveRound(roundIndex: number) {
+		const round = draft.rounds[roundIndex];
+		if (!round) {
+			return;
+		}
+		const roundLabel = round.title || `Round ${roundIndex + 1}`;
+		pendingDelete = {
+			type: 'round',
+			roundIndex,
+			title: `Delete ${roundLabel}?`,
+			message: 'This round and all of its steps will be removed from the definition.',
+			confirmLabel: 'Delete Round'
+		};
+	}
+
 	function removeRound(roundIndex: number) {
 		if (draft.rounds.length === 1) {
 			draft.rounds = [createEmptyRound(1, true)];
@@ -306,27 +327,94 @@
 		}
 	}
 
-	function addStepToRound(roundIndex: number, insertAt?: number) {
+	function requestRemoveSelectedStep() {
+		if (!selectedFlatStep || !selectedStep) {
+			return;
+		}
+		const stepLabel = selectedStep.title?.trim() || `Slide ${selectedFlatStep.globalIndex + 1}`;
+		pendingDelete = {
+			type: 'step',
+			title: `Delete ${stepLabel}?`,
+			message:
+				'This step will be removed from the definition and cannot be recovered from the editor.',
+			confirmLabel: 'Delete Step'
+		};
+	}
+
+	function closeDeleteModal() {
+		pendingDelete = null;
+	}
+
+	function confirmDelete() {
+		if (!pendingDelete) {
+			return;
+		}
+		if (pendingDelete.type === 'round') {
+			removeRound(pendingDelete.roundIndex);
+		} else {
+			removeSelectedStep();
+		}
+		closeDeleteModal();
+	}
+
+	function addStepToRound(
+		roundIndex: number,
+		templateId: Parameters<typeof createStepFromTemplate>[2],
+		insertAt?: number
+	) {
 		const round = draft.rounds[roundIndex];
 		if (!round) {
 			return;
 		}
 		const stepIndex = insertAt ?? round.steps.length;
-		const newStep = createEmptyStep(roundIndex + 1, stepIndex + 1);
+		const newStep = createStepFromTemplate(roundIndex + 1, stepIndex + 1, templateId);
 		round.steps.splice(stepIndex, 0, newStep);
 		draft.rounds = [...draft.rounds];
 		selectedStepKey = getStepKey(newStep);
 	}
 
-	function addStepAfterSelected() {
+	function openStepTemplatePicker() {
 		if (selectedFlatStep) {
-			addStepToRound(selectedFlatStep.roundIndex, selectedFlatStep.stepIndex + 1);
+			pendingStepInsert = {
+				roundIndex: selectedFlatStep.roundIndex,
+				stepIndex: selectedFlatStep.stepIndex + 1
+			};
+		} else {
+			if (draft.rounds.length === 0) {
+				draft.rounds = [createEmptyRound(1)];
+			}
+			pendingStepInsert = {
+				roundIndex: selectedRoundIndex >= 0 ? selectedRoundIndex : 0,
+				stepIndex:
+					selectedRoundIndex >= 0 && draft.rounds[selectedRoundIndex]
+						? draft.rounds[selectedRoundIndex].steps.length
+						: 0
+			};
+		}
+		showStepTemplateModal = true;
+	}
+
+	function closeStepTemplateModal() {
+		showStepTemplateModal = false;
+		pendingStepInsert = null;
+	}
+
+	function addStepAfterSelected(
+		templateId: Parameters<typeof createStepFromTemplate>[2] = 'blank'
+	) {
+		if (!pendingStepInsert) {
+			if (selectedFlatStep) {
+				addStepToRound(selectedFlatStep.roundIndex, templateId, selectedFlatStep.stepIndex + 1);
+				return;
+			}
+			if (draft.rounds.length === 0) {
+				draft.rounds = [createEmptyRound(1)];
+			}
+			addStepToRound(selectedRoundIndex >= 0 ? selectedRoundIndex : 0, templateId);
 			return;
 		}
-		if (draft.rounds.length === 0) {
-			draft.rounds = [createEmptyRound(1)];
-		}
-		addStepToRound(selectedRoundIndex >= 0 ? selectedRoundIndex : 0);
+		addStepToRound(pendingStepInsert.roundIndex, templateId, pendingStepInsert.stepIndex);
+		closeStepTemplateModal();
 	}
 
 	function removeSelectedStep() {
@@ -840,7 +928,7 @@
 
 		if (modifierPressed && event.shiftKey && event.key.toLowerCase() === 'a') {
 			event.preventDefault();
-			addStepAfterSelected();
+			openStepTemplatePicker();
 			return;
 		}
 
@@ -852,7 +940,7 @@
 
 		if (modifierPressed && (event.key === 'Backspace' || event.key === 'Delete')) {
 			event.preventDefault();
-			removeSelectedStep();
+			requestRemoveSelectedStep();
 			return;
 		}
 
@@ -881,7 +969,6 @@
 	<section class="card flex min-h-0 flex-1 flex-col overflow-hidden p-0">
 		<DefinitionEditorToolbar
 			title={displayDefinition.title}
-			subtitle={toolbarSubtitle}
 			{breadcrumbCurrentLabel}
 			{editingTitle}
 			{saving}
@@ -889,7 +976,7 @@
 			onGoHome={() => goto('/')}
 			onManageDefinitions={() => goto('/definitions')}
 			onSave={saveDefinition}
-			onAddStep={addStepAfterSelected}
+			onAddStep={openStepTemplatePicker}
 			onAddRound={addRound}
 			onOpenDetails={openDefinitionDetailsModal}
 			onStartTitleEdit={beginTitleEdit}
@@ -899,7 +986,7 @@
 
 		<div class="grid min-h-0 flex-1 gap-0 xl:grid-cols-[22rem_minmax(0,1fr)]">
 			<div
-				class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 p-4 xl:border-b-0 xl:border-r"
+				class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 pl-3 pt-2 xl:border-b-0 xl:border-r"
 			>
 				<DefinitionStepSorter
 					rounds={displayDefinition.rounds}
@@ -909,7 +996,8 @@
 					{dropTargetKey}
 					onSelectStep={selectStep}
 					onOpenRoundModal={openRoundModal}
-					onRemoveRound={removeRound}
+					{moveRound}
+					onRemoveRound={requestRemoveRound}
 					{onStepDragStart}
 					{onStepDragMove}
 					{onStepDragEnd}
@@ -924,7 +1012,7 @@
 				/>
 			</div>
 
-			<div class="min-h-0 overflow-hidden bg-white/40 p-4 md:p-6">
+			<div class="min-h-0 overflow-hidden bg-white/40 pt-2">
 				{#if errorMessage}
 					<div class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
 						{errorMessage}
@@ -957,8 +1045,8 @@
 						{uploadKey}
 						onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
 						onSelectStep={selectStep}
-						onAddStepAfter={addStepAfterSelected}
-						onRemoveSelectedStep={removeSelectedStep}
+						onAddStepAfter={openStepTemplatePicker}
+						onRemoveSelectedStep={requestRemoveSelectedStep}
 						onPreview={openPreview}
 						onOpenShortcutHelp={openShortcutHelp}
 						onSetPlayerInputKind={setPlayerInputKind}
@@ -983,7 +1071,7 @@
 						<p class="mt-2 max-w-lg text-slate-600">
 							Create a new step from the sorter or add one to a round to start authoring slides.
 						</p>
-						<button class="btn btn-primary mt-4" type="button" onclick={addStepAfterSelected}>
+						<button class="btn btn-primary mt-4" type="button" onclick={openStepTemplatePicker}>
 							Create First Step
 						</button>
 					</div>
@@ -1027,4 +1115,22 @@
 
 {#if showShortcutHelpModal}
 	<DefinitionShortcutHelpModal groups={shortcutGroups} onClose={closeShortcutHelp} />
+{/if}
+
+{#if showStepTemplateModal}
+	<DefinitionStepTemplateModal
+		templates={STEP_TEMPLATES}
+		onClose={closeStepTemplateModal}
+		onSelectTemplate={addStepAfterSelected}
+	/>
+{/if}
+
+{#if pendingDelete}
+	<DefinitionConfirmModal
+		title={pendingDelete.title}
+		message={pendingDelete.message}
+		confirmLabel={pendingDelete.confirmLabel}
+		onClose={closeDeleteModal}
+		onConfirm={confirmDelete}
+	/>
 {/if}
