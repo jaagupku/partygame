@@ -166,3 +166,56 @@ async def test_host_disabled_host_judged_radio_falls_back_to_exact_text():
     score_event = await service.evaluate_auto_step(lobby)
 
     assert score_event.updates == {"p1": 2}
+
+
+class WeightedCheckboxProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Checkbox scoring",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="checkbox_step",
+                            title="Pick all that apply",
+                            player_input=PlayerInputDefinition(
+                                kind=PlayerInputKind.CHECKBOX,
+                                options=["Mercury", "Venus", "Pluto"],
+                            ),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.MULTI_SELECT_WEIGHTED,
+                                points=99,
+                                answer={
+                                    "option_scores": [
+                                        {"option": "Mercury", "points": 2},
+                                        {"option": "Venus", "points": 3},
+                                        {"option": "Pluto", "points": -1},
+                                    ]
+                                },
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
+@pytest.mark.asyncio
+async def test_multi_select_weighted_evaluation_sums_selected_option_points():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=WeightedCheckboxProvider())
+    lobby = Lobby(id="g4", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", ["Mercury", "Venus"])
+    await service.submit_player_input(lobby, "p2", ["Pluto"])
+    await service.submit_player_input(lobby, "p3", ["Unknown"])
+
+    score_event = await service.evaluate_auto_step(lobby)
+
+    assert score_event.updates == {"p1": 5, "p2": -1}

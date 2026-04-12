@@ -16,8 +16,29 @@ export const EVALUATION_TYPES: EvaluationType[] = [
 	'exact_text',
 	'exact_number',
 	'closest_number',
-	'ordering_match'
+	'ordering_match',
+	'multi_select_weighted'
 ];
+
+export const INPUT_KIND_EVALUATIONS: Record<PlayerInputKind, EvaluationType[]> = {
+	none: ['none'],
+	buzzer: ['host_judged'],
+	text: ['none', 'host_judged', 'exact_text'],
+	number: ['none', 'host_judged', 'exact_number', 'closest_number'],
+	ordering: ['none', 'host_judged', 'ordering_match'],
+	radio: ['none', 'host_judged', 'exact_text'],
+	checkbox: ['none', 'host_judged', 'multi_select_weighted']
+};
+
+export const DEFAULT_EVALUATION_BY_INPUT_KIND: Record<PlayerInputKind, EvaluationType> = {
+	none: 'none',
+	buzzer: 'host_judged',
+	text: 'exact_text',
+	number: 'exact_number',
+	ordering: 'ordering_match',
+	radio: 'exact_text',
+	checkbox: 'multi_select_weighted'
+};
 
 export const MEDIA_TYPES = ['image', 'audio', 'video'] as const;
 export const IMAGE_REVEALS = ['none', 'blur_to_clear', 'blur_circle', 'zoom_out'] as const;
@@ -73,8 +94,35 @@ export function getOrderingAnswer(step: StepDefinition): string[] {
 		: [...step.player_input.options];
 }
 
+export function isCheckboxWeightedAnswer(answer: unknown): answer is CheckboxWeightedAnswer {
+	if (!answer || typeof answer !== 'object' || !('option_scores' in answer)) {
+		return false;
+	}
+	const optionScores = (answer as CheckboxWeightedAnswer).option_scores;
+	return (
+		Array.isArray(optionScores) && optionScores.every((entry) => typeof entry?.option === 'string')
+	);
+}
+
+export function buildCheckboxWeightedAnswer(options: string[]): CheckboxWeightedAnswer {
+	return {
+		option_scores: options.map((option) => ({ option, points: 0 }))
+	};
+}
+
+export function getCheckboxOptionScores(step: StepDefinition): CheckboxOptionScore[] {
+	const entries = isCheckboxWeightedAnswer(step.evaluation.answer)
+		? step.evaluation.answer.option_scores
+		: [];
+	const pointsByOption = new Map(entries.map((entry) => [entry.option, Number(entry.points) || 0]));
+	return step.player_input.options.map((option) => ({
+		option,
+		points: pointsByOption.get(option) ?? 0
+	}));
+}
+
 export function getTextAnswer(step: StepDefinition): string {
-	if (Array.isArray(step.evaluation.answer)) {
+	if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
 		return '';
 	}
 	return String(step.evaluation.answer ?? '');
@@ -85,11 +133,21 @@ export function getNumberAnswer(step: StepDefinition): number | undefined {
 	return Number.isFinite(value) ? value : undefined;
 }
 
-export function normalizeAnswer(step: StepDefinition): unknown {
+export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluation']['answer'] {
 	if (step.evaluation.type_ === 'ordering_match') {
 		return getOrderingAnswer(step)
 			.map((value) => value.trim())
 			.filter(Boolean);
+	}
+	if (step.evaluation.type_ === 'multi_select_weighted') {
+		return {
+			option_scores: getCheckboxOptionScores(step)
+				.map((entry) => ({
+					option: entry.option.trim(),
+					points: Math.trunc(entry.points)
+				}))
+				.filter((entry) => entry.option)
+		};
 	}
 	if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
 		return step.evaluation.answer === '' ? null : Number(step.evaluation.answer);

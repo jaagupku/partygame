@@ -5,9 +5,20 @@
 	import DefinitionEditorToolbar from './DefinitionEditorToolbar.svelte';
 	import DefinitionPreviewModal from './DefinitionPreviewModal.svelte';
 	import DefinitionRoundModal from './DefinitionRoundModal.svelte';
+	import DefinitionShortcutHelpModal from './DefinitionShortcutHelpModal.svelte';
 	import DefinitionStepEditor from './DefinitionStepEditor.svelte';
 	import DefinitionStepSorter from './DefinitionStepSorter.svelte';
-	import { MEDIA_TYPES, buildFlatSteps, buildRuntimePreviewStep, normalizeAnswer } from './helpers';
+	import {
+		DEFAULT_EVALUATION_BY_INPUT_KIND,
+		MEDIA_TYPES,
+		INPUT_KIND_EVALUATIONS,
+		buildCheckboxWeightedAnswer,
+		buildFlatSteps,
+		buildRuntimePreviewStep,
+		getCheckboxOptionScores,
+		isCheckboxWeightedAnswer,
+		normalizeAnswer
+	} from './helpers';
 
 	interface DefinitionEditorProps {
 		definitionId?: string;
@@ -42,6 +53,7 @@
 	let showAdvancedFields = $state(false);
 	let showRoundAdvancedFields = $state(false);
 	let showPreviewModal = $state(false);
+	let showShortcutHelpModal = $state(false);
 	let showDefinitionDetailsModal = $state(false);
 	let definitionDescriptionDraft = $state('');
 	let definitionIdDraft = $state('');
@@ -68,6 +80,32 @@
 	const toolbarSubtitle = $derived(
 		isNewDefinition ? 'New definition' : `Editing ${draft.id || 'draft definition'}`
 	);
+	const breadcrumbCurrentLabel = $derived(isNewDefinition ? 'New Definition' : 'Edit Definition');
+	const shortcutGroups = [
+		{
+			title: 'Navigation',
+			items: [
+				{ keys: 'Alt + ArrowUp', label: 'Previous Step' },
+				{ keys: 'Alt + ArrowDown', label: 'Next Step' }
+			]
+		},
+		{
+			title: 'Editing',
+			items: [
+				{ keys: 'Cmd/Ctrl + S', label: 'Save Definition' },
+				{ keys: 'Cmd/Ctrl + Shift + A', label: 'Add Step After' },
+				{ keys: 'Cmd/Ctrl + ,', label: 'Toggle Advanced Fields' },
+				{ keys: 'Cmd/Ctrl + Backspace/Delete', label: 'Delete Step' }
+			]
+		},
+		{
+			title: 'View',
+			items: [
+				{ keys: 'Cmd/Ctrl + Shift + P', label: 'Preview' },
+				{ keys: '?', label: 'Open Shortcut Help' }
+			]
+		}
+	];
 
 	onMount(async () => {
 		await loadEditor();
@@ -152,7 +190,7 @@
 				step: undefined
 			},
 			evaluation: {
-				type_: 'host_judged',
+				type_: 'exact_text',
 				points: 1,
 				answer: ''
 			},
@@ -166,6 +204,22 @@
 
 	function selectStep(stepKey: string | undefined) {
 		selectedStepKey = stepKey ?? null;
+	}
+
+	function openPreview() {
+		showPreviewModal = true;
+	}
+
+	function closePreview() {
+		showPreviewModal = false;
+	}
+
+	function openShortcutHelp() {
+		showShortcutHelpModal = true;
+	}
+
+	function closeShortcutHelp() {
+		showShortcutHelpModal = false;
 	}
 
 	function beginTitleEdit() {
@@ -287,17 +341,57 @@
 			nextFlatSteps[Math.min(globalIndex, Math.max(0, nextFlatSteps.length - 1))]?.stepKey ?? null;
 	}
 
+	function syncCheckboxWeightedAnswer(step: StepDefinition) {
+		const fallbackAnswer = buildCheckboxWeightedAnswer(step.player_input.options);
+		const currentEntries = isCheckboxWeightedAnswer(step.evaluation.answer)
+			? step.evaluation.answer.option_scores
+			: fallbackAnswer.option_scores;
+		const pointsByOption = new Map(currentEntries.map((entry) => [entry.option, entry.points]));
+		step.evaluation.answer = {
+			option_scores: step.player_input.options.map((option) => ({
+				option,
+				points: pointsByOption.get(option) ?? 0
+			}))
+		};
+	}
+
+	function applyEvaluationDefaults(step: StepDefinition) {
+		const allowedEvaluations = INPUT_KIND_EVALUATIONS[step.player_input.kind];
+		if (!allowedEvaluations.includes(step.evaluation.type_)) {
+			setEvaluationType(step, DEFAULT_EVALUATION_BY_INPUT_KIND[step.player_input.kind]);
+			return;
+		}
+
+		if (step.evaluation.type_ === 'ordering_match') {
+			step.evaluation.answer = [...step.player_input.options];
+			return;
+		}
+		if (step.evaluation.type_ === 'multi_select_weighted') {
+			syncCheckboxWeightedAnswer(step);
+			return;
+		}
+		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
+			const currentAnswer = String(step.evaluation.answer ?? '');
+			step.evaluation.answer =
+				step.player_input.options.find((option) => option === currentAnswer) ??
+				step.player_input.options[0] ??
+				'';
+			return;
+		}
+		if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
+			step.evaluation.answer = Number(step.evaluation.answer ?? 0);
+			return;
+		}
+		if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
+			step.evaluation.answer = '';
+		}
+	}
+
 	function setPlayerInputKind(step: StepDefinition, kind: PlayerInputKind) {
 		step.player_input.kind = kind;
 		if (kind === 'ordering' || kind === 'radio' || kind === 'checkbox') {
 			if (step.player_input.options.length < 2) {
 				step.player_input.options = ['Option 1', 'Option 2'];
-			}
-			if (kind === 'ordering' && !Array.isArray(step.evaluation.answer)) {
-				step.evaluation.answer = [...step.player_input.options];
-			}
-			if ((kind === 'radio' || kind === 'checkbox') && Array.isArray(step.evaluation.answer)) {
-				step.evaluation.answer = step.player_input.options[0] ?? '';
 			}
 		} else {
 			step.player_input.options = [];
@@ -307,9 +401,7 @@
 			step.player_input.max_value = undefined;
 			step.player_input.step = undefined;
 		}
-		if (kind === 'buzzer') {
-			step.evaluation.type_ = 'host_judged';
-		}
+		applyEvaluationDefaults(step);
 	}
 
 	function setEvaluationType(step: StepDefinition, evaluationType: EvaluationType) {
@@ -322,7 +414,23 @@
 			step.evaluation.answer = Number(step.evaluation.answer ?? 0);
 			return;
 		}
-		if (Array.isArray(step.evaluation.answer)) {
+		if (evaluationType === 'multi_select_weighted') {
+			syncCheckboxWeightedAnswer(step);
+			return;
+		}
+		if (evaluationType === 'exact_text' && step.player_input.kind === 'radio') {
+			const currentAnswer = String(step.evaluation.answer ?? '');
+			step.evaluation.answer =
+				step.player_input.options.find((option) => option === currentAnswer) ??
+				step.player_input.options[0] ??
+				'';
+			return;
+		}
+		if (evaluationType === 'none') {
+			step.evaluation.answer = null;
+			return;
+		}
+		if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
 			step.evaluation.answer = '';
 		}
 	}
@@ -331,13 +439,32 @@
 		step.player_input.options.push(`Option ${step.player_input.options.length + 1}`);
 		if (step.evaluation.type_ === 'ordering_match') {
 			step.evaluation.answer = [...step.player_input.options];
+			return;
+		}
+		if (step.evaluation.type_ === 'multi_select_weighted') {
+			syncCheckboxWeightedAnswer(step);
+			return;
+		}
+		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
+			step.evaluation.answer = step.player_input.options[0] ?? '';
 		}
 	}
 
 	function removeInputOption(step: StepDefinition, optionIndex: number) {
+		const removedOption = step.player_input.options[optionIndex];
 		step.player_input.options.splice(optionIndex, 1);
 		if (step.evaluation.type_ === 'ordering_match') {
 			step.evaluation.answer = [...step.player_input.options];
+			return;
+		}
+		if (step.evaluation.type_ === 'multi_select_weighted') {
+			syncCheckboxWeightedAnswer(step);
+			return;
+		}
+		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
+			if (step.evaluation.answer === removedOption) {
+				step.evaluation.answer = step.player_input.options[0] ?? '';
+			}
 		}
 	}
 
@@ -347,6 +474,41 @@
 			: [...step.player_input.options];
 		answer[optionIndex] = value;
 		step.evaluation.answer = answer;
+	}
+
+	function setInputOptionValue(step: StepDefinition, optionIndex: number, value: string) {
+		const previousValue = step.player_input.options[optionIndex] ?? '';
+		const previousCheckboxScores = getCheckboxOptionScores(step);
+		step.player_input.options[optionIndex] = value;
+		if (step.evaluation.type_ === 'ordering_match') {
+			step.evaluation.answer = [...step.player_input.options];
+			return;
+		}
+		if (step.evaluation.type_ === 'multi_select_weighted') {
+			const currentScores = step.player_input.options.map((option, index) =>
+				index === optionIndex
+					? { option: value, points: previousCheckboxScores[index]?.points ?? 0 }
+					: { option, points: previousCheckboxScores[index]?.points ?? 0 }
+			);
+			step.evaluation.answer = { option_scores: currentScores };
+			return;
+		}
+		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
+			if (step.evaluation.answer === previousValue) {
+				step.evaluation.answer = value;
+			}
+		}
+	}
+
+	function setRadioCorrectOption(step: StepDefinition, option: string) {
+		step.evaluation.answer = option;
+	}
+
+	function setCheckboxOptionPoints(step: StepDefinition, optionIndex: number, points: number) {
+		const nextScores = getCheckboxOptionScores(step).map((entry, index) =>
+			index === optionIndex ? { ...entry, points } : entry
+		);
+		step.evaluation.answer = { option_scores: nextScores };
 	}
 
 	function addMedia(step: StepDefinition) {
@@ -633,19 +795,100 @@
 		}
 		dropTargetKey = key;
 	}
+
+	function isTextEditingTarget(target: EventTarget | null) {
+		const element = target instanceof HTMLElement ? target : null;
+		if (!element) {
+			return false;
+		}
+		const tagName = element.tagName.toLowerCase();
+		return (
+			tagName === 'input' ||
+			tagName === 'textarea' ||
+			tagName === 'select' ||
+			element.isContentEditable
+		);
+	}
+
+	function selectRelativeStep(offset: -1 | 1) {
+		if (selectedStepPosition < 0) {
+			return;
+		}
+		selectStep(flatSteps[selectedStepPosition + offset]?.stepKey);
+	}
+
+	function handleEditorShortcuts(event: KeyboardEvent) {
+		const isMac = navigator.platform.toLowerCase().includes('mac');
+		const modifierPressed = isMac ? event.metaKey : event.ctrlKey;
+		const isTypingTarget = isTextEditingTarget(event.target);
+
+		if (modifierPressed && event.key.toLowerCase() === 's') {
+			event.preventDefault();
+			saveDefinition();
+			return;
+		}
+
+		if (modifierPressed && event.shiftKey && event.key.toLowerCase() === 'p') {
+			event.preventDefault();
+			openPreview();
+			return;
+		}
+
+		if (isTypingTarget) {
+			return;
+		}
+
+		if (modifierPressed && event.shiftKey && event.key.toLowerCase() === 'a') {
+			event.preventDefault();
+			addStepAfterSelected();
+			return;
+		}
+
+		if (modifierPressed && event.key === ',') {
+			event.preventDefault();
+			showAdvancedFields = !showAdvancedFields;
+			return;
+		}
+
+		if (modifierPressed && (event.key === 'Backspace' || event.key === 'Delete')) {
+			event.preventDefault();
+			removeSelectedStep();
+			return;
+		}
+
+		if (event.altKey && event.key === 'ArrowUp') {
+			event.preventDefault();
+			selectRelativeStep(-1);
+			return;
+		}
+
+		if (event.altKey && event.key === 'ArrowDown') {
+			event.preventDefault();
+			selectRelativeStep(1);
+			return;
+		}
+
+		if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key === '?') {
+			event.preventDefault();
+			openShortcutHelp();
+		}
+	}
 </script>
+
+<svelte:window onkeydown={handleEditorShortcuts} />
 
 <div class="flex h-full min-h-0 flex-col">
 	<section class="card flex min-h-0 flex-1 flex-col overflow-hidden p-0">
 		<DefinitionEditorToolbar
 			title={displayDefinition.title}
 			subtitle={toolbarSubtitle}
+			{breadcrumbCurrentLabel}
 			{editingTitle}
 			{saving}
 			{loadingEditor}
-			onBack={() => goto('/definitions')}
+			onGoHome={() => goto('/')}
+			onManageDefinitions={() => goto('/definitions')}
 			onSave={saveDefinition}
-			onPreview={() => (showPreviewModal = true)}
 			onAddStep={addStepAfterSelected}
 			onAddRound={addRound}
 			onOpenDetails={openDefinitionDetailsModal}
@@ -716,11 +959,16 @@
 						onSelectStep={selectStep}
 						onAddStepAfter={addStepAfterSelected}
 						onRemoveSelectedStep={removeSelectedStep}
+						onPreview={openPreview}
+						onOpenShortcutHelp={openShortcutHelp}
 						onSetPlayerInputKind={setPlayerInputKind}
 						onSetEvaluationType={setEvaluationType}
 						onAddInputOption={addInputOption}
 						onRemoveInputOption={removeInputOption}
+						onSetInputOptionValue={setInputOptionValue}
 						onSetOrderingAnswer={setOrderingAnswer}
+						onSetRadioCorrectOption={setRadioCorrectOption}
+						onSetCheckboxOptionPoints={setCheckboxOptionPoints}
 						onAddMedia={addMedia}
 						onRemoveMedia={removeMedia}
 						onUpdateMediaType={updateMediaType}
@@ -774,9 +1022,9 @@
 {/if}
 
 {#if showPreviewModal}
-	<DefinitionPreviewModal
-		step={previewStep}
-		countdown={previewCountdown}
-		onClose={() => (showPreviewModal = false)}
-	/>
+	<DefinitionPreviewModal step={previewStep} countdown={previewCountdown} onClose={closePreview} />
+{/if}
+
+{#if showShortcutHelpModal}
+	<DefinitionShortcutHelpModal groups={shortcutGroups} onClose={closeShortcutHelp} />
 {/if}

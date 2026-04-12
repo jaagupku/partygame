@@ -145,7 +145,10 @@
 		</p>
 	</div>
 
-	<div bind:this={sorterScroller} class="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+	<div
+		bind:this={sorterScroller}
+		class="mt-4 min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1"
+	>
 		{#each rounds as round, roundIndex}
 			<div class="mb-5">
 				<div class="sticky top-0 z-10 mb-2 rounded-2xl bg-sky-50 px-3 py-2 shadow-sm">
@@ -193,14 +196,14 @@
 				{:else}
 					{#each flatSteps.filter((candidate) => candidate.roundIndex === roundIndex) as item, itemIndex (item.stepKey)}
 						{@const step = item.step}
-						<div animate:flip={{ duration: 180, easing: (t) => t }}>
+						<div class="min-w-0" animate:flip={{ duration: 180, easing: (t) => t }}>
 							{#if isDropTargetActive(roundIndex, itemIndex)}
 								<div
 									class="mb-1 h-2 rounded-full border-2 border-dashed border-sky-400 bg-sky-100"
 								></div>
 							{/if}
 							<button
-								class={`w-full rounded-3xl border p-4 text-left shadow-sm transition ${
+								class={`w-full min-w-0 rounded-3xl border p-4 text-left shadow-sm transition ${
 									selectedStepKey === item.stepKey
 										? 'border-sky-400 bg-sky-50 shadow-md'
 										: draggedStepKey === item.stepKey

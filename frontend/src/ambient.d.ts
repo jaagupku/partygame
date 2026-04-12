@@ -7,7 +7,17 @@ type EvaluationType =
 	| 'exact_text'
 	| 'exact_number'
 	| 'closest_number'
-	| 'ordering_match';
+	| 'ordering_match'
+	| 'multi_select_weighted';
+
+type CheckboxOptionScore = {
+	option: string;
+	points: number;
+};
+
+type CheckboxWeightedAnswer = {
+	option_scores: CheckboxOptionScore[];
+};
 
 type Lobby = {
 	id: string;
@@ -82,7 +92,7 @@ type StepDefinition = {
 	evaluation: {
 		type_: EvaluationType;
 		points: number;
-		answer?: unknown;
+		answer?: string | number | string[] | CheckboxWeightedAnswer | null;
 	};
 	host_behavior: {
 		reveal_answers: boolean;

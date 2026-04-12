@@ -20,6 +20,14 @@
 
 <div class="flex flex-wrap items-start justify-between gap-4">
 	<div>
+		<nav
+			class="mb-2 flex flex-wrap items-center gap-2 text-sm text-slate-500"
+			aria-label="Breadcrumb"
+		>
+			<button class="transition hover:text-slate-700" onclick={() => goto('/')}>Home</button>
+			<span aria-hidden="true">/</span>
+			<span aria-current="page" class="font-semibold text-slate-700">Manage Definitions</span>
+		</nav>
 		<h1 class="page-title text-left">Manage Definitions</h1>
 		<p class="page-subtitle text-left">
 			Browse your saved game definitions and jump into the editor when you want to create or update
@@ -27,9 +35,8 @@
 		</p>
 	</div>
 	<div class="flex flex-wrap gap-3">
-		<button class="btn btn-ghost text-lg" onclick={() => goto('/create')}
-			>Back to Create Game</button
-		>
+		<button class="btn btn-ghost text-lg" onclick={() => goto('/')}>Home</button>
+		<button class="btn btn-ghost text-lg" onclick={() => goto('/create')}>Create Game</button>
 		<button class="btn btn-accent text-lg" onclick={() => goto('/definitions/new')}
 			>Create Definition</button
 		>
