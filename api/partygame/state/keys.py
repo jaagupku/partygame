@@ -1,5 +1,9 @@
 class GameKeyFactory:
     @staticmethod
+    def game_keys(game_id: str) -> str:
+        return f"game:{game_id}:keys"
+
+    @staticmethod
     def game_meta(game_id: str) -> str:
         return f"game:{game_id}:meta"
 

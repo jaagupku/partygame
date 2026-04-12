@@ -6,6 +6,7 @@ def test_game_key_factory_shapes():
     player_id = "p1"
     component_id = "c1"
 
+    assert GameKeyFactory.game_keys(game_id) == "game:g1:keys"
     assert GameKeyFactory.game_meta(game_id) == "game:g1:meta"
     assert GameKeyFactory.game_scores(game_id) == "game:g1:scores"
     assert GameKeyFactory.game_player(game_id, player_id) == "game:g1:players:p1"

@@ -11,8 +11,13 @@ class GameStateRepository:
     def __init__(self, redis: Redis):
         self.redis = redis
 
+    async def register_game_key(self, game_id: str, key: str):
+        await self.redis.sadd(GameKeyFactory.game_keys(game_id), key)
+
     async def reserve_join_code(self, join_code: str, game_id: str):
-        await self.redis.set(GameKeyFactory.join_code(join_code), game_id)
+        join_key = GameKeyFactory.join_code(join_code)
+        await self.redis.set(join_key, game_id)
+        await self.register_game_key(game_id, join_key)
 
     async def get_game_id_from_join_code(self, join_code: str) -> str | None:
         return await self.redis.get(GameKeyFactory.join_code(join_code))
@@ -25,7 +30,9 @@ class GameStateRepository:
         meta.setdefault("current_step", 0)
         meta.setdefault("phase", "waiting")
         serialized = {key: str(value) for key, value in meta.items()}
-        await self.redis.hset(GameKeyFactory.game_meta(lobby.id), mapping=serialized)
+        meta_key = GameKeyFactory.game_meta(lobby.id)
+        await self.redis.hset(meta_key, mapping=serialized)
+        await self.register_game_key(lobby.id, meta_key)
 
     async def lobby_exists(self, game_id: str) -> bool:
         return await self.redis.hexists(GameKeyFactory.game_meta(game_id), "id")
@@ -55,7 +62,9 @@ class GameStateRepository:
     async def set_lobby_fields(self, game_id: str, **fields):
         update_fields = {k: str(v) for k, v in fields.items() if v is not None}
         if update_fields:
-            await self.redis.hset(GameKeyFactory.game_meta(game_id), mapping=update_fields)
+            meta_key = GameKeyFactory.game_meta(game_id)
+            await self.redis.hset(meta_key, mapping=update_fields)
+            await self.register_game_key(game_id, meta_key)
 
     async def get_player_ids(self, game_id: str, withscores: bool = True):
         return await self.redis.zrange(
@@ -71,6 +80,8 @@ class GameStateRepository:
         await self.redis.zadd(
             GameKeyFactory.game_scores(player.game_id), mapping={player.id: player.score}
         )
+        await self.register_game_key(player.game_id, key)
+        await self.register_game_key(player.game_id, GameKeyFactory.game_scores(player.game_id))
 
     async def get_player(self, game_id: str, player_id: str) -> schemas.Player | None:
         key = GameKeyFactory.game_player(game_id, player_id)
@@ -103,14 +114,18 @@ class GameStateRepository:
         player_id: str,
         status: schemas.ConnectionStatus,
     ):
-        await self.redis.hset(GameKeyFactory.game_player(game_id, player_id), "status", str(status))
+        player_key = GameKeyFactory.game_player(game_id, player_id)
+        await self.redis.hset(player_key, "status", str(status))
+        await self.register_game_key(game_id, player_key)
 
     async def get_player_score(self, game_id: str, player_id: str) -> int:
         score = await self.redis.zscore(GameKeyFactory.game_scores(game_id), player_id)
         return int(score or 0)
 
     async def set_player_score(self, game_id: str, player_id: str, score: int):
-        await self.redis.zadd(GameKeyFactory.game_scores(game_id), mapping={player_id: score})
+        score_key = GameKeyFactory.game_scores(game_id)
+        await self.redis.zadd(score_key, mapping={player_id: score})
+        await self.register_game_key(game_id, score_key)
 
     async def set_component_state(
         self,
@@ -126,9 +141,9 @@ class GameStateRepository:
                 serialized[key] = ""
             else:
                 serialized[key] = str(value)
-        await self.redis.hset(
-            GameKeyFactory.game_component(game_id, component_id), mapping=serialized
-        )
+        component_key = GameKeyFactory.game_component(game_id, component_id)
+        await self.redis.hset(component_key, mapping=serialized)
+        await self.register_game_key(game_id, component_key)
 
     async def get_component_state(self, game_id: str, component_id: str) -> dict:
         data = await self.redis.hgetall(GameKeyFactory.game_component(game_id, component_id))
@@ -158,7 +173,9 @@ class GameStateRepository:
                 serialized[key] = ""
             else:
                 serialized[key] = str(value)
-        await self.redis.hset(GameKeyFactory.game_steps(game_id), mapping=serialized)
+        step_key = GameKeyFactory.game_steps(game_id)
+        await self.redis.hset(step_key, mapping=serialized)
+        await self.register_game_key(game_id, step_key)
 
     async def get_step_cache(self, game_id: str) -> dict:
         data = await self.redis.hgetall(GameKeyFactory.game_steps(game_id))
@@ -187,3 +204,29 @@ class GameStateRepository:
             for channel, payload in channel_payloads:
                 pipe.publish(channel, payload)
             await pipe.execute()
+
+    async def count_connected_players(self, game_id: str) -> int:
+        player_ids = await self.get_player_ids(game_id, withscores=False)
+        connected = 0
+        for player_id in player_ids:
+            if await self.redis.hget(
+                GameKeyFactory.game_player(game_id, player_id), "status"
+            ) == str(schemas.ConnectionStatus.CONNECTED):
+                connected += 1
+        return connected
+
+    async def apply_game_ttl(self, game_id: str, ttl_seconds: int):
+        registry_key = GameKeyFactory.game_keys(game_id)
+        keys = await self.redis.smembers(registry_key)
+        async with self.redis.pipeline(transaction=False) as pipe:
+            for key in keys:
+                pipe.expire(key, ttl_seconds)
+            pipe.expire(registry_key, ttl_seconds)
+            await pipe.execute()
+
+    async def delete_game(self, game_id: str):
+        registry_key = GameKeyFactory.game_keys(game_id)
+        keys = list(await self.redis.smembers(registry_key))
+        keys.append(registry_key)
+        if keys:
+            await self.redis.delete(*keys)

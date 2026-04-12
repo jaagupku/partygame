@@ -56,6 +56,8 @@ class FakeRepo:
         self.created_player: schemas.Player | None = None
         self.set_lobby_calls: list[tuple[str, dict]] = []
         self.status_updates: list[tuple[str, str, schemas.ConnectionStatus]] = []
+        self.applied_ttls: list[tuple[str, int]] = []
+        self.connected_players = 0
 
     async def create_player(self, player: schemas.Player):
         self.created_player = player
@@ -70,6 +72,12 @@ class FakeRepo:
         self, game_id: str, player_id: str, status: schemas.ConnectionStatus
     ):
         self.status_updates.append((game_id, player_id, status))
+
+    async def apply_game_ttl(self, game_id: str, ttl_seconds: int):
+        self.applied_ttls.append((game_id, ttl_seconds))
+
+    async def count_connected_players(self, game_id: str) -> int:
+        return self.connected_players
 
 
 @pytest.mark.asyncio
@@ -92,6 +100,7 @@ async def test_create_assigns_first_host_and_publishes_display_events(monkeypatc
 
     assert repo.created_player == player
     assert repo.set_lobby_calls == [("g1", {"host_id": player.id})]
+    assert repo.applied_ttls == [("g1", 3600)]
     assert published == [
         (
             GameKeyFactory.display_channel("g1"),
@@ -171,6 +180,7 @@ async def test_host_controller_subscribes_to_command_channel(monkeypatch):
             schemas.PlayerConnectedEvent(player_id="p1"),
         )
     ]
+    assert repo.applied_ttls == [("g1", 3600)]
 
 
 @pytest.mark.asyncio
@@ -201,6 +211,96 @@ async def test_host_processes_own_commands_without_command_channel_roundtrip(mon
 
     assert called["refresh"] == 1
     assert called["process"] == ['{"type_": "start_game"}']
+
+
+@pytest.mark.asyncio
+async def test_disconnect_refreshes_idle_ttl_when_last_player_leaves(monkeypatch):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
+    player = schemas.Player(id="p1", game_id="g1", name="Host")
+    websocket = FakeWebSocket()
+    repo = FakeRepo(lobby)
+    published: list[tuple[str, object]] = []
+
+    async def fake_publish(redis, channel, payload):
+        published.append((channel, payload))
+
+    controller = player_service.ClientController(
+        websocket, redis=object(), lobby=lobby, player=player
+    )
+    controller.repo = repo
+    repo.connected_players = 0
+
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+
+    await controller.disconnect()
+
+    assert repo.status_updates == [("g1", "p1", schemas.ConnectionStatus.DISCONNECTED)]
+    assert repo.applied_ttls == [("g1", 3600)]
+    assert published == [
+        (
+            GameKeyFactory.display_channel("g1"),
+            schemas.PlayerDisconnectedEvent(player_id="p1"),
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_finished_lobby_does_not_refresh_idle_ttl_on_connect_or_command(monkeypatch):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1", phase="finished")
+    player = schemas.Player(id="p1", game_id="g1", name="Host")
+    pubsub = FakePubSub()
+    redis = FakeRedis(pubsub)
+    repo = FakeRepo(lobby)
+    websocket = FakeWebSocket()
+
+    snapshot = schemas.RuntimeSnapshotEvent(
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            host_id=lobby.host_id,
+            state=lobby.state,
+            phase=lobby.phase,
+            current_step=lobby.current_step,
+        )
+    )
+
+    def fake_create_task(coroutine):
+        coroutine.close()
+        return DummyTask()
+
+    async def sync_lobby(_lobby):
+        return snapshot
+
+    async def submissions(_lobby):
+        return schemas.SubmissionsUpdatedEvent()
+
+    async def build_snapshot(_lobby):
+        return snapshot
+
+    async def fake_publish(redis, channel, payload):
+        return None
+
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+    monkeypatch.setattr(player_service.asyncio, "create_task", fake_create_task)
+
+    controller = player_service.ClientController(websocket, redis, lobby, player)
+    controller.repo = repo
+    controller.runtime = SimpleNamespace(
+        sync_lobby=sync_lobby,
+        build_submissions_event=submissions,
+        build_snapshot=build_snapshot,
+    )
+
+    await controller.connect()
+
+    async def fake_process_controller(_message: str):
+        return None
+
+    monkeypatch.setattr(controller, "process_controller", fake_process_controller)
+    await controller.process_input({"type_": "start_game"})
+
+    assert repo.applied_ttls == []
 
 
 def test_start_game_event_is_exported_from_schemas():
