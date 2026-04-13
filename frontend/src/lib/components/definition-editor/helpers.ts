@@ -404,6 +404,62 @@ export type StepHealthIssue = {
 	icon: string;
 };
 
+export function getHostlessEvaluationType(step: StepDefinition): EvaluationType {
+	if (step.evaluation.type_ !== 'host_judged') {
+		return step.evaluation.type_;
+	}
+	if (step.player_input.kind === 'text' || step.player_input.kind === 'radio') {
+		return 'exact_text';
+	}
+	if (step.player_input.kind === 'number') {
+		return 'exact_number';
+	}
+	if (step.player_input.kind === 'ordering') {
+		return 'ordering_match';
+	}
+	return 'none';
+}
+
+export function isHostlessInformationSlide(step: StepDefinition): boolean {
+	return step.player_input.kind === 'none' && step.evaluation.type_ === 'none';
+}
+
+export function hasUsableHostlessAnswer(step: StepDefinition): boolean {
+	const evaluationType = getHostlessEvaluationType(step);
+	if (evaluationType === 'exact_text') {
+		return getTextAnswer(step).trim().length > 0;
+	}
+	if (evaluationType === 'exact_number' || evaluationType === 'closest_number') {
+		return Number.isFinite(Number(step.evaluation.answer));
+	}
+	if (evaluationType === 'ordering_match') {
+		return getOrderingAnswer(step).some((value) => value.trim().length > 0);
+	}
+	if (evaluationType === 'multi_select_weighted') {
+		return getCheckboxOptionScores(step).length > 0;
+	}
+	return false;
+}
+
+export function isHostlessCompatibleStep(step: StepDefinition): boolean {
+	if (step.player_input.kind === 'buzzer') {
+		return false;
+	}
+	if (isHostlessInformationSlide(step)) {
+		return true;
+	}
+	const evaluationType = getHostlessEvaluationType(step);
+	return (
+		[
+			'exact_text',
+			'exact_number',
+			'closest_number',
+			'ordering_match',
+			'multi_select_weighted'
+		].includes(evaluationType) && hasUsableHostlessAnswer(step)
+	);
+}
+
 export function getStepHealthIssues(step: StepDefinition): StepHealthIssue[] {
 	const issues: StepHealthIssue[] = [];
 	const health = getMessages().editor.health;
@@ -454,6 +510,20 @@ export function getStepHealthIssues(step: StepDefinition): StepHealthIssue[] {
 			id: 'missing-timer',
 			label: health.missingTimer,
 			icon: 'fluent:timer-off-16-filled'
+		});
+	}
+
+	if (!isHostlessCompatibleStep(step)) {
+		const label =
+			step.evaluation.type_ === 'host_judged' && step.player_input.kind === 'checkbox'
+				? health.hostlessCheckboxReview
+				: step.evaluation.type_ !== 'none' && !hasUsableHostlessAnswer(step)
+					? health.hostlessMissingAnswer
+					: health.hostlessSkipped;
+		issues.push({
+			id: 'hostless-incompatible',
+			label,
+			icon: 'fluent:person-prohibited-16-filled'
 		});
 	}
 
@@ -526,6 +596,11 @@ export function buildCheckboxWeightedAnswer(options: string[]): CheckboxWeighted
 		option_scores: options.map((option) => ({ option, points: 0 }))
 	};
 }
+
+export type CheckboxOptionScore = {
+	option: string;
+	points: number;
+};
 
 export function getCheckboxOptionScores(step: StepDefinition): CheckboxOptionScore[] {
 	const entries = isCheckboxWeightedAnswer(step.evaluation.answer)

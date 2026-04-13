@@ -100,6 +100,7 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.lobbyPhase = event.lobby.phase;
 	state.currentStep = event.lobby.current_step;
 	state.hostEnabled = event.lobby.host_enabled;
+	state.starterPlayerId = event.lobby.starter_id;
 	state.isHost = event.lobby.host_id === state.id;
 	state.activeStep = event.active_step;
 	state.displayPhase = event.display_phase;
@@ -143,6 +144,9 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 		}
 		if (changes.lobby.host_enabled !== undefined) {
 			state.hostEnabled = changes.lobby.host_enabled;
+		}
+		if ('starter_id' in changes.lobby) {
+			state.starterPlayerId = changes.lobby.starter_id;
 		}
 		if ('host_id' in changes.lobby) {
 			state.isHost = changes.lobby.host_id === state.id;

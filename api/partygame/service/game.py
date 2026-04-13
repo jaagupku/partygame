@@ -19,7 +19,20 @@ from partygame.state import GameStateRepository
 
 END_GAME_COMPONENT_ID = "end_game"
 PLAYER_METRICS_COMPONENT_ID = "player_metrics"
-END_GAME_SEQUENCE_STAGES = ("podium", "stats", "scoreboard")
+END_GAME_SEQUENCE_STAGES = (
+    "third_place",
+    "second_place",
+    "first_place",
+    "stats",
+    "scoreboard",
+)
+HOSTLESS_AUTO_EVALUATION_TYPES = {
+    EvaluationType.EXACT_TEXT,
+    EvaluationType.EXACT_NUMBER,
+    EvaluationType.CLOSEST_NUMBER,
+    EvaluationType.ORDERING_MATCH,
+    EvaluationType.MULTI_SELECT_WEIGHTED,
+}
 
 
 class GameRuntimeService:
@@ -31,22 +44,37 @@ class GameRuntimeService:
         self.repo = repo
         self.definition_provider = definition_provider or FileDefinitionProvider()
 
-    async def _flatten_steps(self, lobby: schemas.Lobby) -> list[StepDefinition]:
+    async def _flatten_steps_with_metadata(
+        self,
+        lobby: schemas.Lobby,
+    ) -> list[tuple[StepDefinition, bool]]:
         definition_id = lobby.definition_id or "quiz_demo"
         definition = await self.definition_provider.load(definition_id)
-        steps: list[StepDefinition] = []
+        steps: list[tuple[StepDefinition, bool]] = []
         for round_definition in definition.rounds:
-            for step in round_definition.steps:
-                if not lobby.host_enabled and step.player_input.kind == PlayerInputKind.BUZZER:
-                    continue
-                steps.append(step)
+            compatible_steps = [
+                step
+                for step in round_definition.steps
+                if lobby.host_enabled or self._is_hostless_compatible_step(lobby, step)
+            ]
+            for index, step in enumerate(compatible_steps):
+                steps.append((step, index == len(compatible_steps) - 1))
         return steps
 
+    async def _flatten_steps(self, lobby: schemas.Lobby) -> list[StepDefinition]:
+        return [step for step, _is_round_end in await self._flatten_steps_with_metadata(lobby)]
+
     async def get_current_step(self, lobby: schemas.Lobby) -> StepDefinition | None:
-        steps = await self._flatten_steps(lobby)
+        steps = await self._flatten_steps_with_metadata(lobby)
         if lobby.current_step >= len(steps):
             return None
-        return steps[lobby.current_step]
+        return steps[lobby.current_step][0]
+
+    async def is_current_step_round_end(self, lobby: schemas.Lobby) -> bool:
+        steps = await self._flatten_steps_with_metadata(lobby)
+        if lobby.current_step >= len(steps):
+            return False
+        return steps[lobby.current_step][1]
 
     async def start_game(self, lobby: schemas.Lobby) -> tuple[schemas.Lobby, StepDefinition | None]:
         await self._initialize_end_game_state(lobby.id, auto_reveal=not lobby.host_enabled)
@@ -154,6 +182,12 @@ class GameRuntimeService:
             return [], False
         answers[player_id] = value
         await self.repo.set_step_cache(lobby.id, {"answers": answers})
+        if (
+            not lobby.host_enabled
+            and self._is_hostless_auto_progress_step(lobby, step)
+            and await self._all_answerable_players_submitted(lobby, state | {"answers": answers})
+        ):
+            return await self.close_step(lobby), True
         return [], True
 
     async def set_buzzer_state(self, lobby: schemas.Lobby, active: bool) -> list[schemas.BaseEvent]:
@@ -576,11 +610,15 @@ class GameRuntimeService:
         await self.repo.set_lobby_fields(lobby.id, phase=phase)
         lobby.phase = phase
         if phase == "step_complete":
-            step_updates = (
-                {"display_phase": "question_active"}
-                if self._should_skip_answer_reveal(lobby, step)
-                else {"display_phase": "answer_reveal"} | self._answer_reveal_updates(step)
-            )
+            if self._should_skip_answer_reveal(lobby, step):
+                step_updates = {"display_phase": "question_active"}
+            else:
+                step_updates = {
+                    "display_phase": "answer_reveal",
+                    "scoreboard_visible": (
+                        not lobby.host_enabled and await self.is_current_step_round_end(lobby)
+                    ),
+                } | self._answer_reveal_updates(step)
             await self.repo.set_step_cache(lobby.id, step_updates)
         events.append(await self.build_snapshot(lobby))
         return events
@@ -598,6 +636,7 @@ class GameRuntimeService:
                 {
                     "revealed": not lobby.host_enabled,
                     "sequence_stage": END_GAME_SEQUENCE_STAGES[0],
+                    "autoplay_enabled": not lobby.host_enabled,
                 },
             )
             await self.repo.apply_game_ttl(lobby.id, settings.GAME_FINISHED_TTL_SECONDS)
@@ -651,7 +690,7 @@ class GameRuntimeService:
                 media=self._serialize_media(step.media, step_state),
                 timer=schemas.RuntimeTimerState(
                     seconds=step.timer.seconds,
-                    enforced=step.timer.enforced,
+                    enforced=self._is_timer_effectively_enforced(lobby, step),
                     started_at=self._to_float(step_state.get("timer_started_at")),
                     ends_at=self._to_float(step_state.get("timer_ends_at")),
                     remaining_seconds=self._remaining_timer_seconds(step_state),
@@ -684,6 +723,7 @@ class GameRuntimeService:
                 join_code=lobby.join_code,
                 definition_id=lobby.definition_id,
                 host_enabled=lobby.host_enabled,
+                starter_id=lobby.starter_id,
                 host_id=lobby.host_id,
                 state=lobby.state,
                 phase=lobby.phase,
@@ -728,7 +768,7 @@ class GameRuntimeService:
                 "state": {
                     "revealed": auto_reveal,
                     "sequence_stage": END_GAME_SEQUENCE_STAGES[0],
-                    "autoplay_enabled": False,
+                    "autoplay_enabled": auto_reveal,
                 }
             },
         )
@@ -1003,6 +1043,78 @@ class GameRuntimeService:
         if player_input.kind == PlayerInputKind.CHECKBOX:
             return EvaluationType.NONE
         return EvaluationType.NONE
+
+    async def _all_answerable_players_submitted(
+        self,
+        lobby: schemas.Lobby,
+        step_state: dict[str, Any] | None = None,
+    ) -> bool:
+        players = await self.repo.get_players(lobby.id)
+        answerable_player_ids = {
+            player.id for player in players if player.id and player.id != lobby.host_id
+        }
+        state = step_state or await self.get_step_state(lobby.id)
+        submitted_player_ids = set(state.get("answers", {}).keys())
+        return answerable_player_ids <= submitted_player_ids
+
+    def _is_information_slide(self, step: StepDefinition) -> bool:
+        return (
+            step.player_input.kind == PlayerInputKind.NONE
+            and step.evaluation.type_ == EvaluationType.NONE
+        )
+
+    def _has_usable_answer_for_evaluation(
+        self,
+        step: StepDefinition,
+        evaluation_type: EvaluationType,
+    ) -> bool:
+        answer = step.evaluation.answer
+        if evaluation_type in (EvaluationType.EXACT_TEXT,):
+            return isinstance(answer, str) and bool(answer.strip())
+        if evaluation_type in (EvaluationType.EXACT_NUMBER, EvaluationType.CLOSEST_NUMBER):
+            try:
+                return answer is not None and float(answer) == float(answer)
+            except TypeError, ValueError:
+                return False
+        if evaluation_type == EvaluationType.ORDERING_MATCH:
+            return isinstance(answer, list) and any(str(value).strip() for value in answer)
+        if evaluation_type == EvaluationType.MULTI_SELECT_WEIGHTED:
+            option_scores = answer.get("option_scores") if isinstance(answer, dict) else None
+            return isinstance(option_scores, list) and len(option_scores) > 0
+        return False
+
+    def _is_hostless_auto_progress_step(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        if lobby.host_enabled or self._is_information_slide(step):
+            return False
+        evaluation_type = self._resolve_evaluation_type(lobby, step)
+        return (
+            evaluation_type in HOSTLESS_AUTO_EVALUATION_TYPES
+            and self._has_usable_answer_for_evaluation(step, evaluation_type)
+        )
+
+    def _is_timer_effectively_enforced(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return step.timer.enforced or self._is_hostless_auto_progress_step(lobby, step)
+
+    def _is_hostless_compatible_step(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        if lobby.host_enabled:
+            return True
+        if step.player_input.kind == PlayerInputKind.BUZZER:
+            return False
+        if self._is_information_slide(step):
+            return True
+        return self._is_hostless_auto_progress_step(lobby, step)
 
     def _should_skip_answer_reveal(
         self,

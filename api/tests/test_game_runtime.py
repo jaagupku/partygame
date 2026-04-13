@@ -137,7 +137,7 @@ class NoneEvaluationProvider:
                         StepDefinition(
                             id="intro",
                             title="Intro",
-                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NONE),
                             evaluation=EvaluationRule(
                                 type_=EvaluationType.NONE,
                                 points=0,
@@ -163,6 +163,111 @@ class NoneEvaluationProvider:
         return []
 
 
+class HostlessCompatibilityProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Hostless",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="skip_host_judged_checkbox",
+                            title="Skip checkbox",
+                            player_input=PlayerInputDefinition(
+                                kind=PlayerInputKind.CHECKBOX,
+                                options=["A", "B"],
+                            ),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=2,
+                                answer={"option_scores": [{"option": "A", "points": 1}]},
+                            ),
+                        ),
+                        StepDefinition(
+                            id="skip_missing_answer",
+                            title="Missing answer",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_TEXT,
+                                points=1,
+                                answer="",
+                            ),
+                        ),
+                        StepDefinition(
+                            id="info_slide",
+                            title="Info",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NONE),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.NONE,
+                                points=0,
+                                answer=None,
+                            ),
+                        ),
+                        StepDefinition(
+                            id="host_judged_text",
+                            title="Fallback answer",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=1,
+                                answer="hello",
+                            ),
+                            timer=TimerDefinition(seconds=10, enforced=True),
+                        ),
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
+class TwoRoundHostlessProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Two Round",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="r1s1",
+                            title="Round 1",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_TEXT,
+                                points=1,
+                                answer="ok",
+                            ),
+                        )
+                    ],
+                ),
+                RoundDefinition(
+                    id="round2",
+                    steps=[
+                        StepDefinition(
+                            id="r2s1",
+                            title="Round 2",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_TEXT,
+                                points=1,
+                                answer="ok",
+                            ),
+                        )
+                    ],
+                ),
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 @pytest.mark.asyncio
 async def test_start_game_skips_buzzer_when_host_disabled():
     repo = FakeRepo()
@@ -175,6 +280,19 @@ async def test_start_game_skips_buzzer_when_host_disabled():
     assert updated_lobby.phase == "question_active"
     assert step is not None
     assert step.id == "number_step"
+
+
+@pytest.mark.asyncio
+async def test_start_game_skips_incompatible_hostless_steps_but_keeps_information_slide():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostlessCompatibilityProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    updated_lobby, step = await service.start_game(lobby)
+
+    assert updated_lobby.state == "running"
+    assert step is not None
+    assert step.id == "info_slide"
 
 
 @pytest.mark.asyncio
@@ -378,9 +496,92 @@ async def test_auto_evaluate_marks_all_submissions_reviewed():
         schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
     )
 
-    assert scores_event.updates == {"p1": 4}
+    assert repo.scores["p1"] == 4
+    assert scores_event.updates == {}
     assert repo.steps["g1"]["reviewed_player_ids"] == ["p1", "p2"]
     assert review_events == []
+
+
+@pytest.mark.asyncio
+async def test_hostless_closes_step_when_all_players_have_answered():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    first_events, first_handled = await service.submit_player_input(lobby, "p1", 27)
+    second_events, second_handled = await service.submit_player_input(lobby, "p2", 10)
+
+    assert first_handled is True
+    assert first_events == []
+    assert second_handled is True
+    assert [event.type_ for event in second_events] == ["scores_updated", "runtime_snapshot"]
+    assert lobby.phase == "step_complete"
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert repo.steps["g1"]["revealed_answer_value"] == 27
+
+
+@pytest.mark.asyncio
+async def test_hostless_advisory_timer_is_effectively_enforced_in_snapshot():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.timer.enforced is True
+
+
+@pytest.mark.asyncio
+async def test_hostless_round_end_shows_scoreboard_during_answer_reveal():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=TwoRoundHostlessProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "ok")
+    events, handled = await service.submit_player_input(lobby, "p2", "ok")
+
+    assert handled is True
+    assert [event.type_ for event in events] == ["scores_updated", "runtime_snapshot"]
+    assert repo.steps["g1"]["scoreboard_visible"] is True
+
+
+@pytest.mark.asyncio
+async def test_hostless_info_slide_stays_manual():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostlessCompatibilityProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=False,
+        starter_id="p1",
+    )
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.input_kind == "none"
+    assert lobby.phase == "question_active"
+
+
+@pytest.mark.asyncio
+async def test_hostless_falls_back_from_host_judged_text_when_answer_exists():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostlessCompatibilityProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.advance_step(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.id == "host_judged_text"
+    assert snapshot.active_step.evaluation_type == "exact_text"
 
 
 @pytest.mark.asyncio
@@ -581,7 +782,8 @@ async def test_finished_snapshot_exposes_end_game_data_and_auto_reveals_without_
 
     assert snapshot.end_game is not None
     assert snapshot.end_game.revealed is True
-    assert snapshot.end_game.sequence_stage == "podium"
+    assert snapshot.end_game.autoplay_enabled is True
+    assert snapshot.end_game.sequence_stage == "third_place"
     assert [entry.player_id for entry in snapshot.end_game.final_standings] == ["p2", "p1"]
     assert [entry.place for entry in snapshot.end_game.final_standings] == [1, 2]
     assert snapshot.end_game.final_standings[0].avatar_kind == "custom"
@@ -723,4 +925,29 @@ async def test_end_game_stage_and_autoplay_changes_are_reflected_in_snapshot():
     assert snapshot.end_game is not None
     assert snapshot.end_game.revealed is True
     assert snapshot.end_game.autoplay_enabled is True
-    assert snapshot.end_game.sequence_stage == "stats"
+    assert snapshot.end_game.sequence_stage == "second_place"
+
+
+@pytest.mark.asyncio
+async def test_end_game_stage_advances_through_podium_reveal_order():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.submit_player_input(lobby, "p2", 10)
+    await service.close_step(lobby)
+    await service.advance_step(lobby)
+
+    stages = []
+    for _ in range(4):
+        snapshot = await service.build_snapshot(lobby)
+        assert snapshot.end_game is not None
+        stages.append(snapshot.end_game.sequence_stage)
+        await service.advance_end_game_stage(lobby)
+
+    assert stages == ["third_place", "second_place", "first_place", "stats"]
+    snapshot = await service.build_snapshot(lobby)
+    assert snapshot.end_game is not None
+    assert snapshot.end_game.sequence_stage == "scoreboard"

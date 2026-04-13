@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from time import time
 
 import pytest
 
@@ -115,7 +116,7 @@ async def test_create_assigns_first_host_and_publishes_display_events(monkeypatc
     assert repo.created_player == player
     assert player.avatar_kind == "preset"
     assert player.avatar_preset_key == "fox"
-    assert repo.set_lobby_calls == [("g1", {"host_id": player.id})]
+    assert repo.set_lobby_calls == [("g1", {"starter_id": player.id, "host_id": player.id})]
     assert repo.applied_ttls == [("g1", 3600)]
     assert published == [
         (
@@ -130,6 +131,39 @@ async def test_create_assigns_first_host_and_publishes_display_events(monkeypatc
             GameKeyFactory.player_channel("g1", player.id),
             schemas.SetHostEvent(player_id=player.id),
         ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_create_assigns_starter_without_host_in_hostless_lobby(monkeypatch):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_enabled=False)
+    repo = FakeRepo(lobby)
+    published: list[tuple[str, object]] = []
+
+    async def fake_publish(redis, channel, payload):
+        published.append((channel, payload))
+
+    monkeypatch.setattr(player_service, "GameStateRepository", lambda redis: repo)
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+
+    player = await player_service.create(
+        redis=object(),
+        join_request=schemas.JoinRequest(
+            join_code="ABCDE",
+            player_name="Alice",
+            avatar_kind="preset",
+            avatar_preset_key="fox",
+        ),
+        game_id="g1",
+    )
+
+    assert repo.created_player == player
+    assert repo.set_lobby_calls == [("g1", {"starter_id": player.id})]
+    assert published == [
+        (
+            GameKeyFactory.display_channel("g1"),
+            schemas.PlayerJoinedEvent(player=player),
+        )
     ]
 
 
@@ -230,6 +264,110 @@ async def test_host_processes_own_commands_without_command_channel_roundtrip(mon
 
 
 @pytest.mark.asyncio
+async def test_hostless_starter_processes_start_game_without_command_channel_roundtrip(
+    monkeypatch,
+):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_enabled=False, starter_id="p1")
+    player = schemas.Player(id="p1", game_id="g1", name="Starter")
+    websocket = FakeWebSocket()
+    controller = player_service.ClientController(
+        websocket, redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "process": []}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def process_controller(message: str):
+        called["process"].append(message)
+
+    async def fake_publish(redis, channel, payload):
+        raise AssertionError("hostless starter start commands should not be published to redis")
+
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "process_controller", process_controller)
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+
+    await controller.process_input({"type_": "start_game"})
+
+    assert called["refresh"] == 1
+    assert called["process"] == ['{"type_": "start_game"}']
+
+
+@pytest.mark.asyncio
+async def test_hostless_starter_processes_info_slide_controls_without_command_roundtrip(
+    monkeypatch,
+):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_enabled=False, starter_id="p1")
+    player = schemas.Player(id="p1", game_id="g1", name="Starter")
+    websocket = FakeWebSocket()
+    controller = player_service.ClientController(
+        websocket, redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "process": []}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def process_controller(message: str):
+        called["process"].append(message)
+
+    async def get_current_step(_lobby):
+        return SimpleNamespace(
+            player_input=SimpleNamespace(kind="none"),
+            evaluation=SimpleNamespace(type_="none"),
+        )
+
+    async def fake_publish(redis, channel, payload):
+        raise AssertionError("hostless info-slide controls should not be published to redis")
+
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "process_controller", process_controller)
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+    controller.runtime = SimpleNamespace(
+        get_current_step=get_current_step,
+        _is_information_slide=lambda step: True,
+    )
+
+    await controller.process_input({"type_": "close_step"})
+
+    assert called["refresh"] == 1
+    assert called["process"] == ['{"type_": "close_step"}']
+
+
+@pytest.mark.asyncio
+async def test_hostless_player_submission_processes_without_command_roundtrip(monkeypatch):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_enabled=False, starter_id="p1")
+    player = schemas.Player(id="p2", game_id="g1", name="Player")
+    websocket = FakeWebSocket()
+    controller = player_service.ClientController(
+        websocket, redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "process": []}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def process_controller(message: str):
+        called["process"].append(message)
+
+    async def fake_publish(redis, channel, payload):
+        raise AssertionError("hostless player submissions should not be published to redis")
+
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "process_controller", process_controller)
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+
+    await controller.process_input({"type_": "player_input_submitted", "value": "ok"})
+
+    assert called["refresh"] == 1
+    assert called["process"] == ['{"type_": "player_input_submitted", "value": "ok"}']
+
+
+@pytest.mark.asyncio
 async def test_resync_request_sends_full_snapshot_without_command_roundtrip(monkeypatch):
     lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
     player = schemas.Player(id="p1", game_id="g1", name="Host")
@@ -271,6 +409,114 @@ async def test_resync_request_sends_full_snapshot_without_command_roundtrip(monk
     assert called["refresh"] == 1
     assert called["scheduled"] == 1
     assert websocket.messages == [snapshot.model_dump_json()]
+
+
+@pytest.mark.asyncio
+async def test_hostless_advisory_timer_is_scheduled(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_enabled=False,
+        starter_id="p1",
+        phase="question_active",
+    )
+    player = schemas.Player(id="p1", game_id="g1", name="Starter")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    snapshot = schemas.RuntimeSnapshotEvent(
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            starter_id=lobby.starter_id,
+            state=lobby.state,
+            phase="question_active",
+            current_step=lobby.current_step,
+        ),
+        active_step=schemas.RuntimeStepState(
+            id="step1",
+            title="Question",
+            evaluation_type="exact_text",
+            evaluation_points=1,
+            input_enabled=True,
+            input_kind="text",
+            input_options=[],
+            timer=schemas.RuntimeTimerState(
+                seconds=30,
+                enforced=False,
+                started_at=1.0,
+                ends_at=time() + 30,
+                remaining_seconds=30,
+            ),
+        ),
+    )
+
+    async def get_current_step(_lobby):
+        return SimpleNamespace(id="step1")
+
+    created = {"count": 0}
+
+    def fake_create_task(coroutine):
+        created["count"] += 1
+        coroutine.close()
+        return DummyTask()
+
+    monkeypatch.setattr(player_service.asyncio, "create_task", fake_create_task)
+    controller.runtime = SimpleNamespace(
+        get_current_step=get_current_step,
+        _is_hostless_auto_progress_step=lambda _lobby, _step: True,
+    )
+
+    await controller._schedule_timer_from_snapshot(snapshot)
+
+    assert created["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_hostless_end_game_autoplay_is_scheduled(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_enabled=False,
+        starter_id="p1",
+        phase="finished",
+    )
+    player = schemas.Player(id="p1", game_id="g1", name="Starter")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    snapshot = schemas.RuntimeSnapshotEvent(
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            starter_id=lobby.starter_id,
+            state=lobby.state,
+            phase="finished",
+            current_step=lobby.current_step,
+        ),
+        end_game=schemas.EndGameState(
+            revealed=True,
+            autoplay_enabled=True,
+            sequence_stage="third_place",
+        ),
+    )
+
+    created = {"count": 0}
+
+    def fake_create_task(coroutine):
+        created["count"] += 1
+        coroutine.close()
+        return DummyTask()
+
+    monkeypatch.setattr(player_service.asyncio, "create_task", fake_create_task)
+
+    await controller._schedule_timer_from_snapshot(snapshot)
+
+    assert created["count"] == 1
 
 
 @pytest.mark.asyncio

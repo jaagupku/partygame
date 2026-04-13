@@ -22,6 +22,7 @@ type CheckboxWeightedAnswer = {
 type Lobby = {
 	id: string;
 	join_code: string;
+	starter_id?: string;
 	host_id?: string;
 	host_enabled: boolean;
 	players: Player[];
@@ -220,6 +221,7 @@ type RuntimeLobbyState = {
 	join_code: string;
 	definition_id?: string;
 	host_enabled: boolean;
+	starter_id?: string;
 	host_id?: string;
 	state: GameState;
 	phase: string;
@@ -394,6 +396,7 @@ type ControllerState = {
 	lobbyPhase: string;
 	currentStep: number;
 	hostEnabled: boolean;
+	starterPlayerId?: string;
 	activeStep?: RuntimeStepState;
 	displayPhase: string;
 	scoreboardVisible: boolean;

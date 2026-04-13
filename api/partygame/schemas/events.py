@@ -181,6 +181,7 @@ class RuntimeLobbyState(BaseModel):
     join_code: str
     definition_id: str | None = None
     host_enabled: bool = True
+    starter_id: str | None = None
     host_id: str | None = None
     state: GameState
     phase: str = "waiting"
