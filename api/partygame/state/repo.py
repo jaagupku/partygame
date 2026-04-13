@@ -29,6 +29,7 @@ class GameStateRepository:
         meta.setdefault("host_enabled", True)
         meta.setdefault("current_step", 0)
         meta.setdefault("phase", "waiting")
+        meta.setdefault("state_revision", 0)
         serialized = {key: str(value) for key, value in meta.items()}
         meta_key = GameKeyFactory.game_meta(lobby.id)
         await self.redis.hset(meta_key, mapping=serialized)
@@ -54,6 +55,7 @@ class GameStateRepository:
                 "definition_id",
                 "current_step",
                 "phase",
+                "state_revision",
             )
             if key in data
         }
@@ -65,6 +67,18 @@ class GameStateRepository:
             meta_key = GameKeyFactory.game_meta(game_id)
             await self.redis.hset(meta_key, mapping=update_fields)
             await self.register_game_key(game_id, meta_key)
+
+    async def get_state_revision(self, game_id: str) -> int:
+        value = await self.redis.hget(GameKeyFactory.game_meta(game_id), "state_revision")
+        return int(value or 0)
+
+    async def increment_state_revision(self, game_id: str) -> int:
+        meta_key = GameKeyFactory.game_meta(game_id)
+        value = await self.redis.hget(meta_key, "state_revision")
+        next_revision = int(value or 0) + 1
+        await self.redis.hset(meta_key, "state_revision", str(next_revision))
+        await self.register_game_key(game_id, meta_key)
+        return next_revision
 
     async def get_player_ids(self, game_id: str, withscores: bool = True):
         return await self.redis.zrange(

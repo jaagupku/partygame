@@ -8,6 +8,8 @@
 		revealedSubmission?: RevealedSubmission;
 		revealedAnswer?: RevealedAnswer;
 		buzzerActive?: boolean;
+		buzzedPlayerId?: string;
+		buzzedPlayerName?: string;
 		displayPhase?: string;
 		title?: string;
 		phaseLabel?: string;
@@ -25,6 +27,8 @@
 		revealedSubmission,
 		revealedAnswer,
 		buzzerActive = false,
+		buzzedPlayerId,
+		buzzedPlayerName,
 		displayPhase = 'question_active',
 		title = '',
 		phaseLabel = 'question_active',
@@ -67,6 +71,8 @@
 		{revealedSubmission}
 		{revealedAnswer}
 		{buzzerActive}
+		{buzzedPlayerId}
+		{buzzedPlayerName}
 		{displayPhase}
 		title={showingAnswerReveal ? 'Answer Reveal' : 'Now Playing'}
 		variant={stageLayout ? 'stage' : 'default'}

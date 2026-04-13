@@ -92,6 +92,8 @@ class GameController:
             log.error(error)
 
     async def send(self, payload: dict | BaseModel | str):
+        if isinstance(payload, schemas.RuntimeSnapshotEvent):
+            payload = payload.model_copy(update={"host_answer": None, "submissions": []})
         if isinstance(payload, BaseModel):
             await self.websocket.send_text(payload.model_dump_json())
         elif isinstance(payload, dict):
@@ -105,6 +107,8 @@ class GameController:
         players: list[str] | None = None,
         exclude: str | None = None,
     ):
+        if isinstance(msg, schemas.RuntimeSnapshotEvent):
+            msg = msg.model_copy(update={"host_answer": None, "submissions": []})
         if players is None:
             players = await self.repo.get_player_ids(self.lobby.id, withscores=False)
         players = [player_id for player_id in players if player_id]
@@ -142,6 +146,8 @@ class GameController:
         if "type_" not in msg:
             return
         match msg["type_"]:
+            case Event.RESYNC_REQUEST:
+                await self.send(await self.runtime.sync_lobby(self.lobby))
             case Event.SET_HOST:
                 await self.set_host(schemas.SetHostEvent.model_validate(msg))
             case Event.KICK_PLAYER:

@@ -30,6 +30,8 @@ class Event(StrEnum):
     BUZZER_REVIEWED = auto()
     CLOSE_STEP = auto()
     REVIEW_SUBMISSION = auto()
+    RUNTIME_PATCH = auto()
+    RESYNC_REQUEST = auto()
 
 
 class BaseEvent(BaseModel):
@@ -191,9 +193,17 @@ class RevealedAnswer(BaseModel):
     value: Any
 
 
+class SubmissionItem(BaseModel):
+    player_id: str
+    value: Any
+    reviewed: bool = False
+
+
 class RuntimeSnapshotEvent(BaseEvent):
     type_: str = Event.RUNTIME_SNAPSHOT
+    revision: int = 0
     lobby: RuntimeLobbyState
+    players: list[Player] = Field(default_factory=list)
     active_step: RuntimeStepState | None = None
     display_phase: str = "question_active"
     scoreboard_visible: bool = False
@@ -206,12 +216,14 @@ class RuntimeSnapshotEvent(BaseEvent):
     revealed_submission: RevealedSubmission | None = None
     revealed_answer: RevealedAnswer | None = None
     host_answer: RevealedAnswer | None = None
+    submissions: list[SubmissionItem] = Field(default_factory=list)
 
 
-class SubmissionItem(BaseModel):
-    player_id: str
-    value: Any
-    reviewed: bool = False
+class RuntimePatchEvent(BaseEvent):
+    type_: str = Event.RUNTIME_PATCH
+    base_revision: int
+    revision: int
+    changes: dict[str, Any] = Field(default_factory=dict)
 
 
 class SubmissionsUpdatedEvent(BaseEvent):
@@ -222,3 +234,8 @@ class SubmissionsUpdatedEvent(BaseEvent):
 class RevealedSubmissionEvent(BaseEvent):
     type_: str = Event.REVEALED_SUBMISSION
     submission: RevealedSubmission | None = None
+
+
+class ResyncRequestEvent(BaseEvent):
+    type_: str = Event.RESYNC_REQUEST
+    last_revision: int | None = None

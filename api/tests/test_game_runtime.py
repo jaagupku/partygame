@@ -23,7 +23,12 @@ class FakeRepo:
         self.lobby_fields = {}
         self.steps = {}
         self.scores = {"p1": 0, "p2": 5}
+        self.players = [
+            schemas.Player(id="p1", game_id="g1", name="Alice"),
+            schemas.Player(id="p2", game_id="g1", name="Bob"),
+        ]
         self.applied_ttls = []
+        self.state_revision = 0
 
     async def set_lobby_fields(self, game_id: str, **fields):
         self.lobby_fields.setdefault(game_id, {}).update(fields)
@@ -39,6 +44,12 @@ class FakeRepo:
 
     async def set_player_score(self, game_id: str, player_id: str, score: int):
         self.scores[player_id] = score
+
+    async def get_players(self, game_id: str) -> list[schemas.Player]:
+        return [player for player in self.players if player.game_id == game_id]
+
+    async def get_state_revision(self, game_id: str) -> int:
+        return self.state_revision
 
     async def apply_game_ttl(self, game_id: str, ttl_seconds: int):
         self.applied_ttls.append((game_id, ttl_seconds))
@@ -224,6 +235,18 @@ async def test_disabled_player_cannot_buzz_again_after_reactivation():
 
 
 @pytest.mark.asyncio
+async def test_snapshot_includes_players():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert [player.id for player in snapshot.players] == ["p1", "p2"]
+    assert [player.name for player in snapshot.players] == ["Alice", "Bob"]
+
+
+@pytest.mark.asyncio
 async def test_accepted_buzzer_review_snapshot_includes_revealed_answer():
     repo = FakeRepo()
     service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
@@ -273,6 +296,27 @@ async def test_show_answer_reveal_moves_auto_step_to_answer_phase_without_advanc
     assert lobby.phase == "step_complete"
     assert repo.steps["g1"]["display_phase"] == "answer_reveal"
     assert repo.steps["g1"]["revealed_answer_value"] == 27
+
+
+@pytest.mark.asyncio
+async def test_auto_evaluate_marks_all_submissions_reviewed():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.submit_player_input(lobby, "p2", 10)
+
+    scores_event = await service.evaluate_auto_step(lobby)
+    review_events = await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
+    )
+
+    assert scores_event.updates == {"p1": 4}
+    assert repo.steps["g1"]["reviewed_player_ids"] == ["p1", "p2"]
+    assert review_events == []
 
 
 @pytest.mark.asyncio

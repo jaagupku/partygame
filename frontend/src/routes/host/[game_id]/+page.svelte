@@ -9,13 +9,19 @@
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
+	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
 	const definitionTitle = () =>
 		data.definitionTitle || data.lobby.definition_id || 'Untitled Definition';
 
 	const game = createGameStore(lobby());
 	let isConnected = $state(false);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
+	let resyncPending = $state(false);
+	let resyncIntervalId = $state<number | null>(null);
 	const playerMap = $derived(new Map($game.players.map((player) => [player.id, player])));
+	const buzzedPlayerName = $derived(
+		$game.buzzedPlayerId ? (playerMap.get($game.buzzedPlayerId)?.name ?? '') : ''
+	);
 	const countdown = $derived(
 		Math.max(0, Math.ceil($game.activeStep?.timer.remaining_seconds ?? 0))
 	);
@@ -28,22 +34,60 @@
 		socket = createReconnectingWebSocket(
 			`${protocol}://${window.location.host}/api/v1/game/${lobby().id}/host`,
 			{
-				onMessage: (data) => game.onMessage(data),
+				onMessage: (data) => {
+					const result = game.onMessage(data);
+					if (result === 'resync_required') {
+						requestResync();
+					} else if (result === 'snapshot_applied') {
+						resyncPending = false;
+					}
+				},
 				onStatusChange: (connected) => {
 					isConnected = connected;
+					if (!connected) {
+						resyncPending = false;
+					}
 				}
 			}
 		);
+		resyncIntervalId = window.setInterval(() => {
+			if (isConnected) {
+				requestResync();
+			}
+		}, SAFETY_RESYNC_INTERVAL_MS);
 		return () => {
+			if (resyncIntervalId !== null) {
+				clearInterval(resyncIntervalId);
+				resyncIntervalId = null;
+			}
 			socket?.close();
 			socket = null;
 		};
 	});
 
 	onDestroy(() => {
+		if (resyncIntervalId !== null) {
+			clearInterval(resyncIntervalId);
+			resyncIntervalId = null;
+		}
 		socket?.close();
 		socket = null;
 	});
+
+	function requestResync() {
+		if (resyncPending) {
+			return;
+		}
+		const sent = socket?.send(
+			JSON.stringify({
+				type_: 'resync_request',
+				last_revision: $game.lastRevision
+			})
+		);
+		if (sent) {
+			resyncPending = true;
+		}
+	}
 
 	function setHost(playerId: string) {
 		socket?.send(
@@ -106,6 +150,8 @@
 				revealedSubmission={$game.revealedSubmission}
 				revealedAnswer={$game.revealedAnswer}
 				buzzerActive={$game.buzzerActive}
+				buzzedPlayerId={$game.buzzedPlayerId}
+				{buzzedPlayerName}
 				displayPhase={$game.displayPhase}
 				phaseLabel={$game.phase ?? 'question_active'}
 				connectionLabel={isConnected ? 'Live' : 'Disconnected'}
@@ -124,12 +170,7 @@
 			}`}
 		>
 			<div class="pointer-events-auto h-full">
-				<Scoreboard
-					players={$game.players}
-					{playerMap}
-					onSelectPlayer={setHost}
-					variant="overlay"
-				/>
+				<Scoreboard players={$game.players} {playerMap} variant="overlay" />
 			</div>
 		</aside>
 	</div>

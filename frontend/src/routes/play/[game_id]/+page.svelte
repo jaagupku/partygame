@@ -10,6 +10,7 @@
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
+	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
 
 	const player: Writable<Player | null> = createLocalStorageStore('playerData', null);
 	if ($player === null) {
@@ -19,6 +20,8 @@
 	const controller = createControllerStore(
 		{
 			id: $player?.id || '',
+			players: lobby().players,
+			lastRevision: 0,
 			isHost: lobby().host_id === $player?.id,
 			gameState: lobby().state,
 			lobbyPhase: lobby().phase ?? 'waiting',
@@ -50,9 +53,13 @@
 	let customScore = $state(0);
 	let orderingStepId = $state<string | undefined>(undefined);
 	let inputStepId = $state<string | undefined>(undefined);
+	let draggedOrderingIndex = $state<number | null>(null);
+	let dropOrderingIndex = $state<number | null>(null);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
+	let resyncPending = $state(false);
+	let resyncIntervalId = $state<number | null>(null);
 
-	const playerMap = $derived(new Map(lobby().players.map((entry) => [entry.id, entry])));
+	const playerMap = $derived(new Map($controller.players.map((entry) => [entry.id, entry])));
 	const playerInputDisabled = $derived(
 		!$controller.isHost &&
 			($controller.lobbyPhase !== 'question_active' ||
@@ -77,6 +84,8 @@
 		if (step?.input_kind !== 'ordering') {
 			orderingItems = [];
 			orderingStepId = undefined;
+			draggedOrderingIndex = null;
+			dropOrderingIndex = null;
 			return;
 		}
 		if (orderingStepId === step.id) {
@@ -84,6 +93,8 @@
 		}
 		orderingStepId = step.id;
 		orderingItems = [...step.input_options];
+		draggedOrderingIndex = null;
+		dropOrderingIndex = null;
 	});
 
 	onMount(() => {
@@ -94,19 +105,42 @@
 		socket = createReconnectingWebSocket(
 			`${protocol}://${window.location.host}/api/v1/game/${$player.game_id}/controller/${$player.id}`,
 			{
-				onMessage: (data) => controller.onMessage(data),
+				onMessage: (data) => {
+					const result = controller.onMessage(data);
+					if (result === 'resync_required') {
+						requestResync();
+					} else if (result === 'snapshot_applied') {
+						resyncPending = false;
+					}
+				},
 				onStatusChange: (connected) => {
 					isConnected = connected;
+					if (!connected) {
+						resyncPending = false;
+					}
 				}
 			}
 		);
+		resyncIntervalId = window.setInterval(() => {
+			if (isConnected) {
+				requestResync();
+			}
+		}, SAFETY_RESYNC_INTERVAL_MS);
 		return () => {
+			if (resyncIntervalId !== null) {
+				clearInterval(resyncIntervalId);
+				resyncIntervalId = null;
+			}
 			socket?.close();
 			socket = null;
 		};
 	});
 
 	onDestroy(() => {
+		if (resyncIntervalId !== null) {
+			clearInterval(resyncIntervalId);
+			resyncIntervalId = null;
+		}
 		socket?.close();
 		socket = null;
 	});
@@ -118,6 +152,21 @@
 				player_id: $controller.id
 			})
 		);
+	}
+
+	function requestResync() {
+		if (resyncPending) {
+			return;
+		}
+		const sent = socket?.send(
+			JSON.stringify({
+				type_: 'resync_request',
+				last_revision: $controller.lastRevision
+			})
+		);
+		if (sent) {
+			resyncPending = true;
+		}
 	}
 
 	function startGame() {
@@ -230,14 +279,51 @@
 		goto('/');
 	}
 
-	function moveOrderingItem(index: number, direction: -1 | 1) {
-		const nextIndex = index + direction;
-		if (nextIndex < 0 || nextIndex >= orderingItems.length) {
+	function reorderOrderingItems(fromIndex: number, toIndex: number) {
+		if (
+			fromIndex === toIndex ||
+			fromIndex < 0 ||
+			toIndex < 0 ||
+			fromIndex >= orderingItems.length ||
+			toIndex >= orderingItems.length
+		) {
 			return;
 		}
 		const next = [...orderingItems];
-		[next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+		const [movedItem] = next.splice(fromIndex, 1);
+		next.splice(toIndex, 0, movedItem);
 		orderingItems = next;
+	}
+
+	function startOrderingDrag(index: number) {
+		if (playerInputDisabled) {
+			return;
+		}
+		draggedOrderingIndex = index;
+		dropOrderingIndex = index;
+	}
+
+	function updateOrderingDropTarget(index: number) {
+		if (playerInputDisabled || draggedOrderingIndex === null) {
+			return;
+		}
+		dropOrderingIndex = index;
+	}
+
+	function finishOrderingDrop(index: number) {
+		if (playerInputDisabled || draggedOrderingIndex === null) {
+			draggedOrderingIndex = null;
+			dropOrderingIndex = null;
+			return;
+		}
+		reorderOrderingItems(draggedOrderingIndex, index);
+		draggedOrderingIndex = null;
+		dropOrderingIndex = null;
+	}
+
+	function cancelOrderingDrag() {
+		draggedOrderingIndex = null;
+		dropOrderingIndex = null;
 	}
 
 	function submitRadioOption(option: string) {
@@ -373,31 +459,40 @@
 						? $controller.hasSubmitted
 							? 'Your order is submitted. You can reorder again on the next step.'
 							: 'This step has been closed. Reordering is disabled.'
-						: 'Move the items until they are in the correct order.'}
+						: 'Drag items into the order you want, then submit.'}
 				</p>
 				<div class="stack-md">
-					{#each orderingItems as item, index (item)}
-						<div class="flex items-center gap-3 rounded-2xl bg-white/70 p-3">
+					{#each orderingItems as item, index}
+						<div
+							class={`flex items-center gap-3 rounded-2xl border p-3 transition ${
+								draggedOrderingIndex === index
+									? 'border-sky-300 bg-sky-50 opacity-80'
+									: dropOrderingIndex === index
+										? 'border-sky-200 bg-sky-50/70'
+										: 'border-white/70 bg-white/70'
+							}`}
+							role="listitem"
+							aria-grabbed={draggedOrderingIndex === index}
+							draggable={!playerInputDisabled}
+							ondragstart={() => startOrderingDrag(index)}
+							ondragover={(event) => {
+								event.preventDefault();
+								updateOrderingDropTarget(index);
+							}}
+							ondrop={(event) => {
+								event.preventDefault();
+								finishOrderingDrop(index);
+							}}
+							ondragend={cancelOrderingDrag}
+						>
 							<div class="badge bg-slate-100 text-slate-700">#{index + 1}</div>
-							<div class="flex-1 font-semibold">{item}</div>
-							<div class="flex gap-2">
-								<button
-									type="button"
-									class="btn btn-ghost px-3 py-2 text-sm"
-									disabled={playerInputDisabled || index === 0}
-									onclick={() => moveOrderingItem(index, -1)}
-								>
-									Up
-								</button>
-								<button
-									type="button"
-									class="btn btn-ghost px-3 py-2 text-sm"
-									disabled={playerInputDisabled || index === orderingItems.length - 1}
-									onclick={() => moveOrderingItem(index, 1)}
-								>
-									Down
-								</button>
+							<div
+								class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+								aria-hidden="true"
+							>
+								::
 							</div>
+							<div class="flex-1 font-semibold">{item}</div>
 						</div>
 					{/each}
 				</div>
@@ -637,7 +732,7 @@
 				<h2 class="label-title text-2xl">Manual Score</h2>
 				<input class="input" type="number" bind:value={customScore} min="-500" max="500" />
 				<div class="flex flex-wrap gap-2">
-					{#each lobby().players.filter((entry) => entry.id !== $controller.id) as entry}
+					{#each $controller.players.filter((entry) => entry.id !== $controller.id) as entry}
 						<button
 							type="button"
 							class="btn btn-ghost"

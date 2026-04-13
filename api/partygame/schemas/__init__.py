@@ -33,6 +33,7 @@ from .events import (
     BuzzerClickedEvent,
     BuzzerReviewedEvent,
     RuntimeSnapshotEvent,
+    RuntimePatchEvent,
     RuntimeLobbyState,
     RuntimeStepState,
     RuntimeTimerState,
@@ -42,6 +43,7 @@ from .events import (
     RevealedAnswer,
     SubmissionItem,
     SubmissionsUpdatedEvent,
+    ResyncRequestEvent,
 )
 
 from .game_definition import (
@@ -92,6 +94,7 @@ __all__ = (
     "BuzzerClickedEvent",
     "BuzzerReviewedEvent",
     "RuntimeSnapshotEvent",
+    "RuntimePatchEvent",
     "RuntimeLobbyState",
     "RuntimeStepState",
     "RuntimeTimerState",
@@ -101,6 +104,7 @@ __all__ = (
     "RevealedAnswer",
     "SubmissionItem",
     "SubmissionsUpdatedEvent",
+    "ResyncRequestEvent",
     "GameDefinition",
     "RoundDefinition",
     "StepDefinition",

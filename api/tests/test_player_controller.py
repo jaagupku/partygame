@@ -214,6 +214,50 @@ async def test_host_processes_own_commands_without_command_channel_roundtrip(mon
 
 
 @pytest.mark.asyncio
+async def test_resync_request_sends_full_snapshot_without_command_roundtrip(monkeypatch):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
+    player = schemas.Player(id="p1", game_id="g1", name="Host")
+    websocket = FakeWebSocket()
+    controller = player_service.ClientController(
+        websocket, redis=object(), lobby=lobby, player=player
+    )
+
+    snapshot = schemas.RuntimeSnapshotEvent(
+        revision=3,
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            host_id=lobby.host_id,
+            state=lobby.state,
+            phase=lobby.phase,
+            current_step=lobby.current_step,
+        ),
+    )
+
+    called = {"refresh": 0, "scheduled": 0}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def sync_lobby(_lobby):
+        return snapshot
+
+    async def schedule(_snapshot=None):
+        called["scheduled"] += 1
+
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "_schedule_timer_from_snapshot", schedule)
+    controller.runtime = SimpleNamespace(sync_lobby=sync_lobby)
+
+    await controller.process_input({"type_": "resync_request"})
+
+    assert called["refresh"] == 1
+    assert called["scheduled"] == 1
+    assert websocket.messages == [snapshot.model_dump_json()]
+
+
+@pytest.mark.asyncio
 async def test_disconnect_refreshes_idle_ttl_when_last_player_leaves(monkeypatch):
     lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
     player = schemas.Player(id="p1", game_id="g1", name="Host")
@@ -305,3 +349,46 @@ async def test_finished_lobby_does_not_refresh_idle_ttl_on_connect_or_command(mo
 
 def test_start_game_event_is_exported_from_schemas():
     assert schemas.StartGameEvent().type_ == "start_game"
+
+
+def test_runtime_patch_redacts_host_only_fields_for_public_view():
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
+    player = schemas.Player(id="p1", game_id="g1", name="Host")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    before_snapshot = schemas.RuntimeSnapshotEvent(
+        revision=1,
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            host_id=lobby.host_id,
+            state=lobby.state,
+            phase=lobby.phase,
+            current_step=lobby.current_step,
+        ),
+        submissions=[],
+    )
+    after_snapshot = before_snapshot.model_copy(
+        update={
+            "revision": 2,
+            "host_answer": schemas.RevealedAnswer(value="correct"),
+            "submissions": [schemas.SubmissionItem(player_id="p2", value="buzz", reviewed=False)],
+        }
+    )
+
+    host_patch = controller._patch_for_viewer(
+        before_snapshot, after_snapshot, include_host_answer=True
+    )
+    public_patch = controller._patch_for_viewer(
+        before_snapshot, after_snapshot, include_host_answer=False
+    )
+
+    assert host_patch is not None
+    assert host_patch.changes["host_answer"] == {"value": "correct"}
+    assert host_patch.changes["submissions"] == [
+        {"player_id": "p2", "value": "buzz", "reviewed": False}
+    ]
+    assert public_patch is None
