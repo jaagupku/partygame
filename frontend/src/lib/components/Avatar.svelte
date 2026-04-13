@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getAvatarSrc } from '$lib/avatar-presets.js';
+	import { messages } from '$lib/i18n';
 
 	interface AvatarProps {
 		name: string;
@@ -30,9 +31,13 @@
 	);
 </script>
 
-<div class={`avatar-shell ${sizeClass} ${className}`} aria-label={`Avatar for ${name}`} role="img">
+<div
+	class={`avatar-shell ${sizeClass} ${className}`}
+	aria-label={`${$messages.join.avatar}: ${name}`}
+	role="img"
+>
 	{#if src}
-		<img class="avatar-image" {src} alt={`Avatar for ${name}`} />
+		<img class="avatar-image" {src} alt={`${$messages.join.avatar}: ${name}`} />
 	{:else}
 		<span class="avatar-fallback">{initials}</span>
 	{/if}

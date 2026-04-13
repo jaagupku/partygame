@@ -1,6 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import type { StepTemplateDefinition, StepTemplateId } from './helpers';
+	import { messages } from '$lib/i18n';
 
 	type Props = {
 		templates: StepTemplateDefinition[];
@@ -25,15 +26,13 @@
 	>
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div>
-				<h3 class="label-title text-3xl">Choose A Step Type</h3>
-				<p class="text-sm text-slate-600">
-					Start with a question layout that matches how this slide should play.
-				</p>
+				<h3 class="label-title text-3xl">{$messages.editor.chooseStepType}</h3>
+				<p class="text-sm text-slate-600">{$messages.editor.chooseStepTypeHelp}</p>
 			</div>
 			<button
 				type="button"
 				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
-				aria-label="Close step template picker"
+				aria-label={$messages.editor.closeStepTemplatePicker}
 				onclick={onClose}
 			>
 				<iconify-icon icon="fluent:dismiss-16-filled"></iconify-icon>
@@ -66,7 +65,9 @@
 		</div>
 
 		<div class="mt-6 flex justify-end">
-			<button type="button" class="btn btn-ghost" onclick={onClose}>Cancel</button>
+			<button type="button" class="btn btn-ghost" onclick={onClose}
+				>{$messages.common.cancel}</button
+			>
 		</div>
 	</div>
 </div>

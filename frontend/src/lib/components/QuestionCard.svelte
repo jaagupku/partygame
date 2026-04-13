@@ -5,6 +5,7 @@
 	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
 	import VideoQuestionMedia from '$lib/components/VideoQuestionMedia.svelte';
+	import { messages } from '$lib/i18n';
 
 	interface QuestionCardProps {
 		step?: RuntimeStepState;
@@ -20,7 +21,7 @@
 
 	let {
 		step,
-		title = 'Question',
+		title = '',
 		revealedSubmission,
 		revealedAnswer,
 		buzzerActive = false,
@@ -101,7 +102,9 @@
 					stageVariant ? 'text-xl md:text-3xl' : 'text-lg'
 				}`}
 			>
-				<p class="text-sm font-black uppercase tracking-[0.22em] text-amber-700">Buzzed In</p>
+				<p class="text-sm font-black uppercase tracking-[0.22em] text-amber-700">
+					{$messages.gameplay.buzzedInFirst}
+				</p>
 				<p class="mt-2 font-extrabold leading-tight text-slate-950">{buzzedPlayerName}</p>
 			</div>
 		{/if}
@@ -112,7 +115,7 @@
 				}`}
 			>
 				<p class="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
-					Correct answer
+					{$messages.common.correctAnswer}
 				</p>
 				<p class="mt-2 font-extrabold leading-tight text-slate-950">
 					{formatRevealValue(revealedAnswer.value)}
@@ -122,12 +125,12 @@
 			<div
 				class={`rounded-2xl bg-sky-50 px-4 py-3 ${stageVariant ? 'text-xl md:text-2xl' : 'text-lg'}`}
 			>
-				<span class="font-bold">Revealed answer:</span>
+				<span class="font-bold">{$messages.common.revealedAnswer}:</span>
 				{String(revealedSubmission.value)}
 			</div>
 		{/if}
 	{:else}
-		<p class="text-lg text-slate-500">Waiting for next question...</p>
+		<p class="text-lg text-slate-500">{$messages.common.waitingForNextQuestion}</p>
 	{/if}
 </section>
 

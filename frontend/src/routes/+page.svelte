@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>{$messages.home.title} | Party Game</title>
+	<title>{$messages.home.title} | {$messages.common.appName}</title>
 </svelte:head>
 
 <PageTopChips />

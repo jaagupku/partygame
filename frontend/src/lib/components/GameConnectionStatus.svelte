@@ -1,14 +1,30 @@
 <script lang="ts">
+	import { messages } from '$lib/i18n';
+
 	interface Props {
+		connected?: boolean | null;
 		connectionLabel?: string;
 		showInline?: boolean;
 		showDisconnectedChip?: boolean;
 	}
 
-	let { connectionLabel = '', showInline = true, showDisconnectedChip = false }: Props = $props();
+	let {
+		connected = null,
+		connectionLabel = '',
+		showInline = true,
+		showDisconnectedChip = false
+	}: Props = $props();
 
-	const normalizedLabel = $derived(connectionLabel.trim());
-	const isLive = $derived(normalizedLabel === 'Live');
+	const normalizedLabel = $derived.by(() => {
+		if (connected === true) {
+			return $messages.common.live;
+		}
+		if (connected === false) {
+			return $messages.common.disconnected;
+		}
+		return connectionLabel.trim();
+	});
+	const isLive = $derived(connected === true);
 	const hasLabel = $derived(Boolean(normalizedLabel));
 	const showInlineStatus = $derived(showInline && hasLabel && !isLive);
 	const showStatusChip = $derived(showDisconnectedChip && hasLabel && !isLive);
@@ -25,7 +41,7 @@
 </script>
 
 {#if showInlineStatus}
-	<p class="page-subtitle mt-2">Connection: {normalizedLabel}</p>
+	<p class="page-subtitle mt-2">{$messages.common.connection}: {normalizedLabel}</p>
 {/if}
 
 {#if showStatusChip}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
+	import { messages } from '$lib/i18n';
 
 	type Props = {
 		step?: RuntimeStepState;
@@ -25,15 +26,13 @@
 	>
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 			<div>
-				<h3 class="label-title text-2xl">Display Preview</h3>
-				<p class="text-sm text-slate-600">
-					This uses the same big-screen step renderer as the live host display.
-				</p>
+				<h3 class="label-title text-2xl">{$messages.editor.displayPreview}</h3>
+				<p class="text-sm text-slate-600">{$messages.editor.displayPreviewHelp}</p>
 			</div>
 			<button
 				type="button"
 				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
-				aria-label="Close display preview"
+				aria-label={$messages.editor.closeDisplayPreview}
 				onclick={onClose}
 			>
 				<iconify-icon icon="fluent:dismiss-16-filled"></iconify-icon>
@@ -45,9 +44,9 @@
 		>
 			<StepDisplayPreview
 				{step}
-				title="Big Screen Preview"
+				title={$messages.editor.bigScreenPreview}
 				phaseLabel="question_active"
-				connectionLabel="Preview"
+				connectionLabel={$messages.common.preview}
 				submissionCount={0}
 				pendingReviewCount={0}
 				{countdown}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import { messages } from '$lib/i18n';
 
 	type ScoreboardPlayer = {
 		id: string;
@@ -50,7 +51,7 @@
 	}`}
 >
 	<h2 class={`label-title mb-4 ${railVariant ? 'text-2xl md:text-3xl' : 'text-3xl'}`}>
-		Scoreboard
+		{$messages.finale.fullScoreboard}
 	</h2>
 	{#if onSelectPlayer}
 		<p class="mb-4 text-sm text-slate-600">Click a player name to make them the host controller.</p>

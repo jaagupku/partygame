@@ -147,6 +147,8 @@ When editing the frontend:
 - preserve existing SvelteKit routing patterns
 - prefer updating shared stores/helpers when behavior is cross-cutting
 - keep websocket message shapes aligned with backend schemas and runtime handlers
+- source every new or changed user-visible frontend string from `frontend/src/lib/i18n.ts` instead of hardcoding copy in components or routes
+- when adding built-in editor/template/starter copy, update localization entries in `frontend/src/lib/i18n.ts` at the same time
 
 ### Backend
 

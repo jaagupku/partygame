@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import { messages } from '$lib/i18n';
 
 	type Props = {
 		description: string;
@@ -40,15 +41,13 @@
 	<div class="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
 		<div class="flex items-start justify-between gap-4">
 			<div>
-				<h3 class="label-title text-2xl">Definition Details</h3>
-				<p class="text-sm text-slate-600">
-					Edit the description and other definition-wide settings.
-				</p>
+				<h3 class="label-title text-2xl">{$messages.editor.detailsTitle}</h3>
+				<p class="text-sm text-slate-600">{$messages.editor.detailsSubtitle}</p>
 			</div>
 			<button
 				type="button"
 				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
-				aria-label="Close definition details"
+				aria-label={$messages.editor.closeDefinitionDetails}
 				onclick={onClose}
 			>
 				<iconify-icon icon="fluent:dismiss-16-filled"></iconify-icon>
@@ -57,11 +56,13 @@
 
 		<div class="mt-5 grid gap-4">
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Description</span>
+				<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+					>{$messages.editor.description}</span
+				>
 				<textarea
 					value={description}
 					class="input min-h-32 text-lg"
-					placeholder="What kind of experience should hosts expect?"
+					placeholder={$messages.editor.descriptionPlaceholder}
 					oninput={(event) =>
 						onDescriptionChange((event.currentTarget as HTMLTextAreaElement).value)}
 				></textarea>
@@ -72,12 +73,13 @@
 					class="btn btn-ghost px-4 py-2 text-sm"
 					onclick={onToggleAdvancedFields}
 				>
-					{showAdvancedFields ? 'Hide Advanced' : 'Show Advanced'}
+					{showAdvancedFields ? $messages.editor.hideAdvanced : $messages.editor.showAdvanced}
 				</button>
 			</div>
 			{#if showAdvancedFields && isNewDefinition}
 				<label class="input-wrap">
-					<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Definition id</span
+					<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+						>{$messages.editor.definitionId}</span
 					>
 					<input
 						value={definitionId}
@@ -89,16 +91,19 @@
 				</label>
 			{:else if showAdvancedFields}
 				<div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-					Definition id is fixed after creation: <span class="font-bold text-slate-800"
-						>{currentDefinitionId}</span
-					>
+					{$messages.editor.definitionIdFixed}:
+					<span class="font-bold text-slate-800">{currentDefinitionId}</span>
 				</div>
 			{/if}
 		</div>
 
 		<div class="mt-6 flex flex-wrap justify-end gap-3">
-			<button type="button" class="btn btn-ghost" onclick={onClose}>Cancel</button>
-			<button type="button" class="btn btn-primary" onclick={onSave}>Save Details</button>
+			<button type="button" class="btn btn-ghost" onclick={onClose}
+				>{$messages.common.cancel}</button
+			>
+			<button type="button" class="btn btn-primary" onclick={onSave}
+				>{$messages.common.saveDetails}</button
+			>
 		</div>
 	</div>
 </div>

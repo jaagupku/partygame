@@ -12,6 +12,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import AvatarCropEditor from '$lib/components/AvatarCropEditor.svelte';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
+	import { messages } from '$lib/i18n';
 	import { onDestroy, onMount } from 'svelte';
 
 	function randomPresetKey() {
@@ -93,7 +94,7 @@
 			uploadError =
 				typeof body === 'object' && body !== null && 'detail' in body
 					? String(body.detail)
-					: 'Could not join game.';
+					: $messages.join.couldNotJoinGame;
 			return;
 		}
 
@@ -130,7 +131,7 @@
 		try {
 			const blob = await cropEditor.exportBlob();
 			if (!blob) {
-				uploadError = 'Could not prepare avatar image.';
+				uploadError = $messages.join.couldNotPrepareAvatar;
 				return;
 			}
 			const response = await fetch(
@@ -147,7 +148,7 @@
 			if (!response.ok || !('id' in asset)) {
 				uploadError =
 					(typeof asset === 'object' && asset !== null && 'detail' in asset && asset.detail) ||
-					'Could not upload avatar.';
+					$messages.join.couldNotUploadAvatar;
 				return;
 			}
 			avatarKind = 'custom';
@@ -157,7 +158,7 @@
 			avatarPickerOpen = false;
 			clearPendingImage();
 		} catch {
-			uploadError = 'Could not upload avatar.';
+			uploadError = $messages.join.couldNotUploadAvatar;
 		} finally {
 			uploadingAvatar = false;
 		}
@@ -214,11 +215,11 @@
 </script>
 
 <svelte:head>
-	<title>Join Game | Party Game</title>
+	<title>{$messages.join.title} | {$messages.common.appName}</title>
 </svelte:head>
 
-<h1 class="page-title">Join Game</h1>
-<p class="page-subtitle">Set your player profile, then enter the 5-letter lobby code.</p>
+<h1 class="page-title">{$messages.join.title}</h1>
+<p class="page-subtitle">{$messages.join.subtitle}</p>
 
 <form onsubmit={onSubmit} class="stack-lg mx-auto mt-8 max-w-3xl">
 	<section class="card profile-card">
@@ -228,35 +229,43 @@
 			onclick={() => (avatarPickerOpen = !avatarPickerOpen)}
 		>
 			<Avatar
-				name={name.trim() || 'Player'}
+				name={name.trim() || $messages.join.playerFallback}
 				{avatarKind}
 				{avatarPresetKey}
 				{avatarUrl}
 				sizeClass="h-24 w-24"
 			/>
 			<div class="min-w-0 flex-1">
-				<p class="label-title mb-2">Avatar</p>
-				<p class="text-xl font-black text-slate-900">{name.trim() || 'Player'}</p>
+				<p class="label-title mb-2">{$messages.join.avatar}</p>
+				<p class="text-xl font-black text-slate-900">
+					{name.trim() || $messages.join.playerFallback}
+				</p>
 				<p class="text-sm text-slate-600">
 					{avatarKind === 'custom'
-						? 'Custom photo avatar'
-						: `Preset: ${getAvatarPreset(avatarPresetKey)?.label ?? 'Random'}`}
+						? $messages.join.customPhotoAvatar
+						: `${$messages.join.preset}: ${getAvatarPreset(avatarPresetKey)?.label ?? $messages.join.random}`}
 				</p>
 				<p class="mt-2 text-sm font-semibold text-sky-700">
-					{avatarPickerOpen ? 'Hide avatar options' : 'Tap to change avatar'}
+					{avatarPickerOpen ? $messages.join.hideAvatarOptions : $messages.join.changeAvatar}
 				</p>
 			</div>
 		</button>
 
 		<label class="input-wrap">
-			<span class="label-title">Name</span>
-			<input bind:value={name} class="input" title="Name" type="text" placeholder="Your name" />
+			<span class="label-title">{$messages.join.name}</span>
+			<input
+				bind:value={name}
+				class="input"
+				title={$messages.join.name}
+				type="text"
+				placeholder={$messages.join.namePlaceholder}
+			/>
 		</label>
 
 		{#if avatarPickerOpen}
 			<div class="stack-md">
 				<div>
-					<p class="label-title mb-3">Choose a preset avatar</p>
+					<p class="label-title mb-3">{$messages.join.choosePresetAvatar}</p>
 					<div class="preset-grid">
 						{#each AVATAR_PRESETS as preset (preset.key)}
 							<button
@@ -279,13 +288,11 @@
 				<div class="card upload-card">
 					<div class="flex items-start justify-between gap-4">
 						<div>
-							<p class="label-title">Take a photo or choose one</p>
-							<p class="mt-1 text-sm text-slate-600">
-								Your image will be cropped into a square 256x256 avatar before upload.
-							</p>
+							<p class="label-title">{$messages.join.takePhotoOrChoose}</p>
+							<p class="mt-1 text-sm text-slate-600">{$messages.join.photoHelp}</p>
 						</div>
 						<label class="btn btn-secondary cursor-pointer">
-							Use Camera / Photo
+							{$messages.join.useCameraPhoto}
 							<input
 								class="sr-only"
 								type="file"
@@ -300,9 +307,7 @@
 						<div class="mt-5 grid gap-4 md:grid-cols-[auto_1fr] md:items-start">
 							<AvatarCropEditor bind:this={cropEditor} imageUrl={pendingImageUrl} />
 							<div class="stack-md">
-								<p class="text-sm text-slate-600">
-									Drag to position the image and use zoom to frame your avatar.
-								</p>
+								<p class="text-sm text-slate-600">{$messages.join.adjustPhoto}</p>
 								<div class="flex flex-wrap gap-3">
 									<button
 										type="button"
@@ -310,10 +315,10 @@
 										disabled={uploadingAvatar}
 										onclick={uploadCustomAvatar}
 									>
-										{uploadingAvatar ? 'Uploading...' : 'Use this photo'}
+										{uploadingAvatar ? $messages.join.uploading : $messages.join.useThisPhoto}
 									</button>
 									<button type="button" class="btn btn-ghost" onclick={clearPendingImage}>
-										Cancel
+										{$messages.common.cancel}
 									</button>
 								</div>
 							</div>
@@ -322,7 +327,7 @@
 
 					{#if avatarKind === 'custom' && avatarUrl}
 						<p class="mt-4 text-sm font-semibold text-emerald-700">
-							Custom avatar ready for your next join.
+							{$messages.join.customAvatarReady}
 						</p>
 					{/if}
 				</div>
@@ -332,14 +337,14 @@
 
 	<section class="card">
 		<label class="input-wrap">
-			<span class="label-title">Join Code</span>
+			<span class="label-title">{$messages.join.joinCode}</span>
 			<input
 				use:uppercase
 				bind:value={joinCode}
 				class="input text-center text-4xl tracking-[0.25em]"
-				title="Join code"
+				title={$messages.join.joinCode}
 				type="text"
-				placeholder="ABCDE"
+				placeholder={$messages.join.joinCodePlaceholder}
 			/>
 		</label>
 
@@ -348,11 +353,11 @@
 		{/if}
 
 		{#if validatingProfile}
-			<p class="mt-4 text-sm text-slate-600">Checking saved custom avatar...</p>
+			<p class="mt-4 text-sm text-slate-600">{$messages.join.checkingSavedAvatar}</p>
 		{/if}
 
 		<button disabled={!submitEnabled} type="submit" class="btn btn-accent mt-6 w-full text-4xl">
-			Join
+			{$messages.join.joinAction}
 		</button>
 	</section>
 </form>

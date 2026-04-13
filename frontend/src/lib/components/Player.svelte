@@ -1,6 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import { messages } from '$lib/i18n';
 
 	interface PlayerComponentProps {
 		player: Player;
@@ -20,7 +21,7 @@
 	/>
 	<span class="text-xl font-bold">{player.name}</span>
 	{#if player.isHost}
-		<span class="badge bg-sky-100 text-sky-700">Host</span>
+		<span class="badge bg-sky-100 text-sky-700">{$messages.common.host}</span>
 	{/if}
 	{#if player.status !== 'connected'}
 		<iconify-icon class="ml-auto text-2xl text-gray-500" icon="fluent:plug-disconnected-16-filled"

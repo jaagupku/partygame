@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { messages } from '$lib/i18n';
 
 	let definitions = $state<DefinitionSummary[]>([]);
 	let definitionId = $state('quiz_demo');
@@ -62,25 +63,23 @@
 </script>
 
 <svelte:head>
-	<title>Create Game | Party Game</title>
+	<title>{$messages.create.title} | {$messages.common.appName}</title>
 </svelte:head>
 
 <div class="flex flex-wrap items-start justify-between gap-4">
 	<div>
-		<h1 class="page-title text-left">Create Game</h1>
-		<p class="page-subtitle text-left">
-			Pick a definition, review it, and choose whether a host phone runs the show.
-		</p>
+		<h1 class="page-title text-left">{$messages.create.title}</h1>
+		<p class="page-subtitle text-left">{$messages.create.subtitle}</p>
 	</div>
 	<button class="btn btn-ghost text-lg" onclick={() => goto('/definitions')}
-		>Manage Definitions</button
+		>{$messages.common.manageDefinitions}</button
 	>
 </div>
 
 <div class="stack-lg">
 	<section class="card stack-md">
 		<label class="input-wrap">
-			<span class="label-title">Game definition</span>
+			<span class="label-title">{$messages.create.gameDefinition}</span>
 			<div class="select-shell">
 				<select bind:value={definitionId} class="input select-input text-lg">
 					{#each definitions as definition}
@@ -91,17 +90,15 @@
 			</div>
 			{#if selectedDefinitionSummary}
 				<p class="text-sm font-semibold text-slate-700">
-					Selected: {selectedDefinitionSummary.title}
+					{$messages.common.selected}: {selectedDefinitionSummary.title}
 				</p>
 			{/if}
 		</label>
 
 		<label class="flex items-center justify-between gap-4 rounded-2xl bg-white/60 px-4 py-3">
 			<div>
-				<p class="label-title text-xl">Host-enabled mode</p>
-				<p class="text-sm text-slate-600">
-					When on, the first joined player becomes the host controller.
-				</p>
+				<p class="label-title text-xl">{$messages.create.hostEnabledMode}</p>
+				<p class="text-sm text-slate-600">{$messages.create.hostEnabledHelp}</p>
 			</div>
 			<input bind:checked={hostEnabled} type="checkbox" class="h-6 w-6" />
 		</label>
@@ -110,20 +107,20 @@
 	<section class="card stack-md">
 		<div class="flex items-start justify-between gap-4">
 			<div>
-				<h2 class="label-title text-2xl">Definition Preview</h2>
+				<h2 class="label-title text-2xl">{$messages.create.definitionPreview}</h2>
 				{#if loadingDefinition}
-					<p class="text-slate-500">Loading definition details...</p>
+					<p class="text-slate-500">{$messages.create.loadingDefinitionDetails}</p>
 				{:else if selectedDefinition}
 					<p class="text-slate-700">
-						{selectedDefinition.description ?? 'No description provided.'}
+						{selectedDefinition.description ?? $messages.create.noDescriptionProvided}
 					</p>
 				{:else}
-					<p class="text-slate-500">No definition selected.</p>
+					<p class="text-slate-500">{$messages.create.noDefinitionSelected}</p>
 				{/if}
 			</div>
 			{#if selectedDefinition}
 				<div class="rounded-2xl bg-sky-50 px-4 py-3 text-right">
-					<p class="text-sm uppercase tracking-wide text-sky-700">Rounds</p>
+					<p class="text-sm uppercase tracking-wide text-sky-700">{$messages.common.rounds}</p>
 					<p class="text-3xl font-extrabold text-sky-900">{selectedDefinition.rounds.length}</p>
 				</div>
 			{/if}
@@ -134,7 +131,10 @@
 				{#each selectedDefinition.rounds as round}
 					<div class="rounded-2xl bg-white/70 p-4">
 						<h3 class="text-xl font-bold">{round.title ?? round.id}</h3>
-						<p class="mt-1 text-sm text-slate-600">{round.steps.length} steps</p>
+						<p class="mt-1 text-sm text-slate-600">
+							{round.steps.length}
+							{$messages.common.steps}
+						</p>
 						<ul class="mt-3 space-y-2">
 							{#each round.steps.slice(0, 3) as step}
 								<li class="rounded-xl bg-slate-50 px-3 py-2">
@@ -153,9 +153,11 @@
 	</section>
 
 	<div class="flex flex-wrap gap-4">
-		<button class="btn btn-ghost min-h-16 flex-1 text-2xl" onclick={() => goto('/')}>Back</button>
+		<button class="btn btn-ghost min-h-16 flex-1 text-2xl" onclick={() => goto('/')}>
+			{$messages.common.back}
+		</button>
 		<button class="btn btn-primary min-h-16 flex-[2] text-3xl" onclick={createGame}
-			>Create Game</button
+			>{$messages.common.createGame}</button
 		>
 	</div>
 </div>
