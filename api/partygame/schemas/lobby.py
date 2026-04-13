@@ -44,6 +44,10 @@ class JoinRequest(BaseModel):
     join_code: str
     player_name: str
     player_id: str | None = None
+    avatar_kind: Literal["preset", "custom"] | None = None
+    avatar_preset_key: str | None = None
+    avatar_url: str | None = None
+    avatar_asset_id: str | None = None
 
 
 class Player(BaseModel):
@@ -52,6 +56,10 @@ class Player(BaseModel):
     name: str = Field(min_length=1, max_length=32)
     score: int = 0
     status: ConnectionStatus = ConnectionStatus.DISCONNECTED
+    avatar_kind: Literal["preset", "custom"] | None = None
+    avatar_preset_key: str | None = None
+    avatar_url: str | None = None
+    avatar_asset_id: str | None = None
 
 
 class BaseComponent(BaseModel):

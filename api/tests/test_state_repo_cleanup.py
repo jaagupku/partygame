@@ -98,6 +98,14 @@ class FakeRedis:
         return FakePipeline(self)
 
 
+class FakeMediaStorage:
+    def __init__(self):
+        self.deleted_assets: list[str] = []
+
+    async def delete(self, asset_id: str):
+        self.deleted_assets.append(asset_id)
+
+
 @pytest.mark.asyncio
 async def test_game_state_repository_registers_all_game_keys_and_applies_ttl():
     redis = FakeRedis()
@@ -142,3 +150,36 @@ async def test_delete_game_removes_join_code_and_registry():
 
     assert await repo.get_game_id_from_join_code("ABCDE") is None
     assert await redis.smembers(GameKeyFactory.game_keys("g1")) == set()
+
+
+@pytest.mark.asyncio
+async def test_delete_game_cleans_custom_avatar_assets_only():
+    redis = FakeRedis()
+    repo = GameStateRepository(redis)
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE")
+    storage = FakeMediaStorage()
+
+    await repo.create_lobby(lobby)
+    await repo.create_player(
+        schemas.Player(
+            id="p1",
+            game_id="g1",
+            name="Alice",
+            avatar_kind="custom",
+            avatar_url="/api/v1/media/custom-1",
+            avatar_asset_id="custom-1",
+        )
+    )
+    await repo.create_player(
+        schemas.Player(
+            id="p2",
+            game_id="g1",
+            name="Bob",
+            avatar_kind="preset",
+            avatar_preset_key="fox",
+        )
+    )
+
+    await repo.delete_game("g1", media_storage=storage)
+
+    assert storage.deleted_assets == ["custom-1"]

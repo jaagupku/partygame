@@ -1,11 +1,15 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import Avatar from '$lib/components/Avatar.svelte';
 
 	type ScoreboardPlayer = {
 		id: string;
 		name: string;
 		score: number;
 		status: 'connected' | 'disconnected';
+		avatar_kind?: 'preset' | 'custom';
+		avatar_preset_key?: string;
+		avatar_url?: string;
 		isHost?: boolean;
 	};
 
@@ -14,18 +18,30 @@
 		playerMap: Map<string, ScoreboardPlayer>;
 		onSelectPlayer?: (playerId: string) => void;
 		variant?: 'default' | 'rail' | 'overlay';
+		standings?: FinalStandingEntry[];
 	}
 
-	let { players, playerMap, onSelectPlayer, variant = 'default' }: ScoreboardProps = $props();
+	let {
+		players,
+		playerMap,
+		onSelectPlayer,
+		variant = 'default',
+		standings
+	}: ScoreboardProps = $props();
 
 	const ordered = $derived(
-		players
-			.filter((player) => !player.isHost)
-			.toSorted((a, b) => b.score - a.score)
-			.map((player) => player.id)
+		standings?.length
+			? standings.map((entry) => entry.player_id)
+			: players
+					.filter((player) => !player.isHost)
+					.toSorted((a, b) => b.score - a.score)
+					.map((player) => player.id)
 	);
 	const railVariant = $derived(variant === 'rail');
 	const overlayVariant = $derived(variant === 'overlay');
+	const placeByPlayerId = $derived(
+		new Map((standings ?? []).map((entry) => [entry.player_id, entry.place]))
+	);
 </script>
 
 <section
@@ -48,15 +64,24 @@
 						: 'grid-cols-[auto_1fr_auto] p-3'
 				}`}
 			>
-				<div class="badge bg-slate-100 text-slate-700">#{i + 1}</div>
+				<div class="badge bg-slate-100 text-slate-700">
+					#{placeByPlayerId.get(playerId) ?? i + 1}
+				</div>
 				{#if onSelectPlayer}
 					<button
 						type="button"
-						class={`flex min-w-0 items-center gap-2 text-left font-bold text-slate-800 transition-opacity hover:opacity-75 ${
+						class={`flex min-w-0 items-center gap-3 text-left font-bold text-slate-800 transition-opacity hover:opacity-75 ${
 							railVariant ? 'text-base md:text-lg' : 'text-lg'
 						}`}
 						onclick={() => onSelectPlayer(playerId)}
 					>
+						<Avatar
+							name={playerMap.get(playerId)?.name ?? playerId}
+							avatarKind={playerMap.get(playerId)?.avatar_kind}
+							avatarPresetKey={playerMap.get(playerId)?.avatar_preset_key}
+							avatarUrl={playerMap.get(playerId)?.avatar_url}
+							sizeClass={railVariant ? 'h-10 w-10' : 'h-11 w-11'}
+						/>
 						{#if playerMap.get(playerId)?.status === 'disconnected'}
 							<iconify-icon icon="fluent:plug-disconnected-16-filled"></iconify-icon>
 						{/if}
@@ -64,10 +89,17 @@
 					</button>
 				{:else}
 					<div
-						class={`flex min-w-0 items-center gap-2 font-bold ${
+						class={`flex min-w-0 items-center gap-3 font-bold ${
 							railVariant ? 'text-base md:text-lg' : 'text-lg'
 						}`}
 					>
+						<Avatar
+							name={playerMap.get(playerId)?.name ?? playerId}
+							avatarKind={playerMap.get(playerId)?.avatar_kind}
+							avatarPresetKey={playerMap.get(playerId)?.avatar_preset_key}
+							avatarUrl={playerMap.get(playerId)?.avatar_url}
+							sizeClass={railVariant ? 'h-10 w-10' : 'h-11 w-11'}
+						/>
 						{#if playerMap.get(playerId)?.status === 'disconnected'}
 							<iconify-icon icon="fluent:plug-disconnected-16-filled"></iconify-icon>
 						{/if}

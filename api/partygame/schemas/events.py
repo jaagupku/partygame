@@ -32,6 +32,9 @@ class Event(StrEnum):
     REVIEW_SUBMISSION = auto()
     RUNTIME_PATCH = auto()
     RESYNC_REQUEST = auto()
+    REVEAL_END_GAME = auto()
+    ADVANCE_END_GAME_STAGE = auto()
+    TOGGLE_END_GAME_AUTOPLAY = auto()
 
 
 class BaseEvent(BaseModel):
@@ -217,6 +220,7 @@ class RuntimeSnapshotEvent(BaseEvent):
     revealed_answer: RevealedAnswer | None = None
     host_answer: RevealedAnswer | None = None
     submissions: list[SubmissionItem] = Field(default_factory=list)
+    end_game: EndGameState | None = None
 
 
 class RuntimePatchEvent(BaseEvent):
@@ -239,3 +243,44 @@ class RevealedSubmissionEvent(BaseEvent):
 class ResyncRequestEvent(BaseEvent):
     type_: str = Event.RESYNC_REQUEST
     last_revision: int | None = None
+
+
+class RevealEndGameEvent(BaseEvent):
+    type_: str = Event.REVEAL_END_GAME
+
+
+class AdvanceEndGameStageEvent(BaseEvent):
+    type_: str = Event.ADVANCE_END_GAME_STAGE
+
+
+class ToggleEndGameAutoplayEvent(BaseEvent):
+    type_: str = Event.TOGGLE_END_GAME_AUTOPLAY
+    enabled: bool
+
+
+class FinalStandingEntry(BaseModel):
+    player_id: str
+    name: str
+    score: int
+    place: int
+    avatar_kind: str | None = None
+    avatar_preset_key: str | None = None
+    avatar_url: str | None = None
+
+
+class EndGameStatCard(BaseModel):
+    id: str
+    label: str
+    winner_player_ids: list[str] = Field(default_factory=list)
+    value: float | int
+    unit: str | None = None
+    description: str | None = None
+
+
+class EndGameState(BaseModel):
+    revealed: bool = False
+    sequence_stage: str = "podium"
+    autoplay_enabled: bool = False
+    final_standings: list[FinalStandingEntry] = Field(default_factory=list)
+    podium: list[FinalStandingEntry] = Field(default_factory=list)
+    stats_cards: list[EndGameStatCard] = Field(default_factory=list)

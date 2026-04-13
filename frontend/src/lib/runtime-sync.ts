@@ -23,6 +23,7 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.pendingReviewCount = event.pending_review_count;
 	state.revealedSubmission = event.revealed_submission;
 	state.revealedAnswer = event.revealed_answer;
+	state.endGame = event.end_game;
 }
 
 export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): boolean {
@@ -85,6 +86,9 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 	if ('revealed_answer' in changes) {
 		state.revealedAnswer = changes.revealed_answer;
 	}
+	if ('end_game' in changes) {
+		state.endGame = changes.end_game;
+	}
 	state.lastRevision = event.revision;
 	return true;
 }
@@ -111,6 +115,7 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.revealedAnswer = event.revealed_answer;
 	state.hostAnswer = event.host_answer;
 	state.submissions = event.submissions;
+	state.endGame = event.end_game;
 }
 
 export function applyControllerPatch(state: ControllerState, event: RuntimePatchEvent): boolean {
@@ -183,6 +188,9 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 	}
 	if (changes.submissions !== undefined) {
 		state.submissions = changes.submissions;
+	}
+	if ('end_game' in changes) {
+		state.endGame = changes.end_game;
 	}
 	state.lastRevision = event.revision;
 	return true;

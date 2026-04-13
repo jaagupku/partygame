@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import FinaleDisplay from '$lib/components/endgame/FinaleDisplay.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
@@ -127,10 +129,16 @@
 				<li class="card flex items-center justify-between gap-3">
 					<button
 						type="button"
-						class="text-left text-xl font-bold text-slate-800 transition-opacity hover:opacity-75"
+						class="flex min-w-0 items-center gap-3 text-left text-xl font-bold text-slate-800 transition-opacity hover:opacity-75"
 						onclick={() => setHost(player.id)}
 					>
-						{player.name}
+						<Avatar
+							name={player.name}
+							avatarKind={player.avatar_kind}
+							avatarPresetKey={player.avatar_preset_key}
+							avatarUrl={player.avatar_url}
+						/>
+						<span class="truncate">{player.name}</span>
 					</button>
 					<div class="flex items-center gap-2">
 						{#if player.isHost}
@@ -145,23 +153,50 @@
 {:else}
 	<div class="relative h-full min-h-0 overflow-hidden">
 		<section class="h-full min-w-0 min-h-0">
-			<StepDisplayPreview
-				step={$game.activeStep}
-				revealedSubmission={$game.revealedSubmission}
-				revealedAnswer={$game.revealedAnswer}
-				buzzerActive={$game.buzzerActive}
-				buzzedPlayerId={$game.buzzedPlayerId}
-				{buzzedPlayerName}
-				displayPhase={$game.displayPhase}
-				phaseLabel={$game.phase ?? 'question_active'}
-				connectionLabel={isConnected ? 'Live' : 'Disconnected'}
-				layoutMode="host-stage"
-				showConnectionInline={false}
-				showDisconnectedChip={true}
-				submissionCount={$game.submissionCount}
-				pendingReviewCount={$game.pendingReviewCount}
-				{countdown}
-			/>
+			{#if $game.endGame?.revealed}
+				<FinaleDisplay
+					endGame={$game.endGame}
+					players={$game.players}
+					{playerMap}
+					title={definitionTitle()}
+					connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+					showDisconnectedChip={true}
+				/>
+			{:else if $game.phase === 'finished' && $game.endGame}
+				<section
+					class="card grid h-full min-h-0 place-items-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(219,234,254,0.88)_45%,_rgba(240,253,244,0.92))] text-center"
+				>
+					<div class="max-w-2xl">
+						<h1 class="page-title text-4xl md:text-5xl">{definitionTitle()}</h1>
+						<p class="page-subtitle mt-4">
+							Final results are ready. Reveal the finale from the host controller when you are set.
+						</p>
+						<GameConnectionStatus
+							connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+							showInline={false}
+							showDisconnectedChip={true}
+						/>
+					</div>
+				</section>
+			{:else}
+				<StepDisplayPreview
+					step={$game.activeStep}
+					revealedSubmission={$game.revealedSubmission}
+					revealedAnswer={$game.revealedAnswer}
+					buzzerActive={$game.buzzerActive}
+					buzzedPlayerId={$game.buzzedPlayerId}
+					{buzzedPlayerName}
+					displayPhase={$game.displayPhase}
+					phaseLabel={$game.phase ?? 'question_active'}
+					connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+					layoutMode="host-stage"
+					showConnectionInline={false}
+					showDisconnectedChip={true}
+					submissionCount={$game.submissionCount}
+					pendingReviewCount={$game.pendingReviewCount}
+					{countdown}
+				/>
+			{/if}
 		</section>
 
 		<aside
@@ -169,9 +204,11 @@
 				$game.scoreboardVisible ? 'translate-x-0' : 'translate-x-[calc(100%+1rem)]'
 			}`}
 		>
-			<div class="pointer-events-auto h-full">
-				<Scoreboard players={$game.players} {playerMap} variant="overlay" />
-			</div>
+			{#if !$game.endGame?.revealed}
+				<div class="pointer-events-auto h-full">
+					<Scoreboard players={$game.players} {playerMap} variant="overlay" />
+				</div>
+			{/if}
 		</aside>
 	</div>
 {/if}

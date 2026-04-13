@@ -79,6 +79,15 @@ class FakeRepo:
     async def count_connected_players(self, game_id: str) -> int:
         return self.connected_players
 
+    async def get_player(self, game_id: str, player_id: str):
+        if self.created_player is not None and self.created_player.id == player_id:
+            return self.created_player
+        return None
+
+    async def remove_player(self, game_id: str, player_id: str):
+        if self.created_player is not None and self.created_player.id == player_id:
+            self.created_player = None
+
 
 @pytest.mark.asyncio
 async def test_create_assigns_first_host_and_publishes_display_events(monkeypatch):
@@ -94,11 +103,18 @@ async def test_create_assigns_first_host_and_publishes_display_events(monkeypatc
 
     player = await player_service.create(
         redis=object(),
-        join_request=schemas.JoinRequest(join_code="ABCDE", player_name="Alice"),
+        join_request=schemas.JoinRequest(
+            join_code="ABCDE",
+            player_name="Alice",
+            avatar_kind="preset",
+            avatar_preset_key="fox",
+        ),
         game_id="g1",
     )
 
     assert repo.created_player == player
+    assert player.avatar_kind == "preset"
+    assert player.avatar_preset_key == "fox"
     assert repo.set_lobby_calls == [("g1", {"host_id": player.id})]
     assert repo.applied_ttls == [("g1", 3600)]
     assert published == [
@@ -255,6 +271,33 @@ async def test_resync_request_sends_full_snapshot_without_command_roundtrip(monk
     assert called["refresh"] == 1
     assert called["scheduled"] == 1
     assert websocket.messages == [snapshot.model_dump_json()]
+
+
+@pytest.mark.asyncio
+async def test_remove_deletes_custom_avatar_asset(monkeypatch):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE")
+    repo = FakeRepo(lobby)
+    repo.created_player = schemas.Player(
+        id="p1",
+        game_id="g1",
+        name="Alice",
+        avatar_kind="custom",
+        avatar_url="/api/v1/media/a1",
+        avatar_asset_id="a1",
+    )
+    deleted_assets: list[str] = []
+
+    class FakeStorage:
+        async def delete(self, asset_id: str):
+            deleted_assets.append(asset_id)
+
+    monkeypatch.setattr(player_service, "GameStateRepository", lambda redis: repo)
+    monkeypatch.setattr(player_service, "get_media_storage", lambda: FakeStorage())
+
+    await player_service.remove(redis=object(), lobby_id="g1", player_id="p1")
+
+    assert deleted_assets == ["a1"]
+    assert repo.created_player is None
 
 
 @pytest.mark.asyncio

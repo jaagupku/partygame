@@ -44,6 +44,12 @@ from .events import (
     SubmissionItem,
     SubmissionsUpdatedEvent,
     ResyncRequestEvent,
+    RevealEndGameEvent,
+    AdvanceEndGameStageEvent,
+    ToggleEndGameAutoplayEvent,
+    FinalStandingEntry,
+    EndGameStatCard,
+    EndGameState,
 )
 
 from .game_definition import (
@@ -105,6 +111,12 @@ __all__ = (
     "SubmissionItem",
     "SubmissionsUpdatedEvent",
     "ResyncRequestEvent",
+    "RevealEndGameEvent",
+    "AdvanceEndGameStageEvent",
+    "ToggleEndGameAutoplayEvent",
+    "FinalStandingEntry",
+    "EndGameStatCard",
+    "EndGameState",
     "GameDefinition",
     "RoundDefinition",
     "StepDefinition",

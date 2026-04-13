@@ -39,6 +39,10 @@ type Player = {
 	game_id: string;
 	score: number;
 	status: ConnectionStatus;
+	avatar_kind?: 'preset' | 'custom';
+	avatar_preset_key?: string;
+	avatar_url?: string;
+	avatar_asset_id?: string;
 	isHost?: boolean;
 };
 
@@ -231,6 +235,34 @@ type RevealedAnswer = {
 	value: unknown;
 };
 
+type FinalStandingEntry = {
+	player_id: string;
+	name: string;
+	score: number;
+	place: number;
+	avatar_kind?: 'preset' | 'custom';
+	avatar_preset_key?: string;
+	avatar_url?: string;
+};
+
+type EndGameStatCard = {
+	id: string;
+	label: string;
+	winner_player_ids: string[];
+	value: number;
+	unit?: string;
+	description?: string;
+};
+
+type EndGameState = {
+	revealed: boolean;
+	sequence_stage: string;
+	autoplay_enabled: boolean;
+	final_standings: FinalStandingEntry[];
+	podium: FinalStandingEntry[];
+	stats_cards: EndGameStatCard[];
+};
+
 type RuntimeSnapshotEvent = {
 	type_: 'runtime_snapshot';
 	revision: number;
@@ -249,6 +281,7 @@ type RuntimeSnapshotEvent = {
 	revealed_answer?: RevealedAnswer;
 	host_answer?: RevealedAnswer;
 	submissions: SubmissionItem[];
+	end_game?: EndGameState;
 };
 
 type RuntimePatchEvent = {
@@ -271,6 +304,7 @@ type RuntimePatchEvent = {
 		revealed_answer?: RevealedAnswer;
 		host_answer?: RevealedAnswer;
 		submissions?: SubmissionItem[];
+		end_game?: EndGameState;
 	};
 };
 
@@ -323,6 +357,19 @@ type ResyncRequestEvent = {
 	last_revision?: number;
 };
 
+type RevealEndGameEvent = {
+	type_: 'reveal_end_game';
+};
+
+type AdvanceEndGameStageEvent = {
+	type_: 'advance_end_game_stage';
+};
+
+type ToggleEndGameAutoplayEvent = {
+	type_: 'toggle_end_game_autoplay';
+	enabled: boolean;
+};
+
 type HostGameState = Lobby & {
 	lastRevision: number;
 	activeStep?: RuntimeStepState;
@@ -335,6 +382,7 @@ type HostGameState = Lobby & {
 	pendingReviewCount: number;
 	revealedSubmission?: RevealedSubmission;
 	revealedAnswer?: RevealedAnswer;
+	endGame?: EndGameState;
 };
 
 type ControllerState = {
@@ -360,6 +408,7 @@ type ControllerState = {
 	revealedAnswer?: RevealedAnswer;
 	hostAnswer?: RevealedAnswer;
 	submissions: SubmissionItem[];
+	endGame?: EndGameState;
 };
 
 type YouTubePlayerState = -1 | 0 | 1 | 2 | 3 | 5;
