@@ -2,6 +2,7 @@ import { writable } from 'svelte/store';
 import { Sound } from 'svelte-sound';
 import correctWav from '$lib/assets/sounds/correct.wav';
 import wrongWav from '$lib/assets/sounds/wrong.wav';
+import { applyHostPatch, applyHostSnapshot } from '$lib/runtime-sync.js';
 
 const correctSound = new Sound(correctWav);
 const wrongSound = new Sound(wrongWav);
@@ -9,6 +10,7 @@ const wrongSound = new Sound(wrongWav);
 export function createGameStore(initialState: Lobby) {
 	const initial: HostGameState = {
 		...initialState,
+		lastRevision: 0,
 		activeStep: undefined,
 		displayPhase: 'question_active',
 		scoreboardVisible: false,
@@ -52,24 +54,7 @@ export function createGameStore(initialState: Lobby) {
 
 	function applySnapshot(event: RuntimeSnapshotEvent) {
 		lobby.update((state) => {
-			state.state = event.lobby.state;
-			state.phase = event.lobby.phase;
-			state.current_step = event.lobby.current_step;
-			state.host_enabled = event.lobby.host_enabled;
-			state.host_id = event.lobby.host_id;
-			state.activeStep = event.active_step;
-			state.displayPhase = event.display_phase;
-			state.scoreboardVisible = event.scoreboard_visible;
-			state.buzzerActive = event.buzzer_active;
-			state.buzzedPlayerId = event.buzzed_player_id;
-			state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
-			state.submissionCount = event.submission_count;
-			state.pendingReviewCount = event.pending_review_count;
-			state.revealedSubmission = event.revealed_submission;
-			state.revealedAnswer = event.revealed_answer;
-			for (const player of state.players) {
-				player.isHost = player.id === state.host_id;
-			}
+			applyHostSnapshot(state, event);
 			return state;
 		});
 	}
@@ -124,7 +109,15 @@ export function createGameStore(initialState: Lobby) {
 			}
 			case 'runtime_snapshot': {
 				applySnapshot(messageData as RuntimeSnapshotEvent);
-				break;
+				return 'snapshot_applied';
+			}
+			case 'runtime_patch': {
+				let applied = true;
+				lobby.update((state) => {
+					applied = applyHostPatch(state, messageData as RuntimePatchEvent);
+					return state;
+				});
+				return applied ? 'ok' : 'resync_required';
 			}
 			case 'buzzer_state': {
 				const event: BuzzerStateEvent = messageData;
@@ -178,6 +171,7 @@ export function createGameStore(initialState: Lobby) {
 				break;
 			}
 		}
+		return 'ok';
 	}
 
 	if (initialState.host_id) {

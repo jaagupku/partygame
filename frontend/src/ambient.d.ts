@@ -233,7 +233,9 @@ type RevealedAnswer = {
 
 type RuntimeSnapshotEvent = {
 	type_: 'runtime_snapshot';
+	revision: number;
 	lobby: RuntimeLobbyState;
+	players: Player[];
 	active_step?: RuntimeStepState;
 	display_phase: string;
 	scoreboard_visible: boolean;
@@ -246,6 +248,30 @@ type RuntimeSnapshotEvent = {
 	revealed_submission?: RevealedSubmission;
 	revealed_answer?: RevealedAnswer;
 	host_answer?: RevealedAnswer;
+	submissions: SubmissionItem[];
+};
+
+type RuntimePatchEvent = {
+	type_: 'runtime_patch';
+	base_revision: number;
+	revision: number;
+	changes: {
+		lobby?: Partial<RuntimeLobbyState>;
+		players?: Player[];
+		active_step?: RuntimeStepState;
+		display_phase?: string;
+		scoreboard_visible?: boolean;
+		buzzer_active?: boolean;
+		buzzed_player_id?: string;
+		disabled_buzzer_player_ids?: string[];
+		submitted_player_ids?: string[];
+		submission_count?: number;
+		pending_review_count?: number;
+		revealed_submission?: RevealedSubmission;
+		revealed_answer?: RevealedAnswer;
+		host_answer?: RevealedAnswer;
+		submissions?: SubmissionItem[];
+	};
 };
 
 type SubmissionItem = {
@@ -292,7 +318,13 @@ type UpdateScoreEvent = {
 	set_score?: number;
 };
 
+type ResyncRequestEvent = {
+	type_: 'resync_request';
+	last_revision?: number;
+};
+
 type HostGameState = Lobby & {
+	lastRevision: number;
 	activeStep?: RuntimeStepState;
 	displayPhase: string;
 	scoreboardVisible: boolean;
@@ -307,6 +339,8 @@ type HostGameState = Lobby & {
 
 type ControllerState = {
 	id: string;
+	players: Player[];
+	lastRevision: number;
 	isHost: boolean;
 	gameState: GameState;
 	lobbyPhase: string;

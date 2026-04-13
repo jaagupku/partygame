@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from time import time
+from typing import Any
 
 from pydantic import BaseModel
 from redis.asyncio import Redis
@@ -116,7 +117,117 @@ class ClientController:
     ) -> schemas.RuntimeSnapshotEvent:
         if include_host_answer:
             return snapshot
-        return snapshot.model_copy(update={"host_answer": None})
+        return snapshot.model_copy(update={"host_answer": None, "submissions": []})
+
+    def _build_patch_changes(
+        self,
+        before: dict[str, Any],
+        after: dict[str, Any],
+    ) -> dict[str, Any]:
+        changes: dict[str, Any] = {}
+        for key, after_value in after.items():
+            if key in {"type_", "revision"}:
+                continue
+            before_value = before.get(key)
+            if key == "lobby":
+                lobby_changes = {
+                    field: value
+                    for field, value in after_value.items()
+                    if before_value is None or before_value.get(field) != value
+                }
+                if lobby_changes:
+                    changes[key] = lobby_changes
+                continue
+            if before_value != after_value:
+                changes[key] = after_value
+        return changes
+
+    def _patch_for_viewer(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent,
+        after_snapshot: schemas.RuntimeSnapshotEvent,
+        *,
+        include_host_answer: bool,
+    ) -> schemas.RuntimePatchEvent | None:
+        before_view = self._snapshot_for_viewer(
+            before_snapshot, include_host_answer=include_host_answer
+        ).model_dump(mode="json")
+        after_view = self._snapshot_for_viewer(
+            after_snapshot, include_host_answer=include_host_answer
+        ).model_dump(mode="json")
+        changes = self._build_patch_changes(before_view, after_view)
+        if not changes:
+            return None
+        return schemas.RuntimePatchEvent(
+            base_revision=before_snapshot.revision,
+            revision=after_snapshot.revision,
+            changes=changes,
+        )
+
+    async def _send_runtime_patch(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent,
+        after_snapshot: schemas.RuntimeSnapshotEvent,
+    ):
+        host_patch = self._patch_for_viewer(
+            before_snapshot, after_snapshot, include_host_answer=True
+        )
+        public_patch = self._patch_for_viewer(
+            before_snapshot, after_snapshot, include_host_answer=False
+        )
+        if host_patch is not None:
+            await self.send(host_patch)
+        if public_patch is not None:
+            await self._safe_send("display patch publish", self.publish_display(public_patch))
+            await self._safe_send(
+                "player patch broadcast",
+                self.broadcast(public_patch, exclude=self.player.id),
+            )
+
+    async def _emit_runtime_state(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent | None,
+        *,
+        force_snapshot: bool,
+    ) -> schemas.RuntimeSnapshotEvent:
+        if before_snapshot is None:
+            snapshot = await self.runtime.build_snapshot(self.lobby)
+            await self.send(snapshot)
+            await self._safe_send("local snapshot fanout", self.send_local_snapshot(snapshot))
+            await self._safe_send("display snapshot publish", self.publish_display(snapshot))
+            await self._safe_send(
+                "snapshot player broadcast",
+                self.broadcast(snapshot, exclude=self.player.id),
+            )
+            await self._schedule_timer_from_snapshot(snapshot)
+            return snapshot
+
+        current_snapshot = await self.runtime.build_snapshot(
+            self.lobby, revision=before_snapshot.revision
+        )
+        patch_preview = self._patch_for_viewer(
+            before_snapshot, current_snapshot, include_host_answer=True
+        )
+        if patch_preview is None and not force_snapshot:
+            await self._schedule_timer_from_snapshot(current_snapshot)
+            return current_snapshot
+
+        next_revision = await self.repo.increment_state_revision(self.lobby.id)
+        snapshot = await self.runtime.build_snapshot(self.lobby, revision=next_revision)
+        if force_snapshot:
+            await self.send(snapshot)
+            await self._safe_send("local snapshot fanout", self.send_local_snapshot(snapshot))
+            await self._safe_send("display snapshot publish", self.publish_display(snapshot))
+            await self._safe_send(
+                "snapshot player broadcast",
+                self.broadcast(snapshot, exclude=self.player.id),
+            )
+            await self._schedule_timer_from_snapshot(snapshot)
+            return snapshot
+
+        await self._send_runtime_patch(before_snapshot, snapshot)
+        await self._schedule_timer_from_snapshot(snapshot)
+        return snapshot
 
     def is_host(self) -> bool:
         return self.lobby.host_id == self.player.id
@@ -151,7 +262,6 @@ class ClientController:
         self.send_task = asyncio.create_task(self.publish_websocket())
         await self.send(await self.runtime.sync_lobby(self.lobby))
         if self.is_host():
-            await self.send(await self.runtime.build_submissions_event(self.lobby))
             await self._schedule_timer_from_snapshot()
 
     async def disconnect(self):
@@ -268,17 +378,8 @@ class ClientController:
         )
 
     async def broadcast_snapshot(self):
-        snapshot = await self.runtime.build_snapshot(self.lobby)
-        await self.send(snapshot)
-        await self._safe_send("local snapshot fanout", self.send_local_snapshot(snapshot))
-        await self._safe_send("display snapshot publish", self.publish_display(snapshot))
-        await self._safe_send(
-            "snapshot player broadcast",
-            self.broadcast(snapshot, exclude=self.player.id),
-        )
-        submissions = await self.runtime.build_submissions_event(self.lobby)
-        await self.send(submissions)
-        await self._schedule_timer_from_snapshot(snapshot)
+        before_snapshot = await self.runtime.build_snapshot(self.lobby)
+        await self._emit_runtime_state(before_snapshot, force_snapshot=True)
 
     async def send_local_snapshot(self, snapshot: schemas.RuntimeSnapshotEvent):
         tasks = []
@@ -293,22 +394,27 @@ class ClientController:
 
     async def process_input(self, msg: dict):
         await self.refresh_lobby()
+        if msg.get("type_") == Event.RESYNC_REQUEST:
+            await self.send(await self.runtime.sync_lobby(self.lobby))
+            if self.is_host():
+                await self._schedule_timer_from_snapshot()
+            return
         if self.is_host():
             await self.process_controller(json.dumps(msg))
             return
         await publish(self.redis, self.command_channel, msg)
 
     async def start_game(self):
+        before_snapshot = await self.runtime.build_snapshot(self.lobby)
         self.lobby, _ = await self.runtime.start_game(self.lobby)
         await self.relay_event(schemas.StartGameEvent())
-        await self.broadcast_snapshot()
+        await self._emit_runtime_state(before_snapshot, force_snapshot=True)
 
     async def sync_host_runtime_state(
         self,
         snapshot: schemas.RuntimeSnapshotEvent | None = None,
     ):
         snapshot = snapshot or await self.runtime.build_snapshot(self.lobby)
-        await self.send(await self.runtime.build_submissions_event(self.lobby))
         await self._schedule_timer_from_snapshot(snapshot)
 
     async def process_controller(self, msg: str):
@@ -321,68 +427,81 @@ class ClientController:
             return
 
         if event_type == Event.RESET_STEP:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.reset_current_step(self.lobby)
-            snapshot = None
+            if not events:
+                return
             for event in events:
-                await self.relay_event(event)
-                if isinstance(event, schemas.RuntimeSnapshotEvent):
-                    snapshot = event
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
             return
 
         if event_type == Event.SHOW_ANSWER_REVEAL:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.show_answer_reveal(self.lobby)
-            snapshot = None
+            if not events:
+                return
             for event in events:
-                await self.relay_event(event)
-                if isinstance(event, schemas.RuntimeSnapshotEvent):
-                    snapshot = event
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
             return
 
         if event_type == Event.SHOW_QUESTION:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.show_question(self.lobby)
-            snapshot = None
+            if not events:
+                return
             for event in events:
-                await self.relay_event(event)
-                if isinstance(event, schemas.RuntimeSnapshotEvent):
-                    snapshot = event
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
             return
 
         if event_type == Event.SCOREBOARD_VISIBILITY:
             visibility = schemas.ScoreboardVisibilityEvent.model_validate(data)
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.set_scoreboard_visibility(self.lobby, visibility.visible)
-            snapshot = None
+            if not events:
+                return
             for event in events:
-                await self.relay_event(event)
-                if isinstance(event, schemas.RuntimeSnapshotEvent):
-                    snapshot = event
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
             return
 
         if event_type == Event.STEP_ADVANCED:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.advance_step(self.lobby)
-            snapshot = None
+            if not events:
+                return
             for event in events:
-                await self.relay_event(event)
-                if isinstance(event, schemas.RuntimeSnapshotEvent):
-                    snapshot = event
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
             return
 
         if event_type == Event.CLOSE_STEP:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.close_step(self.lobby)
-            snapshot = None
+            if not events:
+                return
             for event in events:
-                await self.relay_event(event)
-                if isinstance(event, schemas.RuntimeSnapshotEvent):
-                    snapshot = event
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
             return
 
         if event_type == Event.PLAYER_INPUT_SUBMITTED:
             payload = schemas.PlayerInputSubmittedEvent.model_validate(data)
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events, handled = await self.runtime.submit_player_input(
                 self.lobby,
                 payload.player_id,
@@ -391,24 +510,29 @@ class ClientController:
             for event in events:
                 await self.relay_event(event)
             if handled:
-                await self.broadcast_snapshot()
+                await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 
         if event_type == Event.BUZZER_STATE:
             buzzer_state = schemas.BuzzerStateEvent.model_validate(data)
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             for event in await self.runtime.set_buzzer_state(self.lobby, buzzer_state.active):
-                await self.relay_event(event)
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 
         if event_type == Event.UPDATE_SCORE:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             update_score = await self.runtime.update_score(
                 self.lobby, schemas.UpdateScoreEvent.model_validate(data)
             )
             await self.relay_event(update_score, exclude=update_score.player_id)
-            await self.broadcast_snapshot()
+            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 
         if event_type == Event.REVIEW_SUBMISSION:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             review_events = await self.runtime.review_submission(
                 self.lobby,
                 schemas.ReviewSubmissionEvent.model_validate(data),
@@ -418,10 +542,11 @@ class ClientController:
                 if not isinstance(event, schemas.BuzzerReviewedEvent):
                     exclude = getattr(event, "player_id", None)
                 await self.relay_event(event, exclude=exclude)
-            await self.broadcast_snapshot()
+            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 
         if event_type == Event.REVEALED_SUBMISSION:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             player_id = (
                 data.get("submission", {}).get("player_id")
                 if data.get("submission")
@@ -429,13 +554,14 @@ class ClientController:
             )
             reveal_event = await self.runtime.reveal_submission(self.lobby, player_id)
             await self.relay_event(reveal_event)
-            await self.broadcast_snapshot()
+            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 
         if event_type == Event.SCORES_UPDATED:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
             scores_event = await self.runtime.evaluate_auto_step(self.lobby)
             await self.relay_event(scores_event)
-            await self.broadcast_snapshot()
+            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 
     async def _schedule_timer_from_snapshot(
@@ -465,10 +591,10 @@ class ClientController:
         self.lobby = lobby
         if self.lobby.phase != "question_active":
             return
+        before_snapshot = await self.runtime.build_snapshot(self.lobby)
         events = await self.runtime.close_step(self.lobby)
-        snapshot = None
         for event in events:
-            await self.relay_event(event)
-            if isinstance(event, schemas.RuntimeSnapshotEvent):
-                snapshot = event
+            if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                await self.relay_event(event)
+        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
         await self.sync_host_runtime_state(snapshot)

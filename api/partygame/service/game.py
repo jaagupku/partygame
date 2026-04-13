@@ -343,6 +343,7 @@ class GameRuntimeService:
             return schemas.ScoresUpdatedEvent()
 
         answers = state.get("answers", {})
+        reviewed_player_ids = list(answers.keys())
         updates: dict[str, int] = {}
         evaluation_type = self._resolve_evaluation_type(lobby, step)
 
@@ -427,7 +428,13 @@ class GameRuntimeService:
                     await self.repo.set_player_score(lobby.id, player_id, new_score)
                     updates[player_id] = new_score
 
-        await self.repo.set_step_cache(lobby.id, {"evaluated": True})
+        await self.repo.set_step_cache(
+            lobby.id,
+            {
+                "evaluated": True,
+                "reviewed_player_ids": reviewed_player_ids,
+            },
+        )
         return schemas.ScoresUpdatedEvent(updates=updates)
 
     async def close_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
@@ -497,9 +504,18 @@ class GameRuntimeService:
         await self.initialize_step_state(lobby, step)
         return [await self.build_snapshot(lobby)]
 
-    async def build_snapshot(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:
+    async def build_snapshot(
+        self,
+        lobby: schemas.Lobby,
+        *,
+        revision: int | None = None,
+    ) -> schemas.RuntimeSnapshotEvent:
         step = await self.get_current_step(lobby)
         step_state = await self.get_step_state(lobby.id)
+        players = await self.repo.get_players(lobby.id)
+        snapshot_revision = (
+            revision if revision is not None else await self.repo.get_state_revision(lobby.id)
+        )
 
         active_step = None
         if step is not None:
@@ -543,7 +559,10 @@ class GameRuntimeService:
         if step is not None and self._step_has_revealable_answer(step):
             host_answer = schemas.RevealedAnswer(value=step.evaluation.answer)
 
+        submissions = await self.build_submissions_event(lobby)
+
         return schemas.RuntimeSnapshotEvent(
+            revision=snapshot_revision,
             lobby=schemas.RuntimeLobbyState(
                 id=lobby.id,
                 join_code=lobby.join_code,
@@ -554,6 +573,7 @@ class GameRuntimeService:
                 phase=lobby.phase,
                 current_step=lobby.current_step,
             ),
+            players=players,
             active_step=active_step,
             display_phase=str(step_state.get("display_phase") or "question_active"),
             scoreboard_visible=bool(step_state.get("scoreboard_visible")),
@@ -566,6 +586,7 @@ class GameRuntimeService:
             revealed_submission=revealed_submission,
             revealed_answer=revealed_answer,
             host_answer=host_answer,
+            submissions=submissions.items,
         )
 
     async def build_submissions_event(

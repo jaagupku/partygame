@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { Sound } from 'svelte-sound';
+	import buzzerWav from '$lib/assets/sounds/buzzer.wav';
 	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
 	import VideoQuestionMedia from '$lib/components/VideoQuestionMedia.svelte';
@@ -9,6 +12,8 @@
 		revealedSubmission?: RevealedSubmission;
 		revealedAnswer?: RevealedAnswer;
 		buzzerActive?: boolean;
+		buzzedPlayerId?: string;
+		buzzedPlayerName?: string;
 		displayPhase?: string;
 		variant?: 'default' | 'stage';
 	}
@@ -19,15 +24,37 @@
 		revealedSubmission,
 		revealedAnswer,
 		buzzerActive = false,
+		buzzedPlayerId,
+		buzzedPlayerName,
 		displayPhase = 'question_active',
 		variant = 'default'
 	}: QuestionCardProps = $props();
 
+	const buzzerSound = new Sound(buzzerWav, { volume: 0.55 });
 	const stageVariant = $derived(variant === 'stage');
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const isBuzzerStep = $derived(step?.input_kind === 'buzzer');
 	const shouldPauseMedia = $derived(isBuzzerStep && !buzzerActive);
 	const shouldResumePausedMedia = $derived(isBuzzerStep && buzzerActive);
+	let hasMounted = $state(false);
+	let lastBuzzedPlayerId = $state('');
+
+	onMount(() => {
+		hasMounted = true;
+		lastBuzzedPlayerId = buzzedPlayerId ?? '';
+	});
+
+	$effect(() => {
+		if (!hasMounted) {
+			return;
+		}
+
+		const nextBuzzedPlayerId = buzzedPlayerId ?? '';
+		if (isBuzzerStep && nextBuzzedPlayerId && nextBuzzedPlayerId !== lastBuzzedPlayerId) {
+			buzzerSound.play();
+		}
+		lastBuzzedPlayerId = nextBuzzedPlayerId;
+	});
 
 	function formatRevealValue(value: unknown): string {
 		if (Array.isArray(value)) {
@@ -67,6 +94,16 @@
 			<AudioQuestionMedia src={step.media.src} {shouldPauseMedia} {shouldResumePausedMedia} />
 		{:else if step.media?.type_ === 'video'}
 			<VideoQuestionMedia {step} {stageVariant} {shouldPauseMedia} {shouldResumePausedMedia} />
+		{/if}
+		{#if isBuzzerStep && buzzedPlayerName}
+			<div
+				class={`rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 ${
+					stageVariant ? 'text-xl md:text-3xl' : 'text-lg'
+				}`}
+			>
+				<p class="text-sm font-black uppercase tracking-[0.22em] text-amber-700">Buzzed In</p>
+				<p class="mt-2 font-extrabold leading-tight text-slate-950">{buzzedPlayerName}</p>
+			</div>
 		{/if}
 		{#if showingAnswerReveal && revealedAnswer}
 			<div

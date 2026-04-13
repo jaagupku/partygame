@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { applyControllerPatch, applyControllerSnapshot } from '$lib/runtime-sync.js';
 
 export function createControllerStore(initialState: ControllerState, onKick: CallableFunction) {
 	const controller = writable(initialState);
@@ -12,24 +13,7 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 
 	function applySnapshot(event: RuntimeSnapshotEvent) {
 		controller.update((state) => {
-			state.gameState = event.lobby.state;
-			state.lobbyPhase = event.lobby.phase;
-			state.currentStep = event.lobby.current_step;
-			state.hostEnabled = event.lobby.host_enabled;
-			state.isHost = event.lobby.host_id === state.id;
-			state.activeStep = event.active_step;
-			state.displayPhase = event.display_phase;
-			state.scoreboardVisible = event.scoreboard_visible;
-			state.buzzerActive = event.buzzer_active;
-			state.buzzedPlayerId = event.buzzed_player_id;
-			state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
-			state.submittedPlayerIds = event.submitted_player_ids;
-			state.hasSubmitted = event.submitted_player_ids.includes(state.id);
-			state.submissionCount = event.submission_count;
-			state.pendingReviewCount = event.pending_review_count;
-			state.revealedSubmission = event.revealed_submission;
-			state.revealedAnswer = event.revealed_answer;
-			state.hostAnswer = event.host_answer;
+			applyControllerSnapshot(state, event);
 			return state;
 		});
 	}
@@ -48,7 +32,15 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 			}
 			case 'runtime_snapshot': {
 				applySnapshot(messageData as RuntimeSnapshotEvent);
-				break;
+				return 'snapshot_applied';
+			}
+			case 'runtime_patch': {
+				let applied = true;
+				controller.update((state) => {
+					applied = applyControllerPatch(state, messageData as RuntimePatchEvent);
+					return state;
+				});
+				return applied ? 'ok' : 'resync_required';
 			}
 			case 'buzzer_state': {
 				const event: BuzzerStateEvent = messageData;
@@ -72,14 +64,6 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				});
 				break;
 			}
-			case 'submissions_updated': {
-				const event: SubmissionsUpdatedEvent = messageData;
-				controller.update((state) => {
-					state.submissions = event.items;
-					return state;
-				});
-				break;
-			}
 			case 'revealed_submission': {
 				const event: RevealedSubmissionEvent = messageData;
 				controller.update((state) => {
@@ -99,6 +83,7 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				break;
 			}
 		}
+		return 'ok';
 	}
 
 	return {
