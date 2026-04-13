@@ -1,9 +1,11 @@
 import json
 from collections.abc import Iterable
 
+from fastapi import HTTPException
 from redis.asyncio import Redis
 
 from partygame import schemas
+from partygame.service.media import MediaStorage
 from partygame.state.keys import GameKeyFactory
 
 
@@ -238,7 +240,16 @@ class GameStateRepository:
             pipe.expire(registry_key, ttl_seconds)
             await pipe.execute()
 
-    async def delete_game(self, game_id: str):
+    async def delete_game(self, game_id: str, media_storage: MediaStorage | None = None):
+        if media_storage is not None:
+            for player in await self.get_players(game_id):
+                if player.avatar_kind != "custom" or not player.avatar_asset_id:
+                    continue
+                try:
+                    await media_storage.delete(player.avatar_asset_id)
+                except HTTPException as error:
+                    if error.status_code != 404:
+                        raise
         registry_key = GameKeyFactory.game_keys(game_id)
         keys = list(await self.redis.smembers(registry_key))
         keys.append(registry_key)

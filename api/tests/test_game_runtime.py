@@ -1,3 +1,5 @@
+from time import time
+
 import pytest
 
 from partygame.schemas import Lobby
@@ -22,10 +24,24 @@ class FakeRepo:
     def __init__(self):
         self.lobby_fields = {}
         self.steps = {}
+        self.components = {}
         self.scores = {"p1": 0, "p2": 5}
         self.players = [
-            schemas.Player(id="p1", game_id="g1", name="Alice"),
-            schemas.Player(id="p2", game_id="g1", name="Bob"),
+            schemas.Player(
+                id="p1",
+                game_id="g1",
+                name="Alice",
+                avatar_kind="preset",
+                avatar_preset_key="fox",
+            ),
+            schemas.Player(
+                id="p2",
+                game_id="g1",
+                name="Bob",
+                avatar_kind="custom",
+                avatar_url="/api/v1/media/p2-avatar",
+                avatar_asset_id="p2-avatar",
+            ),
         ]
         self.applied_ttls = []
         self.state_revision = 0
@@ -46,7 +62,17 @@ class FakeRepo:
         self.scores[player_id] = score
 
     async def get_players(self, game_id: str) -> list[schemas.Player]:
-        return [player for player in self.players if player.game_id == game_id]
+        return [
+            player.model_copy(update={"score": self.scores.get(player.id, player.score)})
+            for player in self.players
+            if player.game_id == game_id
+        ]
+
+    async def set_component_state(self, game_id: str, component_id: str, fields: dict):
+        self.components.setdefault(game_id, {}).setdefault(component_id, {}).update(fields)
+
+    async def get_component_state(self, game_id: str, component_id: str) -> dict:
+        return self.components.get(game_id, {}).get(component_id, {})
 
     async def get_state_revision(self, game_id: str) -> int:
         return self.state_revision
@@ -88,6 +114,44 @@ class MixedDefinitionProvider:
                                 type_=EvaluationType.CLOSEST_NUMBER,
                                 points=4,
                                 answer=27,
+                            ),
+                        ),
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
+class NoneEvaluationProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="No reveal",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="intro",
+                            title="Intro",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.NONE,
+                                points=0,
+                                answer=None,
+                            ),
+                        ),
+                        StepDefinition(
+                            id="next_step",
+                            title="Next",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_TEXT,
+                                points=1,
+                                answer="ok",
                             ),
                         ),
                     ],
@@ -335,6 +399,39 @@ async def test_show_question_returns_answer_reveal_to_question_phase():
 
 
 @pytest.mark.asyncio
+async def test_close_step_skips_answer_reveal_for_none_evaluation():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=NoneEvaluationProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+
+    events = await service.close_step(lobby)
+
+    assert [event.type_ for event in events] == ["step_advanced", "runtime_snapshot"]
+    assert lobby.current_step == 1
+    assert lobby.phase == "question_active"
+    assert repo.steps["g1"]["step_id"] == "next_step"
+    assert repo.steps["g1"]["revealed_answer_value"] is None
+
+
+@pytest.mark.asyncio
+async def test_show_answer_reveal_advances_none_evaluation_step():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=NoneEvaluationProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+
+    events = await service.show_answer_reveal(lobby)
+
+    assert [event.type_ for event in events] == ["step_advanced", "runtime_snapshot"]
+    assert lobby.current_step == 1
+    assert lobby.phase == "question_active"
+    assert repo.steps["g1"]["step_id"] == "next_step"
+
+
+@pytest.mark.asyncio
 async def test_scoreboard_visibility_is_reflected_in_snapshot():
     repo = FakeRepo()
     service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
@@ -466,3 +563,164 @@ async def test_advance_step_applies_finished_ttl_at_end_of_game():
     assert lobby.phase == "finished"
     assert [event.type_ for event in events] == ["step_advanced", "runtime_snapshot"]
     assert repo.applied_ttls == [("g1", 900)]
+
+
+@pytest.mark.asyncio
+async def test_finished_snapshot_exposes_end_game_data_and_auto_reveals_without_host():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.submit_player_input(lobby, "p2", 10)
+    await service.close_step(lobby)
+    await service.advance_step(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.end_game is not None
+    assert snapshot.end_game.revealed is True
+    assert snapshot.end_game.sequence_stage == "podium"
+    assert [entry.player_id for entry in snapshot.end_game.final_standings] == ["p2", "p1"]
+    assert [entry.place for entry in snapshot.end_game.final_standings] == [1, 2]
+    assert snapshot.end_game.final_standings[0].avatar_kind == "custom"
+    assert snapshot.end_game.final_standings[0].avatar_url == "/api/v1/media/p2-avatar"
+    assert snapshot.end_game.final_standings[1].avatar_kind == "preset"
+    assert snapshot.end_game.final_standings[1].avatar_preset_key == "fox"
+
+
+@pytest.mark.asyncio
+async def test_finished_snapshot_waits_for_host_reveal_when_host_mode_enabled():
+    repo = FakeRepo()
+    repo.players.append(schemas.Player(id="host", game_id="g1", name="Host", score=99))
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=True,
+        host_id="host",
+    )
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
+    )
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.submit_player_input(lobby, "p2", 10)
+    await service.close_step(lobby)
+    await service.advance_step(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.end_game is not None
+    assert snapshot.end_game.revealed is False
+    assert [entry.player_id for entry in snapshot.end_game.final_standings] == ["p1", "p2"]
+    assert all(entry.player_id != "host" for entry in snapshot.end_game.final_standings)
+    assert snapshot.end_game.final_standings[0].avatar_preset_key == "fox"
+
+
+@pytest.mark.asyncio
+async def test_end_game_stats_include_correct_wrong_accuracy_and_fastest_buzz():
+    repo = FakeRepo()
+    repo.players.append(schemas.Player(id="host", game_id="g1", name="Host", score=99))
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=True,
+        host_id="host",
+    )
+
+    await service.start_game(lobby)
+    repo.steps["g1"]["buzzer_opened_at"] = str(time() - 1.25)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
+    )
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.submit_player_input(lobby, "p2", 10)
+    await service.close_step(lobby)
+    await service.advance_step(lobby)
+    await service.reveal_end_game(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.end_game is not None
+    stats_by_id = {card.id: card for card in snapshot.end_game.stats_cards}
+    assert stats_by_id["most_correct"].winner_player_ids == ["p1"]
+    assert stats_by_id["most_correct"].value == 2
+    assert stats_by_id["most_wrong"].winner_player_ids == ["p2"]
+    assert stats_by_id["most_wrong"].value == 1
+    assert stats_by_id["highest_accuracy"].winner_player_ids == ["p1"]
+    assert stats_by_id["highest_accuracy"].value == 100
+    assert stats_by_id["fastest_buzz"].winner_player_ids == ["p1"]
+    assert stats_by_id["fastest_buzz"].value > 0
+
+
+@pytest.mark.asyncio
+async def test_fastest_buzz_ignores_rejected_buzz_attempts():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    repo.steps["g1"]["buzzer_opened_at"] = str(time() - 0.4)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+    await service.set_buzzer_state(lobby, True)
+    repo.steps["g1"]["buzzer_opened_at"] = str(time() - 1.6)
+    await service.submit_player_input(lobby, "p2", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p2", accepted=True),
+    )
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.close_step(lobby)
+    await service.advance_step(lobby)
+    await service.reveal_end_game(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.end_game is not None
+    stats_by_id = {card.id: card for card in snapshot.end_game.stats_cards}
+    assert stats_by_id["fastest_buzz"].winner_player_ids == ["p2"]
+
+
+@pytest.mark.asyncio
+async def test_end_game_stage_and_autoplay_changes_are_reflected_in_snapshot():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
+    )
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p1", 27)
+    await service.close_step(lobby)
+    await service.advance_step(lobby)
+
+    await service.reveal_end_game(lobby)
+    await service.toggle_end_game_autoplay(lobby, True)
+    await service.advance_end_game_stage(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.end_game is not None
+    assert snapshot.end_game.revealed is True
+    assert snapshot.end_game.autoplay_enabled is True
+    assert snapshot.end_game.sequence_stage == "stats"

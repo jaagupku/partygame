@@ -14,6 +14,7 @@ from partygame.schemas.events import Event
 from partygame.schemas import Lobby, Player, ConnectionStatus
 from partygame.utils import publish
 from partygame.service.game import GameRuntimeService
+from partygame.service.media import get_media_storage
 from . import realtime
 from partygame.state import GameStateRepository, GameKeyFactory
 
@@ -48,6 +49,14 @@ async def remove(
     player_id: str,
 ):
     repo = GameStateRepository(redis)
+    player = await repo.get_player(lobby_id, player_id)
+    if player is not None and player.avatar_kind == "custom" and player.avatar_asset_id:
+        storage = get_media_storage()
+        try:
+            await storage.delete(player.avatar_asset_id)
+        except HTTPException as error:
+            if error.status_code != 404:
+                raise
     await repo.remove_player(lobby_id, player_id)
 
 
@@ -61,6 +70,10 @@ async def create(
     player = Player(
         name=join_request.player_name,
         game_id=game_id,
+        avatar_kind=join_request.avatar_kind,
+        avatar_preset_key=join_request.avatar_preset_key,
+        avatar_url=join_request.avatar_url,
+        avatar_asset_id=join_request.avatar_asset_id,
     )
     await repo.create_player(player)
     lobby = await repo.get_lobby_meta(game_id)
@@ -458,6 +471,34 @@ class ClientController:
             for event in events:
                 if not isinstance(event, schemas.RuntimeSnapshotEvent):
                     await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+            await self.sync_host_runtime_state(snapshot)
+            return
+
+        if event_type == Event.REVEAL_END_GAME:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
+            events = await self.runtime.reveal_end_game(self.lobby)
+            if not events:
+                return
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+            await self.sync_host_runtime_state(snapshot)
+            return
+
+        if event_type == Event.ADVANCE_END_GAME_STAGE:
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
+            events = await self.runtime.advance_end_game_stage(self.lobby)
+            if not events:
+                return
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+            await self.sync_host_runtime_state(snapshot)
+            return
+
+        if event_type == Event.TOGGLE_END_GAME_AUTOPLAY:
+            autoplay = schemas.ToggleEndGameAutoplayEvent.model_validate(data)
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
+            events = await self.runtime.toggle_end_game_autoplay(self.lobby, autoplay.enabled)
+            if not events:
+                return
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
             return

@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { createControllerStore } from '$lib/controller-store.js';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import FinaleControllerCard from '$lib/components/endgame/FinaleControllerCard.svelte';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { onDestroy, onMount } from 'svelte';
@@ -40,7 +41,8 @@
 			revealedSubmission: undefined,
 			revealedAnswer: undefined,
 			hostAnswer: undefined,
-			submissions: []
+			submissions: [],
+			endGame: undefined
 		},
 		onKick
 	);
@@ -57,7 +59,8 @@
 	let dropOrderingIndex = $state<number | null>(null);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
-	let resyncIntervalId = $state<number | null>(null);
+	let resyncIntervalId: number | null = null;
+	let finaleAutoplayIntervalId: number | null = null;
 
 	const playerMap = $derived(new Map($controller.players.map((entry) => [entry.id, entry])));
 	const playerInputDisabled = $derived(
@@ -71,6 +74,9 @@
 		$controller.submittedPlayerIds
 			.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
 			.filter(Boolean)
+	);
+	const gameFinished = $derived(
+		$controller.lobbyPhase === 'finished' || Boolean($controller.endGame)
 	);
 
 	$effect(() => {
@@ -95,6 +101,31 @@
 		orderingItems = [...step.input_options];
 		draggedOrderingIndex = null;
 		dropOrderingIndex = null;
+	});
+
+	$effect(() => {
+		if (finaleAutoplayIntervalId !== null) {
+			clearInterval(finaleAutoplayIntervalId);
+			finaleAutoplayIntervalId = null;
+		}
+		if (
+			!browser ||
+			!$controller.isHost ||
+			!$controller.endGame?.revealed ||
+			!$controller.endGame.autoplay_enabled ||
+			$controller.endGame.sequence_stage === 'scoreboard'
+		) {
+			return;
+		}
+		finaleAutoplayIntervalId = window.setInterval(() => {
+			sendAction({ type_: 'advance_end_game_stage' });
+		}, 4500);
+		return () => {
+			if (finaleAutoplayIntervalId !== null) {
+				clearInterval(finaleAutoplayIntervalId);
+				finaleAutoplayIntervalId = null;
+			}
+		};
 	});
 
 	onMount(() => {
@@ -131,6 +162,10 @@
 				clearInterval(resyncIntervalId);
 				resyncIntervalId = null;
 			}
+			if (finaleAutoplayIntervalId !== null) {
+				clearInterval(finaleAutoplayIntervalId);
+				finaleAutoplayIntervalId = null;
+			}
 			socket?.close();
 			socket = null;
 		};
@@ -140,6 +175,10 @@
 		if (resyncIntervalId !== null) {
 			clearInterval(resyncIntervalId);
 			resyncIntervalId = null;
+		}
+		if (finaleAutoplayIntervalId !== null) {
+			clearInterval(finaleAutoplayIntervalId);
+			finaleAutoplayIntervalId = null;
 		}
 		socket?.close();
 		socket = null;
@@ -205,6 +244,21 @@
 
 	function evaluateStep() {
 		sendAction({ type_: 'scores_updated' });
+	}
+
+	function revealEndGame() {
+		sendAction({ type_: 'reveal_end_game' });
+	}
+
+	function advanceEndGameStage() {
+		sendAction({ type_: 'advance_end_game_stage' });
+	}
+
+	function toggleEndGameAutoplay() {
+		sendAction({
+			type_: 'toggle_end_game_autoplay',
+			enabled: !$controller.endGame?.autoplay_enabled
+		});
 	}
 
 	function reviewSubmission(playerId: string, accepted: boolean, pointsOverride?: number) {
@@ -373,7 +427,35 @@
 	</div>
 {:else}
 	<div class="mt-0 stack-lg">
-		{#if !$controller.isHost && $controller.activeStep?.input_kind === 'buzzer'}
+		{#if $controller.endGame?.revealed}
+			<FinaleControllerCard endGame={$controller.endGame} playerId={$controller.id} />
+
+			{#if $controller.isHost}
+				<section class="card stack-md">
+					<h2 class="label-title text-2xl">Finale Controls</h2>
+					<p class="text-sm text-slate-600">
+						Stage: {$controller.endGame.sequence_stage} · Autoplay:
+						{$controller.endGame.autoplay_enabled ? 'On' : 'Off'}
+					</p>
+					<div class="flex flex-wrap gap-3">
+						<button type="button" class="btn btn-ghost" onclick={revealEndGame}>
+							Reset To Podium
+						</button>
+						<button
+							type="button"
+							class="btn btn-primary"
+							onclick={advanceEndGameStage}
+							disabled={$controller.endGame.sequence_stage === 'scoreboard'}
+						>
+							Next Finale Stage
+						</button>
+						<button type="button" class="btn btn-ghost" onclick={toggleEndGameAutoplay}>
+							{$controller.endGame.autoplay_enabled ? 'Disable Autoplay' : 'Enable Autoplay'}
+						</button>
+					</div>
+				</section>
+			{/if}
+		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'buzzer'}
 			<section class="card stack-md text-center">
 				<h2 class="label-title text-2xl">Buzzer</h2>
 				<p>
@@ -396,7 +478,7 @@
 					BUZZ
 				</button>
 			</section>
-		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'text'}
+		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'text'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Your Answer</h2>
 				{#if playerInputDisabled}
@@ -422,7 +504,7 @@
 					Submit Answer
 				</button>
 			</section>
-		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'number'}
+		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'number'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Your Answer</h2>
 				{#if playerInputDisabled}
@@ -451,7 +533,7 @@
 					Submit Answer
 				</button>
 			</section>
-		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'ordering'}
+		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'ordering'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Ordering Answer</h2>
 				<p class="text-sm text-slate-600">
@@ -505,7 +587,7 @@
 					Submit Order
 				</button>
 			</section>
-		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'radio'}
+		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'radio'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Choose One</h2>
 				<p class="text-sm text-slate-600">
@@ -528,7 +610,7 @@
 					{/each}
 				</div>
 			</section>
-		{:else if !$controller.isHost && $controller.activeStep?.input_kind === 'checkbox'}
+		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'checkbox'}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Choose One or More</h2>
 				<p class="text-sm text-slate-600">
@@ -561,13 +643,39 @@
 					Submit Selection
 				</button>
 			</section>
-		{:else if !$controller.isHost}
+		{:else if !gameFinished && !$controller.isHost}
 			<section class="card text-center">
 				<p class="text-lg">No phone input is required for this step.</p>
 			</section>
+		{:else if gameFinished}
+			<section class="card text-center">
+				<p class="text-xl font-bold">Game complete.</p>
+				<p class="mt-2 text-slate-600">
+					{$controller.isHost
+						? 'Use the host controller below to reveal the finale screen.'
+						: 'Waiting for the host to reveal the final results.'}
+				</p>
+			</section>
 		{/if}
 
-		{#if $controller.isHost}
+		{#if $controller.isHost && !$controller.endGame?.revealed && gameFinished}
+			<section class="card stack-md">
+				<h2 class="label-title text-2xl">Finale Controls</h2>
+				<p class="text-sm text-slate-600">
+					The game is finished. Reveal the end game screen when you are ready.
+				</p>
+				<div class="flex flex-wrap gap-3">
+					<button type="button" class="btn btn-primary" onclick={revealEndGame}
+						>Reveal Finale</button
+					>
+					<button type="button" class="btn btn-ghost" onclick={toggleEndGameAutoplay}>
+						{$controller.endGame?.autoplay_enabled ? 'Disable Autoplay' : 'Enable Autoplay'}
+					</button>
+				</div>
+			</section>
+		{/if}
+
+		{#if $controller.isHost && !gameFinished && !$controller.endGame?.revealed}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">Host Controls</h2>
 				<p class="text-sm text-slate-600">
@@ -681,7 +789,7 @@
 							class={`rounded-2xl p-3 ${submission.reviewed ? 'bg-slate-100 opacity-70' : 'bg-white/70'}`}
 						>
 							<p class="font-bold">{playerMap.get(submission.player_id)?.name}</p>
-							<p class="mt-1 break-words">{String(submission.value)}</p>
+							<p class="mt-1 wrap-break-word">{String(submission.value)}</p>
 							<div class="mt-3 flex flex-wrap gap-2">
 								<button
 									type="button"

@@ -20,7 +20,8 @@ export function createGameStore(initialState: Lobby) {
 		submissionCount: 0,
 		pendingReviewCount: 0,
 		revealedSubmission: undefined,
-		revealedAnswer: undefined
+		revealedAnswer: undefined,
+		endGame: undefined
 	};
 
 	const lobby = writable(initial);
