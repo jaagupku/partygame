@@ -19,6 +19,8 @@ from . import realtime
 from partygame.state import GameStateRepository, GameKeyFactory
 
 log = logging.getLogger(__name__)
+HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS = 4.0
+HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS = 4.5
 
 
 async def refresh_idle_ttl(
@@ -83,8 +85,15 @@ async def create(
         GameKeyFactory.display_channel(game_id),
         schemas.PlayerJoinedEvent(player=player),
     )
+    if lobby is not None:
+        lobby_updates: dict[str, str] = {}
+        if not lobby.starter_id:
+            lobby_updates["starter_id"] = player.id
+        if lobby.host_enabled and not lobby.host_id:
+            lobby_updates["host_id"] = player.id
+        if lobby_updates:
+            await repo.set_lobby_fields(game_id, **lobby_updates)
     if lobby is not None and lobby.host_enabled and not lobby.host_id:
-        await repo.set_lobby_fields(game_id, host_id=player.id)
         await publish(
             redis,
             GameKeyFactory.display_channel(game_id),
@@ -245,9 +254,19 @@ class ClientController:
     def is_host(self) -> bool:
         return self.lobby.host_id == self.player.id
 
+    def can_start_hostless_game(self) -> bool:
+        return not self.lobby.host_enabled and self.lobby.starter_id == self.player.id
+
+    async def can_control_hostless_info_slide(self) -> bool:
+        if not self.can_start_hostless_game():
+            return False
+        step = await self.runtime.get_current_step(self.lobby)
+        return step is not None and self.runtime._is_information_slide(step)
+
     async def refresh_lobby(self):
         lobby = await self.repo.get_lobby_meta(self.lobby.id)
         if lobby is not None:
+            self.lobby.starter_id = lobby.starter_id
             self.lobby.host_id = lobby.host_id
             self.lobby.state = lobby.state
             self.lobby.phase = lobby.phase
@@ -412,7 +431,16 @@ class ClientController:
             if self.is_host():
                 await self._schedule_timer_from_snapshot()
             return
-        if self.is_host():
+        if (
+            self.is_host()
+            or (msg.get("type_") == Event.START_GAME and self.can_start_hostless_game())
+            or (
+                msg.get("type_")
+                in {Event.CLOSE_STEP, Event.SHOW_ANSWER_REVEAL, Event.STEP_ADVANCED}
+                and await self.can_control_hostless_info_slide()
+            )
+            or (msg.get("type_") == Event.PLAYER_INPUT_SUBMITTED and not self.lobby.host_enabled)
+        ):
             await self.process_controller(json.dumps(msg))
             return
         await publish(self.redis, self.command_channel, msg)
@@ -549,7 +577,8 @@ class ClientController:
                 payload.value,
             )
             for event in events:
-                await self.relay_event(event)
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
             if handled:
                 await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
@@ -614,15 +643,95 @@ class ClientController:
 
         snapshot = snapshot or await self.runtime.build_snapshot(self.lobby)
         if (
+            not self.lobby.host_enabled
+            and snapshot.end_game is not None
+            and snapshot.end_game.revealed
+            and snapshot.end_game.autoplay_enabled
+            and snapshot.end_game.sequence_stage != "scoreboard"
+        ):
+            self.timer_task = asyncio.create_task(
+                self._advance_hostless_end_game_stage(HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS)
+            )
+            return
+        if (
+            not self.lobby.host_enabled
+            and snapshot.active_step is not None
+            and self.lobby.phase == "step_complete"
+            and snapshot.display_phase == "answer_reveal"
+        ):
+            current_step = await self.runtime.get_current_step(self.lobby)
+            if current_step is None or not self.runtime._is_hostless_auto_progress_step(
+                self.lobby, current_step
+            ):
+                return
+            self.timer_task = asyncio.create_task(
+                self._advance_hostless_reveal(HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS)
+            )
+            return
+        if (
             snapshot.active_step is None
             or snapshot.active_step.timer.ends_at is None
-            or not snapshot.active_step.timer.enforced
             or self.lobby.phase != "question_active"
+        ):
+            return
+
+        current_step = await self.runtime.get_current_step(self.lobby)
+        if current_step is None:
+            return
+        if not snapshot.active_step.timer.enforced and not (
+            not self.lobby.host_enabled
+            and self.runtime._is_hostless_auto_progress_step(self.lobby, current_step)
         ):
             return
 
         delay = max(0, snapshot.active_step.timer.ends_at - time())
         self.timer_task = asyncio.create_task(self._expire_timer(delay))
+
+    async def _advance_hostless_reveal(self, delay: float):
+        await asyncio.sleep(delay)
+        lobby = await self.repo.get_lobby_meta(self.lobby.id)
+        if lobby is None:
+            return
+        self.lobby = lobby
+        if self.lobby.phase != "step_complete":
+            return
+        current_step = await self.runtime.get_current_step(self.lobby)
+        if current_step is None or not self.runtime._is_hostless_auto_progress_step(
+            self.lobby, current_step
+        ):
+            return
+        before_snapshot = await self.runtime.build_snapshot(self.lobby)
+        events = await self.runtime.advance_step(self.lobby)
+        for event in events:
+            if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                await self.relay_event(event)
+        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
+        await self.sync_host_runtime_state(snapshot)
+
+    async def _advance_hostless_end_game_stage(self, delay: float):
+        await asyncio.sleep(delay)
+        lobby = await self.repo.get_lobby_meta(self.lobby.id)
+        if lobby is None:
+            return
+        self.lobby = lobby
+        if self.lobby.phase != "finished":
+            return
+        snapshot = await self.runtime.build_snapshot(self.lobby)
+        end_game = snapshot.end_game
+        if (
+            end_game is None
+            or not end_game.revealed
+            or not end_game.autoplay_enabled
+            or end_game.sequence_stage == "scoreboard"
+        ):
+            return
+        before_snapshot = snapshot
+        events = await self.runtime.advance_end_game_stage(self.lobby)
+        for event in events:
+            if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                await self.relay_event(event)
+        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+        await self.sync_host_runtime_state(snapshot)
 
     async def _expire_timer(self, delay: float):
         await asyncio.sleep(delay)

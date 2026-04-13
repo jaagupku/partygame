@@ -24,7 +24,7 @@
 		showDisconnectedChip = true
 	}: FinaleDisplayProps = $props();
 
-	const stage = $derived(endGame.sequence_stage || 'podium');
+	const stage = $derived(endGame.sequence_stage || 'third_place');
 	const statWinnerNames = (card: EndGameStatCard) =>
 		card.winner_player_ids.map((playerId) => playerMap.get(playerId)?.name ?? playerId).join(', ');
 	const formatStatValue = (card: EndGameStatCard) => {
@@ -38,6 +38,32 @@
 	};
 	const confettiPieces = Array.from({ length: 18 }, (_, index) => index);
 	const podiumEntries = $derived(endGame.podium.toSorted((a, b) => a.place - b.place));
+	const visiblePodiumPlaces = $derived.by(() => {
+		if (stage === 'third_place') {
+			return new Set([3]);
+		}
+		if (stage === 'second_place') {
+			return new Set([2, 3]);
+		}
+		if (stage === 'first_place') {
+			return new Set([1, 2, 3]);
+		}
+		return new Set<number>();
+	});
+	const visiblePodiumGroups = $derived.by(() => {
+		const grouped = new Map<number, FinalStandingEntry[]>();
+		for (const entry of podiumEntries) {
+			if (!visiblePodiumPlaces.has(entry.place)) {
+				continue;
+			}
+			const bucket = grouped.get(entry.place) ?? [];
+			bucket.push(entry);
+			grouped.set(entry.place, bucket);
+		}
+		return [...grouped.entries()]
+			.sort(([leftPlace], [rightPlace]) => leftPlace - rightPlace)
+			.map(([place, entries]) => ({ place, entries }));
+	});
 	const standings = $derived(endGame.final_standings);
 </script>
 
@@ -46,43 +72,53 @@
 		<div>
 			<h1 class="page-title text-left text-4xl md:text-5xl">{title}</h1>
 			<p class="page-subtitle text-left text-base md:text-lg">
-				{stage === 'podium'
-					? $messages.finale.topPlayersRevealed
-					: stage === 'stats'
-						? $messages.finale.bestMoments
-						: $messages.finale.fullScoreboard}
+				{stage === 'third_place'
+					? $messages.finale.thirdPlaceReveal
+					: stage === 'second_place'
+						? $messages.finale.secondPlaceReveal
+						: stage === 'first_place'
+							? $messages.finale.firstPlaceReveal
+							: stage === 'stats'
+								? $messages.finale.bestMoments
+								: $messages.finale.fullScoreboard}
 			</p>
 		</div>
 		<GameConnectionStatus {connected} {connectionLabel} showInline={false} {showDisconnectedChip} />
 	</header>
 
-	{#if stage === 'podium'}
+	{#if stage === 'third_place' || stage === 'second_place' || stage === 'first_place'}
 		<section class="podium card">
 			<div class="confetti" aria-hidden="true">
 				{#each confettiPieces as piece (piece)}
 					<span style={`--piece:${piece};`}></span>
 				{/each}
 			</div>
-			<div class="podium-grid">
-				{#if podiumEntries.length === 0}
+			<div class="podium-stack">
+				{#if visiblePodiumGroups.length === 0}
 					<p class="text-lg text-slate-600">{$messages.finale.noFinalStandingsYet}</p>
 				{:else}
-					{#each podiumEntries as entry (entry.player_id)}
-						<article class={`podium-card place-${Math.min(entry.place, 3)}`}>
-							<p class="podium-place">{$messages.finale.place(entry.place)}</p>
-							<div class="podium-avatar-wrap">
-								<Avatar
-									name={entry.name}
-									avatarKind={entry.avatar_kind}
-									avatarPresetKey={entry.avatar_preset_key}
-									avatarUrl={entry.avatar_url}
-									sizeClass="h-28 w-28 md:h-32 md:w-32"
-									className="podium-avatar"
-								/>
+					{#each visiblePodiumGroups as group (group.place)}
+						<section class={`podium-row place-${Math.min(group.place, 3)}`}>
+							<p class="podium-place">{$messages.finale.place(group.place)}</p>
+							<div class="podium-row-cards">
+								{#each group.entries as entry (entry.player_id)}
+									<article class={`podium-card place-${Math.min(entry.place, 3)}`}>
+										<div class="podium-avatar-wrap">
+											<Avatar
+												name={entry.name}
+												avatarKind={entry.avatar_kind}
+												avatarPresetKey={entry.avatar_preset_key}
+												avatarUrl={entry.avatar_url}
+												sizeClass="h-28 w-28 md:h-32 md:w-32"
+												className="podium-avatar"
+											/>
+										</div>
+										<h2 class="podium-name">{entry.name}</h2>
+										<p class="podium-score">{entry.score} {$messages.common.pointsWord}</p>
+									</article>
+								{/each}
 							</div>
-							<h2 class="podium-name">{entry.name}</h2>
-							<p class="podium-score">{entry.score} {$messages.common.pointsWord}</p>
-						</article>
+						</section>
 					{/each}
 				{/if}
 			</div>
@@ -154,17 +190,31 @@
 		transform: rotate(calc(var(--piece) * 12deg));
 	}
 
-	.podium-grid {
+	.podium-stack {
 		position: relative;
 		z-index: 1;
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
 		gap: 1rem;
-		width: min(100%, 60rem);
-		align-items: end;
+		width: min(100%, 72rem);
+		align-content: start;
+	}
+
+	.podium-row {
+		display: grid;
+		gap: 0.75rem;
+		justify-items: center;
+	}
+
+	.podium-row-cards {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 1rem;
+		width: 100%;
 	}
 
 	.podium-card {
+		width: min(100%, 16rem);
 		border-radius: 1.5rem;
 		padding: 1.5rem;
 		background: rgb(255 255 255 / 0.88);
@@ -176,15 +226,17 @@
 
 	.place-1 {
 		background: linear-gradient(180deg, #fff7cc, #fff);
-		transform: translateY(-0.75rem);
+		box-shadow: 0 24px 50px rgb(202 138 4 / 0.2);
 	}
 
 	.place-2 {
 		background: linear-gradient(180deg, #eff6ff, #fff);
+		box-shadow: 0 22px 45px rgb(37 99 235 / 0.12);
 	}
 
 	.place-3 {
 		background: linear-gradient(180deg, #fef2f2, #fff);
+		box-shadow: 0 22px 45px rgb(190 24 93 / 0.12);
 	}
 
 	.podium-place,

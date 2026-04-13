@@ -49,6 +49,7 @@ class GameStateRepository:
             for key in (
                 "id",
                 "join_code",
+                "starter_id",
                 "host_id",
                 "host_enabled",
                 "state",

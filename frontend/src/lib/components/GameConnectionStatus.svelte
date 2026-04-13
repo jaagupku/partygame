@@ -24,10 +24,9 @@
 		}
 		return connectionLabel.trim();
 	});
-	const isLive = $derived(connected === true);
 	const hasLabel = $derived(Boolean(normalizedLabel));
-	const showInlineStatus = $derived(showInline && hasLabel && !isLive);
-	const showStatusChip = $derived(showDisconnectedChip && hasLabel && !isLive);
+	const showInlineStatus = $derived(showInline && hasLabel && !connected);
+	const showStatusChip = $derived(showDisconnectedChip && hasLabel && !connected);
 
 	function portal(node: HTMLElement) {
 		document.body.appendChild(node);

@@ -29,6 +29,7 @@
 			lobbyPhase: lobby().phase ?? 'waiting',
 			currentStep: lobby().current_step ?? 0,
 			hostEnabled: lobby().host_enabled,
+			starterPlayerId: lobby().starter_id,
 			activeStep: undefined,
 			displayPhase: 'question_active',
 			scoreboardVisible: false,
@@ -62,13 +63,15 @@
 	let resyncPending = $state(false);
 	let resyncIntervalId: number | null = null;
 	let finaleAutoplayIntervalId: number | null = null;
+	let pendingSubmissionStepId = $state<string | undefined>(undefined);
 
 	const playerMap = $derived(new Map($controller.players.map((entry) => [entry.id, entry])));
 	const playerInputDisabled = $derived(
 		!$controller.isHost &&
 			($controller.lobbyPhase !== 'question_active' ||
 				!$controller.activeStep?.input_enabled ||
-				$controller.hasSubmitted)
+				$controller.hasSubmitted ||
+				pendingSubmissionStepId === $controller.activeStep?.id)
 	);
 	const buzzerLockedOut = $derived($controller.disabledBuzzerPlayerIds.includes($controller.id));
 	const submittedPlayerNames = $derived(
@@ -79,6 +82,15 @@
 	const gameFinished = $derived(
 		$controller.lobbyPhase === 'finished' || Boolean($controller.endGame)
 	);
+	const canStartHostlessGame = $derived(
+		!$controller.hostEnabled && $controller.starterPlayerId === $controller.id
+	);
+	const canContinueHostlessInfoSlide = $derived(
+		canStartHostlessGame &&
+			$controller.activeStep?.input_kind === 'none' &&
+			$controller.activeStep?.evaluation_type === 'none' &&
+			$controller.lobbyPhase === 'question_active'
+	);
 
 	$effect(() => {
 		const step = $controller.activeStep;
@@ -87,6 +99,7 @@
 			selectedRadioOption = null;
 			selectedCheckboxOptions = [];
 			inputStepId = step?.id;
+			pendingSubmissionStepId = undefined;
 		}
 		if (step?.input_kind !== 'ordering') {
 			orderingItems = [];
@@ -102,6 +115,12 @@
 		orderingItems = [...step.input_options];
 		draggedOrderingIndex = null;
 		dropOrderingIndex = null;
+	});
+
+	$effect(() => {
+		if ($controller.hasSubmitted) {
+			pendingSubmissionStepId = undefined;
+		}
 	});
 
 	$effect(() => {
@@ -311,6 +330,7 @@
 			value = String(answerValue);
 		}
 
+		pendingSubmissionStepId = step.id;
 		sendAction({
 			type_: 'player_input_submitted',
 			value
@@ -321,6 +341,7 @@
 		if (playerInputDisabled || buzzerLockedOut || !$controller.buzzerActive) {
 			return;
 		}
+		pendingSubmissionStepId = $controller.activeStep?.id;
 		sendAction({
 			type_: 'player_input_submitted',
 			value: 'buzz'
@@ -423,11 +444,22 @@
 	showDisconnectedChip={true}
 />
 
+{#if $controller.scoreboardVisible && !$controller.endGame?.revealed && !$controller.isHost}
+	<p class="mt-3 text-center text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+		{$messages.gameplay.scoreboardShowingOnMainScreen}
+	</p>
+{/if}
+
 {#if $controller.gameState === 'waiting_for_players'}
 	<div class="card mt-0 text-center">
 		<p class="text-xl font-bold">{$messages.gameplay.waitingForGameStart}</p>
 		{#if $controller.isHost}
 			<p class="mt-2 text-lg">{$messages.gameplay.youAreHostController}</p>
+			<button type="button" class="btn btn-primary mt-4 text-3xl" onclick={startGame}
+				>{$messages.gameplay.startGame}</button
+			>
+		{:else if canStartHostlessGame}
+			<p class="mt-2 text-lg">{$messages.gameplay.youCanStartAsFirstPlayer}</p>
 			<button type="button" class="btn btn-primary mt-4 text-3xl" onclick={startGame}
 				>{$messages.gameplay.startGame}</button
 			>
@@ -442,8 +474,9 @@
 				<section class="card stack-md">
 					<h2 class="label-title text-2xl">{$messages.gameplay.finaleControls}</h2>
 					<p class="text-sm text-slate-600">
-						{$messages.gameplay.stage}: {$controller.endGame.sequence_stage} · {$messages.gameplay
-							.autoplay}:
+						{$messages.gameplay.stage}: {$messages.finale.stageLabel(
+							$controller.endGame.sequence_stage
+						)} · {$messages.gameplay.autoplay}:
 						{onOffLabel($controller.endGame.autoplay_enabled)}
 					</p>
 					<div class="flex flex-wrap gap-3">
@@ -657,7 +690,13 @@
 			</section>
 		{:else if !gameFinished && !$controller.isHost}
 			<section class="card text-center">
-				<p class="text-lg">No phone input is required for this step.</p>
+				<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
+				{#if canContinueHostlessInfoSlide}
+					<p class="mt-2 text-slate-600">{$messages.gameplay.youCanContinueInfoSlide}</p>
+					<button type="button" class="btn btn-primary mt-4" onclick={nextStep}>
+						{$messages.gameplay.advanceStep}
+					</button>
+				{/if}
 			</section>
 		{:else if gameFinished}
 			<section class="card text-center">
