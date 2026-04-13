@@ -7,13 +7,14 @@
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
+	import { connectionLabel, formatPlayerStatus, messages, onOffLabel, pageTitle } from '$lib/i18n';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
 	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
 	const definitionTitle = () =>
-		data.definitionTitle || data.lobby.definition_id || 'Untitled Definition';
+		data.definitionTitle || data.lobby.definition_id || $messages.definitions.untitledDefinition;
 
 	const game = createGameStore(lobby());
 	let isConnected = $state(false);
@@ -102,23 +103,24 @@
 </script>
 
 <svelte:head>
-	<title>{definitionTitle()} | Host Lobby | Party Game</title>
+	<title>{pageTitle(`${definitionTitle()} | ${$messages.hostView.hostLobbyTitle}`)}</title>
 </svelte:head>
 
 {#if $game.state === 'waiting_for_players'}
 	<h1 class="page-title">{definitionTitle()}</h1>
 	<p class="page-subtitle">
-		Join code:
+		{$messages.hostView.joinCode}:
 		<span class="mt-2 block text-5xl font-black tracking-[0.28em] text-slate-950 sm:text-6xl">
 			{$game.join_code}
 		</span>
 	</p>
 	<p class="page-subtitle mt-2">
-		Host mode: <span class="font-bold">{$game.host_enabled ? 'On' : 'Off'}</span>
+		{$messages.hostView.hostMode}: <span class="font-bold">{onOffLabel($game.host_enabled)}</span>
 	</p>
-	<p class="page-subtitle mt-2">Use the host controller to start and run the game.</p>
+	<p class="page-subtitle mt-2">{$messages.hostView.useHostController}</p>
 	<GameConnectionStatus
-		connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+		connected={isConnected}
+		connectionLabel={connectionLabel(isConnected)}
 		showInline={false}
 		showDisconnectedChip={true}
 	/>
@@ -142,9 +144,9 @@
 					</button>
 					<div class="flex items-center gap-2">
 						{#if player.isHost}
-							<span class="badge bg-sky-100 text-sky-700">Host</span>
+							<span class="badge bg-sky-100 text-sky-700">{$messages.common.host}</span>
 						{/if}
-						<span class="text-sm text-slate-600">{player.status}</span>
+						<span class="text-sm text-slate-600">{formatPlayerStatus(player.status)}</span>
 					</div>
 				</li>
 			{/each}
@@ -159,7 +161,8 @@
 					players={$game.players}
 					{playerMap}
 					title={definitionTitle()}
-					connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+					connected={isConnected}
+					connectionLabel={connectionLabel(isConnected)}
 					showDisconnectedChip={true}
 				/>
 			{:else if $game.phase === 'finished' && $game.endGame}
@@ -168,11 +171,10 @@
 				>
 					<div class="max-w-2xl">
 						<h1 class="page-title text-4xl md:text-5xl">{definitionTitle()}</h1>
-						<p class="page-subtitle mt-4">
-							Final results are ready. Reveal the finale from the host controller when you are set.
-						</p>
+						<p class="page-subtitle mt-4">{$messages.hostView.finalResultsReady}</p>
 						<GameConnectionStatus
-							connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+							connected={isConnected}
+							connectionLabel={connectionLabel(isConnected)}
 							showInline={false}
 							showDisconnectedChip={true}
 						/>
@@ -188,7 +190,8 @@
 					{buzzedPlayerName}
 					displayPhase={$game.displayPhase}
 					phaseLabel={$game.phase ?? 'question_active'}
-					connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+					connected={isConnected}
+					connectionLabel={connectionLabel(isConnected)}
 					layoutMode="host-stage"
 					showConnectionInline={false}
 					showDisconnectedChip={true}

@@ -5,6 +5,7 @@
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import FinaleControllerCard from '$lib/components/endgame/FinaleControllerCard.svelte';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
+	import { connectionLabel, messages, onOffLabel, pageTitle } from '$lib/i18n';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { onDestroy, onMount } from 'svelte';
 	import type { Writable } from 'svelte/store';
@@ -406,22 +407,29 @@
 </script>
 
 <svelte:head>
-	<title>{$controller.isHost ? 'Host Controller' : 'Player Controller'} | Party Game</title>
+	<title
+		>{pageTitle(
+			$controller.isHost
+				? $messages.gameplay.hostControllerTitle
+				: $messages.gameplay.playerControllerTitle
+		)}</title
+	>
 </svelte:head>
 
 <GameConnectionStatus
-	connectionLabel={isConnected ? 'Live' : 'Disconnected'}
+	connected={isConnected}
+	connectionLabel={connectionLabel(isConnected)}
 	showInline={false}
 	showDisconnectedChip={true}
 />
 
 {#if $controller.gameState === 'waiting_for_players'}
 	<div class="card mt-0 text-center">
-		<p class="text-xl font-bold">Waiting for game to start.</p>
+		<p class="text-xl font-bold">{$messages.gameplay.waitingForGameStart}</p>
 		{#if $controller.isHost}
-			<p class="mt-2 text-lg">You are the host controller.</p>
+			<p class="mt-2 text-lg">{$messages.gameplay.youAreHostController}</p>
 			<button type="button" class="btn btn-primary mt-4 text-3xl" onclick={startGame}
-				>Start Game</button
+				>{$messages.gameplay.startGame}</button
 			>
 		{/if}
 	</div>
@@ -432,14 +440,15 @@
 
 			{#if $controller.isHost}
 				<section class="card stack-md">
-					<h2 class="label-title text-2xl">Finale Controls</h2>
+					<h2 class="label-title text-2xl">{$messages.gameplay.finaleControls}</h2>
 					<p class="text-sm text-slate-600">
-						Stage: {$controller.endGame.sequence_stage} · Autoplay:
-						{$controller.endGame.autoplay_enabled ? 'On' : 'Off'}
+						{$messages.gameplay.stage}: {$controller.endGame.sequence_stage} · {$messages.gameplay
+							.autoplay}:
+						{onOffLabel($controller.endGame.autoplay_enabled)}
 					</p>
 					<div class="flex flex-wrap gap-3">
 						<button type="button" class="btn btn-ghost" onclick={revealEndGame}>
-							Reset To Podium
+							{$messages.gameplay.resetToPodium}
 						</button>
 						<button
 							type="button"
@@ -447,27 +456,29 @@
 							onclick={advanceEndGameStage}
 							disabled={$controller.endGame.sequence_stage === 'scoreboard'}
 						>
-							Next Finale Stage
+							{$messages.gameplay.nextFinaleStage}
 						</button>
 						<button type="button" class="btn btn-ghost" onclick={toggleEndGameAutoplay}>
-							{$controller.endGame.autoplay_enabled ? 'Disable Autoplay' : 'Enable Autoplay'}
+							{$controller.endGame.autoplay_enabled
+								? $messages.gameplay.disableAutoplay
+								: $messages.gameplay.enableAutoplay}
 						</button>
 					</div>
 				</section>
 			{/if}
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'buzzer'}
 			<section class="card stack-md text-center">
-				<h2 class="label-title text-2xl">Buzzer</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.buzzer}</h2>
 				<p>
 					{playerInputDisabled
 						? $controller.hasSubmitted
-							? 'Answer received. Waiting for the next step.'
-							: 'This step is closed.'
+							? $messages.gameplay.answerReceivedWaiting
+							: $messages.gameplay.stepClosed
 						: buzzerLockedOut
-							? 'You already used your buzzer chance for this question.'
+							? $messages.gameplay.buzzerChanceUsed
 							: $controller.buzzerActive
-								? 'Buzz now!'
-								: 'Wait for the host to continue.'}
+								? $messages.gameplay.buzzNow
+								: $messages.gameplay.waitForHost}
 				</p>
 				<button
 					type="button"
@@ -475,17 +486,17 @@
 					class="btn btn-accent text-4xl"
 					onclick={buzz}
 				>
-					BUZZ
+					{$messages.gameplay.buzzer}
 				</button>
 			</section>
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'text'}
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Your Answer</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
 				{#if playerInputDisabled}
 					<p class="text-sm text-slate-600">
 						{$controller.hasSubmitted
-							? 'Your answer is in. You can submit again on the next step.'
-							: 'This step has been closed. New answers are disabled.'}
+							? $messages.gameplay.answerSubmitted
+							: $messages.gameplay.stepClosedAnswersDisabled}
 					</p>
 				{/if}
 				<input
@@ -493,7 +504,8 @@
 					type="text"
 					bind:value={answerValue}
 					disabled={playerInputDisabled}
-					placeholder={$controller.activeStep?.input_placeholder ?? 'Type your answer'}
+					placeholder={$controller.activeStep?.input_placeholder ??
+						$messages.gameplay.typeYourAnswer}
 				/>
 				<button
 					type="button"
@@ -501,17 +513,17 @@
 					onclick={submitAnswer}
 					disabled={playerInputDisabled}
 				>
-					Submit Answer
+					{$messages.gameplay.submitAnswer}
 				</button>
 			</section>
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'number'}
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Your Answer</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
 				{#if playerInputDisabled}
 					<p class="text-sm text-slate-600">
 						{$controller.hasSubmitted
-							? 'Your answer is in. You can submit again on the next step.'
-							: 'This step has been closed. New answers are disabled.'}
+							? $messages.gameplay.answerSubmitted
+							: $messages.gameplay.stepClosedAnswersDisabled}
 					</p>
 				{/if}
 				<input
@@ -522,7 +534,7 @@
 					step={$controller.activeStep?.slider_step ?? 1}
 					bind:value={answerValue}
 					disabled={playerInputDisabled}
-					placeholder={$controller.activeStep?.input_placeholder ?? 'Enter a number'}
+					placeholder={$controller.activeStep?.input_placeholder ?? $messages.gameplay.enterNumber}
 				/>
 				<button
 					type="button"
@@ -530,18 +542,18 @@
 					onclick={submitAnswer}
 					disabled={playerInputDisabled}
 				>
-					Submit Answer
+					{$messages.gameplay.submitAnswer}
 				</button>
 			</section>
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'ordering'}
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Ordering Answer</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.orderingAnswer}</h2>
 				<p class="text-sm text-slate-600">
 					{playerInputDisabled
 						? $controller.hasSubmitted
-							? 'Your order is submitted. You can reorder again on the next step.'
-							: 'This step has been closed. Reordering is disabled.'
-						: 'Drag items into the order you want, then submit.'}
+							? $messages.gameplay.orderSubmitted
+							: $messages.gameplay.reorderingDisabled
+						: $messages.gameplay.dragItemsToOrder}
 				</p>
 				<div class="stack-md">
 					{#each orderingItems as item, index}
@@ -584,7 +596,7 @@
 					onclick={submitAnswer}
 					disabled={playerInputDisabled}
 				>
-					Submit Order
+					{$messages.gameplay.submitOrder}
 				</button>
 			</section>
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'radio'}
@@ -649,27 +661,27 @@
 			</section>
 		{:else if gameFinished}
 			<section class="card text-center">
-				<p class="text-xl font-bold">Game complete.</p>
+				<p class="text-xl font-bold">{$messages.gameplay.gameComplete}</p>
 				<p class="mt-2 text-slate-600">
 					{$controller.isHost
-						? 'Use the host controller below to reveal the finale screen.'
-						: 'Waiting for the host to reveal the final results.'}
+						? $messages.gameplay.revealFinaleFromHost
+						: $messages.gameplay.waitingForFinalResults}
 				</p>
 			</section>
 		{/if}
 
 		{#if $controller.isHost && !$controller.endGame?.revealed && gameFinished}
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Finale Controls</h2>
-				<p class="text-sm text-slate-600">
-					The game is finished. Reveal the end game screen when you are ready.
-				</p>
+				<h2 class="label-title text-2xl">{$messages.gameplay.finaleControls}</h2>
+				<p class="text-sm text-slate-600">{$messages.gameplay.gameFinishedRevealEndScreen}</p>
 				<div class="flex flex-wrap gap-3">
 					<button type="button" class="btn btn-primary" onclick={revealEndGame}
-						>Reveal Finale</button
+						>{$messages.gameplay.revealFinale}</button
 					>
 					<button type="button" class="btn btn-ghost" onclick={toggleEndGameAutoplay}>
-						{$controller.endGame?.autoplay_enabled ? 'Disable Autoplay' : 'Enable Autoplay'}
+						{$controller.endGame?.autoplay_enabled
+							? $messages.gameplay.disableAutoplay
+							: $messages.gameplay.enableAutoplay}
 					</button>
 				</div>
 			</section>

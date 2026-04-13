@@ -2,7 +2,7 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 
-	import { locale } from '$lib/i18n';
+	import { locale, messages, pageTitle } from '$lib/i18n';
 	import '../app.css';
 
 	let { children } = $props();
@@ -21,7 +21,7 @@
 </script>
 
 <svelte:head>
-	<title>Party Game</title>
+	<title>{pageTitle()}</title>
 </svelte:head>
 
 <div class:app-shell-editor={definitionsEditorRoute} class="app-shell">

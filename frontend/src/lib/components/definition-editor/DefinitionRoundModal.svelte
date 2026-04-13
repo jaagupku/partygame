@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import { messages } from '$lib/i18n';
 
 	type Props = {
 		roundModalTitle: string;
@@ -36,15 +37,13 @@
 	<div class="w-full max-w-xl rounded-4xl border border-slate-200 bg-white p-6 shadow-2xl">
 		<div class="flex items-start justify-between gap-4">
 			<div>
-				<h3 class="label-title text-2xl">Edit Round</h3>
-				<p class="text-sm text-slate-600">
-					Update the round name used in the sorter and live game.
-				</p>
+				<h3 class="label-title text-2xl">{$messages.common.edit} {$messages.editor.roundName}</h3>
+				<p class="text-sm text-slate-600">{$messages.editor.roundName}</p>
 			</div>
 			<button
 				type="button"
 				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
-				aria-label="Close round editor"
+				aria-label={$messages.editor.closeRoundEditor}
 				onclick={onClose}
 			>
 				<iconify-icon icon="fluent:dismiss-16-filled"></iconify-icon>
@@ -53,11 +52,13 @@
 
 		<div class="mt-5 grid gap-4">
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Round name</span>
+				<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+					>{$messages.editor.roundName}</span
+				>
 				<input
 					value={roundModalTitle}
 					class="input text-lg"
-					placeholder="Round title"
+					placeholder={$messages.editor.roundTitlePlaceholder}
 					oninput={(event) =>
 						onRoundModalTitleChange((event.currentTarget as HTMLInputElement).value)}
 				/>
@@ -68,12 +69,14 @@
 					class="btn btn-ghost px-4 py-2 text-sm"
 					onclick={onToggleAdvancedFields}
 				>
-					{showRoundAdvancedFields ? 'Hide Advanced' : 'Show Advanced'}
+					{showRoundAdvancedFields ? $messages.editor.hideAdvanced : $messages.editor.showAdvanced}
 				</button>
 			</div>
 			{#if showRoundAdvancedFields}
 				<label class="input-wrap">
-					<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Round id</span>
+					<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+						>{$messages.editor.roundId}</span
+					>
 					<input
 						value={roundModalId}
 						class="input text-lg"
@@ -86,8 +89,12 @@
 		</div>
 
 		<div class="mt-6 flex flex-wrap justify-end gap-3">
-			<button type="button" class="btn btn-ghost" onclick={onClose}>Cancel</button>
-			<button type="button" class="btn btn-primary" onclick={onSave}>Save Round</button>
+			<button type="button" class="btn btn-ghost" onclick={onClose}
+				>{$messages.common.cancel}</button
+			>
+			<button type="button" class="btn btn-primary" onclick={onSave}
+				>{$messages.common.saveRound}</button
+			>
 		</div>
 	</div>
 </div>

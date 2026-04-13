@@ -6,11 +6,11 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
 		proxy: {
-			"/api": "http://localhost:8000",
-			"/api/v1/game": {
-				target: "ws://localhost:8000",
-				ws: true,
-			},
-		},
-	},
+			'/api': 'http://localhost:8000',
+			'/api/v1/game': {
+				target: 'ws://localhost:8000',
+				ws: true
+			}
+		}
+	}
 });

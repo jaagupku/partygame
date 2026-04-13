@@ -3,11 +3,10 @@
 
 	interface HostPlayerProps {
 		websocket: WebSocket;
-		playerId: string;
 		players: Player[];
 	}
 
-	let { websocket, playerId, players }: HostPlayerProps = $props();
+	let { websocket, players }: HostPlayerProps = $props();
 
 	const playerMap = $derived(new Map(players.map((e) => [e.id, e])));
 

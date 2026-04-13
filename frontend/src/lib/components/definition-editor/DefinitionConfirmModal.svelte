@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import { messages } from '$lib/i18n';
 
 	type Props = {
 		title: string;
@@ -30,7 +31,7 @@
 			<button
 				type="button"
 				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
-				aria-label="Close confirmation"
+				aria-label={$messages.editor.closeConfirmation}
 				onclick={onClose}
 			>
 				<iconify-icon icon="fluent:dismiss-16-filled"></iconify-icon>
@@ -38,7 +39,9 @@
 		</div>
 
 		<div class="mt-6 flex flex-wrap justify-end gap-3">
-			<button type="button" class="btn btn-ghost" onclick={onClose}>Cancel</button>
+			<button type="button" class="btn btn-ghost" onclick={onClose}
+				>{$messages.common.cancel}</button
+			>
 			<button type="button" class="btn btn-danger" onclick={onConfirm}>{confirmLabel}</button>
 		</div>
 	</div>

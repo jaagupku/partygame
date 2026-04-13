@@ -10,15 +10,16 @@
 	import DefinitionStepEditor from './DefinitionStepEditor.svelte';
 	import DefinitionStepSorter from './DefinitionStepSorter.svelte';
 	import DefinitionStepTemplateModal from './DefinitionStepTemplateModal.svelte';
+	import { messages } from '$lib/i18n';
 	import {
 		DEFAULT_EVALUATION_BY_INPUT_KIND,
 		MEDIA_TYPES,
 		INPUT_KIND_EVALUATIONS,
-		STEP_TEMPLATES,
 		buildCheckboxWeightedAnswer,
 		buildFlatSteps,
 		buildRuntimePreviewStep,
 		createStepFromTemplate,
+		getStepTemplates,
 		getCheckboxOptionScores,
 		isCheckboxWeightedAnswer,
 		normalizeAnswer
@@ -99,32 +100,12 @@
 	);
 	const previewStep = $derived(selectedStep ? buildRuntimePreviewStep(selectedStep) : undefined);
 	const previewCountdown = $derived(selectedStep?.timer.seconds ?? 0);
-	const breadcrumbCurrentLabel = $derived(isNewDefinition ? 'New Definition' : 'Edit Definition');
-	const shortcutGroups = [
-		{
-			title: 'Navigation',
-			items: [
-				{ keys: 'Alt + ArrowUp', label: 'Previous Step' },
-				{ keys: 'Alt + ArrowDown', label: 'Next Step' }
-			]
-		},
-		{
-			title: 'Editing',
-			items: [
-				{ keys: 'Cmd/Ctrl + S', label: 'Save Definition' },
-				{ keys: 'Cmd/Ctrl + Shift + A', label: 'Add Step After' },
-				{ keys: 'Cmd/Ctrl + ,', label: 'Toggle Advanced Fields' },
-				{ keys: 'Cmd/Ctrl + Backspace/Delete', label: 'Delete Step' }
-			]
-		},
-		{
-			title: 'View',
-			items: [
-				{ keys: 'Cmd/Ctrl + Shift + P', label: 'Preview' },
-				{ keys: '?', label: 'Open Shortcut Help' }
-			]
-		}
-	];
+	const breadcrumbCurrentLabel = $derived(
+		isNewDefinition
+			? $messages.definitions.newDefinitionBreadcrumb
+			: $messages.definitions.editDefinitionBreadcrumb
+	);
+	const shortcutGroups = $derived($messages.editor.shortcutGroups);
 
 	onMount(async () => {
 		await loadEditor();
@@ -156,7 +137,7 @@
 		const response = await fetch(`/api/v1/definitions/${definitionId}`);
 		loadingEditor = false;
 		if (!response.ok) {
-			errorMessage = `Could not load definition "${definitionId}".`;
+			errorMessage = $messages.definitions.couldNotLoadDefinition(definitionId);
 			return;
 		}
 		draft = structuredClone(await response.json());
@@ -176,7 +157,7 @@
 	function createEmptyDefinition(): GameDefinition {
 		return {
 			id: '',
-			title: 'Untitled Definition',
+			title: $messages.definitions.untitledDefinition,
 			description: '',
 			rounds: [createEmptyRound(1, true)]
 		};
@@ -185,7 +166,7 @@
 	function createEmptyRound(index: number, withInitialStep = false): RoundDefinition {
 		return {
 			id: `round_${index}`,
-			title: `Round ${index}`,
+			title: `${$messages.editor.roundName} ${index}`,
 			steps: withInitialStep ? [createStepFromTemplate(index, 1, 'blank')] : []
 		};
 	}
@@ -215,7 +196,7 @@
 	}
 
 	function finishTitleEdit() {
-		draft.title = draft.title.trim() || 'Untitled Definition';
+		draft.title = draft.title.trim() || $messages.definitions.untitledDefinition;
 		editingTitle = false;
 	}
 
@@ -304,13 +285,13 @@
 		if (!round) {
 			return;
 		}
-		const roundLabel = round.title || `Round ${roundIndex + 1}`;
+		const roundLabel = round.title || `${$messages.editor.roundName} ${roundIndex + 1}`;
 		pendingDelete = {
 			type: 'round',
 			roundIndex,
-			title: `Delete ${roundLabel}?`,
-			message: 'This round and all of its steps will be removed from the definition.',
-			confirmLabel: 'Delete Round'
+			title: $messages.editor.deleteRoundTitle(roundLabel),
+			message: $messages.editor.deleteRoundMessage,
+			confirmLabel: $messages.editor.deleteRoundConfirm
 		};
 	}
 
@@ -331,13 +312,13 @@
 		if (!selectedFlatStep || !selectedStep) {
 			return;
 		}
-		const stepLabel = selectedStep.title?.trim() || `Slide ${selectedFlatStep.globalIndex + 1}`;
+		const stepLabel =
+			selectedStep.title?.trim() || `${$messages.editor.slide} ${selectedFlatStep.globalIndex + 1}`;
 		pendingDelete = {
 			type: 'step',
-			title: `Delete ${stepLabel}?`,
-			message:
-				'This step will be removed from the definition and cannot be recovered from the editor.',
-			confirmLabel: 'Delete Step'
+			title: $messages.editor.deleteStepTitle(stepLabel),
+			message: $messages.editor.deleteStepMessage,
+			confirmLabel: $messages.editor.deleteStepConfirm
 		};
 	}
 
@@ -479,7 +460,10 @@
 		step.player_input.kind = kind;
 		if (kind === 'ordering' || kind === 'radio' || kind === 'checkbox') {
 			if (step.player_input.options.length < 2) {
-				step.player_input.options = ['Option 1', 'Option 2'];
+				step.player_input.options = [
+					$messages.editor.templateMeta.trivia.options?.[0] ?? 'Option 1',
+					$messages.editor.templateMeta.trivia.options?.[1] ?? 'Option 2'
+				];
 			}
 		} else {
 			step.player_input.options = [];
@@ -524,7 +508,9 @@
 	}
 
 	function addInputOption(step: StepDefinition) {
-		step.player_input.options.push(`Option ${step.player_input.options.length + 1}`);
+		step.player_input.options.push(
+			`${$messages.common.add} ${step.player_input.options.length + 1}`
+		);
 		if (step.evaluation.type_ === 'ordering_match') {
 			step.evaluation.answer = [...step.player_input.options];
 			return;
@@ -719,7 +705,7 @@
 		saving = false;
 		if (!response.ok) {
 			const detail = await readErrorDetail(response);
-			errorMessage = detail || 'Could not save definition.';
+			errorMessage = detail || $messages.definitions.couldNotSaveDefinition;
 			return;
 		}
 		const wasNewDefinition = isNewDefinition;
@@ -729,7 +715,7 @@
 		selectedStepKey = selectionBeforeSave
 			? getStepKeyByIdentity(draft, selectionBeforeSave)
 			: (buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null);
-		statusMessage = 'Definition saved.';
+		statusMessage = $messages.definitions.definitionSaved;
 		if (wasNewDefinition) {
 			goto(`/definitions/${draft.id}`, { replaceState: true });
 		}
@@ -1147,7 +1133,7 @@
 
 {#if showStepTemplateModal}
 	<DefinitionStepTemplateModal
-		templates={STEP_TEMPLATES}
+		templates={getStepTemplates()}
 		onClose={closeStepTemplateModal}
 		onSelectTemplate={addStepAfterSelected}
 	/>

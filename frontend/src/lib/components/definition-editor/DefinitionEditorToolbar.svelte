@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { messages } from '$lib/i18n';
 
 	type Props = {
 		title: string;
@@ -54,12 +55,14 @@
 	<div class="min-w-0 flex-1">
 		<nav
 			class="mb-2 flex flex-wrap items-center gap-2 text-sm text-slate-500"
-			aria-label="Breadcrumb"
+			aria-label={$messages.common.breadcrumb}
 		>
-			<button class="transition hover:text-slate-700" type="button" onclick={onGoHome}>Home</button>
+			<button class="transition hover:text-slate-700" type="button" onclick={onGoHome}
+				>{$messages.common.home}</button
+			>
 			<span aria-hidden="true">/</span>
 			<button class="transition hover:text-slate-700" type="button" onclick={onManageDefinitions}>
-				Manage Definitions
+				{$messages.common.manageDefinitions}
 			</button>
 			<span aria-hidden="true">/</span>
 			<span aria-current="page" class="font-semibold text-slate-700">{breadcrumbCurrentLabel}</span>
@@ -81,7 +84,7 @@
 			{:else}
 				<button class="min-w-0 text-left" type="button" onclick={onStartTitleEdit}>
 					<h1 class="truncate text-3xl font-extrabold text-slate-900">
-						{title || 'Untitled Definition'}
+						{title || $messages.definitions.untitledDefinition}
 					</h1>
 				</button>
 			{/if}
@@ -90,13 +93,13 @@
 
 	<div class="flex flex-wrap items-center gap-2">
 		<button class="btn btn-accent px-4 py-2 text-sm" type="button" onclick={onAddRound}>
-			New Round
+			{$messages.editor.newRound}
 		</button>
 		<button class="btn btn-primary px-4 py-2 text-sm" type="button" onclick={onAddStep}>
-			New Step
+			{$messages.editor.newStep}
 		</button>
 		<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onOpenDetails}>
-			Definition Details
+			{$messages.editor.definitionDetails}
 		</button>
 		<button
 			class="btn btn-primary px-5 py-2 text-sm"
@@ -104,7 +107,7 @@
 			onclick={onSave}
 			disabled={saving || loadingEditor}
 		>
-			{saving ? 'Saving...' : 'Save'}
+			{saving ? $messages.editor.saving : $messages.common.save}
 		</button>
 	</div>
 </div>

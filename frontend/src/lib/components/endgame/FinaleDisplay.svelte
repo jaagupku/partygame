@@ -2,6 +2,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
+	import { messages } from '$lib/i18n';
 
 	interface FinaleDisplayProps {
 		endGame: EndGameState;
@@ -9,6 +10,7 @@
 		playerMap: Map<string, Player>;
 		title?: string;
 		connectionLabel?: string;
+		connected?: boolean | null;
 		showDisconnectedChip?: boolean;
 	}
 
@@ -16,8 +18,9 @@
 		endGame,
 		players,
 		playerMap,
-		title = 'Final Results',
-		connectionLabel = 'Live',
+		title = '',
+		connectionLabel = '',
+		connected = null,
 		showDisconnectedChip = true
 	}: FinaleDisplayProps = $props();
 
@@ -44,13 +47,13 @@
 			<h1 class="page-title text-left text-4xl md:text-5xl">{title}</h1>
 			<p class="page-subtitle text-left text-base md:text-lg">
 				{stage === 'podium'
-					? 'Top players revealed'
+					? $messages.finale.topPlayersRevealed
 					: stage === 'stats'
-						? 'Best moments from the match'
-						: 'Full final scoreboard'}
+						? $messages.finale.bestMoments
+						: $messages.finale.fullScoreboard}
 			</p>
 		</div>
-		<GameConnectionStatus {connectionLabel} showInline={false} {showDisconnectedChip} />
+		<GameConnectionStatus {connected} {connectionLabel} showInline={false} {showDisconnectedChip} />
 	</header>
 
 	{#if stage === 'podium'}
@@ -62,11 +65,11 @@
 			</div>
 			<div class="podium-grid">
 				{#if podiumEntries.length === 0}
-					<p class="text-lg text-slate-600">No final standings yet.</p>
+					<p class="text-lg text-slate-600">{$messages.finale.noFinalStandingsYet}</p>
 				{:else}
 					{#each podiumEntries as entry (entry.player_id)}
 						<article class={`podium-card place-${Math.min(entry.place, 3)}`}>
-							<p class="podium-place">Place #{entry.place}</p>
+							<p class="podium-place">{$messages.finale.place(entry.place)}</p>
 							<div class="podium-avatar-wrap">
 								<Avatar
 									name={entry.name}
@@ -78,7 +81,7 @@
 								/>
 							</div>
 							<h2 class="podium-name">{entry.name}</h2>
-							<p class="podium-score">{entry.score} pts</p>
+							<p class="podium-score">{entry.score} {$messages.common.pointsWord}</p>
 						</article>
 					{/each}
 				{/if}
@@ -98,10 +101,8 @@
 			{/each}
 			{#if endGame.stats_cards.length === 0}
 				<div class="card stat-card empty-card">
-					<p class="stat-label">No Stats Yet</p>
-					<p class="stat-description">
-						This game did not produce enough data for finale highlights.
-					</p>
+					<p class="stat-label">{$messages.finale.noStatsYet}</p>
+					<p class="stat-description">{$messages.finale.noStatsHelp}</p>
 				</div>
 			{/if}
 		</section>

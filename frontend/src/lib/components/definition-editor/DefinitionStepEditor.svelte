@@ -1,11 +1,12 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import { getYouTubeMedia } from '$lib/media/youtube.js';
+	import { messages } from '$lib/i18n';
 	import {
-		EVALUATION_DETAILS,
 		IMAGE_REVEALS,
-		INPUT_KIND_DETAILS,
 		MEDIA_TYPES,
+		getEvaluationDetails,
+		getInputKindDetails,
 		getCheckboxOptionScores,
 		getEvaluationDetailsForInputKind,
 		getNumberAnswer,
@@ -71,41 +72,17 @@
 		flatSteps
 	}: Props = $props();
 
-	const inputDetails = $derived(INPUT_KIND_DETAILS[selectedStep.player_input.kind]);
+	const inputKindDetails = $derived(getInputKindDetails());
+	const evaluationDetailsMap = $derived(getEvaluationDetails());
+	const inputDetails = $derived(inputKindDetails[selectedStep.player_input.kind]);
 	const availableEvaluationDetails = $derived(
 		getEvaluationDetailsForInputKind(selectedStep.player_input.kind)
 	);
-	const evaluationDetails = $derived(EVALUATION_DETAILS[selectedStep.evaluation.type_]);
+	const evaluationDetails = $derived(evaluationDetailsMap[selectedStep.evaluation.type_]);
 	const checkboxOptionScores = $derived(getCheckboxOptionScores(selectedStep));
 	const healthIssues = $derived(getStepHealthIssues(selectedStep));
 	const orderedAnswer = $derived(getOrderingAnswer(selectedStep));
-	const sectionNav = [
-		{
-			id: 'main-screen',
-			label: 'Main Screen',
-			icon: 'fluent:desktop-16-filled'
-		},
-		{
-			id: 'player-answer',
-			label: 'How Players Answer',
-			icon: 'fluent:people-community-16-filled'
-		},
-		{
-			id: 'scoring',
-			label: 'Scoring',
-			icon: 'fluent:checkmark-circle-16-filled'
-		},
-		{
-			id: 'timer',
-			label: 'Timer',
-			icon: 'fluent:timer-16-filled'
-		},
-		{
-			id: 'host-controls',
-			label: 'Host Controls',
-			icon: 'fluent:person-settings-16-filled'
-		}
-	];
+	const sectionNav = $derived($messages.editor.sectionNavigation);
 
 	type HeaderAction = {
 		label: string;
@@ -128,7 +105,23 @@
 	}
 
 	function getMediaTypeLabel(mediaType: (typeof MEDIA_TYPES)[number]) {
-		return mediaType.charAt(0).toUpperCase() + mediaType.slice(1);
+		if (mediaType === 'image') {
+			return 'Image';
+		}
+		if (mediaType === 'audio') {
+			return 'Audio';
+		}
+		return 'Video';
+	}
+
+	function getMediaTypeHelp(mediaType: (typeof MEDIA_TYPES)[number]) {
+		if (mediaType === 'image') {
+			return $messages.editor.mediaTypeImageHelp;
+		}
+		if (mediaType === 'audio') {
+			return $messages.editor.mediaTypeAudioHelp;
+		}
+		return $messages.editor.mediaTypeVideoHelp;
 	}
 
 	function getPreviewYouTubeEmbed(step: StepDefinition): string | null {
@@ -145,45 +138,45 @@
 	}
 
 	function getRevealLabel(revealMode: (typeof IMAGE_REVEALS)[number]) {
-		return revealMode.replaceAll('_', ' ');
+		return $messages.editor.imageReveal[revealMode].label;
 	}
 
 	const headerActions = $derived<HeaderAction[]>([
 		{
-			label: showAdvancedFields ? 'Hide Advanced' : 'Show Advanced',
+			label: showAdvancedFields ? $messages.editor.hideAdvanced : $messages.editor.showAdvanced,
 			shortcut: 'Cmd/Ctrl + ,',
 			icon: 'fluent:settings-16-filled',
 			onClick: onToggleAdvancedFields
 		},
 		{
-			label: 'Previous Step',
+			label: $messages.editor.headerActionLabels.previousStep,
 			shortcut: 'Alt + ArrowUp',
 			icon: 'fluent:chevron-left-16-filled',
 			onClick: () => onSelectStep(flatSteps[selectedStepPosition - 1]?.stepKey),
 			disabled: selectedStepPosition <= 0
 		},
 		{
-			label: 'Next Step',
+			label: $messages.editor.headerActionLabels.nextStep,
 			shortcut: 'Alt + ArrowDown',
 			icon: 'fluent:chevron-right-16-filled',
 			onClick: () => onSelectStep(flatSteps[selectedStepPosition + 1]?.stepKey),
 			disabled: selectedStepPosition < 0 || selectedStepPosition >= totalSteps - 1
 		},
 		{
-			label: 'Preview',
+			label: $messages.common.preview,
 			shortcut: 'Cmd/Ctrl + Shift + P',
 			icon: 'fluent:desktop-16-filled',
 			onClick: onPreview
 		},
 		{
-			label: 'Delete Step',
+			label: $messages.editor.headerActionLabels.deleteStep,
 			shortcut: 'Cmd/Ctrl + Backspace/Delete',
 			icon: 'fluent:delete-16-filled',
 			onClick: onRemoveSelectedStep,
 			variant: 'danger'
 		},
 		{
-			label: 'Shortcuts',
+			label: $messages.editor.headerActionLabels.shortcuts,
 			shortcut: '?',
 			icon: 'fluent:question-circle-16-filled',
 			onClick: onOpenShortcutHelp
@@ -195,9 +188,10 @@
 	<div class="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
 		<div>
 			<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
-				{selectedFlatStep.roundTitle} · Slide {selectedFlatStep.globalIndex + 1}
+				{selectedFlatStep.roundTitle} · {$messages.editor.slide}
+				{selectedFlatStep.globalIndex + 1}
 			</p>
-			<h2 class="label-title text-2xl">{selectedStep.title || 'Untitled Step'}</h2>
+			<h2 class="label-title text-2xl">{selectedStep.title || $messages.editor.untitledStep}</h2>
 		</div>
 		<div class="flex flex-wrap items-center gap-2">
 			{#each headerActions as action}
@@ -220,10 +214,10 @@
 				class="btn btn-accent inline-flex items-center gap-2 px-4 py-2 text-sm"
 				type="button"
 				onclick={onAddStepAfter}
-				title="Add Step After — Cmd/Ctrl + Shift + A"
+				title={`${$messages.editor.headerActionLabels.addStepAfter} — Cmd/Ctrl + Shift + A`}
 			>
 				<iconify-icon icon="fluent:add-16-filled"></iconify-icon>
-				Add Step After
+				{$messages.editor.headerActionLabels.addStepAfter}
 			</button>
 		</div>
 	</div>
@@ -271,33 +265,37 @@
 						<iconify-icon icon="fluent:desktop-16-filled"></iconify-icon>
 					</div>
 					<div>
-						<h3 class="label-title text-2xl">Main Screen</h3>
-						<p class="text-sm text-slate-600">
-							Everything the audience sees first: question text, supporting copy, and media.
-						</p>
+						<h3 class="label-title text-2xl">{$messages.editor.mainScreen}</h3>
+						<p class="text-sm text-slate-600">{$messages.editor.mainScreenHelp}</p>
 					</div>
 				</div>
 
 				<div class="mt-4 grid gap-4">
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Title</span>
+						<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+							>{$messages.editor.stepTitle}</span
+						>
 						<input
 							bind:value={selectedStep.title}
 							class="input text-lg"
-							placeholder="Question title"
+							placeholder={$messages.editor.stepTitlePlaceholder}
 						/>
 					</label>
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Body</span>
+						<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+							>{$messages.editor.body}</span
+						>
 						<textarea
 							bind:value={selectedStep.body}
 							class="input min-h-28 text-lg"
-							placeholder="Optional supporting text on the big screen"
+							placeholder={$messages.editor.bodyPlaceholder}
 						></textarea>
 					</label>
 					{#if showAdvancedFields}
 						<label class="input-wrap">
-							<span class="text-sm font-bold uppercase tracking-wide text-slate-500">Step id</span>
+							<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+								>{$messages.editor.stepId}</span
+							>
 							<input bind:value={selectedStep.id} class="input text-lg" />
 						</label>
 					{/if}
@@ -306,10 +304,8 @@
 				<div class="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
 					<div class="flex flex-wrap items-center justify-between gap-3">
 						<div>
-							<p class="text-lg font-bold text-slate-900">Question media</p>
-							<p class="text-sm text-slate-600">
-								Add an image, audio clip, or video to support the question on the main screen.
-							</p>
+							<p class="text-lg font-bold text-slate-900">{$messages.editor.questionMedia}</p>
+							<p class="text-sm text-slate-600">{$messages.editor.questionMediaHelp}</p>
 						</div>
 						{#if selectedStep.media}
 							<button
@@ -317,7 +313,7 @@
 								type="button"
 								onclick={() => onRemoveMedia(selectedStep)}
 							>
-								Remove Media
+								{$messages.editor.removeMedia}
 							</button>
 						{:else}
 							<button
@@ -325,7 +321,7 @@
 								type="button"
 								onclick={() => onAddMedia(selectedStep)}
 							>
-								Add Media
+								{$messages.editor.addMedia}
 							</button>
 						{/if}
 					</div>
@@ -344,13 +340,7 @@
 										onclick={() => onUpdateMediaType(selectedStep, mediaType)}
 									>
 										<p class="text-base font-bold text-slate-900">{getMediaTypeLabel(mediaType)}</p>
-										<p class="mt-1 text-sm text-slate-600">
-											{mediaType === 'image'
-												? 'Reveal a still image on the main screen.'
-												: mediaType === 'audio'
-													? 'Play an audio clue or sound effect.'
-													: 'Show a video clip during the step.'}
-										</p>
+										<p class="mt-1 text-sm text-slate-600">{getMediaTypeHelp(mediaType)}</p>
 									</button>
 								{/each}
 							</div>
@@ -359,18 +349,18 @@
 								<div class="grid gap-4">
 									<label class="input-wrap">
 										<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-											Source URL
+											{$messages.editor.sourceUrl}
 										</span>
 										<input
 											bind:value={selectedStep.media.src}
 											class="input text-lg"
 											placeholder={selectedStep.media.type_ === 'video'
-												? '/api/v1/media/... or https://youtu.be/...'
-												: '/api/v1/media/...'}
+												? $messages.editor.videoSourceUrlPlaceholder
+												: $messages.editor.sourceUrlPlaceholder}
 										/>
 										{#if selectedStep.media.type_ === 'video'}
 											<p class="text-sm text-slate-500">
-												Use a direct video URL, an uploaded file, or a YouTube link.
+												{$messages.editor.videoSourceHelp}
 											</p>
 										{/if}
 									</label>
@@ -392,13 +382,7 @@
 														{getRevealLabel(revealMode)}
 													</p>
 													<p class="mt-1 text-sm text-slate-600">
-														{revealMode === 'none'
-															? 'Show the image as-is.'
-															: revealMode === 'blur_to_clear'
-																? 'Start blurred and sharpen over time.'
-																: revealMode === 'blur_circle'
-																	? 'Reveal the image through a moving spotlight.'
-																	: 'Start zoomed in and pull back.'}
+														{$messages.editor.imageReveal[revealMode].description}
 													</p>
 												</button>
 											{/each}
@@ -409,17 +393,15 @@
 										class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3"
 									>
 										<div>
-											<p class="text-lg font-bold">Loop media</p>
-											<p class="text-sm text-slate-600">
-												Useful for short ambient clips and repeatable audio.
-											</p>
+											<p class="text-lg font-bold">{$messages.editor.loopMedia}</p>
+											<p class="text-sm text-slate-600">{$messages.editor.loopMediaHelp}</p>
 										</div>
 										<input bind:checked={selectedStep.media.loop} type="checkbox" class="h-5 w-5" />
 									</label>
 
 									<label class="input-wrap">
 										<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-											Upload file
+											{$messages.editor.uploadFile}
 										</span>
 										<input
 											type="file"
@@ -429,13 +411,15 @@
 									</label>
 
 									{#if uploadKey === selectedStep.id}
-										<p class="text-sm font-semibold text-sky-700">Uploading media...</p>
+										<p class="text-sm font-semibold text-sky-700">
+											{$messages.editor.uploadingMedia}
+										</p>
 									{/if}
 								</div>
 
 								<div class="rounded-[1.5rem] border border-slate-200 bg-white p-4">
 									<p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
-										Preview
+										{$messages.common.preview}
 									</p>
 									{#if selectedStep.media.src}
 										{#if selectedStep.media.type_ === 'image'}
@@ -452,7 +436,7 @@
 												<iframe
 													class="mt-3 aspect-video w-full rounded-2xl border-0"
 													src={youtubeEmbedUrl}
-													title={`${selectedStep.title || 'Question'} video preview`}
+													title={`${selectedStep.title || $messages.common.question} video preview`}
 													allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
 													referrerpolicy="strict-origin-when-cross-origin"
 													allowfullscreen
@@ -471,7 +455,7 @@
 										<p class="mt-3 text-xs text-slate-500">{selectedStep.media.src}</p>
 									{:else}
 										<p class="mt-3 text-sm text-slate-500">
-											Add a media URL or upload a file to preview it here.
+											{$messages.editor.previewHelp}
 										</p>
 									{/if}
 								</div>
@@ -492,16 +476,13 @@
 						<iconify-icon icon="fluent:people-community-16-filled"></iconify-icon>
 					</div>
 					<div>
-						<h3 class="label-title text-2xl">How Players Answer</h3>
-						<p class="text-sm text-slate-600">
-							Choose the interaction first, then configure the prompt and any options players will
-							see.
-						</p>
+						<h3 class="label-title text-2xl">{$messages.editor.howPlayersAnswer}</h3>
+						<p class="text-sm text-slate-600">{$messages.editor.howPlayersAnswerHelp}</p>
 					</div>
 				</div>
 
 				<div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-					{#each Object.values(INPUT_KIND_DETAILS) as details}
+					{#each Object.values(inputKindDetails) as details}
 						<button
 							type="button"
 							class={`rounded-[1.5rem] border p-4 text-left transition ${
@@ -536,7 +517,8 @@
 							class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500"
 						>
 							<iconify-icon icon={inputDetails.icon}></iconify-icon>
-							Recommended scoring: {EVALUATION_DETAILS[inputDetails.recommendedEvaluation].label}
+							{$messages.editor.recommendedScoring}:
+							{evaluationDetailsMap[inputDetails.recommendedEvaluation].label}
 						</span>
 					</div>
 
@@ -546,24 +528,24 @@
 								{#if inputDetails.usesPrompt}
 									<label class="input-wrap">
 										<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-											Input prompt
+											{$messages.editor.inputPrompt}
 										</span>
 										<input
 											bind:value={selectedStep.player_input.prompt}
 											class="input text-lg"
-											placeholder="What should players do?"
+											placeholder={$messages.editor.inputPromptPlaceholder}
 										/>
 									</label>
 								{/if}
 								{#if inputDetails.usesPlaceholder}
 									<label class="input-wrap">
 										<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-											Placeholder
+											{$messages.editor.placeholder}
 										</span>
 										<input
 											bind:value={selectedStep.player_input.placeholder}
 											class="input text-lg"
-											placeholder="Optional helper text inside the input"
+											placeholder={$messages.editor.placeholderHelp}
 										/>
 									</label>
 								{/if}
@@ -574,7 +556,7 @@
 							<div class="grid gap-3 md:grid-cols-3">
 								<label class="input-wrap">
 									<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
-										>Min value</span
+										>{$messages.editor.minValue}</span
 									>
 									<input
 										bind:value={selectedStep.player_input.min_value}
@@ -584,7 +566,7 @@
 								</label>
 								<label class="input-wrap">
 									<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
-										>Max value</span
+										>{$messages.editor.maxValue}</span
 									>
 									<input
 										bind:value={selectedStep.player_input.max_value}
@@ -594,7 +576,7 @@
 								</label>
 								<label class="input-wrap">
 									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-										Slider step
+										{$messages.editor.sliderStep}
 									</span>
 									<input
 										bind:value={selectedStep.player_input.step}
@@ -612,15 +594,15 @@
 									<div>
 										<p class="text-lg font-bold text-slate-900">
 											{selectedStep.player_input.kind === 'ordering'
-												? 'Items to order'
+												? $messages.editor.itemsToOrder
 												: selectedStep.player_input.kind === 'radio'
-													? 'Answer choices'
-													: 'Selectable answers'}
+													? $messages.editor.answerChoices
+													: $messages.editor.selectableAnswers}
 										</p>
 										<p class="text-sm text-slate-600">
 											{selectedStep.player_input.kind === 'ordering'
-												? 'These are the items players will arrange.'
-												: 'These are the options players can choose from.'}
+												? $messages.editor.itemsToOrderHelp
+												: $messages.editor.selectableAnswersHelp}
 										</p>
 									</div>
 									<button
@@ -628,7 +610,7 @@
 										type="button"
 										onclick={() => onAddInputOption(selectedStep)}
 									>
-										Add Option
+										{$messages.editor.addOption}
 									</button>
 								</div>
 
@@ -667,12 +649,12 @@
 																selectedStep.player_input.options[optionIndex] ?? ''
 															)}
 													/>
-													Correct
+													{$messages.editor.correct}
 												</label>
 											{:else if selectedStep.player_input.kind === 'checkbox' && selectedStep.evaluation.type_ === 'multi_select_weighted'}
 												<label class="input-wrap">
 													<span class="text-xs font-bold uppercase tracking-wide text-slate-500"
-														>Points</span
+														>{$messages.editor.points}</span
 													>
 													<input
 														class="input w-24 text-lg"
@@ -694,7 +676,7 @@
 												type="button"
 												onclick={() => onRemoveInputOption(selectedStep, optionIndex)}
 											>
-												Remove
+												{$messages.editor.removeOption}
 											</button>
 										</div>
 									{/each}
@@ -716,11 +698,8 @@
 						<iconify-icon icon="fluent:checkmark-circle-16-filled"></iconify-icon>
 					</div>
 					<div>
-						<h3 class="label-title text-2xl">Scoring & Correct Answer</h3>
-						<p class="text-sm text-slate-600">
-							Pick how this step is judged, then set the answer or scoring rules players should
-							match.
-						</p>
+						<h3 class="label-title text-2xl">{$messages.editor.scoringAndCorrectAnswer}</h3>
+						<p class="text-sm text-slate-600">{$messages.editor.scoringHelp}</p>
 					</div>
 				</div>
 
@@ -758,7 +737,9 @@
 						</div>
 						{#if selectedStep.evaluation.type_ !== 'multi_select_weighted' && selectedStep.evaluation.type_ !== 'none'}
 							<label class="input-wrap min-w-32">
-								<span class="text-xs font-bold uppercase tracking-wide text-slate-500">Points</span>
+								<span class="text-xs font-bold uppercase tracking-wide text-slate-500"
+									>{$messages.editor.points}</span
+								>
 								<input
 									bind:value={selectedStep.evaluation.points}
 									type="number"
@@ -772,7 +753,7 @@
 						{#if selectedStep.evaluation.type_ === 'ordering_match'}
 							<div class="grid gap-3">
 								<p class="text-sm font-semibold text-slate-700">
-									Set the correct order players should end up with.
+									{$messages.editor.correctOrderHelp}
 								</p>
 								{#each orderedAnswer as answerValue, optionIndex}
 									<label
@@ -800,7 +781,7 @@
 							<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
 								<label class="input-wrap">
 									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-										Correct number
+										{$messages.editor.correctNumber}
 									</span>
 									<input
 										class="input text-lg"
@@ -815,43 +796,38 @@
 								<div
 									class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600"
 								>
-									<p class="font-bold text-slate-900">Scoring summary</p>
+									<p class="font-bold text-slate-900">{$messages.editor.scoringSummary}</p>
 									<p class="mt-2">
 										{selectedStep.evaluation.type_ === 'exact_number'
-											? 'Only the exact number scores.'
-											: 'Nearest numeric answer wins the points.'}
+											? $messages.editor.exactNumberSummary
+											: $messages.editor.closestNumberSummary}
 									</p>
 								</div>
 							</div>
 						{:else if selectedStep.evaluation.type_ === 'multi_select_weighted'}
 							<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-								<p class="font-bold text-slate-900">Configure scores in the option list above</p>
-								<p class="mt-2">
-									Each checked option awards its configured points. Negative values subtract points.
-								</p>
+								<p class="font-bold text-slate-900">{$messages.editor.configureScoresAbove}</p>
+								<p class="mt-2">{$messages.editor.configurePointsAboveHelp}</p>
 							</div>
 						{:else if selectedStep.evaluation.type_ === 'exact_text' && selectedStep.player_input.kind === 'radio'}
 							<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-								<p class="font-bold text-slate-900">Mark the correct option in the answer list</p>
-								<p class="mt-2">Use the “Correct” radio control beside the right answer choice.</p>
+								<p class="font-bold text-slate-900">{$messages.editor.markCorrectOption}</p>
+								<p class="mt-2">{$messages.editor.markCorrectOptionHelp}</p>
 							</div>
 						{:else if selectedStep.evaluation.type_ === 'host_judged'}
 							<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-								<p class="font-bold text-slate-900">Host decides correctness live</p>
-								<p class="mt-2">
-									Submissions are reviewed by the host during the game, so no exact answer is
-									required here.
-								</p>
+								<p class="font-bold text-slate-900">{$messages.editor.hostDecidesCorrectness}</p>
+								<p class="mt-2">{$messages.editor.hostReviewedHelp}</p>
 							</div>
 						{:else if selectedStep.evaluation.type_ !== 'none'}
 							<label class="input-wrap">
 								<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-									Correct answer / rubric
+									{$messages.editor.correctAnswerRubric}
 								</span>
 								<input
 									class="input text-lg"
 									value={getTextAnswer(selectedStep)}
-									placeholder="Enter the expected answer"
+									placeholder={$messages.editor.expectedAnswerPlaceholder}
 									oninput={(event) =>
 										(selectedStep.evaluation.answer = (
 											event.currentTarget as HTMLInputElement
@@ -860,10 +836,8 @@
 							</label>
 						{:else}
 							<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-								<p class="font-bold text-slate-900">No answer required</p>
-								<p class="mt-2">
-									This step is display-only or reviewed outside the automatic scoring flow.
-								</p>
+								<p class="font-bold text-slate-900">{$messages.editor.noAnswerRequired}</p>
+								<p class="mt-2">{$messages.editor.displayOnlyHelp}</p>
 							</div>
 						{/if}
 					</div>
@@ -878,17 +852,15 @@
 						<iconify-icon icon="fluent:timer-16-filled"></iconify-icon>
 					</div>
 					<div>
-						<h3 class="label-title text-2xl">Timer</h3>
-						<p class="text-sm text-slate-600">
-							Set the pace of the question and decide whether the step should close automatically.
-						</p>
+						<h3 class="label-title text-2xl">{$messages.editor.timer}</h3>
+						<p class="text-sm text-slate-600">{$messages.editor.timerHelp}</p>
 					</div>
 				</div>
 
 				<div class="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 					<label class="input-wrap">
 						<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
-							>Timer seconds</span
+							>{$messages.editor.timerSeconds}</span
 						>
 						<input
 							bind:value={selectedStep.timer.seconds}
@@ -901,10 +873,8 @@
 						class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
 					>
 						<div>
-							<p class="text-lg font-bold">Enforced timer</p>
-							<p class="text-sm text-slate-600">
-								Automatically close the step when the countdown reaches zero.
-							</p>
+							<p class="text-lg font-bold">{$messages.editor.enforcedTimer}</p>
+							<p class="text-sm text-slate-600">{$messages.editor.enforcedTimerHelp}</p>
 						</div>
 						<input bind:checked={selectedStep.timer.enforced} type="checkbox" class="h-5 w-5" />
 					</label>
@@ -922,10 +892,8 @@
 						<iconify-icon icon="fluent:person-settings-16-filled"></iconify-icon>
 					</div>
 					<div>
-						<h3 class="label-title text-2xl">Host Controls</h3>
-						<p class="text-sm text-slate-600">
-							Decide what the host can reveal and how much manual control they keep during play.
-						</p>
+						<h3 class="label-title text-2xl">{$messages.editor.hostControls}</h3>
+						<p class="text-sm text-slate-600">{$messages.editor.hostControlsHelp}</p>
 					</div>
 				</div>
 
@@ -934,8 +902,8 @@
 						class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
 					>
 						<div>
-							<p class="text-sm font-semibold text-slate-900">Reveal answers</p>
-							<p class="text-xs text-slate-600">Allow the host to reveal the answer on screen.</p>
+							<p class="text-sm font-semibold text-slate-900">{$messages.editor.revealAnswers}</p>
+							<p class="text-xs text-slate-600">{$messages.editor.revealAnswersHelp}</p>
 						</div>
 						<input
 							bind:checked={selectedStep.host_behavior.reveal_answers}
@@ -947,8 +915,8 @@
 						class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
 					>
 						<div>
-							<p class="text-sm font-semibold text-slate-900">Show submissions</p>
-							<p class="text-xs text-slate-600">Let the host inspect player answers live.</p>
+							<p class="text-sm font-semibold text-slate-900">{$messages.editor.showSubmissions}</p>
+							<p class="text-xs text-slate-600">{$messages.editor.showSubmissionsHelp}</p>
 						</div>
 						<input
 							bind:checked={selectedStep.host_behavior.show_submissions}
@@ -960,10 +928,8 @@
 						class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
 					>
 						<div>
-							<p class="text-sm font-semibold text-slate-900">Custom points</p>
-							<p class="text-xs text-slate-600">
-								Enable manual point overrides from the host view.
-							</p>
+							<p class="text-sm font-semibold text-slate-900">{$messages.editor.customPoints}</p>
+							<p class="text-xs text-slate-600">{$messages.editor.customPointsHelp}</p>
 						</div>
 						<input
 							bind:checked={selectedStep.host_behavior.allow_custom_points}

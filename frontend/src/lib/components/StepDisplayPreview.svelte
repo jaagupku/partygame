@@ -2,6 +2,7 @@
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Timer from '$lib/components/util/Timer.svelte';
+	import { messages, formatPhaseLabel } from '$lib/i18n';
 
 	interface StepDisplayPreviewProps {
 		step?: RuntimeStepState;
@@ -20,6 +21,7 @@
 		submissionCount?: number;
 		pendingReviewCount?: number;
 		countdown?: number;
+		connected?: boolean | null;
 	}
 
 	let {
@@ -32,13 +34,14 @@
 		displayPhase = 'question_active',
 		title = '',
 		phaseLabel = 'question_active',
-		connectionLabel = 'Preview',
+		connectionLabel = '',
 		layoutMode = 'default',
 		showConnectionInline = true,
 		showDisconnectedChip = false,
 		submissionCount = 0,
 		pendingReviewCount = 0,
-		countdown = 0
+		countdown = 0,
+		connected = null
 	}: StepDisplayPreviewProps = $props();
 
 	const showTitle = $derived(Boolean(title?.trim()));
@@ -54,12 +57,15 @@
 			<h1 class={`page-title ${stageLayout ? 'text-left text-3xl md:text-4xl' : ''}`}>{title}</h1>
 		{/if}
 		<p class={`page-subtitle ${stageLayout ? 'text-left text-base md:text-lg' : ''}`}>
-			Phase:
-			<span class="font-bold">{showingAnswerReveal ? 'answer_reveal' : phaseLabel}</span>
-			· Submissions: {submissionCount} · Pending review:
+			{$messages.gameplay.phase}:
+			<span class="font-bold"
+				>{formatPhaseLabel(showingAnswerReveal ? 'answer_reveal' : phaseLabel)}</span
+			>
+			· {$messages.gameplay.submissions}: {submissionCount} · {$messages.gameplay.pendingReview}:
 			{pendingReviewCount}
 		</p>
 		<GameConnectionStatus
+			{connected}
 			{connectionLabel}
 			showInline={showConnectionInline}
 			{showDisconnectedChip}
@@ -74,7 +80,7 @@
 		{buzzedPlayerId}
 		{buzzedPlayerName}
 		{displayPhase}
-		title={showingAnswerReveal ? 'Answer Reveal' : 'Now Playing'}
+		title={showingAnswerReveal ? $messages.common.answerReveal : $messages.common.nowPlaying}
 		variant={stageLayout ? 'stage' : 'default'}
 	/>
 
@@ -86,7 +92,7 @@
 				paused={phaseLabel !== 'question_active'}
 			/>
 			<p class="mt-3 text-center text-sm text-slate-600">
-				{step?.timer.enforced ? 'Timer is enforced' : 'Timer is advisory'}
+				{step?.timer.enforced ? $messages.timer.timerEnforced : $messages.timer.timerAdvisory}
 			</p>
 		</div>
 	{/if}
