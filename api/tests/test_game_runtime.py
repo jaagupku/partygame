@@ -313,6 +313,30 @@ async def test_buzzer_submission_locks_first_player():
 
 
 @pytest.mark.asyncio
+async def test_disabling_buzzer_pauses_reveal_and_timer():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    repo.steps["g1"]["media_reveal_started_at"] = time() - 2
+    repo.steps["g1"]["timer_started_at"] = time() - 2
+    repo.steps["g1"]["timer_ends_at"] = time() + 8
+
+    events = await service.set_buzzer_state(lobby, False)
+
+    assert [event.type_ for event in events] == ["buzzer_state", "runtime_snapshot"]
+    assert lobby.phase == "host_review"
+    assert repo.steps["g1"]["buzzer_active"] is False
+    assert repo.steps["g1"]["media_reveal_state"] == "paused"
+    assert repo.steps["g1"]["media_reveal_started_at"] is None
+    assert repo.steps["g1"]["media_reveal_elapsed_seconds"] > 0
+    assert repo.steps["g1"]["timer_started_at"] is None
+    assert repo.steps["g1"]["timer_ends_at"] is None
+    assert repo.steps["g1"]["timer_remaining_seconds"] is not None
+
+
+@pytest.mark.asyncio
 async def test_close_step_moves_buzzer_round_to_host_review():
     repo = FakeRepo()
     service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
@@ -348,6 +372,27 @@ async def test_review_submission_awards_points_and_completes_review():
     assert lobby.phase == "step_complete"
     assert repo.steps["g1"]["media_reveal_state"] == "revealed"
     assert repo.steps["g1"]["revealed_answer_value"] == "Correct Answer"
+
+
+@pytest.mark.asyncio
+async def test_advancing_step_clears_buzzed_player_state():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
+    )
+
+    events = await service.advance_step(lobby)
+
+    assert [event.type_ for event in events] == ["step_advanced", "runtime_snapshot"]
+    assert repo.steps["g1"]["buzzed_player_id"] == ""
+    assert repo.steps["g1"]["buzzer_active"] is False
+    assert events[-1].buzzed_player_id is None
 
 
 @pytest.mark.asyncio

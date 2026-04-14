@@ -87,13 +87,13 @@
 
 <div
 	in:fly={{ y: -5 }}
-	class={`timer-panel w-full rounded-[1.5rem] border px-4 py-3 shadow-sm transition-colors ${toneClasses.panel}`}
+	class={`timer-panel w-full rounded-[1.25rem] border px-3 py-2 shadow-sm transition-colors ${toneClasses.panel}`}
 	role="timer"
 	aria-label={`Time remaining: ${formattedTime}`}
 >
 	<div class="flex items-center justify-between gap-4">
 		<div class="min-w-0">
-			<p class={`text-[0.7rem] font-black uppercase tracking-[0.24em] ${toneClasses.label}`}>
+			<p class={`text-[0.65rem] font-black uppercase tracking-[0.2em] ${toneClasses.label}`}>
 				Time remaining
 			</p>
 			<p class={`mt-1 font-black leading-none tracking-[-0.04em] ${toneClasses.time}`}>
@@ -106,7 +106,7 @@
 		</div>
 	</div>
 
-	<div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/80">
+	<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
 		<div
 			class={`h-full rounded-full ${toneClasses.bar}`}
 			style={`width: ${progressPercent}%`}
@@ -121,6 +121,6 @@
 	}
 
 	.timer-panel p:last-child {
-		font-size: clamp(2rem, 4.5vw, 3.35rem);
+		font-size: clamp(1.6rem, 4vw, 2.8rem);
 	}
 </style>

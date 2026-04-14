@@ -154,7 +154,7 @@
 	{/if}
 {:else}
 	<div class="relative h-full min-h-0 overflow-hidden">
-		<section class="h-full min-w-0 min-h-0">
+		<section class="h-full min-w-0 min-h-0 mt0">
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
 					endGame={$game.endGame}
@@ -193,10 +193,7 @@
 					connected={isConnected}
 					connectionLabel={connectionLabel(isConnected)}
 					layoutMode="host-stage"
-					showConnectionInline={false}
 					showDisconnectedChip={true}
-					submissionCount={$game.submissionCount}
-					pendingReviewCount={$game.pendingReviewCount}
 					{countdown}
 				/>
 			{/if}

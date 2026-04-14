@@ -152,43 +152,74 @@
 		class={`media-frame ${imageRevealClass} ${stageVariant ? 'stage-media-frame' : ''}`}
 		style={imageRevealStyle}
 	>
-		<img
-			src={step.media.src}
-			alt={step.title}
-			class={`media-image ${stageVariant ? 'media-image-stage' : ''}`}
-			style={imageStyle}
-		/>
-		{#if step.media.reveal === 'blur_circle' && revealState !== 'revealed'}
-			<div
-				class="media-spotlight"
-				style={`background-image:url('${step.media.src}'); clip-path:${circleClipPath};`}
-			></div>
-		{/if}
+		<div class={`media-image-wrap ${stageVariant ? 'media-image-wrap-stage' : ''}`}>
+			<img
+				src={step.media.src}
+				alt={step.title}
+				class={`media-image ${stageVariant ? 'media-image-stage' : ''}`}
+				style={imageStyle}
+			/>
+			{#if step.media.reveal === 'blur_circle' && revealState !== 'revealed'}
+				<div
+					class="media-spotlight"
+					style={`background-image:url('${step.media.src}'); clip-path:${circleClipPath};`}
+				></div>
+			{/if}
+		</div>
 	</div>
 {/if}
 
 <style lang="postcss">
 	.media-frame {
 		position: relative;
+		display: grid;
+		place-items: center;
 		overflow: hidden;
 		border-radius: 1rem;
 		background: rgba(15, 23, 42, 0.08);
 	}
 
+	.media-image-wrap {
+		position: relative;
+		display: inline-grid;
+		width: 100%;
+		max-width: 100%;
+	}
+
 	.media-image {
 		display: block;
+		grid-area: 1 / 1;
 		width: 100%;
 		height: auto;
 		object-fit: cover;
 	}
 
-	.media-image-stage {
+	.media-image-wrap-stage {
+		justify-self: center;
+		align-self: center;
+		width: auto;
+		height: 100%;
+		max-width: 100%;
 		max-height: 100%;
-		object-fit: cover;
+	}
+
+	.media-image-stage {
+		position: relative;
+		width: auto;
+		height: 100%;
+		max-width: 100%;
+		max-height: 100%;
+		min-width: 0;
+		min-height: 0;
+		object-fit: contain;
 	}
 
 	.stage-media-frame {
+		position: relative;
 		min-height: 0;
+		height: 100%;
+		width: auto;
+		max-width: 100%;
 		max-height: 100%;
 	}
 
@@ -208,8 +239,10 @@
 	.media-spotlight {
 		position: absolute;
 		inset: 0;
+		grid-area: 1 / 1;
 		background-position: center;
-		background-size: cover;
+		background-repeat: no-repeat;
+		background-size: contain;
 		border-radius: 999px;
 		clip-path: circle(8% at 20% 20%);
 	}

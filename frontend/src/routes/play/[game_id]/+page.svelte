@@ -64,6 +64,7 @@
 	let resyncIntervalId: number | null = null;
 	let finaleAutoplayIntervalId: number | null = null;
 	let pendingSubmissionStepId = $state<string | undefined>(undefined);
+	let pendingReviewedPlayerIds = $state<string[]>([]);
 
 	const playerMap = $derived(new Map($controller.players.map((entry) => [entry.id, entry])));
 	const playerInputDisabled = $derived(
@@ -100,6 +101,7 @@
 			selectedCheckboxOptions = [];
 			inputStepId = step?.id;
 			pendingSubmissionStepId = undefined;
+			pendingReviewedPlayerIds = [];
 		}
 		if (step?.input_kind !== 'ordering') {
 			orderingItems = [];
@@ -120,6 +122,20 @@
 	$effect(() => {
 		if ($controller.hasSubmitted) {
 			pendingSubmissionStepId = undefined;
+		}
+	});
+
+	$effect(() => {
+		const reviewedIds = new Set(
+			$controller.submissions
+				.filter((submission) => submission.reviewed)
+				.map((submission) => submission.player_id)
+		);
+		const remainingPending = pendingReviewedPlayerIds.filter(
+			(playerId) => !reviewedIds.has(playerId)
+		);
+		if (remainingPending.length !== pendingReviewedPlayerIds.length) {
+			pendingReviewedPlayerIds = remainingPending;
 		}
 	});
 
@@ -282,6 +298,9 @@
 	}
 
 	function reviewSubmission(playerId: string, accepted: boolean, pointsOverride?: number) {
+		if (!pendingReviewedPlayerIds.includes(playerId)) {
+			pendingReviewedPlayerIds = [...pendingReviewedPlayerIds, playerId];
+		}
 		socket?.send(
 			JSON.stringify({
 				type_: 'review_submission',
@@ -335,6 +354,15 @@
 			type_: 'player_input_submitted',
 			value
 		});
+	}
+
+	function isSubmissionReviewed(playerId: string) {
+		return (
+			pendingReviewedPlayerIds.includes(playerId) ||
+			$controller.submissions.some(
+				(submission) => submission.player_id === playerId && submission.reviewed
+			)
+		);
 	}
 
 	function buzz() {
@@ -802,25 +830,29 @@
 						<p class="font-bold">{playerMap.get($controller.buzzedPlayerId)?.name}</p>
 						<p class="mt-1 text-slate-600">Buzzed in first</p>
 						<div class="mt-3 flex flex-wrap gap-2">
-							<button
-								type="button"
-								class="btn btn-primary"
-								onclick={() =>
-									reviewSubmission(
-										$controller.buzzedPlayerId ?? '',
-										true,
-										$controller.activeStep?.evaluation_points
-									)}
-							>
-								Accept +{$controller.activeStep?.evaluation_points ?? 1}
-							</button>
-							<button
-								type="button"
-								class="btn btn-danger"
-								onclick={() => reviewSubmission($controller.buzzedPlayerId ?? '', false)}
-							>
-								Reject
-							</button>
+							{#if isSubmissionReviewed($controller.buzzedPlayerId ?? '')}
+								<span class="badge bg-slate-200 text-slate-700">Reviewed</span>
+							{:else}
+								<button
+									type="button"
+									class="btn btn-primary"
+									onclick={() =>
+										reviewSubmission(
+											$controller.buzzedPlayerId ?? '',
+											true,
+											$controller.activeStep?.evaluation_points
+										)}
+								>
+									Accept +{$controller.activeStep?.evaluation_points ?? 1}
+								</button>
+								<button
+									type="button"
+									class="btn btn-danger"
+									onclick={() => reviewSubmission($controller.buzzedPlayerId ?? '', false)}
+								>
+									Reject
+								</button>
+							{/if}
 						</div>
 					</div>
 				{:else if $controller.submissions.length === 0}
@@ -837,7 +869,11 @@
 				{:else}
 					{#each $controller.submissions as submission}
 						<div
-							class={`rounded-2xl p-3 ${submission.reviewed ? 'bg-slate-100 opacity-70' : 'bg-white/70'}`}
+							class={`rounded-2xl p-3 ${
+								isSubmissionReviewed(submission.player_id)
+									? 'bg-slate-100 opacity-70'
+									: 'bg-white/70'
+							}`}
 						>
 							<p class="font-bold">{playerMap.get(submission.player_id)?.name}</p>
 							<p class="mt-1 wrap-break-word">{String(submission.value)}</p>
@@ -846,10 +882,11 @@
 									type="button"
 									class="btn btn-ghost"
 									onclick={() => revealSubmission(submission.player_id)}
+									disabled={isSubmissionReviewed(submission.player_id)}
 								>
 									Reveal
 								</button>
-								{#if !submission.reviewed}
+								{#if !isSubmissionReviewed(submission.player_id)}
 									<button
 										type="button"
 										class="btn btn-primary"
