@@ -204,9 +204,12 @@ class GameRuntimeService:
             updates.update(self._resume_timer_state(state))
             await self.repo.set_lobby_fields(lobby.id, phase="question_active")
             lobby.phase = "question_active"
-        elif lobby.phase == "question_active":
-            await self.repo.set_lobby_fields(lobby.id, phase="host_review")
-            lobby.phase = "host_review"
+        else:
+            updates.update(self._pause_reveal_state(state))
+            updates.update(self._pause_timer_state(state))
+            if lobby.phase == "question_active":
+                await self.repo.set_lobby_fields(lobby.id, phase="host_review")
+                lobby.phase = "host_review"
         await self.repo.set_step_cache(lobby.id, updates)
         return [schemas.BuzzerStateEvent(active=active), await self.build_snapshot(lobby)]
 
@@ -625,6 +628,15 @@ class GameRuntimeService:
 
     async def advance_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
         next_step = lobby.current_step + 1
+        await self.repo.set_step_cache(
+            lobby.id,
+            {
+                "buzzer_active": False,
+                "buzzed_player_id": "",
+                "buzzer_opened_at": None,
+                "buzz_reaction_seconds": None,
+            },
+        )
         await self.repo.set_lobby_fields(lobby.id, current_step=next_step)
         lobby.current_step = next_step
         step = await self.get_current_step(lobby)

@@ -44,11 +44,8 @@
 		>
 			<StepDisplayPreview
 				{step}
-				title={$messages.editor.bigScreenPreview}
 				phaseLabel="question_active"
 				connectionLabel={$messages.common.preview}
-				submissionCount={0}
-				pendingReviewCount={0}
 				{countdown}
 			/>
 		</div>

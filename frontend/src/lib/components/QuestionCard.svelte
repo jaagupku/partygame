@@ -33,6 +33,7 @@
 
 	const buzzerSound = new Sound(buzzerWav, { volume: 0.55 });
 	const stageVariant = $derived(variant === 'stage');
+	const showCardTitle = $derived(Boolean(title?.trim()));
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const isBuzzerStep = $derived(step?.input_kind === 'buzzer');
 	const shouldPauseMedia = $derived(isBuzzerStep && !buzzerActive);
@@ -69,36 +70,46 @@
 </script>
 
 <section
-	class={`question-card card stack-md overflow-hidden ${stageVariant ? 'question-card-stage' : ''}`}
+	class={`question-card overflow-hidden ${stageVariant ? 'question-card-stage-shell question-card-stage' : 'card stack-md'}`}
 >
-	<h2 class={`label-title ${stageVariant ? 'text-4xl md:text-5xl' : 'text-3xl'}`}>{title}</h2>
+	{#if showCardTitle}
+		<h2
+			class={`label-title question-card-kicker ${stageVariant ? 'text-4xl md:text-5xl' : 'text-3xl'}`}
+		>
+			{title}
+		</h2>
+	{/if}
 	{#if step}
 		<h3
-			class={stageVariant
-				? 'text-[clamp(2rem,4vw,4rem)] font-extrabold leading-tight'
-				: 'text-3xl font-extrabold'}
+			class={`question-card-step-title ${
+				stageVariant
+					? 'text-[clamp(2rem,4vw,4rem)] font-extrabold leading-tight'
+					: 'text-3xl font-extrabold'
+			}`}
 		>
 			{step.title}
 		</h3>
 		{#if step.body}
 			<p
-				class={stageVariant
-					? 'max-w-[60rem] text-[clamp(1rem,2.2vw,2rem)] leading-relaxed'
-					: 'text-xl'}
+				class={`question-card-body ${
+					stageVariant ? 'max-w-[60rem] text-[clamp(1rem,2.2vw,2rem)] leading-relaxed' : 'text-xl'
+				}`}
 			>
 				{step.body}
 			</p>
 		{/if}
-		{#if step.media?.type_ === 'image'}
-			<ImageQuestionMedia {step} {stageVariant} />
-		{:else if step.media?.type_ === 'audio'}
-			<AudioQuestionMedia src={step.media.src} {shouldPauseMedia} {shouldResumePausedMedia} />
-		{:else if step.media?.type_ === 'video'}
-			<VideoQuestionMedia {step} {stageVariant} {shouldPauseMedia} {shouldResumePausedMedia} />
-		{/if}
+		<div class={`question-card-media ${stageVariant ? 'question-card-media-stage' : ''}`}>
+			{#if step.media?.type_ === 'image'}
+				<ImageQuestionMedia {step} {stageVariant} />
+			{:else if step.media?.type_ === 'audio'}
+				<AudioQuestionMedia src={step.media.src} {shouldPauseMedia} {shouldResumePausedMedia} />
+			{:else if step.media?.type_ === 'video'}
+				<VideoQuestionMedia {step} {stageVariant} {shouldPauseMedia} {shouldResumePausedMedia} />
+			{/if}
+		</div>
 		{#if isBuzzerStep && buzzedPlayerName}
 			<div
-				class={`rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 ${
+				class={`question-card-status rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 ${
 					stageVariant ? 'text-xl md:text-3xl' : 'text-lg'
 				}`}
 			>
@@ -110,7 +121,7 @@
 		{/if}
 		{#if showingAnswerReveal && revealedAnswer}
 			<div
-				class={`rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 ${
+				class={`question-card-status rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 ${
 					stageVariant ? 'text-xl md:text-3xl' : 'text-lg'
 				}`}
 			>
@@ -123,7 +134,9 @@
 			</div>
 		{:else if !showingAnswerReveal && revealedSubmission}
 			<div
-				class={`rounded-2xl bg-sky-50 px-4 py-3 ${stageVariant ? 'text-xl md:text-2xl' : 'text-lg'}`}
+				class={`question-card-status rounded-2xl bg-sky-50 px-4 py-3 ${
+					stageVariant ? 'text-xl md:text-2xl' : 'text-lg'
+				}`}
 			>
 				<span class="font-bold">{$messages.common.revealedAnswer}:</span>
 				{String(revealedSubmission.value)}
@@ -138,8 +151,26 @@
 	.question-card-stage {
 		display: grid;
 		grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+		gap: 0.75rem;
 		height: 100%;
 		min-height: 0;
-		padding: 1.5rem;
+	}
+
+	.question-card-stage-shell {
+		border-radius: 1.5rem;
+		border: 1px solid rgb(255 255 255 / 0.55);
+		background: rgb(255 255 255 / 0.52);
+		backdrop-filter: blur(6px);
+		box-shadow: 0 10px 30px rgb(15 23 42 / 0.08);
+	}
+
+	.question-card-media-stage {
+		grid-row: 4;
+		min-height: 0;
+		height: 100%;
+	}
+
+	.question-card-status {
+		min-height: 0;
 	}
 </style>
