@@ -677,8 +677,8 @@ class ClientController:
 
         if event_type == Event.SCORES_UPDATED:
             before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            scores_event = await self.runtime.evaluate_auto_step(self.lobby)
-            await self.relay_event(scores_event)
+            for score_event in await self.runtime.evaluate_auto_step(self.lobby):
+                await self.relay_event(score_event)
             await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             return
 

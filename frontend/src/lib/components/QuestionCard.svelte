@@ -1,7 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { Sound } from 'svelte-sound';
-	import buzzerWav from '$lib/assets/sounds/buzzer.wav';
 	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
 	import VideoQuestionMedia from '$lib/components/VideoQuestionMedia.svelte';
@@ -32,7 +29,6 @@
 		variant = 'default'
 	}: QuestionCardProps = $props();
 
-	const buzzerSound = new Sound(buzzerWav, { volume: 0.55 });
 	const stageVariant = $derived(variant === 'stage');
 	const showCardTitle = $derived(Boolean(title?.trim()));
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
@@ -47,25 +43,6 @@
 			return false;
 		}
 		return !media.paused && (!isBuzzerStep || buzzerActive);
-	});
-	let hasMounted = $state(false);
-	let lastBuzzedPlayerId = $state('');
-
-	onMount(() => {
-		hasMounted = true;
-		lastBuzzedPlayerId = buzzedPlayerId ?? '';
-	});
-
-	$effect(() => {
-		if (!hasMounted) {
-			return;
-		}
-
-		const nextBuzzedPlayerId = buzzedPlayerId ?? '';
-		if (isBuzzerStep && nextBuzzedPlayerId && nextBuzzedPlayerId !== lastBuzzedPlayerId) {
-			buzzerSound.play();
-		}
-		lastBuzzedPlayerId = nextBuzzedPlayerId;
 	});
 </script>
 
