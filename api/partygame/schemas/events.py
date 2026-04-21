@@ -154,6 +154,9 @@ class RuntimeMediaState(BaseModel):
     src: str
     reveal: str | None = None
     loop: bool = False
+    zoom_start: float | None = None
+    zoom_origin_x: float | None = None
+    zoom_origin_y: float | None = None
     reveal_state: str = "idle"
     reveal_started_at: float | None = None
     reveal_elapsed_seconds: float = 0.0

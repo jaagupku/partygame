@@ -71,16 +71,37 @@ type RoundDefinition = {
 	steps: StepDefinition[];
 };
 
+type ImageMediaDefinition = {
+	type_: 'image';
+	src: string;
+	reveal: string;
+	loop: boolean;
+	zoom_start?: number;
+	zoom_origin_x?: number;
+	zoom_origin_y?: number;
+};
+
+type AudioMediaDefinition = {
+	type_: 'audio';
+	src: string;
+	reveal: string;
+	loop: boolean;
+};
+
+type VideoMediaDefinition = {
+	type_: 'video';
+	src: string;
+	reveal: string;
+	loop: boolean;
+};
+
+type StepMediaDefinition = ImageMediaDefinition | AudioMediaDefinition | VideoMediaDefinition;
+
 type StepDefinition = {
 	id: string;
 	title: string;
 	body?: string;
-	media?: {
-		type_: string;
-		src: string;
-		reveal: string;
-		loop: boolean;
-	};
+	media?: StepMediaDefinition;
 	timer: {
 		seconds?: number;
 		enforced: boolean;
@@ -187,8 +208,22 @@ type RuntimeTimerState = {
 	remaining_seconds?: number;
 };
 
-type RuntimeMediaState = {
-	type_: string;
+type RuntimeImageMediaState = {
+	type_: 'image';
+	src: string;
+	reveal?: string;
+	loop: boolean;
+	zoom_start?: number;
+	zoom_origin_x?: number;
+	zoom_origin_y?: number;
+	reveal_state: string;
+	reveal_started_at?: number;
+	reveal_elapsed_seconds: number;
+	reveal_duration_seconds?: number;
+};
+
+type RuntimeAudioMediaState = {
+	type_: 'audio';
 	src: string;
 	reveal?: string;
 	loop: boolean;
@@ -197,6 +232,19 @@ type RuntimeMediaState = {
 	reveal_elapsed_seconds: number;
 	reveal_duration_seconds?: number;
 };
+
+type RuntimeVideoMediaState = {
+	type_: 'video';
+	src: string;
+	reveal?: string;
+	loop: boolean;
+	reveal_state: string;
+	reveal_started_at?: number;
+	reveal_elapsed_seconds: number;
+	reveal_duration_seconds?: number;
+};
+
+type RuntimeMediaState = RuntimeImageMediaState | RuntimeAudioMediaState | RuntimeVideoMediaState;
 
 type RuntimeStepState = {
 	id: string;

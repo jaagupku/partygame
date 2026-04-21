@@ -130,7 +130,7 @@
 					{$messages.common.correctAnswer}
 				</p>
 				<p class="mt-2 font-extrabold leading-tight text-slate-950">
-					{formatRevealValue(revealedAnswer.value)}
+					{formatRevealValue(revealedAnswer?.value)}
 				</p>
 			</div>
 		{:else if !showingAnswerReveal && revealedSubmission}

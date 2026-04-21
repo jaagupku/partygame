@@ -1005,6 +1005,9 @@ class GameRuntimeService:
             src=media.src,
             reveal=str(media.reveal),
             loop=media.loop,
+            zoom_start=media.zoom_start,
+            zoom_origin_x=media.zoom_origin_x,
+            zoom_origin_y=media.zoom_origin_y,
             reveal_state=str(step_state.get("media_reveal_state") or "idle"),
             reveal_started_at=self._to_float(step_state.get("media_reveal_started_at")),
             reveal_elapsed_seconds=self._to_float(step_state.get("media_reveal_elapsed_seconds"))

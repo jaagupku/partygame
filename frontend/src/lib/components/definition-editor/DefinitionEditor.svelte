@@ -605,7 +605,10 @@
 			type_: 'image',
 			src: '',
 			reveal: 'none',
-			loop: false
+			loop: false,
+			zoom_start: undefined,
+			zoom_origin_x: undefined,
+			zoom_origin_y: undefined
 		};
 	}
 
@@ -620,10 +623,27 @@
 		if (!step.media) {
 			return;
 		}
-		step.media.type_ = mediaType;
-		if (mediaType !== 'image') {
-			step.media.reveal = 'none';
+		const previousMedia = step.media;
+		if (mediaType === 'image') {
+			step.media = {
+				type_: 'image',
+				src: previousMedia.src,
+				reveal: previousMedia.type_ === 'image' ? previousMedia.reveal : 'none',
+				loop: previousMedia.loop,
+				zoom_start: previousMedia.type_ === 'image' ? previousMedia.zoom_start : undefined,
+				zoom_origin_x:
+					previousMedia.type_ === 'image' ? previousMedia.zoom_origin_x : undefined,
+				zoom_origin_y:
+					previousMedia.type_ === 'image' ? previousMedia.zoom_origin_y : undefined
+			};
+			return;
 		}
+		step.media = {
+			type_: mediaType,
+			src: previousMedia.src,
+			reveal: 'none',
+			loop: previousMedia.loop
+		};
 	}
 
 	function buildPayload(): GameDefinition {
@@ -663,12 +683,22 @@
 					},
 					media:
 						step.media && step.media.src.trim()
-							? {
-									type_: step.media.type_,
-									src: step.media.src.trim(),
-									reveal: step.media.reveal,
-									loop: step.media.loop
-								}
+							? step.media.type_ === 'image'
+								? {
+										type_: 'image',
+										src: step.media.src.trim(),
+										reveal: step.media.reveal,
+										loop: step.media.loop,
+										zoom_start: step.media.zoom_start,
+										zoom_origin_x: step.media.zoom_origin_x,
+										zoom_origin_y: step.media.zoom_origin_y
+									}
+								: {
+										type_: step.media.type_,
+										src: step.media.src.trim(),
+										reveal: step.media.reveal,
+										loop: step.media.loop
+									}
 							: undefined
 				}))
 			}))

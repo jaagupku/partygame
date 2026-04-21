@@ -338,6 +338,39 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 export const MEDIA_TYPES = ['image', 'audio', 'video'] as const;
 export const IMAGE_REVEALS = ['none', 'blur_to_clear', 'blur_circle', 'zoom_out'] as const;
 
+function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState {
+	const revealState = media.reveal === 'none' ? 'idle' : 'running';
+	const sharedState = {
+		type_: media.type_,
+		src: media.src,
+		reveal: media.reveal,
+		loop: media.loop,
+		reveal_state: revealState,
+		reveal_elapsed_seconds: 0,
+		reveal_started_at: Date.now() / 1000,
+		reveal_duration_seconds: undefined
+	};
+	if (media.type_ === 'image') {
+		return {
+			...sharedState,
+			type_: 'image',
+			zoom_start: media.zoom_start,
+			zoom_origin_x: media.zoom_origin_x,
+			zoom_origin_y: media.zoom_origin_y
+		};
+	}
+	if (media.type_ === 'audio') {
+		return {
+			...sharedState,
+			type_: 'audio'
+		};
+	}
+	return {
+		...sharedState,
+		type_: 'video'
+	};
+}
+
 export function createStepFromTemplate(
 	roundIndex: number,
 	stepIndex: number,
@@ -665,13 +698,7 @@ export function buildRuntimePreviewStep(step: StepDefinition): RuntimeStepState 
 		slider_step: step.player_input.step,
 		media: step.media
 			? {
-					type_: step.media.type_,
-					src: step.media.src,
-					reveal: step.media.reveal,
-					loop: step.media.loop,
-					reveal_state: step.media.reveal === 'none' ? 'idle' : 'running',
-					reveal_elapsed_seconds: 0,
-					reveal_started_at: Date.now() / 1000,
+					...buildRuntimePreviewMedia(step.media),
 					reveal_duration_seconds: step.timer.seconds ?? 14
 				}
 			: undefined,
