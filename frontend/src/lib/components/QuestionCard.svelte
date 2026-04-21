@@ -6,6 +6,7 @@
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
 	import VideoQuestionMedia from '$lib/components/VideoQuestionMedia.svelte';
 	import { messages } from '$lib/i18n';
+	import { formatRevealValue } from '$lib/reveal-format';
 
 	interface QuestionCardProps {
 		step?: RuntimeStepState;
@@ -37,7 +38,9 @@
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const showInlineRevealedAnswer = $derived(showingAnswerReveal && revealedAnswer && !stageVariant);
 	const isBuzzerStep = $derived(step?.input_kind === 'buzzer');
-	const shouldPauseMedia = $derived(Boolean(step?.media?.paused) || (isBuzzerStep && !buzzerActive));
+	const shouldPauseMedia = $derived(
+		Boolean(step?.media?.paused) || (isBuzzerStep && !buzzerActive)
+	);
 	const shouldResumePausedMedia = $derived.by(() => {
 		const media = step?.media;
 		if (!media) {
@@ -64,16 +67,6 @@
 		}
 		lastBuzzedPlayerId = nextBuzzedPlayerId;
 	});
-
-	function formatRevealValue(value: unknown): string {
-		if (Array.isArray(value)) {
-			return value.map((entry) => String(entry)).join(' · ');
-		}
-		if (value && typeof value === 'object') {
-			return JSON.stringify(value);
-		}
-		return String(value ?? '');
-	}
 </script>
 
 <section
@@ -111,12 +104,7 @@
 			{:else if step.media?.type_ === 'audio'}
 				<AudioQuestionMedia src={step.media.src} {shouldPauseMedia} {shouldResumePausedMedia} />
 			{:else if step.media?.type_ === 'video'}
-				<VideoQuestionMedia
-					{step}
-					{stageVariant}
-					{shouldPauseMedia}
-					{shouldResumePausedMedia}
-				/>
+				<VideoQuestionMedia {step} {stageVariant} {shouldPauseMedia} {shouldResumePausedMedia} />
 			{/if}
 		</div>
 		{#if isBuzzerStep && buzzedPlayerName}

@@ -3,6 +3,7 @@
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Timer from '$lib/components/util/Timer.svelte';
 	import { messages } from '$lib/i18n';
+	import { formatRevealValue } from '$lib/reveal-format';
 
 	interface StepDisplayPreviewProps {
 		step?: RuntimeStepState;
@@ -38,16 +39,6 @@
 
 	const stageLayout = $derived(layoutMode === 'host-stage');
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
-
-	function formatRevealValue(value: unknown): string {
-		if (Array.isArray(value)) {
-			return value.map((entry) => String(entry)).join(' · ');
-		}
-		if (value && typeof value === 'object') {
-			return JSON.stringify(value);
-		}
-		return String(value ?? '');
-	}
 </script>
 
 <div
@@ -78,7 +69,9 @@
 			<p class="text-center text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
 				{$messages.common.correctAnswer}
 			</p>
-			<p class="mt-3 text-center text-[clamp(1.4rem,3vw,2.6rem)] font-extrabold leading-tight text-slate-950">
+			<p
+				class="mt-3 text-center text-[clamp(1.4rem,3vw,2.6rem)] font-extrabold leading-tight text-slate-950"
+			>
 				{formatRevealValue(revealedAnswer.value)}
 			</p>
 		</div>

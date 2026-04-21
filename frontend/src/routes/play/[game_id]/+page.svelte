@@ -2,6 +2,8 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { createControllerStore } from '$lib/controller-store.js';
+	import HostControlsPanel from '$lib/components/controller/HostControlsPanel.svelte';
+	import HostReviewQueue from '$lib/components/controller/HostReviewQueue.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import ReactionBar from '$lib/components/controller/ReactionBar.svelte';
 	import FinaleControllerCard from '$lib/components/endgame/FinaleControllerCard.svelte';
@@ -300,6 +302,10 @@
 		sendAction({ type_: 'scores_updated' });
 	}
 
+	function toggleBuzzerState() {
+		sendAction({ type_: 'buzzer_state', active: !$controller.buzzerActive });
+	}
+
 	function revealEndGame() {
 		sendAction({ type_: 'reveal_end_game' });
 	}
@@ -460,16 +466,6 @@
 			return;
 		}
 		selectedCheckboxOptions = [...selectedCheckboxOptions, option];
-	}
-
-	function formatRevealValue(value: unknown): string {
-		if (Array.isArray(value)) {
-			return value.map((entry) => String(entry)).join(' · ');
-		}
-		if (value && typeof value === 'object') {
-			return JSON.stringify(value);
-		}
-		return String(value ?? '');
 	}
 </script>
 
@@ -680,13 +676,13 @@
 			</section>
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'radio'}
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Choose One</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.chooseOne}</h2>
 				<p class="text-sm text-slate-600">
 					{playerInputDisabled
 						? $controller.hasSubmitted
-							? 'Your choice is locked in. You can choose again on the next step.'
-							: 'This step has been closed. New selections are disabled.'
-						: 'Tap one option to submit it immediately.'}
+							? $messages.gameplay.choiceLocked
+							: $messages.gameplay.newSelectionsDisabled
+						: $messages.gameplay.tapOneOption}
 				</p>
 				<div class="grid gap-3">
 					{#each $controller.activeStep.input_options as option}
@@ -703,13 +699,13 @@
 			</section>
 		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'checkbox'}
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Choose One or More</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.chooseOneOrMore}</h2>
 				<p class="text-sm text-slate-600">
 					{playerInputDisabled
 						? $controller.hasSubmitted
-							? 'Your selection is submitted. You can choose again on the next step.'
-							: 'This step has been closed. New selections are disabled.'
-						: 'Tap options to highlight them, then submit when you are ready.'}
+							? $messages.gameplay.selectionSubmitted
+							: $messages.gameplay.newSelectionsDisabled
+						: $messages.gameplay.tapOptionsThenSubmit}
 				</p>
 				<div class="grid gap-3">
 					{#each $controller.activeStep.input_options as option}
@@ -731,7 +727,7 @@
 					onclick={submitAnswer}
 					disabled={playerInputDisabled || selectedCheckboxOptions.length === 0}
 				>
-					Submit Selection
+					{$messages.gameplay.submitSelection}
 				</button>
 			</section>
 		{:else if !gameFinished && !$controller.isHost}
@@ -777,184 +773,40 @@
 		{/if}
 
 		{#if $controller.isHost && !gameFinished && !$controller.endGame?.revealed}
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Host Controls</h2>
-				<p class="text-sm text-slate-600">
-					Phase: {$controller.lobbyPhase} · Submissions: {$controller.submissionCount} · Pending review:
-					{$controller.pendingReviewCount}
-				</p>
-				{#if submittedPlayerNames.length > 0}
-					<div class="flex flex-wrap gap-2">
-						{#each submittedPlayerNames as name}
-							<span class="badge bg-emerald-100 text-emerald-800">{name} answered</span>
-						{/each}
-					</div>
-				{/if}
-				<div class="flex flex-wrap gap-3">
-					<button
-						type="button"
-						class="btn btn-ghost"
-						onclick={previousStep}
-						disabled={$controller.displayPhase !== 'answer_reveal'}
-					>
-						Previous
-					</button>
-					<button
-						type="button"
-						class="btn btn-primary"
-						onclick={nextStep}
-						disabled={$controller.lobbyPhase === 'host_review' &&
-							$controller.pendingReviewCount > 0}
-					>
-						{$controller.displayPhase === 'answer_reveal'
-							? 'Advance Step'
-							: $controller.lobbyPhase === 'question_active'
-								? 'Next'
-								: 'Show Answer'}
-					</button>
-					<button type="button" class="btn btn-ghost" onclick={resetStep}>Reset Question</button>
-					<button type="button" class="btn btn-ghost" onclick={toggleScoreboardVisibility}>
-						{$controller.scoreboardVisible ? 'Hide Scoreboard' : 'Show Scoreboard'}
-					</button>
-					{#if $controller.activeStep?.media?.type_ === 'video'}
-						<button type="button" class="btn btn-ghost" onclick={toggleMediaPlayback}>
-							{$controller.activeStep.media.paused
-								? $messages.gameplay.resumeMedia
-								: $messages.gameplay.pauseMedia}
-						</button>
-					{/if}
-					{#if !$controller.hostEnabled || $controller.activeStep?.evaluation_type !== 'host_judged'}
-						<button type="button" class="btn btn-ghost" onclick={evaluateStep}>Auto Evaluate</button
-						>
-					{/if}
-					{#if $controller.activeStep?.input_kind === 'buzzer'}
-						<button
-							type="button"
-							class="btn btn-ghost"
-							onclick={() =>
-								socket?.send(
-									JSON.stringify({ type_: 'buzzer_state', active: !$controller.buzzerActive })
-								)}
-						>
-							{$controller.buzzerActive ? 'Disable Buzzer' : 'Enable Eligible Buzzers'}
-						</button>
-					{/if}
-				</div>
-			</section>
+			<HostControlsPanel
+				activeStep={$controller.activeStep}
+				buzzerActive={$controller.buzzerActive}
+				displayPhase={$controller.displayPhase}
+				hostEnabled={$controller.hostEnabled}
+				lobbyPhase={$controller.lobbyPhase}
+				pendingReviewCount={$controller.pendingReviewCount}
+				scoreboardVisible={$controller.scoreboardVisible}
+				submissionCount={$controller.submissionCount}
+				{submittedPlayerNames}
+				onEvaluateStep={evaluateStep}
+				onNextStep={nextStep}
+				onPreviousStep={previousStep}
+				onResetStep={resetStep}
+				onToggleBuzzer={toggleBuzzerState}
+				onToggleMediaPlayback={toggleMediaPlayback}
+				onToggleScoreboardVisibility={toggleScoreboardVisibility}
+			/>
+
+			<HostReviewQueue
+				activeStep={$controller.activeStep}
+				buzzedPlayerId={$controller.buzzedPlayerId}
+				{customScore}
+				disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+				hostAnswer={$controller.hostAnswer}
+				{playerMap}
+				submissions={$controller.submissions}
+				{isSubmissionReviewed}
+				onRevealSubmission={revealSubmission}
+				onReviewSubmission={reviewSubmission}
+			/>
 
 			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Review Queue</h2>
-				{#if $controller.hostAnswer}
-					<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-						<p class="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
-							Correct answer
-						</p>
-						<p class="mt-2 text-lg font-extrabold leading-tight text-slate-950">
-							{formatRevealValue($controller.hostAnswer.value)}
-						</p>
-					</div>
-				{/if}
-				{#if $controller.activeStep?.input_kind === 'buzzer' && $controller.buzzedPlayerId}
-					<div class="rounded-2xl bg-white/70 p-3">
-						<p class="font-bold">{playerMap.get($controller.buzzedPlayerId)?.name}</p>
-						<p class="mt-1 text-slate-600">Buzzed in first</p>
-						<div class="mt-3 flex flex-wrap gap-2">
-							{#if isSubmissionReviewed($controller.buzzedPlayerId ?? '')}
-								<span class="badge bg-slate-200 text-slate-700">Reviewed</span>
-							{:else}
-								<button
-									type="button"
-									class="btn btn-primary"
-									onclick={() =>
-										reviewSubmission(
-											$controller.buzzedPlayerId ?? '',
-											true,
-											$controller.activeStep?.evaluation_points
-										)}
-								>
-									Accept +{$controller.activeStep?.evaluation_points ?? 1}
-								</button>
-								<button
-									type="button"
-									class="btn btn-danger"
-									onclick={() => reviewSubmission($controller.buzzedPlayerId ?? '', false)}
-								>
-									Reject
-								</button>
-							{/if}
-						</div>
-					</div>
-				{:else if $controller.submissions.length === 0}
-					{#if $controller.activeStep?.input_kind === 'buzzer' && $controller.disabledBuzzerPlayerIds.length > 0}
-						<p class="text-slate-500">
-							Waiting for the host to reactivate eligible buzzers. Locked out:
-							{$controller.disabledBuzzerPlayerIds
-								.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
-								.join(', ')}
-						</p>
-					{:else}
-						<p class="text-slate-500">No answers submitted yet.</p>
-					{/if}
-				{:else}
-					{#each $controller.submissions as submission}
-						<div
-							class={`rounded-2xl p-3 ${
-								isSubmissionReviewed(submission.player_id)
-									? 'bg-slate-100 opacity-70'
-									: 'bg-white/70'
-							}`}
-						>
-							<p class="font-bold">{playerMap.get(submission.player_id)?.name}</p>
-							<p class="mt-1 wrap-break-word">{String(submission.value)}</p>
-							<div class="mt-3 flex flex-wrap gap-2">
-								<button
-									type="button"
-									class="btn btn-ghost"
-									onclick={() => revealSubmission(submission.player_id)}
-									disabled={isSubmissionReviewed(submission.player_id)}
-								>
-									Reveal
-								</button>
-								{#if !isSubmissionReviewed(submission.player_id)}
-									<button
-										type="button"
-										class="btn btn-primary"
-										onclick={() =>
-											reviewSubmission(
-												submission.player_id,
-												true,
-												$controller.activeStep?.evaluation_points
-											)}
-									>
-										Accept +{$controller.activeStep?.evaluation_points ?? 1}
-									</button>
-									<button
-										type="button"
-										class="btn btn-danger"
-										onclick={() => reviewSubmission(submission.player_id, false)}
-									>
-										Reject
-									</button>
-									{#if customScore !== 0}
-										<button
-											type="button"
-											class="btn btn-ghost"
-											onclick={() => reviewSubmission(submission.player_id, true, customScore)}
-										>
-											Accept {customScore > 0 ? '+' : ''}{customScore}
-										</button>
-									{/if}
-								{:else}
-									<span class="badge bg-slate-200 text-slate-700">Reviewed</span>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				{/if}
-			</section>
-
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">Manual Score</h2>
+				<h2 class="label-title text-2xl">{$messages.gameplay.manualScore}</h2>
 				<input class="input" type="number" bind:value={customScore} min="-500" max="500" />
 				<div class="flex flex-wrap gap-2">
 					{#each $controller.players.filter((entry) => entry.id !== $controller.id) as entry}
@@ -968,10 +820,6 @@
 					{/each}
 				</div>
 			</section>
-
-			{#if canSendReactions}
-				<ReactionBar connected={isConnected} onReact={sendReaction} />
-			{/if}
 		{/if}
 	</div>
 {/if}
