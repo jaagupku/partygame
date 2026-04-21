@@ -191,6 +191,9 @@ const en = defineMessages({
 		gameFinishedRevealEndScreen:
 			'The game is finished. Reveal the end game screen when you are ready.',
 		hostControls: 'Host Controls',
+		phaseLabel: 'Phase',
+		submissionsLabel: 'Submissions',
+		pendingReviewLabel: 'Pending review',
 		answered: 'answered',
 		previous: 'Previous',
 		advanceStep: 'Advance Step',
@@ -328,7 +331,8 @@ const en = defineMessages({
 		zoomOriginYHelp: 'Optional vertical focus point as a percentage from the top.',
 		zoomFocusPreviewHelp: 'Click the preview to place the zoom focus point.',
 		resetZoomDefaults: 'Use default zoom',
-		zoomFocusPreviewCaption: 'The marker shows the zoom focal point used at the start of the reveal.',
+		zoomFocusPreviewCaption:
+			'The marker shows the zoom focal point used at the start of the reveal.',
 		howPlayersAnswer: 'How Players Answer',
 		howPlayersAnswerHelp:
 			'Choose the interaction first, then configure the prompt and any options players will see.',
@@ -751,6 +755,9 @@ const et: Messages = {
 		revealFinale: 'Näita finaali',
 		gameFinishedRevealEndScreen: 'Mäng on lõppenud. Näita lõppvaadet siis, kui oled valmis.',
 		hostControls: 'Mängujuhi kontrollid',
+		phaseLabel: 'Faas',
+		submissionsLabel: 'Vastuseid',
+		pendingReviewLabel: 'Ootab ülevaatust',
 		answered: 'vastas',
 		previous: 'Eelmine',
 		advanceStep: 'Liigu edasi',
