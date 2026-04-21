@@ -4,6 +4,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import FinaleDisplay from '$lib/components/endgame/FinaleDisplay.svelte';
+	import ReactionBurstOverlay from '$lib/components/host/ReactionBurstOverlay.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
@@ -28,6 +29,53 @@
 	const countdown = $derived(
 		Math.max(0, Math.ceil($game.activeStep?.timer.remaining_seconds ?? 0))
 	);
+	const MAX_ACTIVE_REACTIONS = 36;
+
+	type ActiveReaction = {
+		instanceId: string;
+		reaction: string;
+		xPercent: number;
+		driftX: number;
+		sizeRem: number;
+		rotationDeg: number;
+		durationMs: number;
+		delayMs: number;
+		expiresAt: number;
+	};
+
+	let activeReactions = $state<ActiveReaction[]>([]);
+	let lastReactionInstanceId = $state<string | undefined>(undefined);
+	let reactionCleanupIntervalId = $state<number | null>(null);
+
+	function addReactionEffect(event: PlayerReactionEvent) {
+		const durationMs = 2600 + Math.random() * 1200;
+		const nextReaction: ActiveReaction = {
+			instanceId: event.instance_id,
+			reaction: event.reaction,
+			xPercent: 10 + Math.random() * 80,
+			driftX: -120 + Math.random() * 240,
+			sizeRem: 2.1 + Math.random() * 1.4,
+			rotationDeg: -16 + Math.random() * 32,
+			durationMs,
+			delayMs: Math.random() * 120,
+			expiresAt: Date.now() + durationMs + 500
+		};
+		activeReactions = [...activeReactions.slice(-(MAX_ACTIVE_REACTIONS - 1)), nextReaction];
+	}
+
+	function cleanupExpiredReactions() {
+		const now = Date.now();
+		activeReactions = activeReactions.filter((entry) => entry.expiresAt > now);
+	}
+
+	$effect(() => {
+		const reaction = $game.lastReaction;
+		if (!reaction || reaction.instance_id === lastReactionInstanceId) {
+			return;
+		}
+		lastReactionInstanceId = reaction.instance_id;
+		addReactionEffect(reaction);
+	});
 
 	onMount(() => {
 		if (!browser) {
@@ -58,10 +106,17 @@
 				requestResync();
 			}
 		}, SAFETY_RESYNC_INTERVAL_MS);
+		reactionCleanupIntervalId = window.setInterval(() => {
+			cleanupExpiredReactions();
+		}, 500);
 		return () => {
 			if (resyncIntervalId !== null) {
 				clearInterval(resyncIntervalId);
 				resyncIntervalId = null;
+			}
+			if (reactionCleanupIntervalId !== null) {
+				clearInterval(reactionCleanupIntervalId);
+				reactionCleanupIntervalId = null;
 			}
 			socket?.close();
 			socket = null;
@@ -72,6 +127,10 @@
 		if (resyncIntervalId !== null) {
 			clearInterval(resyncIntervalId);
 			resyncIntervalId = null;
+		}
+		if (reactionCleanupIntervalId !== null) {
+			clearInterval(reactionCleanupIntervalId);
+			reactionCleanupIntervalId = null;
 		}
 		socket?.close();
 		socket = null;
@@ -154,7 +213,7 @@
 	{/if}
 {:else}
 	<div class="relative h-full min-h-0 overflow-hidden">
-		<section class="h-full min-w-0 min-h-0 mt0">
+		<section class="relative h-full min-w-0 min-h-0 mt0">
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
 					endGame={$game.endGame}
@@ -197,6 +256,10 @@
 					{countdown}
 				/>
 			{/if}
+			<ReactionBurstOverlay
+				reactions={activeReactions}
+				label={$messages.gameplay.reactionBurstOverlayLabel}
+			/>
 		</section>
 
 		<aside

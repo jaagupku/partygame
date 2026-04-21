@@ -368,6 +368,107 @@ async def test_hostless_player_submission_processes_without_command_roundtrip(mo
 
 
 @pytest.mark.asyncio
+async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_id="p1",
+        state=schemas.GameState.RUNNING,
+        phase="question_active",
+    )
+    player = schemas.Player(id="p2", game_id="g1", name="Player")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "relayed": []}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def relay_event(event, players=None, exclude=None):
+        called["relayed"].append((event, players, exclude))
+
+    controller.runtime = SimpleNamespace(
+        build_snapshot=lambda _lobby: (_ for _ in ()).throw(AssertionError("runtime snapshot not expected"))
+    )
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "relay_event", relay_event)
+
+    await controller.process_input({"type_": "player_reaction", "reaction": "🔥"})
+
+    assert called["refresh"] == 1
+    assert len(called["relayed"]) == 1
+    event, _players, _exclude = called["relayed"][0]
+    assert event.type_ == "player_reaction"
+    assert event.player_id == "p2"
+    assert event.reaction == "🔥"
+    assert event.instance_id
+
+
+@pytest.mark.asyncio
+async def test_invalid_player_reaction_is_dropped(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        state=schemas.GameState.RUNNING,
+        phase="question_active",
+    )
+    player = schemas.Player(id="p2", game_id="g1", name="Player")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "relayed": 0}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def relay_event(_event, players=None, exclude=None):
+        called["relayed"] += 1
+
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "relay_event", relay_event)
+
+    await controller.process_input({"type_": "player_reaction", "reaction": "NOPE"})
+
+    assert called == {"refresh": 1, "relayed": 0}
+
+
+@pytest.mark.asyncio
+async def test_throttled_player_reaction_is_dropped(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        state=schemas.GameState.RUNNING,
+        phase="question_active",
+    )
+    player = schemas.Player(id="p2", game_id="g1", name="Player")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "relayed": 0}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def relay_event(_event, players=None, exclude=None):
+        called["relayed"] += 1
+
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "relay_event", relay_event)
+
+    now = time()
+    for _ in range(player_service.PLAYER_REACTION_BURST_LIMIT):
+        controller.reaction_timestamps.append(now)
+
+    await controller.process_input({"type_": "player_reaction", "reaction": "🤮"})
+
+    assert called == {"refresh": 1, "relayed": 0}
+
+
+@pytest.mark.asyncio
 async def test_resync_request_sends_full_snapshot_without_command_roundtrip(monkeypatch):
     lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
     player = schemas.Player(id="p1", game_id="g1", name="Host")
@@ -638,6 +739,15 @@ async def test_finished_lobby_does_not_refresh_idle_ttl_on_connect_or_command(mo
 
 def test_start_game_event_is_exported_from_schemas():
     assert schemas.StartGameEvent().type_ == "start_game"
+
+
+def test_player_reaction_event_is_exported_from_schemas():
+    assert schemas.PlayerReactionEvent(
+        player_id="p1",
+        reaction="😂",
+        instance_id="reaction-1",
+        emitted_at=1.0,
+    ).type_ == "player_reaction"
 
 
 def test_runtime_patch_redacts_host_only_fields_for_public_view():

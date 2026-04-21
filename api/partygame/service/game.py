@@ -182,11 +182,9 @@ class GameRuntimeService:
             return [], False
         answers[player_id] = value
         await self.repo.set_step_cache(lobby.id, {"answers": answers})
-        if (
-            not lobby.host_enabled
-            and self._is_hostless_auto_progress_step(lobby, step)
-            and await self._all_answerable_players_submitted(lobby, state | {"answers": answers})
-        ):
+        if await self._should_auto_close_on_all_submissions(
+            lobby, step
+        ) and await self._all_answerable_players_submitted(lobby, state | {"answers": answers}):
             return await self.close_step(lobby), True
         return [], True
 
@@ -244,7 +242,7 @@ class GameRuntimeService:
         step = await self.get_current_step(lobby)
         if step is None:
             return []
-        if self._should_skip_answer_reveal(lobby, step):
+        if await self._should_skip_answer_reveal(lobby, step):
             if lobby.phase == "question_active":
                 return await self.close_step(lobby)
             return await self.advance_step(lobby)
@@ -475,7 +473,7 @@ class GameRuntimeService:
             player_id: {"answered_count": 1, "correct_count": 0, "wrong_count": 1}
             for player_id in answers
         }
-        evaluation_type = self._resolve_evaluation_type(lobby, step)
+        evaluation_type = await self._resolve_evaluation_type(lobby, step)
 
         if evaluation_type == EvaluationType.EXACT_TEXT:
             expected = str(step.evaluation.answer or "").strip().casefold()
@@ -492,13 +490,13 @@ class GameRuntimeService:
         elif evaluation_type == EvaluationType.EXACT_NUMBER:
             try:
                 expected = float(step.evaluation.answer)
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 expected = None
             if expected is not None:
                 for player_id, value in answers.items():
                     try:
                         numeric = float(value)
-                    except TypeError, ValueError:
+                    except (TypeError, ValueError):
                         continue
                     if numeric == expected:
                         new_score = (
@@ -512,14 +510,14 @@ class GameRuntimeService:
         elif evaluation_type == EvaluationType.CLOSEST_NUMBER:
             try:
                 target = float(step.evaluation.answer)
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 target = None
             diffs: list[tuple[float, str]] = []
             if target is not None:
                 for player_id, value in answers.items():
                     try:
                         diffs.append((abs(float(value) - target), player_id))
-                    except TypeError, ValueError:
+                    except (TypeError, ValueError):
                         continue
             if diffs:
                 diffs.sort(key=lambda item: item[0])
@@ -582,11 +580,11 @@ class GameRuntimeService:
         step = await self.get_current_step(lobby)
         if step is None:
             return []
-        if self._should_skip_answer_reveal(lobby, step):
+        if await self._should_skip_answer_reveal(lobby, step):
             return await self.advance_step(lobby)
         phase = "step_complete"
         events: list[schemas.BaseEvent] = []
-        evaluation_type = self._resolve_evaluation_type(lobby, step)
+        evaluation_type = await self._resolve_evaluation_type(lobby, step)
         if evaluation_type in (
             EvaluationType.EXACT_TEXT,
             EvaluationType.EXACT_NUMBER,
@@ -613,7 +611,7 @@ class GameRuntimeService:
         await self.repo.set_lobby_fields(lobby.id, phase=phase)
         lobby.phase = phase
         if phase == "step_complete":
-            if self._should_skip_answer_reveal(lobby, step):
+            if await self._should_skip_answer_reveal(lobby, step):
                 step_updates = {"display_phase": "question_active"}
             else:
                 step_updates = {
@@ -685,11 +683,12 @@ class GameRuntimeService:
 
         active_step = None
         if step is not None:
+            evaluation_type = await self._resolve_evaluation_type(lobby, step)
             active_step = schemas.RuntimeStepState(
                 id=step.id,
                 title=step.title,
                 body=step.body,
-                evaluation_type=str(self._resolve_evaluation_type(lobby, step)),
+                evaluation_type=str(evaluation_type),
                 evaluation_points=step.evaluation.points,
                 input_enabled=lobby.phase == "question_active",
                 input_kind=step.player_input.kind,
@@ -702,7 +701,7 @@ class GameRuntimeService:
                 media=self._serialize_media(step.media, step_state),
                 timer=schemas.RuntimeTimerState(
                     seconds=step.timer.seconds,
-                    enforced=self._is_timer_effectively_enforced(lobby, step),
+                    enforced=await self._is_timer_effectively_enforced(lobby, step),
                     started_at=self._to_float(step_state.get("timer_started_at")),
                     ends_at=self._to_float(step_state.get("timer_ends_at")),
                     remaining_seconds=self._remaining_timer_seconds(step_state),
@@ -1030,13 +1029,24 @@ class GameRuntimeService:
             return None
         return max(0.0, time() - opened_at)
 
-    def _resolve_evaluation_type(
+    async def _has_active_host_player(self, lobby: schemas.Lobby) -> bool:
+        if not lobby.host_enabled:
+            return False
+        if not lobby.host_id:
+            return True
+        players = await self.repo.get_players(lobby.id)
+        return any(
+            player.id == lobby.host_id and player.status == schemas.ConnectionStatus.CONNECTED
+            for player in players
+        )
+
+    async def _resolve_evaluation_type(
         self,
         lobby: schemas.Lobby,
         step: StepDefinition,
     ) -> EvaluationType:
         evaluation_type = step.evaluation.type_
-        if evaluation_type != EvaluationType.HOST_JUDGED or lobby.host_enabled:
+        if evaluation_type != EvaluationType.HOST_JUDGED or await self._has_active_host_player(lobby):
             return evaluation_type
         return self._fallback_evaluation_type(step.player_input)
 
@@ -1086,7 +1096,7 @@ class GameRuntimeService:
         if evaluation_type in (EvaluationType.EXACT_NUMBER, EvaluationType.CLOSEST_NUMBER):
             try:
                 return answer is not None and float(answer) == float(answer)
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 return False
         if evaluation_type == EvaluationType.ORDERING_MATCH:
             return isinstance(answer, list) and any(str(value).strip() for value in answer)
@@ -1102,18 +1112,35 @@ class GameRuntimeService:
     ) -> bool:
         if lobby.host_enabled or self._is_information_slide(step):
             return False
-        evaluation_type = self._resolve_evaluation_type(lobby, step)
+        evaluation_type = (
+            self._fallback_evaluation_type(step.player_input)
+            if step.evaluation.type_ == EvaluationType.HOST_JUDGED
+            else step.evaluation.type_
+        )
         return (
             evaluation_type in HOSTLESS_AUTO_EVALUATION_TYPES
             and self._has_usable_answer_for_evaluation(step, evaluation_type)
         )
 
-    def _is_timer_effectively_enforced(
+    async def _should_auto_close_on_all_submissions(
         self,
         lobby: schemas.Lobby,
         step: StepDefinition,
     ) -> bool:
-        return step.timer.enforced or self._is_hostless_auto_progress_step(lobby, step)
+        if await self._has_active_host_player(lobby) or self._is_information_slide(step):
+            return False
+        evaluation_type = await self._resolve_evaluation_type(lobby, step)
+        return (
+            evaluation_type in HOSTLESS_AUTO_EVALUATION_TYPES
+            and self._has_usable_answer_for_evaluation(step, evaluation_type)
+        )
+
+    async def _is_timer_effectively_enforced(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return step.timer.enforced or await self._should_auto_close_on_all_submissions(lobby, step)
 
     def _is_hostless_compatible_step(
         self,
@@ -1128,12 +1155,12 @@ class GameRuntimeService:
             return True
         return self._is_hostless_auto_progress_step(lobby, step)
 
-    def _should_skip_answer_reveal(
+    async def _should_skip_answer_reveal(
         self,
         lobby: schemas.Lobby,
         step: StepDefinition,
     ) -> bool:
-        return self._resolve_evaluation_type(lobby, step) == EvaluationType.NONE
+        return await self._resolve_evaluation_type(lobby, step) == EvaluationType.NONE
 
     def _pending_review_count(self, step_state: dict[str, Any]) -> int:
         reviewed = set(step_state.get("reviewed_player_ids", []))

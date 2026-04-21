@@ -36,6 +36,16 @@
 		return $messages.editor.mediaTypeVideoHelp;
 	}
 
+	function getMediaTypeAccept(mediaType: (typeof MEDIA_TYPES)[number]) {
+		if (mediaType === 'image') {
+			return 'image/*,.png,.jpg,.jpeg,.gif,.webp,.svg,.avif';
+		}
+		if (mediaType === 'audio') {
+			return 'audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac';
+		}
+		return 'video/*,.mp4,.webm,.mov,.m4v,.ogv';
+	}
+
 	function getPreviewYouTubeEmbed(): string | null {
 		if (step.media?.type_ !== 'video') {
 			return null;
@@ -145,6 +155,7 @@
 						</span>
 						<input
 							type="file"
+							accept={getMediaTypeAccept(step.media.type_)}
 							class="input text-base file:mr-4 file:rounded-xl file:border-0 file:bg-sky-100 file:px-3 file:py-2 file:font-semibold file:text-sky-700"
 							onchange={(event) => onUploadMedia(event, step, step.id)}
 						/>

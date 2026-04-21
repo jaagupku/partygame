@@ -1,4 +1,5 @@
 from enum import StrEnum, auto
+from typing import Literal
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -35,6 +36,7 @@ class Event(StrEnum):
     REVEAL_END_GAME = auto()
     ADVANCE_END_GAME_STAGE = auto()
     TOGGLE_END_GAME_AUTOPLAY = auto()
+    PLAYER_REACTION = auto()
 
 
 class BaseEvent(BaseModel):
@@ -257,6 +259,18 @@ class AdvanceEndGameStageEvent(BaseEvent):
 class ToggleEndGameAutoplayEvent(BaseEvent):
     type_: str = Event.TOGGLE_END_GAME_AUTOPLAY
     enabled: bool
+
+
+ALLOWED_REACTION_VALUES = ("😂", "🔥", "👏", "😱", "💩", "🤮")
+ReactionValue = Literal["😂", "🔥", "👏", "😱", "💩", "🤮"]
+
+
+class PlayerReactionEvent(BaseEvent):
+    type_: str = Event.PLAYER_REACTION
+    player_id: str
+    reaction: ReactionValue
+    instance_id: str
+    emitted_at: float
 
 
 class FinalStandingEntry(BaseModel):

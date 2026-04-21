@@ -372,6 +372,14 @@ type ToggleEndGameAutoplayEvent = {
 	enabled: boolean;
 };
 
+type PlayerReactionEvent = {
+	type_: 'player_reaction';
+	player_id: string;
+	reaction: '😂' | '🔥' | '👏' | '😱' | '💩' | '🤮';
+	instance_id: string;
+	emitted_at: number;
+};
+
 type HostGameState = Lobby & {
 	lastRevision: number;
 	activeStep?: RuntimeStepState;
@@ -385,6 +393,7 @@ type HostGameState = Lobby & {
 	revealedSubmission?: RevealedSubmission;
 	revealedAnswer?: RevealedAnswer;
 	endGame?: EndGameState;
+	lastReaction?: PlayerReactionEvent;
 };
 
 type ControllerState = {
@@ -412,6 +421,7 @@ type ControllerState = {
 	hostAnswer?: RevealedAnswer;
 	submissions: SubmissionItem[];
 	endGame?: EndGameState;
+	lastReaction?: PlayerReactionEvent;
 };
 
 type YouTubePlayerState = -1 | 0 | 1 | 2 | 3 | 5;

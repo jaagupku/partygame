@@ -16,6 +16,8 @@
 	let circleVelocityY = $state(0);
 	let lastCircleTimestamp = $state<number | null>(null);
 	let circleKey = $state('');
+	let imageWrapWidth = $state(0);
+	let imageWrapHeight = $state(0);
 
 	function initializeCircleMotion(key: string) {
 		const angle = Math.random() * Math.PI * 2;
@@ -47,6 +49,13 @@
 	const imageRevealStyle = $derived(
 		[`--reveal-duration:${revealDurationSeconds}s`, `--reveal-progress:${revealProgress}`].join(';')
 	);
+	const circleRadiusPx = $derived.by(() => {
+		const minDimension = Math.min(imageWrapWidth, imageWrapHeight);
+		if (minDimension <= 0) {
+			return 0;
+		}
+		return minDimension * (0.07 + 0.11 * revealProgress);
+	});
 	const imageStyle = $derived.by(() => {
 		if (!step.media || revealState === 'revealed' || step.media.reveal === 'none') {
 			return '';
@@ -61,14 +70,14 @@
 			return `transform: scale(${scale});`;
 		}
 		if (step.media.reveal === 'blur_circle') {
-			const blur = 18 * (1 - revealProgress);
-			return `filter: blur(${blur}px);`;
+			return 'filter: blur(18px);';
 		}
 		return '';
 	});
 	const circleClipPath = $derived.by(() => {
-		const radius = 10 + 14 * revealProgress;
-		return `circle(${radius}% at ${circleX * 100}% ${circleY * 100}%)`;
+		const centerX = circleX * imageWrapWidth;
+		const centerY = circleY * imageWrapHeight;
+		return `circle(${circleRadiusPx}px at ${centerX}px ${centerY}px)`;
 	});
 
 	$effect(() => {
@@ -96,7 +105,8 @@
 			nowMs = Date.now();
 			if (step.media?.reveal === 'blur_circle') {
 				const timestamp = performance.now();
-				const radius = 0.1 + 0.14 * revealProgress;
+				const radiusX = imageWrapWidth > 0 ? circleRadiusPx / imageWrapWidth : 0;
+				const radiusY = imageWrapHeight > 0 ? circleRadiusPx / imageWrapHeight : 0;
 				if (lastCircleTimestamp !== null) {
 					const dt = Math.min((timestamp - lastCircleTimestamp) / 1000, 0.05);
 					let nextX = circleX + circleVelocityX * dt;
@@ -104,19 +114,19 @@
 					let nextVelocityX = circleVelocityX;
 					let nextVelocityY = circleVelocityY;
 
-					if (nextX <= radius) {
-						nextX = radius;
+					if (nextX <= radiusX) {
+						nextX = radiusX;
 						nextVelocityX = Math.abs(nextVelocityX);
-					} else if (nextX >= 1 - radius) {
-						nextX = 1 - radius;
+					} else if (nextX >= 1 - radiusX) {
+						nextX = 1 - radiusX;
 						nextVelocityX = -Math.abs(nextVelocityX);
 					}
 
-					if (nextY <= radius) {
-						nextY = radius;
+					if (nextY <= radiusY) {
+						nextY = radiusY;
 						nextVelocityY = Math.abs(nextVelocityY);
-					} else if (nextY >= 1 - radius) {
-						nextY = 1 - radius;
+					} else if (nextY >= 1 - radiusY) {
+						nextY = 1 - radiusY;
 						nextVelocityY = -Math.abs(nextVelocityY);
 					}
 
@@ -152,7 +162,11 @@
 		class={`media-frame ${imageRevealClass} ${stageVariant ? 'stage-media-frame' : ''}`}
 		style={imageRevealStyle}
 	>
-		<div class={`media-image-wrap ${stageVariant ? 'media-image-wrap-stage' : ''}`}>
+		<div
+			class={`media-image-wrap ${stageVariant ? 'media-image-wrap-stage' : ''}`}
+			bind:clientWidth={imageWrapWidth}
+			bind:clientHeight={imageWrapHeight}
+		>
 			<img
 				src={step.media.src}
 				alt={step.title}
@@ -234,6 +248,7 @@
 
 	.reveal-blur_circle .media-image {
 		filter: blur(18px);
+		transition: filter 1s ease-out;
 	}
 
 	.media-spotlight {

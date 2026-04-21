@@ -1,6 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import { messages } from '$lib/i18n';
+	import { modalPortal } from './modalPortal';
 
 	type ShortcutGroup = {
 		title: string;
@@ -26,7 +27,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-4 md:p-8">
+<div use:modalPortal class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-4 md:p-8">
 	<div
 		class="mx-auto w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl"
 	>

@@ -225,6 +225,35 @@ class HostlessCompatibilityProvider:
         return []
 
 
+class InactiveHostFallbackProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Inactive host fallback",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="inactive_host_step",
+                            title="Fallback exact text",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=3,
+                                answer="hello",
+                            ),
+                            timer=TimerDefinition(seconds=20, enforced=False),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 class TwoRoundHostlessProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -567,6 +596,41 @@ async def test_hostless_closes_step_when_all_players_have_answered():
 
 
 @pytest.mark.asyncio
+async def test_inactive_host_closes_step_when_all_players_have_answered():
+    repo = FakeRepo()
+    repo.players.append(
+        schemas.Player(
+            id="host",
+            game_id="g1",
+            name="Host",
+            status=schemas.ConnectionStatus.DISCONNECTED,
+        )
+    )
+    service = GameRuntimeService(repo=repo, definition_provider=InactiveHostFallbackProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=True,
+        host_id="host",
+    )
+
+    await service.start_game(lobby)
+    first_events, first_handled = await service.submit_player_input(lobby, "p1", "hello")
+    second_events, second_handled = await service.submit_player_input(lobby, "p2", "nope")
+
+    assert first_handled is True
+    assert first_events == []
+    assert second_handled is True
+    assert [event.type_ for event in second_events] == ["scores_updated", "runtime_snapshot"]
+    assert lobby.phase == "step_complete"
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert repo.steps["g1"]["revealed_answer_value"] == "hello"
+    assert repo.scores["p1"] == 3
+    assert repo.scores["p2"] == 5
+
+
+@pytest.mark.asyncio
 async def test_hostless_advisory_timer_is_effectively_enforced_in_snapshot():
     repo = FakeRepo()
     service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
@@ -576,6 +640,34 @@ async def test_hostless_advisory_timer_is_effectively_enforced_in_snapshot():
     snapshot = await service.build_snapshot(lobby)
 
     assert snapshot.active_step is not None
+    assert snapshot.active_step.timer.enforced is True
+
+
+@pytest.mark.asyncio
+async def test_inactive_host_advisory_timer_is_effectively_enforced_in_snapshot():
+    repo = FakeRepo()
+    repo.players.append(
+        schemas.Player(
+            id="host",
+            game_id="g1",
+            name="Host",
+            status=schemas.ConnectionStatus.DISCONNECTED,
+        )
+    )
+    service = GameRuntimeService(repo=repo, definition_provider=InactiveHostFallbackProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=True,
+        host_id="host",
+    )
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.evaluation_type == "exact_text"
     assert snapshot.active_step.timer.enforced is True
 
 
