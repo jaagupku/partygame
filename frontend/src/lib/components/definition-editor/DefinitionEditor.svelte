@@ -631,10 +631,8 @@
 				reveal: previousMedia.type_ === 'image' ? previousMedia.reveal : 'none',
 				loop: previousMedia.loop,
 				zoom_start: previousMedia.type_ === 'image' ? previousMedia.zoom_start : undefined,
-				zoom_origin_x:
-					previousMedia.type_ === 'image' ? previousMedia.zoom_origin_x : undefined,
-				zoom_origin_y:
-					previousMedia.type_ === 'image' ? previousMedia.zoom_origin_y : undefined
+				zoom_origin_x: previousMedia.type_ === 'image' ? previousMedia.zoom_origin_x : undefined,
+				zoom_origin_y: previousMedia.type_ === 'image' ? previousMedia.zoom_origin_y : undefined
 			};
 			return;
 		}

@@ -390,7 +390,9 @@ async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
         called["relayed"].append((event, players, exclude))
 
     controller.runtime = SimpleNamespace(
-        build_snapshot=lambda _lobby: (_ for _ in ()).throw(AssertionError("runtime snapshot not expected"))
+        build_snapshot=lambda _lobby: (_ for _ in ()).throw(
+            AssertionError("runtime snapshot not expected")
+        )
     )
     monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
     monkeypatch.setattr(controller, "relay_event", relay_event)
@@ -742,12 +744,15 @@ def test_start_game_event_is_exported_from_schemas():
 
 
 def test_player_reaction_event_is_exported_from_schemas():
-    assert schemas.PlayerReactionEvent(
-        player_id="p1",
-        reaction="😂",
-        instance_id="reaction-1",
-        emitted_at=1.0,
-    ).type_ == "player_reaction"
+    assert (
+        schemas.PlayerReactionEvent(
+            player_id="p1",
+            reaction="😂",
+            instance_id="reaction-1",
+            emitted_at=1.0,
+        ).type_
+        == "player_reaction"
+    )
 
 
 def test_runtime_patch_redacts_host_only_fields_for_public_view():

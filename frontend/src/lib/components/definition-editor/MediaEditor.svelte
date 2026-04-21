@@ -254,14 +254,18 @@
 										class="h-3 w-full cursor-pointer accent-sky-500"
 										value={getZoomSliderValue()}
 										oninput={(event) =>
-											bindOptionalNumber(event, (value) => {
-												const imageMedia = getImageMedia(step.media);
-												if (!imageMedia) {
-													return;
-												}
-												imageMedia.zoom_start =
-													value === undefined ? undefined : zoomFactorFromSlider(value);
-											}, { min: ZOOM_SLIDER_MIN, max: ZOOM_SLIDER_MAX })}
+											bindOptionalNumber(
+												event,
+												(value) => {
+													const imageMedia = getImageMedia(step.media);
+													if (!imageMedia) {
+														return;
+													}
+													imageMedia.zoom_start =
+														value === undefined ? undefined : zoomFactorFromSlider(value);
+												},
+												{ min: ZOOM_SLIDER_MIN, max: ZOOM_SLIDER_MAX }
+											)}
 									/>
 									<p class="text-sm text-slate-500">{$messages.editor.zoomStartHelp}</p>
 								</label>
@@ -281,14 +285,17 @@
 											: ''}
 										placeholder="58"
 										oninput={(event) =>
-											bindOptionalNumber(event, (value) => {
-												const imageMedia = getImageMedia(step.media);
-												if (!imageMedia) {
-													return;
-												}
-												imageMedia.zoom_origin_x =
-													value === undefined ? undefined : value / 100;
-											}, { min: 0, max: 100 })}
+											bindOptionalNumber(
+												event,
+												(value) => {
+													const imageMedia = getImageMedia(step.media);
+													if (!imageMedia) {
+														return;
+													}
+													imageMedia.zoom_origin_x = value === undefined ? undefined : value / 100;
+												},
+												{ min: 0, max: 100 }
+											)}
 									/>
 									<p class="text-sm text-slate-500">{$messages.editor.zoomOriginXHelp}</p>
 								</label>
@@ -308,14 +315,17 @@
 											: ''}
 										placeholder="42"
 										oninput={(event) =>
-											bindOptionalNumber(event, (value) => {
-												const imageMedia = getImageMedia(step.media);
-												if (!imageMedia) {
-													return;
-												}
-												imageMedia.zoom_origin_y =
-													value === undefined ? undefined : value / 100;
-											}, { min: 0, max: 100 })}
+											bindOptionalNumber(
+												event,
+												(value) => {
+													const imageMedia = getImageMedia(step.media);
+													if (!imageMedia) {
+														return;
+													}
+													imageMedia.zoom_origin_y = value === undefined ? undefined : value / 100;
+												},
+												{ min: 0, max: 100 }
+											)}
 									/>
 									<p class="text-sm text-slate-500">{$messages.editor.zoomOriginYHelp}</p>
 								</label>
@@ -364,9 +374,7 @@
 								<button
 									type="button"
 									class={`relative overflow-hidden rounded-2xl bg-slate-100 ${
-										step.media.reveal === 'zoom_out'
-											? 'cursor-crosshair'
-											: 'cursor-default'
+										step.media.reveal === 'zoom_out' ? 'cursor-crosshair' : 'cursor-default'
 									}`}
 									onclick={setZoomFocusFromPreview}
 								>
