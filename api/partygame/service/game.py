@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from time import time
 from typing import Any
+from uuid import uuid4
 
 from partygame import schemas
 from partygame.core.config import settings
@@ -377,10 +378,20 @@ class GameRuntimeService:
 
         reviewed_player_ids.append(event.player_id)
         events: list[schemas.BaseEvent] = []
+        batch_id = uuid4().hex
 
         if step.player_input.kind == PlayerInputKind.BUZZER:
             updates: dict[str, Any] = {"reviewed_player_ids": reviewed_player_ids}
             disabled_player_ids = list(state.get("disabled_buzzer_player_ids", []))
+            events.append(
+                schemas.AnswerJudgedEvent(
+                    player_id=event.player_id,
+                    accepted=event.accepted,
+                    source="host_review",
+                    input_kind=step.player_input.kind,
+                    batch_id=batch_id,
+                )
+            )
             if event.accepted:
                 await self._apply_player_metric_updates(
                     lobby.id,
@@ -458,6 +469,15 @@ class GameRuntimeService:
             },
         )
         await self.repo.set_step_cache(lobby.id, {"reviewed_player_ids": reviewed_player_ids})
+        events.append(
+            schemas.AnswerJudgedEvent(
+                player_id=event.player_id,
+                accepted=event.accepted,
+                source="host_review",
+                input_kind=step.player_input.kind,
+                batch_id=batch_id,
+            )
+        )
 
         if event.accepted:
             points = (
@@ -475,13 +495,13 @@ class GameRuntimeService:
 
         return events
 
-    async def evaluate_auto_step(self, lobby: schemas.Lobby) -> schemas.ScoresUpdatedEvent:
+    async def evaluate_auto_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
         step = await self.get_current_step(lobby)
         if step is None:
-            return schemas.ScoresUpdatedEvent()
+            return [schemas.ScoresUpdatedEvent()]
         state = await self.get_step_state(lobby.id)
         if state.get("evaluated"):
-            return schemas.ScoresUpdatedEvent()
+            return [schemas.ScoresUpdatedEvent()]
 
         answers = state.get("answers", {})
         reviewed_player_ids = list(answers.keys())
@@ -490,6 +510,7 @@ class GameRuntimeService:
             player_id: {"answered_count": 1, "correct_count": 0, "wrong_count": 1}
             for player_id in answers
         }
+        accepted_player_ids: set[str] = set()
         evaluation_type = await self._resolve_evaluation_type(lobby, step)
 
         if evaluation_type == EvaluationType.EXACT_TEXT:
@@ -502,6 +523,7 @@ class GameRuntimeService:
                     )
                     await self.repo.set_player_score(lobby.id, player_id, new_score)
                     updates[player_id] = new_score
+                    accepted_player_ids.add(player_id)
                     metric_updates[player_id]["correct_count"] = 1
                     metric_updates[player_id]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.EXACT_NUMBER:
@@ -522,6 +544,7 @@ class GameRuntimeService:
                         )
                         await self.repo.set_player_score(lobby.id, player_id, new_score)
                         updates[player_id] = new_score
+                        accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.CLOSEST_NUMBER:
@@ -544,6 +567,7 @@ class GameRuntimeService:
                 )
                 await self.repo.set_player_score(lobby.id, winner, new_score)
                 updates[winner] = new_score
+                accepted_player_ids.add(winner)
                 metric_updates[winner]["correct_count"] = 1
                 metric_updates[winner]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.ORDERING_MATCH:
@@ -557,6 +581,7 @@ class GameRuntimeService:
                         )
                         await self.repo.set_player_score(lobby.id, player_id, new_score)
                         updates[player_id] = new_score
+                        accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.MULTI_SELECT_WEIGHTED:
@@ -579,6 +604,7 @@ class GameRuntimeService:
                         new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
                         await self.repo.set_player_score(lobby.id, player_id, new_score)
                         updates[player_id] = new_score
+                        accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
 
@@ -591,7 +617,20 @@ class GameRuntimeService:
                 "reviewed_player_ids": reviewed_player_ids,
             },
         )
-        return schemas.ScoresUpdatedEvent(updates=updates)
+        batch_id = uuid4().hex
+        judged_events = [
+            schemas.AnswerJudgedEvent(
+                player_id=player_id,
+                accepted=player_id in accepted_player_ids,
+                source="auto_evaluation",
+                input_kind=step.player_input.kind,
+                batch_id=batch_id,
+                batch_index=index,
+                batch_size=len(reviewed_player_ids),
+            )
+            for index, player_id in enumerate(reviewed_player_ids)
+        ]
+        return judged_events + [schemas.ScoresUpdatedEvent(updates=updates)]
 
     async def close_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
         step = await self.get_current_step(lobby)
@@ -609,9 +648,10 @@ class GameRuntimeService:
             EvaluationType.ORDERING_MATCH,
             EvaluationType.MULTI_SELECT_WEIGHTED,
         ):
-            scores_event = await self.evaluate_auto_step(lobby)
-            if scores_event.updates:
-                events.append(scores_event)
+            for auto_event in await self.evaluate_auto_step(lobby):
+                if isinstance(auto_event, schemas.ScoresUpdatedEvent) and not auto_event.updates:
+                    continue
+                events.append(auto_event)
         elif step.player_input.kind == PlayerInputKind.BUZZER:
             phase = (
                 "host_review"

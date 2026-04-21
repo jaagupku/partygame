@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Sound } from 'svelte-sound';
 	import Timer from '$lib/components/util/Timer.svelte';
-	import buzzerWav from '$lib/assets/sounds/buzzer.wav';
 
 	interface BuzzerStatusProps {
 		websocket: WebSocket;
@@ -10,8 +8,6 @@
 	}
 
 	let { websocket, players }: BuzzerStatusProps = $props();
-
-	const buzzerSound = new Sound(buzzerWav, { volume: 0.55 });
 
 	let isActive = $state(false);
 	let activePlayer: Player | undefined = $state(undefined);
@@ -29,7 +25,6 @@
 			} else if (data.type_ === 'buzzer_clicked') {
 				const event: BuzzerClickedEvent = data;
 				activePlayer = players.get(event.player_id);
-				buzzerSound.play();
 			}
 		});
 	});

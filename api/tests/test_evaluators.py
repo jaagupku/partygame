@@ -1,6 +1,7 @@
 import pytest
 
 from partygame.schemas import Lobby
+import partygame.schemas as schemas
 from partygame.schemas.game_definition import (
     EvaluationRule,
     EvaluationType,
@@ -18,6 +19,18 @@ class FakeRepo:
         self.lobby_fields = {}
         self.steps = {}
         self.scores = {"p1": 0, "p2": 0, "p3": 0}
+        self.component_state = {}
+        self.players = [
+            schemas.Player(
+                id="p1", game_id="g1", name="Player 1", status=schemas.ConnectionStatus.CONNECTED
+            ),
+            schemas.Player(
+                id="p2", game_id="g1", name="Player 2", status=schemas.ConnectionStatus.CONNECTED
+            ),
+            schemas.Player(
+                id="p3", game_id="g1", name="Player 3", status=schemas.ConnectionStatus.CONNECTED
+            ),
+        ]
 
     async def set_lobby_fields(self, game_id: str, **fields):
         self.lobby_fields.setdefault(game_id, {}).update(fields)
@@ -33,6 +46,18 @@ class FakeRepo:
 
     async def set_player_score(self, game_id: str, player_id: str, score: int):
         self.scores[player_id] = score
+
+    async def get_players(self, game_id: str):
+        return self.players
+
+    async def get_state_revision(self, game_id: str) -> int:
+        return 0
+
+    async def set_component_state(self, game_id: str, component_id: str, fields: dict):
+        self.component_state.setdefault(game_id, {})[component_id] = fields
+
+    async def get_component_state(self, game_id: str, component_id: str) -> dict:
+        return self.component_state.get(game_id, {}).get(component_id, {})
 
 
 class ExactTextDefinitionProvider:
@@ -74,9 +99,11 @@ async def test_exact_text_evaluation_awards_matching_answers():
     await service.submit_player_input(lobby, "p2", "paris")
     await service.submit_player_input(lobby, "p3", "London")
 
-    score_event = await service.evaluate_auto_step(lobby)
+    score_events = await service.evaluate_auto_step(lobby)
 
-    assert score_event.updates == {"p1": 3, "p2": 3}
+    assert repo.scores["p1"] == 3
+    assert repo.scores["p2"] == 3
+    assert score_events[-1].updates == {}
 
 
 class HostJudgedFallbackProvider:
@@ -117,9 +144,9 @@ async def test_host_disabled_host_judged_text_falls_back_to_exact_text():
     await service.submit_player_input(lobby, "p1", "blue")
     await service.submit_player_input(lobby, "p2", "green")
 
-    score_event = await service.evaluate_auto_step(lobby)
+    score_events = await service.evaluate_auto_step(lobby)
 
-    assert score_event.updates == {"p1": 2}
+    assert score_events[-1].updates == {"p1": 2}
 
 
 class RadioFallbackProvider:
@@ -163,9 +190,9 @@ async def test_host_disabled_host_judged_radio_falls_back_to_exact_text():
     await service.submit_player_input(lobby, "p1", "Blue")
     await service.submit_player_input(lobby, "p2", "Green")
 
-    score_event = await service.evaluate_auto_step(lobby)
+    score_events = await service.evaluate_auto_step(lobby)
 
-    assert score_event.updates == {"p1": 2}
+    assert score_events[-1].updates == {"p1": 2}
 
 
 class WeightedCheckboxProvider:
@@ -216,6 +243,8 @@ async def test_multi_select_weighted_evaluation_sums_selected_option_points():
     await service.submit_player_input(lobby, "p2", ["Pluto"])
     await service.submit_player_input(lobby, "p3", ["Unknown"])
 
-    score_event = await service.evaluate_auto_step(lobby)
+    score_events = await service.evaluate_auto_step(lobby)
 
-    assert score_event.updates == {"p1": 5, "p2": -1}
+    assert repo.scores["p1"] == 5
+    assert repo.scores["p2"] == 0
+    assert score_events[-1].updates == {}

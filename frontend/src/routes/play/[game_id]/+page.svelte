@@ -7,12 +7,14 @@
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import ReactionBar from '$lib/components/controller/ReactionBar.svelte';
 	import FinaleControllerCard from '$lib/components/endgame/FinaleControllerCard.svelte';
+	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
 	import { connectionLabel, messages, onOffLabel, pageTitle } from '$lib/i18n';
 	import type { ReactionEmoji } from '$lib/reactions.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { onDestroy, onMount } from 'svelte';
-	import type { Writable } from 'svelte/store';
+	import { get, type Writable } from 'svelte/store';
+	import { createSoundSystem } from '$lib/sound-system.js';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
@@ -53,6 +55,7 @@
 		},
 		onKick
 	);
+	const soundSystem = createSoundSystem('controller');
 
 	let isConnected = $state(false);
 	let answerValue = $state<string | number>('');
@@ -174,12 +177,18 @@
 		if (!browser || !$player?.game_id || !$player?.id) {
 			return;
 		}
+		soundSystem.syncState(get(controller), { baseline: true });
+		soundSystem.start(() => get(controller));
 		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 		socket = createReconnectingWebSocket(
 			`${protocol}://${window.location.host}/api/v1/game/${$player.game_id}/controller/${$player.id}`,
 			{
 				onMessage: (data) => {
+					const message = JSON.parse(data) as { type_: string };
+					const resyncSnapshot = message.type_ === 'runtime_snapshot' && resyncPending;
 					const result = controller.onMessage(data);
+					soundSystem.handleEvent(message, get(controller));
+					soundSystem.syncState(get(controller), { suppressCues: resyncSnapshot });
 					if (result === 'resync_required') {
 						requestResync();
 					} else if (result === 'snapshot_applied') {
@@ -208,6 +217,7 @@
 				clearInterval(finaleAutoplayIntervalId);
 				finaleAutoplayIntervalId = null;
 			}
+			soundSystem.dispose();
 			socket?.close();
 			socket = null;
 		};
@@ -222,6 +232,7 @@
 			clearInterval(finaleAutoplayIntervalId);
 			finaleAutoplayIntervalId = null;
 		}
+		soundSystem.dispose();
 		socket?.close();
 		socket = null;
 	});
@@ -393,6 +404,7 @@
 		if (playerInputDisabled || buzzerLockedOut || !$controller.buzzerActive) {
 			return;
 		}
+		triggerBuzzerHapticPulse();
 		pendingSubmissionStepId = $controller.activeStep?.id;
 		sendAction({
 			type_: 'player_input_submitted',

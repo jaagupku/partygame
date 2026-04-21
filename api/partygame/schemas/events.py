@@ -38,6 +38,7 @@ class Event(StrEnum):
     TOGGLE_END_GAME_AUTOPLAY = auto()
     PLAYER_REACTION = auto()
     MEDIA_PLAYBACK = auto()
+    ANSWER_JUDGED = auto()
 
 
 class BaseEvent(BaseModel):
@@ -140,6 +141,17 @@ class BuzzerReviewedEvent(BaseEvent):
     player_id: str
     accepted: bool
     disabled_buzzer_player_ids: list[str] = Field(default_factory=list)
+
+
+class AnswerJudgedEvent(BaseEvent):
+    type_: str = Event.ANSWER_JUDGED
+    player_id: str
+    accepted: bool
+    source: Literal["host_review", "auto_evaluation"]
+    input_kind: PlayerInputKind = PlayerInputKind.NONE
+    batch_id: str
+    batch_index: int = 0
+    batch_size: int = 1
 
 
 class RuntimeTimerState(BaseModel):

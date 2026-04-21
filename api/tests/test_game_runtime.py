@@ -427,7 +427,7 @@ async def test_review_submission_awards_points_and_completes_review():
         schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
     )
 
-    assert [event.type_ for event in events] == ["buzzer_reviewed", "update_score"]
+    assert [event.type_ for event in events] == ["answer_judged", "buzzer_reviewed", "update_score"]
     assert repo.scores["p1"] == 2
     assert lobby.phase == "step_complete"
     assert repo.steps["g1"]["media_reveal_state"] == "revealed"
@@ -469,7 +469,7 @@ async def test_rejected_buzzer_disables_player_and_keeps_step_in_review():
         schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
     )
 
-    assert [event.type_ for event in events] == ["buzzer_reviewed"]
+    assert [event.type_ for event in events] == ["answer_judged", "buzzer_reviewed"]
     assert lobby.phase == "host_review"
     assert repo.steps["g1"]["buzzed_player_id"] == ""
     assert repo.steps["g1"]["disabled_buzzer_player_ids"] == ["p1"]
@@ -595,14 +595,15 @@ async def test_auto_evaluate_marks_all_submissions_reviewed():
     await service.submit_player_input(lobby, "p1", 27)
     await service.submit_player_input(lobby, "p2", 10)
 
-    scores_event = await service.evaluate_auto_step(lobby)
+    score_events = await service.evaluate_auto_step(lobby)
     review_events = await service.review_submission(
         lobby,
         schemas.ReviewSubmissionEvent(player_id="p1", accepted=True),
     )
 
     assert repo.scores["p1"] == 4
-    assert scores_event.updates == {}
+    assert score_events[-1].type_ == "scores_updated"
+    assert score_events[-1].updates == {}
     assert repo.steps["g1"]["reviewed_player_ids"] == ["p1", "p2"]
     assert review_events == []
 
@@ -620,7 +621,12 @@ async def test_hostless_closes_step_when_all_players_have_answered():
     assert first_handled is True
     assert first_events == []
     assert second_handled is True
-    assert [event.type_ for event in second_events] == ["scores_updated", "runtime_snapshot"]
+    assert [event.type_ for event in second_events] == [
+        "answer_judged",
+        "answer_judged",
+        "scores_updated",
+        "runtime_snapshot",
+    ]
     assert lobby.phase == "step_complete"
     assert repo.steps["g1"]["display_phase"] == "answer_reveal"
     assert repo.steps["g1"]["revealed_answer_value"] == 27
@@ -653,7 +659,12 @@ async def test_inactive_host_closes_step_when_all_players_have_answered():
     assert first_handled is True
     assert first_events == []
     assert second_handled is True
-    assert [event.type_ for event in second_events] == ["scores_updated", "runtime_snapshot"]
+    assert [event.type_ for event in second_events] == [
+        "answer_judged",
+        "answer_judged",
+        "scores_updated",
+        "runtime_snapshot",
+    ]
     assert lobby.phase == "step_complete"
     assert repo.steps["g1"]["display_phase"] == "answer_reveal"
     assert repo.steps["g1"]["revealed_answer_value"] == "hello"
@@ -713,7 +724,12 @@ async def test_hostless_round_end_shows_scoreboard_during_answer_reveal():
     events, handled = await service.submit_player_input(lobby, "p2", "ok")
 
     assert handled is True
-    assert [event.type_ for event in events] == ["scores_updated", "runtime_snapshot"]
+    assert [event.type_ for event in events] == [
+        "answer_judged",
+        "answer_judged",
+        "scores_updated",
+        "runtime_snapshot",
+    ]
     assert repo.steps["g1"]["scoreboard_visible"] is True
 
 

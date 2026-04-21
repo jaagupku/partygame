@@ -200,6 +200,17 @@ type BuzzerReviewedEvent = {
 	disabled_buzzer_player_ids: string[];
 };
 
+type AnswerJudgedEvent = {
+	type_: 'answer_judged';
+	player_id: string;
+	accepted: boolean;
+	source: 'host_review' | 'auto_evaluation';
+	input_kind: PlayerInputKind;
+	batch_id: string;
+	batch_index: number;
+	batch_size: number;
+};
+
 type RuntimeTimerState = {
 	seconds?: number;
 	enforced: boolean;

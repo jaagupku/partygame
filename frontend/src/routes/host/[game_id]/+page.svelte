@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import FinaleDisplay from '$lib/components/endgame/FinaleDisplay.svelte';
@@ -10,6 +11,7 @@
 	import { createGameStore } from '$lib/game-store.js';
 	import { connectionLabel, formatPlayerStatus, messages, onOffLabel, pageTitle } from '$lib/i18n';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
+	import { createSoundSystem } from '$lib/sound-system.js';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
@@ -18,6 +20,7 @@
 		data.definitionTitle || data.lobby.definition_id || $messages.definitions.untitledDefinition;
 
 	const game = createGameStore(lobby());
+	const soundSystem = createSoundSystem('host-display');
 	let isConnected = $state(false);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
@@ -81,12 +84,18 @@
 		if (!browser) {
 			return;
 		}
+		soundSystem.syncState(get(game), { baseline: true });
+		soundSystem.start(() => get(game));
 		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 		socket = createReconnectingWebSocket(
 			`${protocol}://${window.location.host}/api/v1/game/${lobby().id}/host`,
 			{
 				onMessage: (data) => {
+					const message = JSON.parse(data) as { type_: string };
+					const resyncSnapshot = message.type_ === 'runtime_snapshot' && resyncPending;
 					const result = game.onMessage(data);
+					soundSystem.handleEvent(message, get(game));
+					soundSystem.syncState(get(game), { suppressCues: resyncSnapshot });
 					if (result === 'resync_required') {
 						requestResync();
 					} else if (result === 'snapshot_applied') {
@@ -118,6 +127,7 @@
 				clearInterval(reactionCleanupIntervalId);
 				reactionCleanupIntervalId = null;
 			}
+			soundSystem.dispose();
 			socket?.close();
 			socket = null;
 		};
@@ -132,6 +142,7 @@
 			clearInterval(reactionCleanupIntervalId);
 			reactionCleanupIntervalId = null;
 		}
+		soundSystem.dispose();
 		socket?.close();
 		socket = null;
 	});
