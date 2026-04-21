@@ -286,6 +286,16 @@
 		});
 	}
 
+	function toggleMediaPlayback() {
+		if ($controller.activeStep?.media?.type_ !== 'video') {
+			return;
+		}
+		sendAction({
+			type_: 'media_playback',
+			paused: !$controller.activeStep.media.paused
+		});
+	}
+
 	function evaluateStep() {
 		sendAction({ type_: 'scores_updated' });
 	}
@@ -806,6 +816,13 @@
 					<button type="button" class="btn btn-ghost" onclick={toggleScoreboardVisibility}>
 						{$controller.scoreboardVisible ? 'Hide Scoreboard' : 'Show Scoreboard'}
 					</button>
+					{#if $controller.activeStep?.media?.type_ === 'video'}
+						<button type="button" class="btn btn-ghost" onclick={toggleMediaPlayback}>
+							{$controller.activeStep.media.paused
+								? $messages.gameplay.resumeMedia
+								: $messages.gameplay.pauseMedia}
+						</button>
+					{/if}
 					{#if !$controller.hostEnabled || $controller.activeStep?.evaluation_type !== 'host_judged'}
 						<button type="button" class="btn btn-ghost" onclick={evaluateStep}>Auto Evaluate</button
 						>

@@ -211,6 +211,7 @@ type RuntimeTimerState = {
 type RuntimeImageMediaState = {
 	type_: 'image';
 	src: string;
+	paused: boolean;
 	reveal?: string;
 	loop: boolean;
 	zoom_start?: number;
@@ -225,6 +226,7 @@ type RuntimeImageMediaState = {
 type RuntimeAudioMediaState = {
 	type_: 'audio';
 	src: string;
+	paused: boolean;
 	reveal?: string;
 	loop: boolean;
 	reveal_state: string;
@@ -236,6 +238,7 @@ type RuntimeAudioMediaState = {
 type RuntimeVideoMediaState = {
 	type_: 'video';
 	src: string;
+	paused: boolean;
 	reveal?: string;
 	loop: boolean;
 	reveal_state: string;
@@ -377,6 +380,11 @@ type RevealedSubmissionEvent = {
 type StepAdvancedEvent = {
 	type_: 'step_advanced';
 	step_index: number;
+};
+
+type MediaPlaybackEvent = {
+	type_: 'media_playback';
+	paused: boolean;
 };
 
 type ScoresUpdatedEvent = {

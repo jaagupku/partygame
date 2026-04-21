@@ -110,6 +110,7 @@ class GameRuntimeService:
                 "step_index": lobby.current_step,
                 "display_phase": "question_active",
                 "scoreboard_visible": False,
+                "media_paused": False,
                 "answers": {},
                 "evaluated": False,
                 "buzzer_active": lobby.host_enabled
@@ -324,6 +325,22 @@ class GameRuntimeService:
             return []
 
         await self.repo.set_step_cache(lobby.id, {"scoreboard_visible": visible})
+        return [await self.build_snapshot(lobby)]
+
+    async def set_media_paused(
+        self,
+        lobby: schemas.Lobby,
+        paused: bool,
+    ) -> list[schemas.BaseEvent]:
+        step = await self.get_current_step(lobby)
+        if step is None or step.media is None or step.media.type_ != MediaType.VIDEO:
+            return []
+
+        state = await self.get_step_state(lobby.id)
+        if bool(state.get("media_paused")) == paused:
+            return [await self.build_snapshot(lobby)]
+
+        await self.repo.set_step_cache(lobby.id, {"media_paused": paused})
         return [await self.build_snapshot(lobby)]
 
     async def update_score(
@@ -1003,6 +1020,7 @@ class GameRuntimeService:
         return schemas.RuntimeMediaState(
             type_=str(media.type_),
             src=media.src,
+            paused=bool(step_state.get("media_paused")),
             reveal=str(media.reveal),
             loop=media.loop,
             zoom_start=media.zoom_start,

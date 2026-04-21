@@ -88,7 +88,7 @@
 	{:else}
 		<video
 			bind:this={videoElement}
-			class={`w-full rounded-xl ${stageVariant ? 'max-h-[65vh] object-cover' : ''}`}
+			class={`w-full rounded-xl ${stageVariant ? 'mx-auto block max-h-[65vh] max-w-full object-contain' : ''}`}
 			autoplay
 			controls
 			loop={step.media.loop}
