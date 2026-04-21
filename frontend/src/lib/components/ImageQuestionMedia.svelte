@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import {
+		DEFAULT_ZOOM_OUT_ORIGIN_X,
+		DEFAULT_ZOOM_OUT_ORIGIN_Y,
+		DEFAULT_ZOOM_OUT_START
+	} from '$lib/media/image-reveal';
 
 	interface ImageQuestionMediaProps {
 		step: RuntimeStepState;
@@ -19,6 +24,10 @@
 	let imageWrapWidth = $state(0);
 	let imageWrapHeight = $state(0);
 
+	function getImageMedia(media: RuntimeStepState['media']): RuntimeImageMediaState | null {
+		return media?.type_ === 'image' ? media : null;
+	}
+
 	function initializeCircleMotion(key: string) {
 		const angle = Math.random() * Math.PI * 2;
 		const speed = 0.18 + Math.random() * 0.18;
@@ -31,18 +40,36 @@
 	}
 
 	const revealState = $derived(step.media?.reveal_state ?? 'idle');
+	const imageMedia = $derived(getImageMedia(step.media));
 	const revealElapsedSeconds = $derived.by(() => {
-		const baseElapsed = Math.max(0, step.media?.reveal_elapsed_seconds ?? 0);
-		const startedAt = step.media?.reveal_started_at;
+		const baseElapsed = Math.max(0, imageMedia?.reveal_elapsed_seconds ?? 0);
+		const startedAt = imageMedia?.reveal_started_at;
 		if (revealState !== 'running' || !startedAt) {
 			return baseElapsed;
 		}
 		return baseElapsed + Math.max(0, nowMs / 1000 - startedAt);
 	});
 	const revealDurationSeconds = $derived(step.media?.reveal_duration_seconds ?? 14);
-	const revealProgress = $derived(
-		Math.min(revealElapsedSeconds / Math.max(revealDurationSeconds, 1), 1)
-	);
+	const timerProgress = $derived.by(() => {
+		const totalDuration = step.timer.seconds;
+		if (totalDuration === undefined || totalDuration === null) {
+			return null;
+		}
+		const remainingSeconds =
+			step.timer.ends_at !== undefined && step.timer.ends_at !== null
+				? Math.max(0, step.timer.ends_at - nowMs / 1000)
+				: (step.timer.remaining_seconds ?? totalDuration);
+		return Math.min(Math.max(1 - remainingSeconds / Math.max(totalDuration, 1), 0), 1);
+	});
+	const revealProgress = $derived.by(() => {
+		if (revealState === 'revealed') {
+			return 1;
+		}
+		if (timerProgress !== null) {
+			return timerProgress;
+		}
+		return Math.min(revealElapsedSeconds / Math.max(revealDurationSeconds, 1), 1);
+	});
 	const imageRevealClass = $derived(
 		`${step.media?.reveal ? `reveal-${step.media.reveal}` : 'reveal-none'} reveal-state-${revealState}`
 	);
@@ -57,19 +84,22 @@
 		return minDimension * (0.07 + 0.11 * revealProgress);
 	});
 	const imageStyle = $derived.by(() => {
-		if (!step.media || revealState === 'revealed' || step.media.reveal === 'none') {
+		if (!imageMedia || revealState === 'revealed' || imageMedia.reveal === 'none') {
 			return '';
 		}
-		if (step.media.reveal === 'blur_to_clear') {
+		if (imageMedia.reveal === 'blur_to_clear') {
 			const blur = 18 * (1 - revealProgress);
 			const scale = 1 + 0.04 * (1 - revealProgress);
 			return `filter: blur(${blur}px); transform: scale(${scale});`;
 		}
-		if (step.media.reveal === 'zoom_out') {
-			const scale = 1 + 1.4 * (1 - revealProgress);
-			return `transform: scale(${scale});`;
+		if (imageMedia.reveal === 'zoom_out') {
+			const startZoom = imageMedia.zoom_start ?? DEFAULT_ZOOM_OUT_START;
+			const originX = (imageMedia.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100;
+			const originY = (imageMedia.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100;
+			const scale = 1 + (startZoom - 1) * (1 - revealProgress);
+			return `transform: scale(${scale}); transform-origin: ${originX}% ${originY}%;`;
 		}
-		if (step.media.reveal === 'blur_circle') {
+		if (imageMedia.reveal === 'blur_circle') {
 			return 'filter: blur(18px);';
 		}
 		return '';
@@ -103,7 +133,7 @@
 
 		const tick = () => {
 			nowMs = Date.now();
-			if (step.media?.reveal === 'blur_circle') {
+			if (imageMedia?.reveal === 'blur_circle') {
 				const timestamp = performance.now();
 				const radiusX = imageWrapWidth > 0 ? circleRadiusPx / imageWrapWidth : 0;
 				const radiusY = imageWrapHeight > 0 ? circleRadiusPx / imageWrapHeight : 0;
@@ -173,7 +203,7 @@
 				class={`media-image ${stageVariant ? 'media-image-stage' : ''}`}
 				style={imageStyle}
 			/>
-			{#if step.media.reveal === 'blur_circle' && revealState !== 'revealed'}
+			{#if imageMedia?.reveal === 'blur_circle' && revealState !== 'revealed'}
 				<div
 					class="media-spotlight"
 					style={`background-image:url('${step.media.src}'); clip-path:${circleClipPath};`}

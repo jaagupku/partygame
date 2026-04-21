@@ -42,6 +42,9 @@ class MediaDefinition(BaseModel):
     src: str
     reveal: ImageRevealMode = ImageRevealMode.NONE
     loop: bool = False
+    zoom_start: float | None = Field(default=None, ge=1.0)
+    zoom_origin_x: float | None = Field(default=None, ge=0.0, le=1.0)
+    zoom_origin_y: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class TimerDefinition(BaseModel):

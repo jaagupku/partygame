@@ -1,6 +1,11 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import { getYouTubeMedia } from '$lib/media/youtube.js';
+	import {
+		DEFAULT_ZOOM_OUT_ORIGIN_X,
+		DEFAULT_ZOOM_OUT_ORIGIN_Y,
+		DEFAULT_ZOOM_OUT_START
+	} from '$lib/media/image-reveal';
 	import { messages } from '$lib/i18n';
 	import { IMAGE_REVEALS, MEDIA_TYPES } from './helpers';
 
@@ -16,7 +21,11 @@
 	let { step, uploadKey, onAddMedia, onRemoveMedia, onUpdateMediaType, onUploadMedia }: Props =
 		$props();
 
-	function getMediaTypeLabel(mediaType: (typeof MEDIA_TYPES)[number]) {
+	function getImageMedia(media: StepDefinition['media']): ImageMediaDefinition | null {
+		return media?.type_ === 'image' ? media : null;
+	}
+
+	function getMediaTypeLabel(mediaType: string) {
 		if (mediaType === 'image') {
 			return 'Image';
 		}
@@ -26,7 +35,7 @@
 		return 'Video';
 	}
 
-	function getMediaTypeHelp(mediaType: (typeof MEDIA_TYPES)[number]) {
+	function getMediaTypeHelp(mediaType: string) {
 		if (mediaType === 'image') {
 			return $messages.editor.mediaTypeImageHelp;
 		}
@@ -36,7 +45,7 @@
 		return $messages.editor.mediaTypeVideoHelp;
 	}
 
-	function getMediaTypeAccept(mediaType: (typeof MEDIA_TYPES)[number]) {
+	function getMediaTypeAccept(mediaType: string) {
 		if (mediaType === 'image') {
 			return 'image/*,.png,.jpg,.jpeg,.gif,.webp,.svg,.avif';
 		}
@@ -61,6 +70,92 @@
 
 	function getRevealLabel(revealMode: (typeof IMAGE_REVEALS)[number]) {
 		return $messages.editor.imageReveal[revealMode].label;
+	}
+
+	function getImagePreviewStyle() {
+		const imageMedia = getImageMedia(step.media);
+		if (!imageMedia) {
+			return '';
+		}
+		if (imageMedia.reveal !== 'zoom_out') {
+			return '';
+		}
+		const zoom = imageMedia.zoom_start ?? DEFAULT_ZOOM_OUT_START;
+		const originX = (imageMedia.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100;
+		const originY = (imageMedia.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100;
+		return `transform: scale(${zoom}); transform-origin: ${originX}% ${originY}%;`;
+	}
+
+	const ZOOM_SLIDER_MIN = 0;
+	const ZOOM_SLIDER_MAX = 9;
+	const ZOOM_SLIDER_STEP = 0.1;
+
+	function zoomFactorFromSlider(value: number) {
+		return 2 ** (value / 2);
+	}
+
+	function zoomSliderFromFactor(value: number) {
+		return Math.max(ZOOM_SLIDER_MIN, Math.min(ZOOM_SLIDER_MAX, Math.log2(value) * 2));
+	}
+
+	function getZoomSliderValue() {
+		const imageMedia = getImageMedia(step.media);
+		return zoomSliderFromFactor(imageMedia?.zoom_start ?? DEFAULT_ZOOM_OUT_START);
+	}
+
+	function getZoomDisplayValue() {
+		return zoomFactorFromSlider(getZoomSliderValue());
+	}
+
+	function bindOptionalNumber(
+		event: Event,
+		assign: (value: number | undefined) => void,
+		{
+			min,
+			max
+		}: {
+			min?: number;
+			max?: number;
+		} = {}
+	) {
+		const input = event.currentTarget as HTMLInputElement;
+		const raw = input.value.trim();
+		if (!raw) {
+			assign(undefined);
+			return;
+		}
+		const parsed = Number(raw);
+		if (Number.isNaN(parsed)) {
+			return;
+		}
+		const bounded = Math.min(max ?? parsed, Math.max(min ?? parsed, parsed));
+		assign(bounded);
+	}
+
+	function setZoomFocusFromPreview(event: MouseEvent) {
+		const imageMedia = getImageMedia(step.media);
+		if (!imageMedia || imageMedia.reveal !== 'zoom_out') {
+			return;
+		}
+		const target = event.currentTarget as HTMLElement;
+		const rect = target.getBoundingClientRect();
+		if (rect.width <= 0 || rect.height <= 0) {
+			return;
+		}
+		const x = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+		const y = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1);
+		imageMedia.zoom_origin_x = x;
+		imageMedia.zoom_origin_y = y;
+	}
+
+	function resetZoomDefaults() {
+		const imageMedia = getImageMedia(step.media);
+		if (!imageMedia) {
+			return;
+		}
+		imageMedia.zoom_start = undefined;
+		imageMedia.zoom_origin_x = undefined;
+		imageMedia.zoom_origin_y = undefined;
 	}
 </script>
 
@@ -139,6 +234,99 @@
 								</button>
 							{/each}
 						</div>
+
+						{#if step.media.reveal === 'zoom_out'}
+							<div class="grid gap-4 md:grid-cols-3">
+								<label class="input-wrap">
+									<div class="flex items-center justify-between gap-3">
+										<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+											{$messages.editor.zoomStart}
+										</span>
+										<span class="text-sm font-semibold text-slate-700">
+											{getZoomDisplayValue().toFixed(1)}x
+										</span>
+									</div>
+									<input
+										type="range"
+										min={ZOOM_SLIDER_MIN}
+										max={ZOOM_SLIDER_MAX}
+										step={ZOOM_SLIDER_STEP}
+										class="h-3 w-full cursor-pointer accent-sky-500"
+										value={getZoomSliderValue()}
+										oninput={(event) =>
+											bindOptionalNumber(event, (value) => {
+												const imageMedia = getImageMedia(step.media);
+												if (!imageMedia) {
+													return;
+												}
+												imageMedia.zoom_start =
+													value === undefined ? undefined : zoomFactorFromSlider(value);
+											}, { min: ZOOM_SLIDER_MIN, max: ZOOM_SLIDER_MAX })}
+									/>
+									<p class="text-sm text-slate-500">{$messages.editor.zoomStartHelp}</p>
+								</label>
+
+								<label class="input-wrap">
+									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+										{$messages.editor.zoomOriginX}
+									</span>
+									<input
+										type="number"
+										min="0"
+										max="100"
+										step="1"
+										class="input text-lg"
+										value={step.media.zoom_origin_x !== undefined
+											? step.media.zoom_origin_x * 100
+											: ''}
+										placeholder="58"
+										oninput={(event) =>
+											bindOptionalNumber(event, (value) => {
+												const imageMedia = getImageMedia(step.media);
+												if (!imageMedia) {
+													return;
+												}
+												imageMedia.zoom_origin_x =
+													value === undefined ? undefined : value / 100;
+											}, { min: 0, max: 100 })}
+									/>
+									<p class="text-sm text-slate-500">{$messages.editor.zoomOriginXHelp}</p>
+								</label>
+
+								<label class="input-wrap">
+									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+										{$messages.editor.zoomOriginY}
+									</span>
+									<input
+										type="number"
+										min="0"
+										max="100"
+										step="1"
+										class="input text-lg"
+										value={step.media.zoom_origin_y !== undefined
+											? step.media.zoom_origin_y * 100
+											: ''}
+										placeholder="42"
+										oninput={(event) =>
+											bindOptionalNumber(event, (value) => {
+												const imageMedia = getImageMedia(step.media);
+												if (!imageMedia) {
+													return;
+												}
+												imageMedia.zoom_origin_y =
+													value === undefined ? undefined : value / 100;
+											}, { min: 0, max: 100 })}
+									/>
+									<p class="text-sm text-slate-500">{$messages.editor.zoomOriginYHelp}</p>
+								</label>
+							</div>
+							<div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+								<p>{$messages.editor.zoomFocusPreviewHelp}</p>
+								<button class="btn btn-ghost text-sm" type="button" onclick={resetZoomDefaults}>
+									{$messages.editor.resetZoomDefaults}
+								</button>
+							</div>
+						{/if}
 					{/if}
 
 					<label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
@@ -172,11 +360,33 @@
 					</p>
 					{#if step.media.src}
 						{#if step.media.type_ === 'image'}
-							<img
-								src={step.media.src}
-								alt={step.title}
-								class="mt-3 max-h-64 w-full rounded-2xl object-cover"
-							/>
+							<div class="mt-3 grid gap-2">
+								<button
+									type="button"
+									class={`relative overflow-hidden rounded-2xl bg-slate-100 ${
+										step.media.reveal === 'zoom_out'
+											? 'cursor-crosshair'
+											: 'cursor-default'
+									}`}
+									onclick={setZoomFocusFromPreview}
+								>
+									<img
+										src={step.media.src}
+										alt={step.title}
+										class="max-h-64 w-full object-cover transition-transform duration-200"
+										style={getImagePreviewStyle()}
+									/>
+									{#if step.media.reveal === 'zoom_out'}
+										<div
+											class="pointer-events-none absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-sky-500/30 shadow-[0_0_0_1px_rgba(14,165,233,0.6)]"
+											style={`left:${(step.media.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100}%; top:${(step.media.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100}%;`}
+										></div>
+									{/if}
+								</button>
+								{#if step.media.reveal === 'zoom_out'}
+									<p class="text-xs text-slate-500">{$messages.editor.zoomFocusPreviewCaption}</p>
+								{/if}
+							</div>
 						{:else if step.media.type_ === 'audio'}
 							<audio class="mt-3 w-full" controls src={step.media.src}></audio>
 						{:else if step.media.type_ === 'video'}

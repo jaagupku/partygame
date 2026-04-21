@@ -1,0 +1,3 @@
+export const DEFAULT_ZOOM_OUT_START = 2.4;
+export const DEFAULT_ZOOM_OUT_ORIGIN_X = 0.58;
+export const DEFAULT_ZOOM_OUT_ORIGIN_Y = 0.42;
