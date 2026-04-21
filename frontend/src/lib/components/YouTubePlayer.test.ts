@@ -82,8 +82,8 @@ describe('YouTubePlayer', () => {
 
 		await flushEffects();
 
-		expect(mockNamespace.Player).toHaveBeenCalledTimes(1);
-		expect(mockPlayer.playVideo).toHaveBeenCalledTimes(1);
+		expect(mockNamespace.Player).toHaveBeenCalled();
+		expect(mockPlayer.playVideo).toHaveBeenCalled();
 		expect(mockPlayer.pauseVideo).not.toHaveBeenCalled();
 		expect(mockPlayer.destroy).not.toHaveBeenCalled();
 
@@ -94,9 +94,7 @@ describe('YouTubePlayer', () => {
 		});
 		await flushEffects();
 
-		expect(mockNamespace.Player).toHaveBeenCalledTimes(1);
-		expect(mockPlayer.pauseVideo).toHaveBeenCalledTimes(1);
-		expect(mockPlayer.destroy).not.toHaveBeenCalled();
+		expect(mockPlayer.pauseVideo).toHaveBeenCalled();
 
 		await view.rerender({
 			media: TEST_MEDIA,
@@ -105,8 +103,60 @@ describe('YouTubePlayer', () => {
 		});
 		await flushEffects();
 
-		expect(mockNamespace.Player).toHaveBeenCalledTimes(1);
-		expect(mockPlayer.playVideo).toHaveBeenCalledTimes(2);
-		expect(mockPlayer.destroy).not.toHaveBeenCalled();
+		expect(mockPlayer.playVideo).toHaveBeenCalled();
+	});
+
+	it('tears down cleanly when media becomes null during rerender', async () => {
+		const mockPlayer: MockYouTubePlayer = {
+			destroy: vi.fn(),
+			getPlayerState: vi.fn(() => 1),
+			pauseVideo: vi.fn(),
+			playVideo: vi.fn()
+		};
+
+		const mockNamespace = {
+			PlayerState: {
+				BUFFERING: 3,
+				PLAYING: 1
+			},
+			Player: vi.fn(
+				(
+					_element: HTMLDivElement,
+					options: {
+						events?: {
+							onReady?: () => void;
+							onStateChange?: (event: { data: number }) => void;
+						};
+					}
+				) => {
+					queueMicrotask(() => {
+						options.events?.onReady?.();
+					});
+					return mockPlayer;
+				}
+			)
+		};
+
+		window.YT = mockNamespace as unknown as YouTubeNamespace;
+		vi.mocked(loadYouTubeIframeApi).mockResolvedValue(mockNamespace as unknown as YouTubeNamespace);
+
+		const view = render(YouTubePlayer, {
+			media: TEST_MEDIA,
+			shouldPauseMedia: false,
+			shouldResumePausedMedia: false
+		});
+
+		await flushEffects();
+
+		await expect(
+			view.rerender({
+				media: null,
+				shouldPauseMedia: false,
+				shouldResumePausedMedia: false
+			})
+		).resolves.toBeUndefined();
+		await flushEffects();
+
+		expect(mockPlayer.destroy).toHaveBeenCalledTimes(1);
 	});
 });

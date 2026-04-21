@@ -1,61 +1,123 @@
 # Partygame
 
-A browser based game controlled with clients in smartphone or computers.
+Partygame is a browser-based party game platform for playing quiz and host-led games on a shared screen while players join from their phones or laptops.
 
-Create a game, connect computer with big screen. Connect with your smartphone as a controller.
+The project is built for the classic living-room, classroom, or event setup:
 
-Frontend written in SvelteKit and backend in FastAPI with Valkey as the in-memory data store.
+- one main screen shows the game
+- one person can act as a host and control the flow
+- players join from their own devices as controllers
+
+Game definitions, realtime lobby state, and controller interactions are handled across a SvelteKit frontend and a FastAPI backend, with Valkey used for in-memory state.
+
+## Overview
+
+Partygame lets you:
+
+- create or define a game
+- open a lobby for players to join
+- run the game on a big screen
+- let players answer from their own devices
+- support both host-driven and automatically evaluated gameplay
+
+The platform is designed around realtime party-game interactions such as:
+
+- buzzer rounds
+- text or number answers
+- ordering tasks
+- media-based prompts with images, audio, or video
+
+## Project Structure
+
+- `frontend/`: SvelteKit app for hosting, playing, creating games, and browsing definitions
+- `api/`: FastAPI backend for lobby state, game flow, websockets, and media
+- `gateway/`: nginx reverse proxy used in the containerized stack
+- `docker-compose.yml`: local development stack
+- `SPEC.md`: product and gameplay reference
+
+## Quick Start
+
+If you want to run the whole stack locally, the easiest path is Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- `valkey` on port `6379`
+- the API service
+- the frontend service
+- the gateway on `http://localhost:80`
+
+Useful health endpoints:
+
+- API: `http://localhost:8000/api/health`
+- Frontend: `http://localhost:3000`
+
+## Local Development
+
+### Backend
+
+From [`api/`](/home/jaagup/theority/partygame/api):
+
+```bash
+poetry install
+poetry run uvicorn partygame:app
+```
+
+Useful checks:
+
+```bash
+poetry run pytest
+poetry run ruff check .
+poetry run black --check .
+poetry run mypy .
+```
+
+### Frontend
+
+From [`frontend/`](/home/jaagup/theority/partygame/frontend):
+
+```bash
+pnpm install
+pnpm run dev -- --host
+```
+
+Useful checks:
+
+```bash
+pnpm run check
+pnpm run lint
+pnpm run build
+```
 
 ## Contributing
 
-### Pre-commit Hooks
+Contributions are welcome. If you are making changes, aim for small, focused updates and check nearby code and tests before introducing new structure.
 
-This project uses pre-commit hooks to maintain code quality. The hooks automatically run before each commit to:
+This repository uses `pre-commit` hooks to help keep formatting and linting consistent.
 
-- Ensure files end with a newline
-- Remove trailing whitespace
-- Format frontend code with Prettier
-- Format backend Python code with Black
-- Lint Python code with Ruff
-- Validate YAML files
+Install and enable them with:
 
-#### Setup
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
-1. Install pre-commit:
-   ```
-   $ pip install pre-commit
-   ```
+Configured hooks include:
 
-2. Install the git hooks:
-   ```
-   $ pre-commit install
-   ```
+- whitespace and end-of-file fixes
+- YAML validation
+- frontend formatting via Prettier
+- backend formatting with Black
+- backend linting with Ruff
 
-3. (Optional) Run hooks on all files to check the current state:
-   ```
-   $ pre-commit run --all-files
-   ```
+## Notes
 
-The hooks will now run automatically on every commit.
+- Prefer `pnpm` for frontend work because the repo uses `pnpm-lock.yaml`
+- The backend targets Python `3.14`
+- Demo media can be seeded from `api/media_seed/` when files are present
 
-## Development
-
-1. Start up dependencies
-   ```
-   $ docker compose up -d
-   ```
-   This starts Valkey on port `6379` for the backend.
-2. Run backend
-   ```
-   $ cd api
-   $ poetry run uvicorn partygame:app --reload --reload-include "api/"
-   ```
-3. Run frontend
-   ```
-   $ cd frontend
-   $ npm run dev -- --host
-   ```
-
-## TODO
-1. GameService, GameSchema, create games, specify display component and controller component.
-Look into lobby.py service `active_components`
+For more implementation details and workflow expectations, see [`AGENTS.md`](/home/jaagup/theority/partygame/AGENTS.md) and [`SPEC.md`](/home/jaagup/theority/partygame/SPEC.md).

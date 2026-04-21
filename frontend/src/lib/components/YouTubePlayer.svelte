@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import type { YouTubeMedia } from '$lib/media/youtube.js';
 	import { loadYouTubeIframeApi } from '$lib/media/youtube.js';
 
 	interface YouTubePlayerProps {
-		media: YouTubeMedia;
+		media: YouTubeMedia | null;
 		loop?: boolean;
 		stageVariant?: boolean;
 		shouldPauseMedia?: boolean;
@@ -34,7 +34,12 @@
 		initializedYouTubeKey = '';
 	}
 
-	const playerKey = $derived(`${media.videoId}:${media.startSeconds}:${loop ? 'loop' : 'once'}`);
+	const playerKey = $derived.by(() => {
+		if (!media?.videoId) {
+			return '';
+		}
+		return `${media.videoId}:${media.startSeconds}:${loop ? 'loop' : 'once'}`;
+	});
 
 	$effect(() => {
 		if (!shouldPauseMedia && !shouldResumePausedMedia) {
@@ -71,7 +76,8 @@
 	});
 
 	$effect(() => {
-		if (!youtubeContainerElement || !playerKey) {
+		const currentMedia = media;
+		if (!youtubeContainerElement || !playerKey || !currentMedia?.videoId) {
 			destroyYouTubePlayer();
 			return;
 		}
@@ -103,14 +109,14 @@
 				};
 				if (loop) {
 					playerVars.loop = 1;
-					playerVars.playlist = media.videoId;
+					playerVars.playlist = currentMedia.videoId;
 				}
-				if (media.startSeconds > 0) {
-					playerVars.start = media.startSeconds;
+				if (currentMedia.startSeconds > 0) {
+					playerVars.start = currentMedia.startSeconds;
 				}
 
 				youtubePlayer = new YT.Player(youtubeContainerElement, {
-					videoId: media.videoId,
+					videoId: currentMedia.videoId,
 					playerVars,
 					events: {
 						onReady: () => {
@@ -119,7 +125,7 @@
 							}
 							youtubePlayerReady = true;
 							youtubeMaskVisible = false;
-							if (shouldPauseMedia) {
+							if (untrack(() => shouldPauseMedia)) {
 								shouldResumeMedia = true;
 								youtubePlayer.pauseVideo();
 								return;
