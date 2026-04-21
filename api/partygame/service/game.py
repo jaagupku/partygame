@@ -507,13 +507,13 @@ class GameRuntimeService:
         elif evaluation_type == EvaluationType.EXACT_NUMBER:
             try:
                 expected = float(step.evaluation.answer)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 expected = None
             if expected is not None:
                 for player_id, value in answers.items():
                     try:
                         numeric = float(value)
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         continue
                     if numeric == expected:
                         new_score = (
@@ -527,14 +527,14 @@ class GameRuntimeService:
         elif evaluation_type == EvaluationType.CLOSEST_NUMBER:
             try:
                 target = float(step.evaluation.answer)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 target = None
             diffs: list[tuple[float, str]] = []
             if target is not None:
                 for player_id, value in answers.items():
                     try:
                         diffs.append((abs(float(value) - target), player_id))
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         continue
             if diffs:
                 diffs.sort(key=lambda item: item[0])
@@ -1067,7 +1067,9 @@ class GameRuntimeService:
         step: StepDefinition,
     ) -> EvaluationType:
         evaluation_type = step.evaluation.type_
-        if evaluation_type != EvaluationType.HOST_JUDGED or await self._has_active_host_player(lobby):
+        if evaluation_type != EvaluationType.HOST_JUDGED or await self._has_active_host_player(
+            lobby
+        ):
             return evaluation_type
         return self._fallback_evaluation_type(step.player_input)
 
@@ -1117,7 +1119,7 @@ class GameRuntimeService:
         if evaluation_type in (EvaluationType.EXACT_NUMBER, EvaluationType.CLOSEST_NUMBER):
             try:
                 return answer is not None and float(answer) == float(answer)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return False
         if evaluation_type == EvaluationType.ORDERING_MATCH:
             return isinstance(answer, list) and any(str(value).strip() for value in answer)

@@ -479,7 +479,7 @@ class ClientController:
                     "emitted_at": float(msg.get("emitted_at") or time()),
                 }
             )
-        except (TypeError, ValueError, ValidationError):
+        except TypeError, ValueError, ValidationError:
             return
         await self.relay_event(event)
 
