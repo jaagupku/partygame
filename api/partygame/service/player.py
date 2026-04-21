@@ -1,10 +1,12 @@
 import asyncio
 import json
 import logging
+from collections import deque
 from time import time
 from typing import Any
+from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from redis.asyncio import Redis
 from fastapi import HTTPException, WebSocket
 
@@ -21,6 +23,8 @@ from partygame.state import GameStateRepository, GameKeyFactory
 log = logging.getLogger(__name__)
 HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS = 4.0
 HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS = 4.5
+PLAYER_REACTION_WINDOW_SECONDS = 2.0
+PLAYER_REACTION_BURST_LIMIT = 8
 
 
 async def refresh_idle_ttl(
@@ -130,6 +134,7 @@ class ClientController:
         self.pubsub = None
         self.send_task: asyncio.Task | None = None
         self.timer_task: asyncio.Task | None = None
+        self.reaction_timestamps: deque[float] = deque()
 
     def _snapshot_for_viewer(
         self,
@@ -431,6 +436,9 @@ class ClientController:
             if self.is_host():
                 await self._schedule_timer_from_snapshot()
             return
+        if msg.get("type_") == Event.PLAYER_REACTION:
+            await self._process_player_reaction(msg)
+            return
         if (
             self.is_host()
             or (msg.get("type_") == Event.START_GAME and self.can_start_hostless_game())
@@ -444,6 +452,36 @@ class ClientController:
             await self.process_controller(json.dumps(msg))
             return
         await publish(self.redis, self.command_channel, msg)
+
+    def _can_send_reactions(self) -> bool:
+        return self.lobby.state == schemas.GameState.RUNNING or self.lobby.phase == "finished"
+
+    def _allow_reaction_now(self) -> bool:
+        now = time()
+        cutoff = now - PLAYER_REACTION_WINDOW_SECONDS
+        while self.reaction_timestamps and self.reaction_timestamps[0] < cutoff:
+            self.reaction_timestamps.popleft()
+        if len(self.reaction_timestamps) >= PLAYER_REACTION_BURST_LIMIT:
+            return False
+        self.reaction_timestamps.append(now)
+        return True
+
+    async def _process_player_reaction(self, msg: dict):
+        if not self._can_send_reactions() or not self._allow_reaction_now():
+            return
+        try:
+            event = schemas.PlayerReactionEvent.model_validate(
+                {
+                    "type_": Event.PLAYER_REACTION,
+                    "player_id": self.player.id,
+                    "reaction": msg.get("reaction"),
+                    "instance_id": msg.get("instance_id") or uuid4().hex,
+                    "emitted_at": float(msg.get("emitted_at") or time()),
+                }
+            )
+        except (TypeError, ValueError, ValidationError):
+            return
+        await self.relay_event(event)
 
     async def start_game(self):
         before_snapshot = await self.runtime.build_snapshot(self.lobby)

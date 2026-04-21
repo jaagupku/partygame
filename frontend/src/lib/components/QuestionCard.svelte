@@ -35,6 +35,7 @@
 	const stageVariant = $derived(variant === 'stage');
 	const showCardTitle = $derived(Boolean(title?.trim()));
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
+	const showInlineRevealedAnswer = $derived(showingAnswerReveal && revealedAnswer && !stageVariant);
 	const isBuzzerStep = $derived(step?.input_kind === 'buzzer');
 	const shouldPauseMedia = $derived(isBuzzerStep && !buzzerActive);
 	const shouldResumePausedMedia = $derived(isBuzzerStep && buzzerActive);
@@ -119,7 +120,7 @@
 				<p class="mt-2 font-extrabold leading-tight text-slate-950">{buzzedPlayerName}</p>
 			</div>
 		{/if}
-		{#if showingAnswerReveal && revealedAnswer}
+		{#if showInlineRevealedAnswer}
 			<div
 				class={`question-card-status rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 ${
 					stageVariant ? 'text-xl md:text-3xl' : 'text-lg'

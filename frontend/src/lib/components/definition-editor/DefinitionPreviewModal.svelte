@@ -2,6 +2,7 @@
 	import 'iconify-icon';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { messages } from '$lib/i18n';
+	import { modalPortal } from './modalPortal';
 
 	type Props = {
 		step?: RuntimeStepState;
@@ -20,7 +21,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-4 md:p-8">
+<div use:modalPortal class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-4 md:p-8">
 	<div
 		class="mx-auto w-full max-w-[90rem] rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl md:p-8"
 	>

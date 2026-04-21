@@ -1,6 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import { messages } from '$lib/i18n';
+	import { modalPortal } from './modalPortal';
 
 	type Props = {
 		roundModalTitle: string;
@@ -33,7 +34,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
+<div use:modalPortal class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
 	<div class="w-full max-w-xl rounded-4xl border border-slate-200 bg-white p-6 shadow-2xl">
 		<div class="flex items-start justify-between gap-4">
 			<div>

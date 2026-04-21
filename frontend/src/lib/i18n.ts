@@ -212,7 +212,18 @@ const en = defineMessages({
 		reveal: 'Reveal',
 		reviewed: 'Reviewed',
 		acceptCustomPoints: (points: number) => `Accept ${points > 0 ? '+' : ''}${points}`,
-		manualScore: 'Manual Score'
+		manualScore: 'Manual Score',
+		reactionBarTitle: 'Reaction Spam',
+		reactionBarHelp: 'Tap fast to send fun reactions to the main screen.',
+		reactionBurstOverlayLabel: 'Live audience reactions',
+		reactionLabels: {
+			laugh: 'Laugh reaction',
+			fire: 'Fire reaction',
+			clap: 'Clap reaction',
+			shock: 'Shock reaction',
+			poop: 'Poop reaction',
+			vomit: 'Vomit reaction'
+		}
 	},
 	timer: {
 		timeRemaining: 'Time remaining',
@@ -334,7 +345,7 @@ const en = defineMessages({
 		configurePointsAboveHelp:
 			'Each checked option awards its configured points. Negative values subtract points.',
 		hostReviewedHelp:
-			'Submissions are reviewed by the host during the game, so no exact answer is required here.',
+			'Submissions are reviewed by the host during the game. Add an optional correct answer or rubric to show on the host screen.',
 		displayOnlyHelp: 'This step is display-only or reviewed outside the automatic scoring flow.',
 		scoringSummary: 'Scoring summary',
 		exactNumberSummary: 'Only the exact number scores.',
@@ -749,7 +760,18 @@ const et: Messages = {
 		reveal: 'Näita',
 		reviewed: 'Üle vaadatud',
 		acceptCustomPoints: (points) => `Kinnita ${points > 0 ? '+' : ''}${points}`,
-		manualScore: 'Käsitsi skoor'
+		manualScore: 'Käsitsi skoor',
+		reactionBarTitle: 'Reaktsioonid',
+		reactionBarHelp: 'Puuduta kiiresti, et saata lõbusaid reaktsioone põhiekraanile.',
+		reactionBurstOverlayLabel: 'Reaalajas publiku reaktsioonid',
+		reactionLabels: {
+			laugh: 'Naerureaktsioon',
+			fire: 'Tule reaktsioon',
+			clap: 'Aplausireaktsioon',
+			shock: 'Üllatusreaktsioon',
+			poop: 'Kaka reaktsioon',
+			vomit: 'Oksereaktsioon'
+		}
 	},
 	timer: {
 		timeRemaining: 'Aega järel',
@@ -869,7 +891,7 @@ const et: Messages = {
 		configurePointsAboveHelp:
 			'Iga märgitud valik annab oma punktid. Negatiivsed väärtused lahutavad punkte.',
 		hostReviewedHelp:
-			'Mängujuht vaatab vastused mängu ajal üle, seega täpset vastust pole siin vaja.',
+			'Mängujuht vaatab vastused mängu ajal üle. Soovi korral lisa õige vastus või hindamisreegel, mida mängujuhile näidata.',
 		displayOnlyHelp:
 			'See samm on ainult näitamiseks või vaadatakse üle väljaspool automaatset hindamist.',
 		scoringSummary: 'Punktide kokkuvõte',

@@ -3,9 +3,11 @@
 	import { goto } from '$app/navigation';
 	import { createControllerStore } from '$lib/controller-store.js';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import ReactionBar from '$lib/components/controller/ReactionBar.svelte';
 	import FinaleControllerCard from '$lib/components/endgame/FinaleControllerCard.svelte';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
 	import { connectionLabel, messages, onOffLabel, pageTitle } from '$lib/i18n';
+	import type { ReactionEmoji } from '$lib/reactions.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { onDestroy, onMount } from 'svelte';
 	import type { Writable } from 'svelte/store';
@@ -44,7 +46,8 @@
 			revealedAnswer: undefined,
 			hostAnswer: undefined,
 			submissions: [],
-			endGame: undefined
+			endGame: undefined,
+			lastReaction: undefined
 		},
 		onKick
 	);
@@ -92,6 +95,7 @@
 			$controller.activeStep?.evaluation_type === 'none' &&
 			$controller.lobbyPhase === 'question_active'
 	);
+	const canSendReactions = $derived($controller.gameState !== 'waiting_for_players');
 
 	$effect(() => {
 		const step = $controller.activeStep;
@@ -242,6 +246,10 @@
 		if (sent) {
 			resyncPending = true;
 		}
+	}
+
+	function sendReaction(reaction: ReactionEmoji) {
+		sendAction({ type_: 'player_reaction', reaction });
 	}
 
 	function startGame() {
@@ -737,6 +745,10 @@
 			</section>
 		{/if}
 
+		{#if canSendReactions && !$controller.isHost}
+			<ReactionBar connected={isConnected} onReact={sendReaction} />
+		{/if}
+
 		{#if $controller.isHost && !$controller.endGame?.revealed && gameFinished}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">{$messages.gameplay.finaleControls}</h2>
@@ -939,6 +951,10 @@
 					{/each}
 				</div>
 			</section>
+
+			{#if canSendReactions}
+				<ReactionBar connected={isConnected} onReact={sendReaction} />
+			{/if}
 		{/if}
 	</div>
 {/if}

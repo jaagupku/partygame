@@ -21,7 +21,8 @@ export function createGameStore(initialState: Lobby) {
 		pendingReviewCount: 0,
 		revealedSubmission: undefined,
 		revealedAnswer: undefined,
-		endGame: undefined
+		endGame: undefined,
+		lastReaction: undefined
 	};
 
 	const lobby = writable(initial);
@@ -119,6 +120,14 @@ export function createGameStore(initialState: Lobby) {
 					return state;
 				});
 				return applied ? 'ok' : 'resync_required';
+			}
+			case 'player_reaction': {
+				const event: PlayerReactionEvent = messageData;
+				lobby.update((state) => {
+					state.lastReaction = event;
+					return state;
+				});
+				break;
 			}
 			case 'buzzer_state': {
 				const event: BuzzerStateEvent = messageData;

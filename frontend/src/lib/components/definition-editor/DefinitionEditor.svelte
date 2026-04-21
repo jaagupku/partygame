@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { tick } from 'svelte';
 	import DefinitionConfirmModal from './DefinitionConfirmModal.svelte';
 	import DefinitionDetailsModal from './DefinitionDetailsModal.svelte';
 	import DefinitionEditorToolbar from './DefinitionEditorToolbar.svelte';
@@ -342,16 +343,16 @@
 		roundIndex: number,
 		templateId: Parameters<typeof createStepFromTemplate>[2],
 		insertAt?: number
-	) {
+	): string | null {
 		const round = draft.rounds[roundIndex];
 		if (!round) {
-			return;
+			return null;
 		}
 		const stepIndex = insertAt ?? round.steps.length;
 		const newStep = createStepFromTemplate(roundIndex + 1, stepIndex + 1, templateId);
 		round.steps.splice(stepIndex, 0, newStep);
 		draft.rounds = [...draft.rounds];
-		selectedStepKey = getStepKey(newStep);
+		return getStepKey(newStep);
 	}
 
 	function openStepTemplatePicker() {
@@ -380,22 +381,36 @@
 		pendingStepInsert = null;
 	}
 
-	function addStepAfterSelected(
+	async function addStepAfterSelected(
 		templateId: Parameters<typeof createStepFromTemplate>[2] = 'blank'
 	) {
+		let newStepKey: string | null = null;
 		if (!pendingStepInsert) {
 			if (selectedFlatStep) {
-				addStepToRound(selectedFlatStep.roundIndex, templateId, selectedFlatStep.stepIndex + 1);
-				return;
+				newStepKey = addStepToRound(
+					selectedFlatStep.roundIndex,
+					templateId,
+					selectedFlatStep.stepIndex + 1
+				);
+			} else {
+				if (draft.rounds.length === 0) {
+					draft.rounds = [createEmptyRound(1)];
+				}
+				newStepKey = addStepToRound(selectedRoundIndex >= 0 ? selectedRoundIndex : 0, templateId);
 			}
-			if (draft.rounds.length === 0) {
-				draft.rounds = [createEmptyRound(1)];
-			}
-			addStepToRound(selectedRoundIndex >= 0 ? selectedRoundIndex : 0, templateId);
+		} else {
+			newStepKey = addStepToRound(
+				pendingStepInsert.roundIndex,
+				templateId,
+				pendingStepInsert.stepIndex
+			);
+			closeStepTemplateModal();
+		}
+		if (!newStepKey) {
 			return;
 		}
-		addStepToRound(pendingStepInsert.roundIndex, templateId, pendingStepInsert.stepIndex);
-		closeStepTemplateModal();
+		await tick();
+		selectedStepKey = newStepKey;
 	}
 
 	function removeSelectedStep() {

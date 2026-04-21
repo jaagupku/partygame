@@ -42,6 +42,14 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				});
 				return applied ? 'ok' : 'resync_required';
 			}
+			case 'player_reaction': {
+				const event: PlayerReactionEvent = messageData;
+				controller.update((state) => {
+					state.lastReaction = event;
+					return state;
+				});
+				break;
+			}
 			case 'buzzer_state': {
 				const event: BuzzerStateEvent = messageData;
 				controller.update((state) => {
