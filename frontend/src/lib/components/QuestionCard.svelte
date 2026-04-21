@@ -37,8 +37,14 @@
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const showInlineRevealedAnswer = $derived(showingAnswerReveal && revealedAnswer && !stageVariant);
 	const isBuzzerStep = $derived(step?.input_kind === 'buzzer');
-	const shouldPauseMedia = $derived(isBuzzerStep && !buzzerActive);
-	const shouldResumePausedMedia = $derived(isBuzzerStep && buzzerActive);
+	const shouldPauseMedia = $derived(Boolean(step?.media?.paused) || (isBuzzerStep && !buzzerActive));
+	const shouldResumePausedMedia = $derived.by(() => {
+		const media = step?.media;
+		if (!media) {
+			return false;
+		}
+		return !media.paused && (!isBuzzerStep || buzzerActive);
+	});
 	let hasMounted = $state(false);
 	let lastBuzzedPlayerId = $state('');
 
@@ -105,7 +111,12 @@
 			{:else if step.media?.type_ === 'audio'}
 				<AudioQuestionMedia src={step.media.src} {shouldPauseMedia} {shouldResumePausedMedia} />
 			{:else if step.media?.type_ === 'video'}
-				<VideoQuestionMedia {step} {stageVariant} {shouldPauseMedia} {shouldResumePausedMedia} />
+				<VideoQuestionMedia
+					{step}
+					{stageVariant}
+					{shouldPauseMedia}
+					{shouldResumePausedMedia}
+				/>
 			{/if}
 		</div>
 		{#if isBuzzerStep && buzzedPlayerName}

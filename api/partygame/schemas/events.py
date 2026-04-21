@@ -37,6 +37,7 @@ class Event(StrEnum):
     ADVANCE_END_GAME_STAGE = auto()
     TOGGLE_END_GAME_AUTOPLAY = auto()
     PLAYER_REACTION = auto()
+    MEDIA_PLAYBACK = auto()
 
 
 class BaseEvent(BaseModel):
@@ -152,6 +153,7 @@ class RuntimeTimerState(BaseModel):
 class RuntimeMediaState(BaseModel):
     type_: str
     src: str
+    paused: bool = False
     reveal: str | None = None
     loop: bool = False
     zoom_start: float | None = None
@@ -257,6 +259,11 @@ class RevealEndGameEvent(BaseEvent):
 
 class AdvanceEndGameStageEvent(BaseEvent):
     type_: str = Event.ADVANCE_END_GAME_STAGE
+
+
+class MediaPlaybackEvent(BaseEvent):
+    type_: str = Event.MEDIA_PLAYBACK
+    paused: bool
 
 
 class ToggleEndGameAutoplayEvent(BaseEvent):

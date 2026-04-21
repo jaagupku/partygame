@@ -343,6 +343,7 @@ function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState
 	const sharedState = {
 		type_: media.type_,
 		src: media.src,
+		paused: false,
 		reveal: media.reveal,
 		loop: media.loop,
 		reveal_state: revealState,

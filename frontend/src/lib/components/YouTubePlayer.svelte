@@ -43,16 +43,17 @@
 	});
 
 	$effect(() => {
-		console.log('YouTubePlayer: shouldPauseMedia changed', {
-			shouldPauseMedia,
-			shouldResumePausedMedia
-		});
+		// Read pause/resume props before any early return so this effect stays subscribed to them.
+		const pauseRequested = shouldPauseMedia;
+		const resumeRequested = shouldResumePausedMedia;
 		const currentPlayer = youtubePlayer;
-		if (!currentPlayer || !youtubePlayerReady || !window.YT) {
+		const playerReady = youtubePlayerReady;
+		const yt = typeof window !== 'undefined' ? window.YT : undefined;
+		if (!currentPlayer || !playerReady || !yt) {
 			return;
 		}
 
-		if (shouldPauseMedia) {
+		if (pauseRequested) {
 			const playerState = currentPlayer.getPlayerState();
 			if (playerState !== 2 && playerState !== 0 && playerState !== 5 && playerState !== -1) {
 				shouldResumeMedia = true;
@@ -61,7 +62,7 @@
 			return;
 		}
 
-		if (!shouldResumePausedMedia || !shouldResumeMedia) {
+		if (!resumeRequested || !shouldResumeMedia) {
 			return;
 		}
 
@@ -174,7 +175,9 @@
 	}
 
 	.youtube-frame-stage {
+		width: min(100%, calc(65vh * 16 / 9));
 		max-height: 65vh;
+		margin-inline: auto;
 	}
 
 	.youtube-player {

@@ -163,6 +163,37 @@ class NoneEvaluationProvider:
         return []
 
 
+class VideoDefinitionProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Video Test",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="video_step",
+                            title="Watch this",
+                            media=MediaDefinition(
+                                type_=MediaType.VIDEO,
+                                src="/media/question.mp4",
+                            ),
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NONE),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.NONE,
+                                points=0,
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 class HostlessCompatibilityProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -781,6 +812,22 @@ async def test_scoreboard_visibility_is_reflected_in_snapshot():
     snapshot = await service.build_snapshot(lobby)
 
     assert snapshot.scoreboard_visible is True
+
+
+@pytest.mark.asyncio
+async def test_video_media_pause_is_reflected_in_snapshot():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=VideoDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.set_media_paused(lobby, True)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.paused is True
 
 
 @pytest.mark.asyncio
