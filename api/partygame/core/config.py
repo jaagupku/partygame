@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "partygame"
     POSTGRES_PASSWORD: str = "partygame"
     DATABASE_URL: str | None = None
+    SESSION_COOKIE_NAME: str = "partygame_session"
+    SESSION_TTL_SECONDS: int = 60 * 60 * 24 * 14
+    ADMIN_EMAIL: str | None = None
+    ADMIN_PASSWORD: str | None = None
+    ADMIN_DISPLAY_NAME: str = "Admin"
 
     @property
     def async_database_url(self) -> str:

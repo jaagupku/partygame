@@ -14,6 +14,7 @@
 		onAddStep: () => void;
 		onAddRound: () => void;
 		onOpenDetails: () => void;
+		onDelete?: () => void;
 		onStartTitleEdit: () => void;
 		onFinishTitleEdit: () => void;
 		onTitleChange: (value: string) => void;
@@ -31,6 +32,7 @@
 		onAddStep,
 		onAddRound,
 		onOpenDetails,
+		onDelete,
 		onStartTitleEdit,
 		onFinishTitleEdit,
 		onTitleChange
@@ -101,6 +103,11 @@
 		<button class="btn btn-ghost px-4 py-2 text-sm" type="button" onclick={onOpenDetails}>
 			{$messages.editor.definitionDetails}
 		</button>
+		{#if onDelete}
+			<button class="btn btn-ghost px-4 py-2 text-sm text-red-700" type="button" onclick={onDelete}>
+				{$messages.common.remove}
+			</button>
+		{/if}
 		<button
 			class="btn btn-primary px-5 py-2 text-sm"
 			type="button"
