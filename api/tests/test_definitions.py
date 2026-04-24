@@ -253,7 +253,16 @@ async def test_alembic_game_definitions_table_shape_matches_model(postgres_provi
         )
 
     assert "game_definitions" in table_names
-    assert {"id", "title", "description", "payload", "created_at", "updated_at"} <= columns
+    assert {
+        "id",
+        "title",
+        "description",
+        "owner_user_id",
+        "visibility",
+        "payload",
+        "created_at",
+        "updated_at",
+    } <= columns
 
 
 class MissingDefinitionProvider(DefinitionProvider):

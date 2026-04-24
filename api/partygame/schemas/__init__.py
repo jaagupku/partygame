@@ -70,6 +70,7 @@ from .game_definition import (
     TimerDefinition,
 )
 from .media import MediaAsset, MediaKind
+from .auth import LoginRequest, SignupRequest, UserPublic
 
 __all__ = (
     "JoinRequest",
@@ -137,4 +138,7 @@ __all__ = (
     "TimerDefinition",
     "MediaAsset",
     "MediaKind",
+    "LoginRequest",
+    "SignupRequest",
+    "UserPublic",
 )

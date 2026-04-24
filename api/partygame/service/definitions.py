@@ -12,13 +12,29 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from partygame.db.postgres import AsyncSessionLocal
 from partygame.schemas import GameDefinition
-from partygame.state.definition_models import GameDefinitionRecord
+from partygame.state.auth_models import UserRecord, UserRole
+from partygame.state.definition_models import DefinitionVisibility, GameDefinitionRecord
 
 
 class DefinitionSummary(BaseModel):
     id: str
     title: str
     description: str | None = None
+    visibility: DefinitionVisibility = DefinitionVisibility.PUBLIC
+    owner_user_id: str | None = None
+    owner_display_name: str | None = None
+    can_edit: bool = False
+
+
+class GameDefinitionPayload(GameDefinition):
+    visibility: DefinitionVisibility = DefinitionVisibility.PRIVATE
+
+
+class GameDefinitionResponse(GameDefinition):
+    visibility: DefinitionVisibility = DefinitionVisibility.PUBLIC
+    owner_user_id: str | None = None
+    owner_display_name: str | None = None
+    can_edit: bool = False
 
 
 class DefinitionProvider(ABC):
@@ -42,6 +58,7 @@ class DefinitionValidationError(ValueError):
 @dataclass
 class _DefinitionCacheEntry:
     mtime_ns: int
+    size: int
     definition: GameDefinition
 
 
@@ -100,14 +117,16 @@ class FileDefinitionProvider(DefinitionProvider):
         path = self.games_dir / f"{definition_id}.json"
         if not path.exists():
             raise FileNotFoundError(f"Definition '{definition_id}' was not found")
-        mtime_ns = path.stat().st_mtime_ns
+        stat = path.stat()
+        mtime_ns = stat.st_mtime_ns
         cached = self._definitions_cache.get(definition_id)
-        if cached is not None and cached.mtime_ns == mtime_ns:
+        if cached is not None and cached.mtime_ns == mtime_ns and cached.size == stat.st_size:
             return cached.definition
 
         definition = self._load_from_disk(path)
         self._definitions_cache[definition_id] = _DefinitionCacheEntry(
             mtime_ns=mtime_ns,
+            size=stat.st_size,
             definition=definition,
         )
         return definition
@@ -158,6 +177,73 @@ class PostgresDefinitionProvider(DefinitionProvider):
     def _definition_from_payload(self, payload: dict[str, Any]) -> GameDefinition:
         return GameDefinition.model_validate(payload)
 
+    def _can_edit(self, record: GameDefinitionRecord, user: UserRecord | None) -> bool:
+        if user is None:
+            return False
+        return user.role == UserRole.ADMIN.value or record.owner_user_id == user.id
+
+    def _can_play(self, record: GameDefinitionRecord, user: UserRecord | None) -> bool:
+        if record.visibility == DefinitionVisibility.PUBLIC.value:
+            return True
+        if user is None:
+            return False
+        if record.visibility == DefinitionVisibility.LOGIN_REQUIRED.value:
+            return True
+        return self._can_edit(record, user)
+
+    def _can_view_for_management(
+        self, record: GameDefinitionRecord, user: UserRecord | None
+    ) -> bool:
+        if self._can_play(record, user):
+            return True
+        return self._can_edit(record, user)
+
+    def _response(
+        self,
+        record: GameDefinitionRecord,
+        user: UserRecord | None,
+        owner_display_name: str | None = None,
+    ) -> GameDefinitionResponse:
+        definition = self._definition_from_payload(record.payload)
+        return GameDefinitionResponse(
+            **definition.model_dump(),
+            visibility=DefinitionVisibility(record.visibility),
+            owner_user_id=record.owner_user_id,
+            owner_display_name=owner_display_name,
+            can_edit=self._can_edit(record, user),
+        )
+
+    async def load_for_user(
+        self,
+        definition_id: str,
+        user: UserRecord | None,
+    ) -> GameDefinitionResponse:
+        async with self.sessionmaker() as session:
+            record = await session.get(GameDefinitionRecord, definition_id)
+            if record is None:
+                raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+            owner_name = None
+            if record.owner_user_id is not None:
+                owner_name = await session.scalar(
+                    select(UserRecord.display_name).where(UserRecord.id == record.owner_user_id)
+                )
+        if not self._can_view_for_management(record, user):
+            raise PermissionError(f"Definition '{definition_id}' is not available")
+        return self._response(record, user, owner_name)
+
+    async def require_playable(
+        self,
+        definition_id: str,
+        user: UserRecord | None,
+    ) -> GameDefinition:
+        async with self.sessionmaker() as session:
+            record = await session.get(GameDefinitionRecord, definition_id)
+        if record is None:
+            raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+        if not self._can_play(record, user):
+            raise PermissionError(f"Definition '{definition_id}' is not available")
+        return self._definition_from_payload(record.payload)
+
     async def load(self, definition_id: str) -> GameDefinition:
         async with self.sessionmaker() as session:
             payload = await session.scalar(
@@ -167,19 +253,60 @@ class PostgresDefinitionProvider(DefinitionProvider):
             raise FileNotFoundError(f"Definition '{definition_id}' was not found")
         return self._definition_from_payload(payload)
 
-    async def list_definitions(self) -> list[DefinitionSummary]:
+    async def list_definitions_for_user(self, user: UserRecord | None) -> list[DefinitionSummary]:
         async with self.sessionmaker() as session:
             result = await session.execute(
                 select(
-                    GameDefinitionRecord.id,
-                    GameDefinitionRecord.title,
-                    GameDefinitionRecord.description,
-                ).order_by(GameDefinitionRecord.title, GameDefinitionRecord.id)
+                    GameDefinitionRecord,
+                    UserRecord.display_name,
+                )
+                .outerjoin(UserRecord, UserRecord.id == GameDefinitionRecord.owner_user_id)
+                .order_by(GameDefinitionRecord.title, GameDefinitionRecord.id)
             )
-        return [
-            DefinitionSummary(id=row.id, title=row.title, description=row.description)
-            for row in result
-        ]
+        definitions: list[DefinitionSummary] = []
+        for record, owner_display_name in result:
+            if not self._can_view_for_management(record, user):
+                continue
+            definitions.append(
+                DefinitionSummary(
+                    id=record.id,
+                    title=record.title,
+                    description=record.description,
+                    visibility=DefinitionVisibility(record.visibility),
+                    owner_user_id=record.owner_user_id,
+                    owner_display_name=owner_display_name,
+                    can_edit=self._can_edit(record, user),
+                )
+            )
+        return definitions
+
+    async def list_definitions(self) -> list[DefinitionSummary]:
+        return await self.list_definitions_for_user(None)
+
+    async def create_for_user(
+        self,
+        definition: GameDefinition,
+        user: UserRecord,
+        visibility: DefinitionVisibility = DefinitionVisibility.PRIVATE,
+    ) -> GameDefinitionResponse:
+        validate_definition(definition)
+        async with self.sessionmaker() as session:
+            session.add(
+                GameDefinitionRecord(
+                    id=definition.id,
+                    title=definition.title,
+                    description=definition.description,
+                    owner_user_id=user.id,
+                    visibility=visibility.value,
+                    payload=self._payload(definition),
+                )
+            )
+            try:
+                await session.commit()
+            except IntegrityError as error:
+                await session.rollback()
+                raise FileExistsError(f"Definition '{definition.id}' already exists") from error
+        return await self.load_for_user(definition.id, user)
 
     async def create(self, definition: GameDefinition) -> GameDefinition:
         validate_definition(definition)
@@ -189,6 +316,7 @@ class PostgresDefinitionProvider(DefinitionProvider):
                     id=definition.id,
                     title=definition.title,
                     description=definition.description,
+                    visibility=DefinitionVisibility.PUBLIC.value,
                     payload=self._payload(definition),
                 )
             )
@@ -198,6 +326,37 @@ class PostgresDefinitionProvider(DefinitionProvider):
                 await session.rollback()
                 raise FileExistsError(f"Definition '{definition.id}' already exists") from error
         return await self.load(definition.id)
+
+    async def update_for_user(
+        self,
+        definition_id: str,
+        definition: GameDefinition,
+        user: UserRecord,
+        visibility: DefinitionVisibility,
+    ) -> GameDefinitionResponse:
+        validate_definition(definition)
+        async with self.sessionmaker() as session:
+            record = await session.get(GameDefinitionRecord, definition_id)
+            if record is None:
+                raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+            if not self._can_edit(record, user):
+                raise PermissionError(f"Definition '{definition_id}' cannot be edited")
+            result = await session.execute(
+                update(GameDefinitionRecord)
+                .where(GameDefinitionRecord.id == definition_id)
+                .values(
+                    title=definition.title,
+                    description=definition.description,
+                    payload=self._payload(definition),
+                    visibility=visibility.value,
+                    updated_at=func.now(),
+                )
+            )
+            if result.rowcount == 0:
+                await session.rollback()
+                raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+            await session.commit()
+        return await self.load_for_user(definition.id, user)
 
     async def update(self, definition_id: str, definition: GameDefinition) -> GameDefinition:
         validate_definition(definition)
@@ -217,6 +376,16 @@ class PostgresDefinitionProvider(DefinitionProvider):
                 raise FileNotFoundError(f"Definition '{definition_id}' was not found")
             await session.commit()
         return await self.load(definition.id)
+
+    async def delete_for_user(self, definition_id: str, user: UserRecord) -> None:
+        async with self.sessionmaker() as session:
+            record = await session.get(GameDefinitionRecord, definition_id)
+            if record is None:
+                raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+            if not self._can_edit(record, user):
+                raise PermissionError(f"Definition '{definition_id}' cannot be deleted")
+            await session.delete(record)
+            await session.commit()
 
 
 _default_definition_provider: DefinitionProvider | None = None

@@ -11,8 +11,13 @@ from partygame.schemas.events import Event
 from partygame.utils import get_unique_join_code, publish
 from partygame.service.player import remove as remove_player
 from partygame.service.game import GameRuntimeService
+from partygame.service.definitions import (
+    PostgresDefinitionProvider,
+    get_default_definition_provider,
+)
 from . import realtime
 from partygame.state import GameStateRepository, GameKeyFactory
+from partygame.state.auth_models import UserRecord
 
 log = logging.getLogger(__name__)
 
@@ -27,9 +32,21 @@ async def get_players(redis: Redis, game_id: str):
     return await repo.get_players(game_id)
 
 
-async def create(redis: Redis, create_game: schemas.CreateGame | None = None):
+async def create(
+    redis: Redis,
+    create_game: schemas.CreateGame | None = None,
+    current_user: UserRecord | None = None,
+):
     repo = GameStateRepository(redis)
     payload = create_game or schemas.CreateGame()
+    definition_provider = get_default_definition_provider()
+    if isinstance(definition_provider, PostgresDefinitionProvider):
+        try:
+            await definition_provider.require_playable(payload.definition_id, current_user)
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except PermissionError as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
     lobby = schemas.Lobby(
         join_code=await get_unique_join_code(redis),
         definition_id=payload.definition_id,

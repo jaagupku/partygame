@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { tick } from 'svelte';
+	import { authLoaded, currentUser } from '$lib/auth-store';
 	import DefinitionConfirmModal from './DefinitionConfirmModal.svelte';
 	import DefinitionDetailsModal from './DefinitionDetailsModal.svelte';
 	import DefinitionEditorToolbar from './DefinitionEditorToolbar.svelte';
@@ -64,6 +65,7 @@
 	let showStepTemplateModal = $state(false);
 	let definitionDescriptionDraft = $state('');
 	let definitionIdDraft = $state('');
+	let definitionVisibilityDraft = $state<DefinitionVisibility>('private');
 	let showDefinitionAdvancedFields = $state(false);
 	let editingTitle = $state(false);
 	let pendingStepInsert = $state<{ roundIndex: number; stepIndex: number } | null>(null);
@@ -77,6 +79,12 @@
 		  }
 		| {
 				type: 'step';
+				title: string;
+				message: string;
+				confirmLabel: string;
+		  }
+		| {
+				type: 'definition';
 				title: string;
 				message: string;
 				confirmLabel: string;
@@ -141,7 +149,12 @@
 			errorMessage = $messages.definitions.couldNotLoadDefinition(definitionId);
 			return;
 		}
-		draft = structuredClone(await response.json());
+		const loadedDefinition = (await response.json()) as GameDefinition;
+		if (!loadedDefinition.can_edit) {
+			errorMessage = $messages.definitions.cannotEditDefinition;
+			return;
+		}
+		draft = structuredClone(loadedDefinition);
 		selectedStepKey = buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null;
 	}
 
@@ -160,6 +173,7 @@
 			id: '',
 			title: $messages.definitions.untitledDefinition,
 			description: '',
+			visibility: 'private',
 			rounds: [createEmptyRound(1, true)]
 		};
 	}
@@ -204,6 +218,7 @@
 	function openDefinitionDetailsModal() {
 		definitionDescriptionDraft = draft.description ?? '';
 		definitionIdDraft = draft.id;
+		definitionVisibilityDraft = draft.visibility ?? 'private';
 		showDefinitionAdvancedFields = false;
 		showDefinitionDetailsModal = true;
 	}
@@ -213,14 +228,28 @@
 		showDefinitionAdvancedFields = false;
 		definitionDescriptionDraft = '';
 		definitionIdDraft = '';
+		definitionVisibilityDraft = 'private';
 	}
 
 	function saveDefinitionDetailsModal() {
 		draft.description = definitionDescriptionDraft;
+		draft.visibility = definitionVisibilityDraft;
 		if (showDefinitionAdvancedFields) {
 			draft.id = definitionIdDraft;
 		}
 		closeDefinitionDetailsModal();
+	}
+
+	function requestDeleteDefinition() {
+		if (isNewDefinition) {
+			return;
+		}
+		pendingDelete = {
+			type: 'definition',
+			title: $messages.definitions.deleteDefinition,
+			message: $messages.definitions.deleteDefinitionMessage,
+			confirmLabel: $messages.definitions.deleteDefinition
+		};
 	}
 
 	function openRoundModal(roundIndex: number) {
@@ -327,14 +356,25 @@
 		pendingDelete = null;
 	}
 
-	function confirmDelete() {
+	async function confirmDelete() {
 		if (!pendingDelete) {
 			return;
 		}
 		if (pendingDelete.type === 'round') {
 			removeRound(pendingDelete.roundIndex);
-		} else {
+		} else if (pendingDelete.type === 'step') {
 			removeSelectedStep();
+		} else {
+			const response = await fetch(`/api/v1/definitions/${persistedDefinitionId}`, {
+				method: 'DELETE'
+			});
+			if (!response.ok) {
+				errorMessage = $messages.definitions.couldNotDeleteDefinition;
+				closeDeleteModal();
+				return;
+			}
+			goto('/definitions');
+			return;
 		}
 		closeDeleteModal();
 	}
@@ -649,6 +689,7 @@
 			id: draft.id.trim(),
 			title: draft.title.trim(),
 			description: draft.description?.trim() || undefined,
+			visibility: draft.visibility ?? 'private',
 			rounds: draft.rounds.map((round) => ({
 				id: round.id.trim(),
 				title: round.title?.trim() || undefined,
@@ -1023,119 +1064,130 @@
 <svelte:window onkeydown={handleEditorShortcuts} />
 
 <div class="flex h-full min-h-0 flex-col">
-	<section class="card flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-		<DefinitionEditorToolbar
-			title={displayDefinition.title}
-			{breadcrumbCurrentLabel}
-			{editingTitle}
-			{saving}
-			{loadingEditor}
-			onGoHome={() => goto('/')}
-			onManageDefinitions={() => goto('/definitions')}
-			onSave={saveDefinition}
-			onAddStep={openStepTemplatePicker}
-			onAddRound={addRound}
-			onOpenDetails={openDefinitionDetailsModal}
-			onStartTitleEdit={beginTitleEdit}
-			onFinishTitleEdit={finishTitleEdit}
-			onTitleChange={(value) => (draft.title = value)}
-		/>
+	{#if $authLoaded && !$currentUser}
+		<section class="card stack-md">
+			<h1 class="page-title text-left">{$messages.auth.login}</h1>
+			<p class="page-subtitle text-left">{$messages.definitions.signInToCreate}</p>
+			<button class="btn btn-primary w-fit" type="button" onclick={() => goto('/login')}>
+				{$messages.auth.login}
+			</button>
+		</section>
+	{:else}
+		<section class="card flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+			<DefinitionEditorToolbar
+				title={displayDefinition.title}
+				{breadcrumbCurrentLabel}
+				{editingTitle}
+				{saving}
+				{loadingEditor}
+				onGoHome={() => goto('/')}
+				onManageDefinitions={() => goto('/definitions')}
+				onSave={saveDefinition}
+				onAddStep={openStepTemplatePicker}
+				onAddRound={addRound}
+				onOpenDetails={openDefinitionDetailsModal}
+				onDelete={!isNewDefinition && draft.can_edit ? requestDeleteDefinition : undefined}
+				onStartTitleEdit={beginTitleEdit}
+				onFinishTitleEdit={finishTitleEdit}
+				onTitleChange={(value) => (draft.title = value)}
+			/>
 
-		<div class="grid min-h-0 flex-1 gap-0 xl:grid-cols-[22rem_minmax(0,1fr)]">
-			<div
-				class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 pl-3 pt-2 xl:border-b-0 xl:border-r"
-			>
-				<DefinitionStepSorter
-					rounds={displayDefinition.rounds}
-					{flatSteps}
-					{selectedStepKey}
-					{draggedStepKey}
-					{dropTargetKey}
-					onSelectStep={selectStep}
-					onOpenRoundModal={openRoundModal}
-					{moveRound}
-					onRemoveRound={requestRemoveRound}
-					{onStepDragStart}
-					{onStepDragMove}
-					{onStepDragEnd}
-					onActivateDropTarget={activateDropTarget}
-					{onDropStep}
-					draggedItem={draggedFlatStep}
-					dragPointerX={dragPointer.x}
-					dragPointerY={dragPointer.y}
-					dragOffsetX={dragPointerOffset.x}
-					dragOffsetY={dragPointerOffset.y}
-					{dragCardWidth}
-				/>
-			</div>
-
-			<div class="min-h-0 overflow-hidden bg-white/40 pt-2">
-				{#if errorMessage}
-					<div class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-						{errorMessage}
-					</div>
-				{/if}
-				{#if statusMessage}
-					<div
-						class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700"
-					>
-						{statusMessage}
-					</div>
-				{/if}
-				{#if uploadError}
-					<div
-						class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700"
-					>
-						{uploadError}
-					</div>
-				{/if}
-
-				{#if loadingEditor}
-					<p class="text-slate-500">Loading definition...</p>
-				{:else if selectedStep && selectedFlatStep}
-					<DefinitionStepEditor
-						{selectedStep}
-						{selectedFlatStep}
-						{selectedStepPosition}
-						totalSteps={flatSteps.length}
-						{showAdvancedFields}
-						{uploadKey}
-						onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
-						onSelectStep={selectStep}
-						onAddStepAfter={openStepTemplatePicker}
-						onRemoveSelectedStep={requestRemoveSelectedStep}
-						onPreview={openPreview}
-						onOpenShortcutHelp={openShortcutHelp}
-						onSetPlayerInputKind={setPlayerInputKind}
-						onSetEvaluationType={setEvaluationType}
-						onAddInputOption={addInputOption}
-						onRemoveInputOption={removeInputOption}
-						onSetInputOptionValue={setInputOptionValue}
-						onSetOrderingAnswer={setOrderingAnswer}
-						onSetRadioCorrectOption={setRadioCorrectOption}
-						onSetCheckboxOptionPoints={setCheckboxOptionPoints}
-						onAddMedia={addMedia}
-						onRemoveMedia={removeMedia}
-						onUpdateMediaType={updateMediaType}
-						onUploadMedia={uploadMedia}
+			<div class="grid min-h-0 flex-1 gap-0 xl:grid-cols-[22rem_minmax(0,1fr)]">
+				<div
+					class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 pl-3 pt-2 xl:border-b-0 xl:border-r"
+				>
+					<DefinitionStepSorter
+						rounds={displayDefinition.rounds}
 						{flatSteps}
+						{selectedStepKey}
+						{draggedStepKey}
+						{dropTargetKey}
+						onSelectStep={selectStep}
+						onOpenRoundModal={openRoundModal}
+						{moveRound}
+						onRemoveRound={requestRemoveRound}
+						{onStepDragStart}
+						{onStepDragMove}
+						{onStepDragEnd}
+						onActivateDropTarget={activateDropTarget}
+						{onDropStep}
+						draggedItem={draggedFlatStep}
+						dragPointerX={dragPointer.x}
+						dragPointerY={dragPointer.y}
+						dragOffsetX={dragPointerOffset.x}
+						dragOffsetY={dragPointerOffset.y}
+						{dragCardWidth}
 					/>
-				{:else}
-					<div
-						class="flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
-					>
-						<h3 class="label-title text-2xl">No Step Selected</h3>
-						<p class="mt-2 max-w-lg text-slate-600">
-							Create a new step from the sorter or add one to a round to start authoring slides.
-						</p>
-						<button class="btn btn-primary mt-4" type="button" onclick={openStepTemplatePicker}>
-							Create First Step
-						</button>
-					</div>
-				{/if}
+				</div>
+
+				<div class="min-h-0 overflow-hidden bg-white/40 pt-2">
+					{#if errorMessage}
+						<div class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+							{errorMessage}
+						</div>
+					{/if}
+					{#if statusMessage}
+						<div
+							class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700"
+						>
+							{statusMessage}
+						</div>
+					{/if}
+					{#if uploadError}
+						<div
+							class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700"
+						>
+							{uploadError}
+						</div>
+					{/if}
+
+					{#if loadingEditor}
+						<p class="text-slate-500">Loading definition...</p>
+					{:else if selectedStep && selectedFlatStep}
+						<DefinitionStepEditor
+							{selectedStep}
+							{selectedFlatStep}
+							{selectedStepPosition}
+							totalSteps={flatSteps.length}
+							{showAdvancedFields}
+							{uploadKey}
+							onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
+							onSelectStep={selectStep}
+							onAddStepAfter={openStepTemplatePicker}
+							onRemoveSelectedStep={requestRemoveSelectedStep}
+							onPreview={openPreview}
+							onOpenShortcutHelp={openShortcutHelp}
+							onSetPlayerInputKind={setPlayerInputKind}
+							onSetEvaluationType={setEvaluationType}
+							onAddInputOption={addInputOption}
+							onRemoveInputOption={removeInputOption}
+							onSetInputOptionValue={setInputOptionValue}
+							onSetOrderingAnswer={setOrderingAnswer}
+							onSetRadioCorrectOption={setRadioCorrectOption}
+							onSetCheckboxOptionPoints={setCheckboxOptionPoints}
+							onAddMedia={addMedia}
+							onRemoveMedia={removeMedia}
+							onUpdateMediaType={updateMediaType}
+							onUploadMedia={uploadMedia}
+							{flatSteps}
+						/>
+					{:else}
+						<div
+							class="flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
+						>
+							<h3 class="label-title text-2xl">No Step Selected</h3>
+							<p class="mt-2 max-w-lg text-slate-600">
+								Create a new step from the sorter or add one to a round to start authoring slides.
+							</p>
+							<button class="btn btn-primary mt-4" type="button" onclick={openStepTemplatePicker}>
+								Create First Step
+							</button>
+						</div>
+					{/if}
+				</div>
 			</div>
-		</div>
-	</section>
+		</section>
+	{/if}
 </div>
 
 {#if editingRoundIndex !== null}
@@ -1155,11 +1207,13 @@
 	<DefinitionDetailsModal
 		description={definitionDescriptionDraft}
 		definitionId={definitionIdDraft}
+		visibility={definitionVisibilityDraft}
 		showAdvancedFields={showDefinitionAdvancedFields}
 		{isNewDefinition}
 		currentDefinitionId={draft.id}
 		onDescriptionChange={(value) => (definitionDescriptionDraft = value)}
 		onDefinitionIdChange={(value) => (definitionIdDraft = value)}
+		onVisibilityChange={(value) => (definitionVisibilityDraft = value)}
 		onToggleAdvancedFields={() => (showDefinitionAdvancedFields = !showDefinitionAdvancedFields)}
 		onClose={closeDefinitionDetailsModal}
 		onSave={saveDefinitionDetailsModal}

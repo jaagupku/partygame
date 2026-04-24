@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from partygame.core.config import settings
 from partygame.db.postgres import Base
+from partygame.state.auth_models import UserRecord, UserSessionRecord
 from partygame.state.definition_models import GameDefinitionRecord
 
 config = context.config
@@ -62,3 +63,5 @@ else:
     run_migrations_online()
 
 assert GameDefinitionRecord.__tablename__ == "game_definitions"
+assert UserRecord.__tablename__ == "users"
+assert UserSessionRecord.__tablename__ == "user_sessions"

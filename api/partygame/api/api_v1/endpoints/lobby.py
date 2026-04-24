@@ -38,6 +38,7 @@ async def join_lobby(*, redis: Redis = Depends(deps.get_redis), join_request: sc
 async def create_lobby(
     *,
     redis: Redis = Depends(deps.get_redis),
+    current_user=Depends(deps.get_current_user_optional),
     create_game: schemas.CreateGame = schemas.CreateGame(),
 ):
-    return await service.lobby.create(redis, create_game)
+    return await service.lobby.create(redis, create_game, current_user)

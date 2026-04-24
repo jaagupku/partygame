@@ -6,11 +6,13 @@
 	type Props = {
 		description: string;
 		definitionId: string;
+		visibility: DefinitionVisibility;
 		showAdvancedFields: boolean;
 		isNewDefinition: boolean;
 		currentDefinitionId: string;
 		onDescriptionChange: (value: string) => void;
 		onDefinitionIdChange: (value: string) => void;
+		onVisibilityChange: (value: DefinitionVisibility) => void;
 		onToggleAdvancedFields: () => void;
 		onClose: () => void;
 		onSave: () => void;
@@ -19,11 +21,13 @@
 	let {
 		description,
 		definitionId,
+		visibility,
 		showAdvancedFields,
 		isNewDefinition,
 		currentDefinitionId,
 		onDescriptionChange,
 		onDefinitionIdChange,
+		onVisibilityChange,
 		onToggleAdvancedFields,
 		onClose,
 		onSave
@@ -70,6 +74,23 @@
 					oninput={(event) =>
 						onDescriptionChange((event.currentTarget as HTMLTextAreaElement).value)}
 				></textarea>
+			</label>
+			<label class="input-wrap">
+				<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+					>{$messages.definitions.visibility}</span
+				>
+				<select
+					value={visibility}
+					class="input select-input text-lg"
+					onchange={(event) =>
+						onVisibilityChange(
+							(event.currentTarget as HTMLSelectElement).value as DefinitionVisibility
+						)}
+				>
+					<option value="private">{$messages.definitions.visibilityPrivate}</option>
+					<option value="login_required">{$messages.definitions.visibilityLoginRequired}</option>
+					<option value="public">{$messages.definitions.visibilityPublic}</option>
+				</select>
 			</label>
 			<div class="flex justify-start">
 				<button

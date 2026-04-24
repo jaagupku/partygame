@@ -1,11 +1,22 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { currentUser } from '$lib/auth-store';
 	import { messages } from '$lib/i18n';
 
 	let definitions = $state<DefinitionSummary[]>([]);
 	let loading = $state(false);
 	let errorMessage = $state('');
+
+	function visibilityLabel(visibility: DefinitionVisibility) {
+		if (visibility === 'private') {
+			return $messages.definitions.visibilityPrivate;
+		}
+		if (visibility === 'login_required') {
+			return $messages.definitions.visibilityLoginRequired;
+		}
+		return $messages.definitions.visibilityPublic;
+	}
 
 	onMount(async () => {
 		loading = true;
@@ -45,9 +56,15 @@
 		<button class="btn btn-ghost text-lg" onclick={() => goto('/create')}>
 			{$messages.common.createGame}
 		</button>
-		<button class="btn btn-accent text-lg" onclick={() => goto('/definitions/new')}
-			>{$messages.common.createDefinition}</button
-		>
+		{#if $currentUser}
+			<button class="btn btn-accent text-lg" onclick={() => goto('/definitions/new')}
+				>{$messages.common.createDefinition}</button
+			>
+		{:else}
+			<button class="btn btn-accent text-lg" onclick={() => goto('/login')}
+				>{$messages.auth.login}</button
+			>
+		{/if}
 	</div>
 </div>
 
@@ -68,9 +85,15 @@
 			<div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
 				<h3 class="text-2xl font-bold text-slate-800">{$messages.definitions.noDefinitionsYet}</h3>
 				<p class="mt-2 text-slate-600">{$messages.definitions.noDefinitionsHelp}</p>
-				<button class="btn btn-primary mt-4" onclick={() => goto('/definitions/new')}
-					>{$messages.common.createDefinition}</button
-				>
+				{#if $currentUser}
+					<button class="btn btn-primary mt-4" onclick={() => goto('/definitions/new')}
+						>{$messages.common.createDefinition}</button
+					>
+				{:else}
+					<p class="mt-3 text-sm font-semibold text-slate-600">
+						{$messages.definitions.signInToCreate}
+					</p>
+				{/if}
 			</div>
 		{:else}
 			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -82,21 +105,28 @@
 								<p class="mt-1 text-sm text-slate-500">{definition.id}</p>
 							</div>
 							<span class="badge bg-sky-100 text-sky-800"
-								>{$messages.definitions.definitionBadge}</span
+								>{visibilityLabel(definition.visibility)}</span
 							>
 						</div>
+						{#if definition.owner_display_name}
+							<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+								{$messages.definitions.owner}: {definition.owner_display_name}
+							</p>
+						{/if}
 
 						<p class="mt-3 min-h-12 text-sm text-slate-600">
 							{definition.description ?? $messages.definitions.noDescriptionProvidedYet}
 						</p>
 
 						<div class="mt-4 flex flex-wrap gap-2">
-							<button
-								class="btn btn-primary flex-1 px-4 py-2 text-sm"
-								onclick={() => goto(`/definitions/${definition.id}`)}
-							>
-								{$messages.common.edit}
-							</button>
+							{#if definition.can_edit}
+								<button
+									class="btn btn-primary flex-1 px-4 py-2 text-sm"
+									onclick={() => goto(`/definitions/${definition.id}`)}
+								>
+									{$messages.common.edit}
+								</button>
+							{/if}
 						</div>
 					</div>
 				{/each}

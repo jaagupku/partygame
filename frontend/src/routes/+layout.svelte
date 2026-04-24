@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 
+	import { currentUser, loadCurrentUser, logout } from '$lib/auth-store';
 	import { locale, messages, pageTitle } from '$lib/i18n';
 	import '../app.css';
 
@@ -18,6 +20,18 @@
 
 		document.documentElement.lang = $locale;
 	});
+
+	$effect(() => {
+		if (!browser) {
+			return;
+		}
+		void loadCurrentUser();
+	});
+
+	async function handleLogout() {
+		await logout();
+		goto('/');
+	}
 </script>
 
 <svelte:head>
@@ -31,6 +45,31 @@
 		class:page-panel-host-game={hostGameRoute}
 		class="page-panel"
 	>
+		{#if !definitionsEditorRoute && !hostGameRoute}
+			<div class="mb-4 flex flex-wrap items-center justify-end gap-3 text-sm">
+				{#if $currentUser}
+					<span class="font-semibold text-slate-700">{$currentUser.display_name}</span>
+					<button class="btn btn-ghost px-3 py-2 text-sm" type="button" onclick={handleLogout}>
+						{$messages.auth.logout}
+					</button>
+				{:else}
+					<button
+						class="btn btn-ghost px-3 py-2 text-sm"
+						type="button"
+						onclick={() => goto('/login')}
+					>
+						{$messages.auth.login}
+					</button>
+					<button
+						class="btn btn-primary px-3 py-2 text-sm"
+						type="button"
+						onclick={() => goto('/signup')}
+					>
+						{$messages.auth.signup}
+					</button>
+				{/if}
+			</div>
+		{/if}
 		{@render children()}
 	</div>
 </div>

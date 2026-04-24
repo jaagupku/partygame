@@ -9,6 +9,15 @@ type EvaluationType =
 	| 'closest_number'
 	| 'ordering_match'
 	| 'multi_select_weighted';
+type UserRole = 'admin' | 'user';
+type DefinitionVisibility = 'private' | 'login_required' | 'public';
+
+type User = {
+	id: string;
+	email: string;
+	display_name: string;
+	role: UserRole;
+};
 
 type CheckboxOptionScore = {
 	option: string;
@@ -56,12 +65,20 @@ type DefinitionSummary = {
 	id: string;
 	title: string;
 	description?: string;
+	visibility: DefinitionVisibility;
+	owner_user_id?: string;
+	owner_display_name?: string;
+	can_edit: boolean;
 };
 
 type GameDefinition = {
 	id: string;
 	title: string;
 	description?: string;
+	visibility?: DefinitionVisibility;
+	owner_user_id?: string;
+	owner_display_name?: string;
+	can_edit?: boolean;
 	rounds: RoundDefinition[];
 };
 
