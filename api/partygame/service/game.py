@@ -15,7 +15,7 @@ from partygame.schemas.game_definition import (
     PlayerInputKind,
     StepDefinition,
 )
-from partygame.service.definitions import DefinitionProvider, FileDefinitionProvider
+from partygame.service.definitions import DefinitionProvider, get_default_definition_provider
 from partygame.state import GameStateRepository
 
 END_GAME_COMPONENT_ID = "end_game"
@@ -43,7 +43,7 @@ class GameRuntimeService:
         definition_provider: DefinitionProvider | None = None,
     ):
         self.repo = repo
-        self.definition_provider = definition_provider or FileDefinitionProvider()
+        self.definition_provider = definition_provider or get_default_definition_provider()
 
     async def _flatten_steps_with_metadata(
         self,

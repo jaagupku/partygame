@@ -1,11 +1,23 @@
 import json
+import os
 
 import pytest
+import pytest_asyncio
 from fastapi import HTTPException
+from sqlalchemy import inspect
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from partygame.api.api_v1.endpoints import definitions as definitions_endpoints
+from partygame.db.postgres import Base
 from partygame.schemas import GameDefinition
-from partygame.service.definitions import DefinitionValidationError, FileDefinitionProvider
+from partygame.service.definitions import (
+    DefinitionProvider,
+    DefinitionSummary,
+    DefinitionValidationError,
+    FileDefinitionProvider,
+    PostgresDefinitionProvider,
+)
+from partygame.state.definition_models import GameDefinitionRecord
 
 
 def _write_definition(path, title: str):
@@ -30,6 +42,30 @@ def _write_definition(path, title: str):
             }
         ),
         encoding="utf-8",
+    )
+
+
+def _music_definition(definition_id: str = "music_night") -> GameDefinition:
+    return GameDefinition.model_validate(
+        {
+            "id": definition_id,
+            "title": "Music Night",
+            "description": "Songs and sounds",
+            "rounds": [
+                {
+                    "id": "round1",
+                    "title": "Round 1",
+                    "steps": [
+                        {
+                            "id": "step1",
+                            "title": "Guess the artist",
+                            "player_input": {"kind": "text"},
+                            "evaluation": {"type_": "exact_text", "points": 2, "answer": "ABBA"},
+                        }
+                    ],
+                }
+            ],
+        }
     )
 
 
@@ -64,27 +100,7 @@ async def test_file_definition_provider_refreshes_cache_when_definition_changes(
 @pytest.mark.asyncio
 async def test_file_definition_provider_creates_new_definition(tmp_path):
     provider = FileDefinitionProvider(games_dir=tmp_path)
-    definition = GameDefinition.model_validate(
-        {
-            "id": "music_night",
-            "title": "Music Night",
-            "description": "Songs and sounds",
-            "rounds": [
-                {
-                    "id": "round1",
-                    "title": "Round 1",
-                    "steps": [
-                        {
-                            "id": "step1",
-                            "title": "Guess the artist",
-                            "player_input": {"kind": "text"},
-                            "evaluation": {"type_": "exact_text", "points": 2, "answer": "ABBA"},
-                        }
-                    ],
-                }
-            ],
-        }
-    )
+    definition = _music_definition()
 
     saved = await provider.create(definition)
 
@@ -152,6 +168,117 @@ async def test_update_definition_rejects_id_mismatch(tmp_path):
         )
 
     assert error.value.status_code == 400
+
+
+@pytest_asyncio.fixture()
+async def postgres_provider():
+    database_url = os.environ.get("POSTGRES_TEST_DATABASE_URL")
+    if database_url is None:
+        pytest.skip("POSTGRES_TEST_DATABASE_URL is not configured")
+
+    engine = create_async_engine(database_url)
+    sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+        await connection.run_sync(Base.metadata.create_all)
+
+    try:
+        yield PostgresDefinitionProvider(sessionmaker=sessionmaker)
+    finally:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.drop_all)
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_postgres_definition_provider_creates_loads_and_lists(postgres_provider):
+    definition = _music_definition()
+
+    saved = await postgres_provider.create(definition)
+    loaded = await postgres_provider.load(definition.id)
+    summaries = await postgres_provider.list_definitions()
+
+    assert saved == definition
+    assert loaded == definition
+    assert summaries == [
+        DefinitionSummary(
+            id="music_night",
+            title="Music Night",
+            description="Songs and sounds",
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_postgres_definition_provider_rejects_duplicate_create(postgres_provider):
+    definition = _music_definition()
+    await postgres_provider.create(definition)
+
+    with pytest.raises(FileExistsError):
+        await postgres_provider.create(definition)
+
+
+@pytest.mark.asyncio
+async def test_postgres_definition_provider_updates_existing_definition(postgres_provider):
+    definition = _music_definition()
+    await postgres_provider.create(definition)
+    definition.title = "Updated Music Night"
+
+    saved = await postgres_provider.update(definition.id, definition)
+
+    assert saved.title == "Updated Music Night"
+    assert (await postgres_provider.load(definition.id)).title == "Updated Music Night"
+
+
+@pytest.mark.asyncio
+async def test_postgres_definition_provider_rejects_missing_definition(postgres_provider):
+    with pytest.raises(FileNotFoundError):
+        await postgres_provider.load("missing")
+
+
+@pytest.mark.asyncio
+async def test_alembic_game_definitions_table_shape_matches_model(postgres_provider):
+    provider = postgres_provider
+    async with provider.sessionmaker() as session:
+        table_names = await session.run_sync(
+            lambda sync_session: inspect(sync_session.get_bind()).get_table_names()
+        )
+        columns = await session.run_sync(
+            lambda sync_session: {
+                column["name"]
+                for column in inspect(sync_session.get_bind()).get_columns(
+                    GameDefinitionRecord.__tablename__
+                )
+            }
+        )
+
+    assert "game_definitions" in table_names
+    assert {"id", "title", "description", "payload", "created_at", "updated_at"} <= columns
+
+
+class MissingDefinitionProvider(DefinitionProvider):
+    async def load(self, definition_id: str) -> GameDefinition:
+        raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+
+    async def list_definitions(self):
+        return []
+
+    async def create(self, definition: GameDefinition):
+        return definition
+
+    async def update(self, definition_id: str, definition: GameDefinition):
+        return definition
+
+
+@pytest.mark.asyncio
+async def test_get_definition_maps_missing_definition_to_404():
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.get_definition(
+            definition_id="missing",
+            definition_provider=MissingDefinitionProvider(),
+        )
+
+    assert error.value.status_code == 404
 
 
 def test_none_input_rejects_non_none_evaluation():

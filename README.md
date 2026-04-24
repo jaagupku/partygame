@@ -8,7 +8,7 @@ The project is built for the classic living-room, classroom, or event setup:
 - one person can act as a host and control the flow
 - players join from their own devices as controllers
 
-Game definitions, realtime lobby state, and controller interactions are handled across a SvelteKit frontend and a FastAPI backend, with Valkey used for in-memory state.
+Game definitions, realtime lobby state, and controller interactions are handled across a SvelteKit frontend and a FastAPI backend. Postgres stores editable game definitions, while Valkey is used for in-memory lobby/runtime state.
 
 ## Overview
 
@@ -46,6 +46,7 @@ docker compose up --build
 This starts:
 
 - `valkey` on port `6379`
+- `postgres` on port `5432`
 - the API service
 - the frontend service
 - the gateway on `http://localhost:80`
@@ -63,8 +64,11 @@ From [`api/`](/home/jaagup/theority/partygame/api):
 
 ```bash
 poetry install
+poetry run alembic upgrade head
 poetry run uvicorn partygame:app
 ```
+
+Built-in definitions from `api/games/*.json` are seed data. On startup the API imports any missing definitions into Postgres without overwriting database-edited definitions.
 
 Useful checks:
 
