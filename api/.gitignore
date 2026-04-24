@@ -1,4 +1,5 @@
 __pycache__
 games
 media
-media_seed
+!media_seed/city-skyline.svg
+media_seed/*

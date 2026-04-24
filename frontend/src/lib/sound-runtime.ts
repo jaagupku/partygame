@@ -1,6 +1,11 @@
 import { get } from 'svelte/store';
 
-import { createSoundDetector, type RuntimeEvent, type RuntimeLikeState, type SoundCue } from '$lib/sound-detector.js';
+import {
+	createSoundDetector,
+	type RuntimeEvent,
+	type RuntimeLikeState,
+	type SoundCue
+} from '$lib/sound-detector.js';
 import { createSoundPolicy, type SoundSurface } from '$lib/sound-policy.js';
 import { getSoundSettingsStore } from '$lib/sound-settings.js';
 

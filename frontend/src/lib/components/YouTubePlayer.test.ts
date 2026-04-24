@@ -6,9 +6,8 @@ import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 import { loadYouTubeIframeApi } from '$lib/media/youtube.js';
 
 vi.mock('$lib/media/youtube.js', async () => {
-	const actual = await vi.importActual<typeof import('$lib/media/youtube.js')>(
-		'$lib/media/youtube.js'
-	);
+	const actual =
+		await vi.importActual<typeof import('$lib/media/youtube.js')>('$lib/media/youtube.js');
 	return {
 		...actual,
 		loadYouTubeIframeApi: vi.fn()
