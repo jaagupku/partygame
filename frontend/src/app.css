@@ -190,7 +190,7 @@
 	}
 
 	.page-top-chips {
-		@apply mb-4 flex flex-wrap items-center justify-end gap-2 md:absolute md:right-6 md:top-6 md:mb-0;
+		@apply mb-4 flex flex-wrap items-center justify-end gap-2 md:absolute md:left-6 md:top-6 md:mb-0 md:justify-start;
 	}
 
 	.chip-button,
