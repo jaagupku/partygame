@@ -34,7 +34,7 @@
 		onAddInputOption: (step: StepDefinition) => void;
 		onRemoveInputOption: (step: StepDefinition, optionIndex: number) => void;
 		onSetInputOptionValue: (step: StepDefinition, optionIndex: number, value: string) => void;
-		onSetOrderingAnswer: (step: StepDefinition, optionIndex: number, value: string) => void;
+		onSetOrderingAnswerOrder: (step: StepDefinition, values: string[]) => void;
 		onSetRadioCorrectOption: (step: StepDefinition, option: string) => void;
 		onSetCheckboxOptionPoints: (step: StepDefinition, optionIndex: number, points: number) => void;
 		onAddMedia: (step: StepDefinition) => void;
@@ -62,7 +62,7 @@
 		onAddInputOption,
 		onRemoveInputOption,
 		onSetInputOptionValue,
-		onSetOrderingAnswer,
+		onSetOrderingAnswerOrder,
 		onSetRadioCorrectOption,
 		onSetCheckboxOptionPoints,
 		onAddMedia,
@@ -170,7 +170,7 @@
 				{evaluationDetails}
 				{orderedAnswer}
 				{onSetEvaluationType}
-				{onSetOrderingAnswer}
+				{onSetOrderingAnswerOrder}
 			/>
 
 			<SettingsSection step={selectedStep} />

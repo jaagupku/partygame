@@ -87,22 +87,26 @@ describe('YouTubePlayer', () => {
 		expect(mockPlayer.destroy).not.toHaveBeenCalled();
 
 		await view.rerender({
-			media: TEST_MEDIA,
+			media: { ...TEST_MEDIA },
 			shouldPauseMedia: true,
 			shouldResumePausedMedia: false
 		});
 		await flushEffects();
 
 		expect(mockPlayer.pauseVideo).toHaveBeenCalled();
+		expect(mockPlayer.destroy).not.toHaveBeenCalled();
+		expect(mockNamespace.Player).toHaveBeenCalledTimes(1);
 
 		await view.rerender({
-			media: TEST_MEDIA,
+			media: { ...TEST_MEDIA },
 			shouldPauseMedia: false,
 			shouldResumePausedMedia: true
 		});
 		await flushEffects();
 
 		expect(mockPlayer.playVideo).toHaveBeenCalled();
+		expect(mockPlayer.destroy).not.toHaveBeenCalled();
+		expect(mockNamespace.Player).toHaveBeenCalledTimes(1);
 	});
 
 	it('tears down cleanly when media becomes null during rerender', async () => {

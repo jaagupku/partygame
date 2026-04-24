@@ -610,9 +610,20 @@ export function stepBadges(step: StepDefinition): string[] {
 }
 
 export function getOrderingAnswer(step: StepDefinition): string[] {
-	return Array.isArray(step.evaluation.answer)
+	const availableOptions = [...step.player_input.options];
+	const unusedOptions = [...availableOptions];
+	const answer = Array.isArray(step.evaluation.answer)
 		? step.evaluation.answer.map((value) => String(value))
-		: [...step.player_input.options];
+		: availableOptions;
+	const orderedOptions: string[] = [];
+	for (const value of answer) {
+		const optionIndex = unusedOptions.indexOf(value);
+		if (optionIndex === -1) {
+			continue;
+		}
+		orderedOptions.push(unusedOptions.splice(optionIndex, 1)[0]);
+	}
+	return [...orderedOptions, ...unusedOptions];
 }
 
 export function isCheckboxWeightedAnswer(answer: unknown): answer is CheckboxWeightedAnswer {

@@ -84,6 +84,7 @@ class GameController:
 
     async def connect(self):
         await self.websocket.accept()
+        await self.refresh_lobby()
         realtime.register_display(self.lobby.id, self)
         self.pubsub = self.redis.pubsub()
         await self.pubsub.subscribe(self.game_channel)
@@ -142,6 +143,17 @@ class GameController:
         await self.send(snapshot)
         await self.broadcast(snapshot)
 
+    async def refresh_lobby(self):
+        lobby = await self.repo.get_lobby_meta(self.lobby.id)
+        if lobby is not None:
+            self.lobby.starter_id = lobby.starter_id
+            self.lobby.host_id = lobby.host_id
+            self.lobby.state = lobby.state
+            self.lobby.phase = lobby.phase
+            self.lobby.current_step = lobby.current_step
+            self.lobby.host_enabled = lobby.host_enabled
+            self.lobby.definition_id = lobby.definition_id
+
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:
             return
@@ -160,6 +172,7 @@ class GameController:
         await self.broadcast_snapshot()
 
     async def process_input(self, msg: dict):
+        await self.refresh_lobby()
         if "type_" not in msg:
             return
         match msg["type_"]:

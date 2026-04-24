@@ -23,6 +23,7 @@
 		createStepFromTemplate,
 		getStepTemplates,
 		getCheckboxOptionScores,
+		getOrderingAnswer,
 		isCheckboxWeightedAnswer,
 		normalizeAnswer
 	} from './helpers';
@@ -479,6 +480,21 @@
 		};
 	}
 
+	function syncOrderingAnswer(step: StepDefinition) {
+		const availableOptions = [...step.player_input.options];
+		const unusedOptions = [...availableOptions];
+		const orderedValues = getOrderingAnswer(step);
+		const nextOrder: string[] = [];
+		for (const value of orderedValues) {
+			const optionIndex = unusedOptions.indexOf(value);
+			if (optionIndex === -1) {
+				continue;
+			}
+			nextOrder.push(unusedOptions.splice(optionIndex, 1)[0]);
+		}
+		step.evaluation.answer = [...nextOrder, ...unusedOptions];
+	}
+
 	function applyEvaluationDefaults(step: StepDefinition) {
 		const allowedEvaluations = INPUT_KIND_EVALUATIONS[step.player_input.kind];
 		if (!allowedEvaluations.includes(step.evaluation.type_)) {
@@ -567,7 +583,7 @@
 			`${$messages.common.add} ${step.player_input.options.length + 1}`
 		);
 		if (step.evaluation.type_ === 'ordering_match') {
-			step.evaluation.answer = [...step.player_input.options];
+			syncOrderingAnswer(step);
 			return;
 		}
 		if (step.evaluation.type_ === 'multi_select_weighted') {
@@ -583,7 +599,7 @@
 		const removedOption = step.player_input.options[optionIndex];
 		step.player_input.options.splice(optionIndex, 1);
 		if (step.evaluation.type_ === 'ordering_match') {
-			step.evaluation.answer = [...step.player_input.options];
+			syncOrderingAnswer(step);
 			return;
 		}
 		if (step.evaluation.type_ === 'multi_select_weighted') {
@@ -597,12 +613,9 @@
 		}
 	}
 
-	function setOrderingAnswer(step: StepDefinition, optionIndex: number, value: string) {
-		const answer = Array.isArray(step.evaluation.answer)
-			? step.evaluation.answer.map((item) => String(item))
-			: [...step.player_input.options];
-		answer[optionIndex] = value;
-		step.evaluation.answer = answer;
+	function setOrderingAnswerOrder(step: StepDefinition, values: string[]) {
+		step.evaluation.answer = [...values];
+		syncOrderingAnswer(step);
 	}
 
 	function setInputOptionValue(step: StepDefinition, optionIndex: number, value: string) {
@@ -610,7 +623,15 @@
 		const previousCheckboxScores = getCheckboxOptionScores(step);
 		step.player_input.options[optionIndex] = value;
 		if (step.evaluation.type_ === 'ordering_match') {
-			step.evaluation.answer = [...step.player_input.options];
+			const answer = getOrderingAnswer(step);
+			const answerIndex = answer.indexOf(previousValue);
+			if (answerIndex === -1) {
+				answer[optionIndex] = value;
+			} else {
+				answer[answerIndex] = value;
+			}
+			step.evaluation.answer = answer;
+			syncOrderingAnswer(step);
 			return;
 		}
 		if (step.evaluation.type_ === 'multi_select_weighted') {
@@ -1162,7 +1183,7 @@
 							onAddInputOption={addInputOption}
 							onRemoveInputOption={removeInputOption}
 							onSetInputOptionValue={setInputOptionValue}
-							onSetOrderingAnswer={setOrderingAnswer}
+							onSetOrderingAnswerOrder={setOrderingAnswerOrder}
 							onSetRadioCorrectOption={setRadioCorrectOption}
 							onSetCheckboxOptionPoints={setCheckboxOptionPoints}
 							onAddMedia={addMedia}

@@ -1,36 +1,28 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
+	import OrderingList from '$lib/components/OrderingList.svelte';
 	import { getNumberAnswer, getTextAnswer } from './helpers';
 
 	type Props = {
 		step: StepDefinition;
 		orderedAnswer: string[];
-		onSetOrderingAnswer: (step: StepDefinition, optionIndex: number, value: string) => void;
+		onSetOrderingAnswerOrder: (step: StepDefinition, values: string[]) => void;
 	};
 
-	let { step, orderedAnswer, onSetOrderingAnswer }: Props = $props();
+	let { step, orderedAnswer, onSetOrderingAnswerOrder }: Props = $props();
 </script>
 
 {#if step.evaluation.type_ === 'ordering_match'}
 	<div class="grid gap-3">
 		<p class="text-sm font-semibold text-slate-700">{$messages.editor.correctOrderHelp}</p>
-		{#each orderedAnswer as answerValue, optionIndex}
-			<label
-				class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-[auto_1fr]"
-			>
-				<div
-					class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-sm font-bold text-amber-700"
-				>
-					{optionIndex + 1}
-				</div>
-				<input
-					value={answerValue}
-					class="input text-lg"
-					oninput={(event) =>
-						onSetOrderingAnswer(step, optionIndex, (event.currentTarget as HTMLInputElement).value)}
-				/>
-			</label>
-		{/each}
+		<OrderingList
+			items={orderedAnswer}
+			variant="editor"
+			dragLabel={$messages.editor.dragOrderItem}
+			moveUpLabel={$messages.editor.moveOrderItemUp}
+			moveDownLabel={$messages.editor.moveOrderItemDown}
+			onReorder={(items) => onSetOrderingAnswerOrder(step, items)}
+		/>
 	</div>
 {:else if step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number'}
 	<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">

@@ -10,9 +10,55 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Detect changed components
+        id: filter
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let changedFiles = [];
+
+            if (context.eventName === 'pull_request') {
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number: context.payload.pull_request.number,
+                per_page: 100
+              });
+              changedFiles = files.map((file) => file.filename);
+            } else {
+              if (!context.payload.before || /^0+$/.test(context.payload.before)) {
+                core.setOutput('backend', 'true');
+                core.setOutput('frontend', 'true');
+                return;
+              }
+
+              const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                owner,
+                repo,
+                basehead: `${context.payload.before}...${context.sha}`
+              });
+              changedFiles = comparison.data.files?.map((file) => file.filename) ?? [];
+            }
+
+            const touches = (prefix) => changedFiles.some((file) => file.startsWith(prefix));
+            const workflowChanged = changedFiles.includes('.github/workflows/ci.yml');
+
+            core.setOutput('backend', String(workflowChanged || touches('api/')));
+            core.setOutput('frontend', String(workflowChanged || touches('frontend/')));
+
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     defaults:
       run:
         working-directory: api
@@ -68,6 +114,8 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     defaults:
       run:
         working-directory: frontend

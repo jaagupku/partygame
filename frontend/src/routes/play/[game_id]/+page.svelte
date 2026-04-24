@@ -5,9 +5,9 @@
 	import HostControlsPanel from '$lib/components/controller/HostControlsPanel.svelte';
 	import HostReviewQueue from '$lib/components/controller/HostReviewQueue.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import PlayerInputPanel from '$lib/components/controller/PlayerInputPanel.svelte';
 	import ReactionBar from '$lib/components/controller/ReactionBar.svelte';
 	import FinaleControllerCard from '$lib/components/endgame/FinaleControllerCard.svelte';
-	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
 	import { connectionLabel, messages, onOffLabel, pageTitle } from '$lib/i18n';
 	import type { ReactionEmoji } from '$lib/reactions.js';
@@ -58,31 +58,21 @@
 	const soundSystem = createSoundSystem('controller');
 
 	let isConnected = $state(false);
-	let answerValue = $state<string | number>('');
-	let orderingItems = $state<string[]>([]);
-	let selectedRadioOption = $state<string | null>(null);
-	let selectedCheckboxOptions = $state<string[]>([]);
 	let customScore = $state(0);
-	let orderingStepId = $state<string | undefined>(undefined);
-	let inputStepId = $state<string | undefined>(undefined);
-	let draggedOrderingIndex = $state<number | null>(null);
-	let dropOrderingIndex = $state<number | null>(null);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
 	let resyncIntervalId: number | null = null;
 	let finaleAutoplayIntervalId: number | null = null;
-	let pendingSubmissionStepId = $state<string | undefined>(undefined);
+	let reviewStepId = $state<string | undefined>(undefined);
 	let pendingReviewedPlayerIds = $state<string[]>([]);
 
 	const playerMap = $derived(new Map($controller.players.map((entry) => [entry.id, entry])));
-	const playerInputDisabled = $derived(
+	const basePlayerInputDisabled = $derived(
 		!$controller.isHost &&
 			($controller.lobbyPhase !== 'question_active' ||
 				!$controller.activeStep?.input_enabled ||
-				$controller.hasSubmitted ||
-				pendingSubmissionStepId === $controller.activeStep?.id)
+				$controller.hasSubmitted)
 	);
-	const buzzerLockedOut = $derived($controller.disabledBuzzerPlayerIds.includes($controller.id));
 	const submittedPlayerNames = $derived(
 		$controller.submittedPlayerIds
 			.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
@@ -103,34 +93,10 @@
 	const canSendReactions = $derived($controller.gameState !== 'waiting_for_players');
 
 	$effect(() => {
-		const step = $controller.activeStep;
-		if (step?.id !== inputStepId) {
-			answerValue = '';
-			selectedRadioOption = null;
-			selectedCheckboxOptions = [];
-			inputStepId = step?.id;
-			pendingSubmissionStepId = undefined;
+		const stepId = $controller.activeStep?.id;
+		if (stepId !== reviewStepId) {
+			reviewStepId = stepId;
 			pendingReviewedPlayerIds = [];
-		}
-		if (step?.input_kind !== 'ordering') {
-			orderingItems = [];
-			orderingStepId = undefined;
-			draggedOrderingIndex = null;
-			dropOrderingIndex = null;
-			return;
-		}
-		if (orderingStepId === step.id) {
-			return;
-		}
-		orderingStepId = step.id;
-		orderingItems = [...step.input_options];
-		draggedOrderingIndex = null;
-		dropOrderingIndex = null;
-	});
-
-	$effect(() => {
-		if ($controller.hasSubmitted) {
-			pendingSubmissionStepId = undefined;
 		}
 	});
 
@@ -366,25 +332,7 @@
 		);
 	}
 
-	function submitAnswer() {
-		const step = $controller.activeStep;
-		if (!step || playerInputDisabled) {
-			return;
-		}
-		let value: unknown = answerValue;
-		if (step.input_kind === 'number') {
-			value = Number(answerValue);
-		} else if (step.input_kind === 'ordering') {
-			value = orderingItems;
-		} else if (step.input_kind === 'radio') {
-			value = selectedRadioOption;
-		} else if (step.input_kind === 'checkbox') {
-			value = selectedCheckboxOptions;
-		} else if (step.input_kind === 'text') {
-			value = String(answerValue);
-		}
-
-		pendingSubmissionStepId = step.id;
+	function submitAnswer(value: unknown) {
 		sendAction({
 			type_: 'player_input_submitted',
 			value
@@ -400,84 +348,11 @@
 		);
 	}
 
-	function buzz() {
-		if (playerInputDisabled || buzzerLockedOut || !$controller.buzzerActive) {
-			return;
-		}
-		triggerBuzzerHapticPulse();
-		pendingSubmissionStepId = $controller.activeStep?.id;
-		sendAction({
-			type_: 'player_input_submitted',
-			value: 'buzz'
-		});
-	}
-
 	function onKick() {
 		localStorage.removeItem('playerData');
 		socket?.close();
 		socket = null;
 		goto('/');
-	}
-
-	function reorderOrderingItems(fromIndex: number, toIndex: number) {
-		if (
-			fromIndex === toIndex ||
-			fromIndex < 0 ||
-			toIndex < 0 ||
-			fromIndex >= orderingItems.length ||
-			toIndex >= orderingItems.length
-		) {
-			return;
-		}
-		const next = [...orderingItems];
-		const [movedItem] = next.splice(fromIndex, 1);
-		next.splice(toIndex, 0, movedItem);
-		orderingItems = next;
-	}
-
-	function startOrderingDrag(index: number) {
-		if (playerInputDisabled) {
-			return;
-		}
-		draggedOrderingIndex = index;
-		dropOrderingIndex = index;
-	}
-
-	function updateOrderingDropTarget(index: number) {
-		if (playerInputDisabled || draggedOrderingIndex === null) {
-			return;
-		}
-		dropOrderingIndex = index;
-	}
-
-	function finishOrderingDrop(index: number) {
-		if (playerInputDisabled || draggedOrderingIndex === null) {
-			draggedOrderingIndex = null;
-			dropOrderingIndex = null;
-			return;
-		}
-		reorderOrderingItems(draggedOrderingIndex, index);
-		draggedOrderingIndex = null;
-		dropOrderingIndex = null;
-	}
-
-	function cancelOrderingDrag() {
-		draggedOrderingIndex = null;
-		dropOrderingIndex = null;
-	}
-
-	function submitRadioOption(option: string) {
-		selectedRadioOption = option;
-		answerValue = option;
-		submitAnswer();
-	}
-
-	function toggleCheckboxOption(option: string) {
-		if (selectedCheckboxOptions.includes(option)) {
-			selectedCheckboxOptions = selectedCheckboxOptions.filter((entry) => entry !== option);
-			return;
-		}
-		selectedCheckboxOptions = [...selectedCheckboxOptions, option];
 	}
 </script>
 
@@ -553,205 +428,18 @@
 					</div>
 				</section>
 			{/if}
-		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'buzzer'}
-			<section class="card stack-md text-center">
-				<h2 class="label-title text-2xl">{$messages.gameplay.buzzer}</h2>
-				<p>
-					{playerInputDisabled
-						? $controller.hasSubmitted
-							? $messages.gameplay.answerReceivedWaiting
-							: $messages.gameplay.stepClosed
-						: buzzerLockedOut
-							? $messages.gameplay.buzzerChanceUsed
-							: $controller.buzzerActive
-								? $messages.gameplay.buzzNow
-								: $messages.gameplay.waitForHost}
-				</p>
-				<button
-					type="button"
-					disabled={playerInputDisabled || !$controller.buzzerActive || buzzerLockedOut}
-					class="btn btn-accent text-4xl"
-					onclick={buzz}
-				>
-					{$messages.gameplay.buzzer}
-				</button>
-			</section>
-		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'text'}
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
-				{#if playerInputDisabled}
-					<p class="text-sm text-slate-600">
-						{$controller.hasSubmitted
-							? $messages.gameplay.answerSubmitted
-							: $messages.gameplay.stepClosedAnswersDisabled}
-					</p>
-				{/if}
-				<input
-					class="input"
-					type="text"
-					bind:value={answerValue}
-					disabled={playerInputDisabled}
-					placeholder={$controller.activeStep?.input_placeholder ??
-						$messages.gameplay.typeYourAnswer}
-				/>
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={submitAnswer}
-					disabled={playerInputDisabled}
-				>
-					{$messages.gameplay.submitAnswer}
-				</button>
-			</section>
-		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'number'}
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
-				{#if playerInputDisabled}
-					<p class="text-sm text-slate-600">
-						{$controller.hasSubmitted
-							? $messages.gameplay.answerSubmitted
-							: $messages.gameplay.stepClosedAnswersDisabled}
-					</p>
-				{/if}
-				<input
-					class="input"
-					type="number"
-					min={$controller.activeStep?.slider_min}
-					max={$controller.activeStep?.slider_max}
-					step={$controller.activeStep?.slider_step ?? 1}
-					bind:value={answerValue}
-					disabled={playerInputDisabled}
-					placeholder={$controller.activeStep?.input_placeholder ?? $messages.gameplay.enterNumber}
-				/>
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={submitAnswer}
-					disabled={playerInputDisabled}
-				>
-					{$messages.gameplay.submitAnswer}
-				</button>
-			</section>
-		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'ordering'}
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">{$messages.gameplay.orderingAnswer}</h2>
-				<p class="text-sm text-slate-600">
-					{playerInputDisabled
-						? $controller.hasSubmitted
-							? $messages.gameplay.orderSubmitted
-							: $messages.gameplay.reorderingDisabled
-						: $messages.gameplay.dragItemsToOrder}
-				</p>
-				<div class="stack-md">
-					{#each orderingItems as item, index}
-						<div
-							class={`flex items-center gap-3 rounded-2xl border p-3 transition ${
-								draggedOrderingIndex === index
-									? 'border-sky-300 bg-sky-50 opacity-80'
-									: dropOrderingIndex === index
-										? 'border-sky-200 bg-sky-50/70'
-										: 'border-white/70 bg-white/70'
-							}`}
-							role="listitem"
-							aria-grabbed={draggedOrderingIndex === index}
-							draggable={!playerInputDisabled}
-							ondragstart={() => startOrderingDrag(index)}
-							ondragover={(event) => {
-								event.preventDefault();
-								updateOrderingDropTarget(index);
-							}}
-							ondrop={(event) => {
-								event.preventDefault();
-								finishOrderingDrop(index);
-							}}
-							ondragend={cancelOrderingDrag}
-						>
-							<div class="badge bg-slate-100 text-slate-700">#{index + 1}</div>
-							<div
-								class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
-								aria-hidden="true"
-							>
-								::
-							</div>
-							<div class="flex-1 font-semibold">{item}</div>
-						</div>
-					{/each}
-				</div>
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={submitAnswer}
-					disabled={playerInputDisabled}
-				>
-					{$messages.gameplay.submitOrder}
-				</button>
-			</section>
-		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'radio'}
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">{$messages.gameplay.chooseOne}</h2>
-				<p class="text-sm text-slate-600">
-					{playerInputDisabled
-						? $controller.hasSubmitted
-							? $messages.gameplay.choiceLocked
-							: $messages.gameplay.newSelectionsDisabled
-						: $messages.gameplay.tapOneOption}
-				</p>
-				<div class="grid gap-3">
-					{#each $controller.activeStep.input_options as option}
-						<button
-							type="button"
-							class="btn btn-ghost justify-start text-left text-xl"
-							disabled={playerInputDisabled}
-							onclick={() => submitRadioOption(option)}
-						>
-							{option}
-						</button>
-					{/each}
-				</div>
-			</section>
-		{:else if !gameFinished && !$controller.isHost && $controller.activeStep?.input_kind === 'checkbox'}
-			<section class="card stack-md">
-				<h2 class="label-title text-2xl">{$messages.gameplay.chooseOneOrMore}</h2>
-				<p class="text-sm text-slate-600">
-					{playerInputDisabled
-						? $controller.hasSubmitted
-							? $messages.gameplay.selectionSubmitted
-							: $messages.gameplay.newSelectionsDisabled
-						: $messages.gameplay.tapOptionsThenSubmit}
-				</p>
-				<div class="grid gap-3">
-					{#each $controller.activeStep.input_options as option}
-						<button
-							type="button"
-							class={`btn justify-start text-left text-xl ${
-								selectedCheckboxOptions.includes(option) ? 'btn-primary text-white' : 'btn-ghost'
-							}`}
-							disabled={playerInputDisabled}
-							onclick={() => toggleCheckboxOption(option)}
-						>
-							{option}
-						</button>
-					{/each}
-				</div>
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={submitAnswer}
-					disabled={playerInputDisabled || selectedCheckboxOptions.length === 0}
-				>
-					{$messages.gameplay.submitSelection}
-				</button>
-			</section>
 		{:else if !gameFinished && !$controller.isHost}
-			<section class="card text-center">
-				<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
-				{#if canContinueHostlessInfoSlide}
-					<p class="mt-2 text-slate-600">{$messages.gameplay.youCanContinueInfoSlide}</p>
-					<button type="button" class="btn btn-primary mt-4" onclick={nextStep}>
-						{$messages.gameplay.advanceStep}
-					</button>
-				{/if}
-			</section>
+			<PlayerInputPanel
+				activeStep={$controller.activeStep}
+				baseInputDisabled={basePlayerInputDisabled}
+				buzzerActive={$controller.buzzerActive}
+				{canContinueHostlessInfoSlide}
+				disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+				hasSubmitted={$controller.hasSubmitted}
+				playerId={$controller.id}
+				onContinueInfoSlide={nextStep}
+				onSubmitAnswer={submitAnswer}
+			/>
 		{:else if gameFinished}
 			<section class="card text-center">
 				<p class="text-xl font-bold">{$messages.gameplay.gameComplete}</p>

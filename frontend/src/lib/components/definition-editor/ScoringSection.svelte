@@ -11,7 +11,7 @@
 		evaluationDetails: EvaluationPresentation;
 		orderedAnswer: string[];
 		onSetEvaluationType: (step: StepDefinition, evaluationType: EvaluationType) => void;
-		onSetOrderingAnswer: (step: StepDefinition, optionIndex: number, value: string) => void;
+		onSetOrderingAnswerOrder: (step: StepDefinition, values: string[]) => void;
 	};
 
 	let {
@@ -20,7 +20,7 @@
 		evaluationDetails,
 		orderedAnswer,
 		onSetEvaluationType,
-		onSetOrderingAnswer
+		onSetOrderingAnswerOrder
 	}: Props = $props();
 </script>
 
@@ -54,7 +54,7 @@
 		</div>
 
 		<div class="mt-4">
-			<EvaluationAnswerEditor {step} {orderedAnswer} {onSetOrderingAnswer} />
+			<EvaluationAnswerEditor {step} {orderedAnswer} {onSetOrderingAnswerOrder} />
 		</div>
 	</div>
 </EditorSectionCard>

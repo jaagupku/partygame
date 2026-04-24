@@ -5,6 +5,7 @@ import pytest
 
 from partygame import schemas
 from partygame.service import player as player_service
+from partygame.service import lobby as lobby_service
 from partygame.state import GameKeyFactory
 
 
@@ -512,6 +513,45 @@ async def test_resync_request_sends_full_snapshot_without_command_roundtrip(monk
     assert called["refresh"] == 1
     assert called["scheduled"] == 1
     assert websocket.messages == [snapshot.model_dump_json()]
+
+
+@pytest.mark.asyncio
+async def test_display_resync_refreshes_lobby_before_snapshot():
+    stale_lobby = schemas.Lobby(id="g1", join_code="ABCDE")
+    fresh_lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        state=schemas.GameState.RUNNING,
+        phase="question_active",
+    )
+    websocket = FakeWebSocket()
+    controller = lobby_service.GameController(websocket, redis=object(), lobby=stale_lobby)
+    controller.repo = FakeRepo(fresh_lobby)
+
+    async def sync_lobby(lobby):
+        return schemas.RuntimeSnapshotEvent(
+            revision=4,
+            lobby=schemas.RuntimeLobbyState(
+                id=lobby.id,
+                join_code=lobby.join_code,
+                host_enabled=lobby.host_enabled,
+                host_id=lobby.host_id,
+                state=lobby.state,
+                phase=lobby.phase,
+                current_step=lobby.current_step,
+            ),
+        )
+
+    controller.runtime = SimpleNamespace(sync_lobby=sync_lobby)
+
+    await controller.process_input({"type_": "resync_request"})
+
+    assert controller.lobby.state == schemas.GameState.RUNNING
+    assert controller.lobby.phase == "question_active"
+    assert len(websocket.messages) == 1
+    snapshot = schemas.RuntimeSnapshotEvent.model_validate_json(websocket.messages[0])
+    assert snapshot.lobby.state == schemas.GameState.RUNNING
+    assert snapshot.lobby.phase == "question_active"
 
 
 @pytest.mark.asyncio

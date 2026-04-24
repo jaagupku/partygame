@@ -76,19 +76,20 @@
 	});
 
 	$effect(() => {
-		const currentMedia = media;
-		if (!youtubeContainerElement || !playerKey || !currentMedia?.videoId) {
+		const currentPlayerKey = playerKey;
+		const currentMedia = untrack(() => media);
+		if (!youtubeContainerElement || !currentPlayerKey || !currentMedia?.videoId) {
 			destroyYouTubePlayer();
 			return;
 		}
-		if (youtubePlayer && initializedYouTubeKey === playerKey) {
+		if (youtubePlayer && initializedYouTubeKey === currentPlayerKey) {
 			return;
 		}
 
 		let cancelled = false;
 		destroyYouTubePlayer();
 		youtubeMaskVisible = true;
-		initializedYouTubeKey = playerKey;
+		initializedYouTubeKey = currentPlayerKey;
 
 		loadYouTubeIframeApi()
 			.then((YT) => {
@@ -153,7 +154,7 @@
 
 		return () => {
 			cancelled = true;
-			if (initializedYouTubeKey === playerKey) {
+			if (initializedYouTubeKey === currentPlayerKey) {
 				destroyYouTubePlayer();
 			}
 		};
