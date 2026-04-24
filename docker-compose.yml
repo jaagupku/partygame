@@ -5,8 +5,15 @@ services:
       context: ./api
     environment:
       - VALKEY_HOST=valkey
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=partygame
+      - POSTGRES_USER=partygame
+      - POSTGRES_PASSWORD=partygame
     depends_on:
-      - valkey
+      valkey:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 1m30s
@@ -41,3 +48,22 @@ services:
     image: valkey/valkey:9-alpine
     ports:
       - "6379:6379"
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=partygame
+      - POSTGRES_USER=partygame
+      - POSTGRES_PASSWORD=partygame
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U partygame -d partygame"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:

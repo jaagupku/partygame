@@ -6,7 +6,10 @@ from starlette.middleware.cors import CORSMiddleware
 
 from partygame.api.api_v1.api import api_router
 from partygame.core.config import settings
+from partygame.db.postgres import AsyncSessionLocal
 from partygame.schemas import MediaKind
+from partygame.service.auth import seed_admin_user
+from partygame.service.definitions import get_default_definition_provider, seed_missing_definitions
 from partygame.service.media import get_media_storage
 
 logging.basicConfig(
@@ -14,6 +17,16 @@ logging.basicConfig(
 )
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
+
+
+@app.on_event("startup")
+async def seed_builtin_game_definitions():
+    async with AsyncSessionLocal() as session:
+        await seed_admin_user(session)
+    imported = await seed_missing_definitions(get_default_definition_provider())
+    if imported:
+        logging.getLogger(__name__).info("Seeded %s built-in game definitions", imported)
+
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
