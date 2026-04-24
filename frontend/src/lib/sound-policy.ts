@@ -36,7 +36,10 @@ const ALLOWED_CUES: Record<SoundSurface, Set<SoundCue>> = {
 	controller: new Set(['submissionReceived', 'pendingReviewCleared'])
 };
 
-export function createSoundPolicy(surface: SoundSurface, settings = DEFAULT_SOUND_SETTINGS[surface]) {
+export function createSoundPolicy(
+	surface: SoundSurface,
+	settings = DEFAULT_SOUND_SETTINGS[surface]
+) {
 	return {
 		settings,
 		shouldPlay(cue: SoundCue) {
