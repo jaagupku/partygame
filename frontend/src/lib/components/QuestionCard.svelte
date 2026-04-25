@@ -60,7 +60,7 @@
 		<h3
 			class={`question-card-step-title ${
 				stageVariant
-					? 'text-[clamp(2rem,4vw,4rem)] font-extrabold leading-tight'
+					? 'text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight'
 					: 'text-3xl font-extrabold'
 			}`}
 		>
@@ -69,7 +69,7 @@
 		{#if step.body}
 			<p
 				class={`question-card-body ${
-					stageVariant ? 'max-w-[60rem] text-[clamp(1rem,2.2vw,2rem)] leading-relaxed' : 'text-xl'
+					stageVariant ? 'max-w-[86rem] text-[clamp(1rem,1.8vw,1.7rem)] leading-snug' : 'text-xl'
 				}`}
 			>
 				{step.body}
@@ -128,17 +128,17 @@
 	.question-card-stage {
 		display: grid;
 		grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-		gap: 0.75rem;
+		gap: clamp(0.35rem, 0.8vh, 0.75rem);
 		height: 100%;
 		min-height: 0;
+		padding: clamp(0.5rem, 1.1vw, 1.25rem);
 	}
 
 	.question-card-stage-shell {
 		border-radius: 1.5rem;
-		border: 1px solid rgb(255 255 255 / 0.55);
-		background: rgb(255 255 255 / 0.52);
-		backdrop-filter: blur(6px);
-		box-shadow: 0 10px 30px rgb(15 23 42 / 0.08);
+		border: 0;
+		background: rgb(255 255 255 / 0.38);
+		box-shadow: none;
 	}
 
 	.question-card-media-stage {

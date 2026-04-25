@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		AVATAR_PRESETS,
 		createDefaultPlayerProfile,
@@ -30,7 +31,10 @@
 			? storedPresetKey
 			: randomPresetKey();
 
-	let joinCode = $state('');
+	const initialJoinCode =
+		page.url.searchParams.get('join_code') ?? page.url.searchParams.get('code') ?? '';
+
+	let joinCode = $state(initialJoinCode.slice(0, 5).toUpperCase());
 	let name = $state(storedProfile.name);
 	let avatarKind = $state<AvatarSelectionKind>(storedProfile.avatar_kind);
 	let avatarPresetKey = $state<string | null>(initialPresetKey);
@@ -44,6 +48,8 @@
 	let pendingFileName = $state('avatar.png');
 	let cropEditor = $state<AvatarCropEditor | null>(null);
 	let avatarPickerOpen = $state(false);
+
+	type StoredPlayerByJoinCode = Record<string, Player>;
 
 	function uppercase(node: HTMLInputElement) {
 		const transform = () => (node.value = node.value.toUpperCase());
@@ -68,18 +74,50 @@
 		clearPendingImage();
 	}
 
+	function getStoredPlayersByJoinCode() {
+		if (!browser) {
+			return {};
+		}
+		try {
+			return JSON.parse(
+				localStorage.getItem('playerDataByJoinCode') ?? '{}'
+			) as StoredPlayerByJoinCode;
+		} catch {
+			return {};
+		}
+	}
+
+	function getReconnectPlayer(joinCodeValue: string) {
+		const normalizedJoinCode = joinCodeValue.toUpperCase();
+		const storedPlayers = getStoredPlayersByJoinCode();
+		return storedPlayers[normalizedJoinCode] ?? null;
+	}
+
+	function storeJoinedPlayer(joinCodeValue: string, player: Player) {
+		if (!browser) {
+			return;
+		}
+		const normalizedJoinCode = joinCodeValue.toUpperCase();
+		const storedPlayers = getStoredPlayersByJoinCode();
+		storedPlayers[normalizedJoinCode] = player;
+		localStorage.setItem('playerDataByJoinCode', JSON.stringify(storedPlayers));
+		localStorage.setItem('playerData', JSON.stringify(player));
+	}
+
 	async function onSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		const trimmedName = name.trim();
 		if (!submitEnabled || uploadingAvatar) {
 			return;
 		}
+		const storedPlayer = getReconnectPlayer(joinCode);
 
 		const res = await fetch('/api/v1/lobby/join', {
 			method: 'POST',
 			body: JSON.stringify({
 				player_name: trimmedName,
 				join_code: joinCode,
+				player_id: storedPlayer?.id ?? null,
 				avatar_kind: avatarKind,
 				avatar_preset_key: avatarKind === 'preset' ? avatarPresetKey : null,
 				avatar_url: avatarKind === 'custom' ? avatarUrl : null,
@@ -105,8 +143,8 @@
 			avatar_url: body.player.avatar_url ?? null,
 			avatar_asset_id: body.player.avatar_asset_id ?? null
 		});
-		localStorage.setItem('playerData', JSON.stringify(body.player));
-		goto(`/play/${body.lobby.id}`);
+		storeJoinedPlayer(body.lobby.join_code, body.player);
+		goto(`/play/${body.lobby.join_code}`);
 	}
 
 	async function onAvatarFileSelected(event: Event) {

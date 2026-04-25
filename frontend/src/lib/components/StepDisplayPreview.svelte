@@ -42,7 +42,7 @@
 </script>
 
 <div
-	class={`mt-0 ${stageLayout ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4 overflow-hidden' : 'stack-lg'}`}
+	class={`mt-0 ${stageLayout ? 'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-2 overflow-hidden' : 'stack-lg'}`}
 >
 	<div>
 		<GameConnectionStatus {connected} {connectionLabel} showInline={false} {showDisconnectedChip} />

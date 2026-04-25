@@ -161,6 +161,8 @@ const en = defineMessages({
 	hostView: {
 		hostLobbyTitle: 'Host Lobby',
 		joinCode: 'Join code',
+		scanToJoin: 'Scan to join with the code prefilled.',
+		joinQrAlt: 'QR code for the player join page',
 		hostMode: 'Host mode',
 		useHostController: 'Use the host controller to start and run the game.',
 		finalResultsReady:
@@ -758,6 +760,8 @@ const et: Messages = {
 	hostView: {
 		hostLobbyTitle: 'Mängujuhi lobby',
 		joinCode: 'Liitumiskood',
+		scanToJoin: 'Skanni, et liitumiskood oleks juba täidetud.',
+		joinQrAlt: 'Mängijate liitumislehe QR-kood',
 		hostMode: 'Mängujuhi režiim',
 		useHostController: 'Kasuta mängujuhi kontrollerit mängu käivitamiseks ja juhtimiseks.',
 		finalResultsReady:

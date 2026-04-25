@@ -72,6 +72,10 @@
 		@apply h-screen overflow-hidden p-0;
 	}
 
+	.app-shell-host-game {
+		@apply h-screen overflow-hidden p-2 md:p-3 xl:p-4;
+	}
+
 	.page-panel {
 		background: var(--party-surface);
 		backdrop-filter: blur(8px);
@@ -87,7 +91,7 @@
 	}
 
 	.page-panel-host-game {
-		@apply h-[calc(100vh-2rem)] max-w-[120rem] overflow-hidden p-4 md:h-[calc(100vh-4rem)] md:p-6 xl:p-8;
+		@apply h-[calc(100vh-1rem)] max-w-[124rem] overflow-hidden p-2 md:h-[calc(100vh-1.5rem)] md:p-3 xl:h-[calc(100vh-2rem)] xl:p-4;
 	}
 
 	.page-title {

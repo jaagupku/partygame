@@ -278,7 +278,6 @@
 
 	.reveal-blur_circle .media-image {
 		filter: blur(18px);
-		transition: filter 1s ease-out;
 	}
 
 	.media-spotlight {
@@ -300,5 +299,10 @@
 	.reveal-state-revealed .media-image {
 		filter: none;
 		transform: none;
+	}
+
+	.reveal-blur_to_clear.reveal-state-revealed .media-image,
+	.reveal-blur_circle.reveal-state-revealed .media-image {
+		transition: filter 1s ease-out;
 	}
 </style>

@@ -12,6 +12,10 @@
 		page.url.pathname.startsWith('/definitions/') && page.url.pathname !== '/definitions/'
 	);
 	const hostGameRoute = $derived(/^\/host\/[^/]+$/.test(page.url.pathname));
+	const playerControllerRoute = $derived(/^\/play\/[^/]+$/.test(page.url.pathname));
+	const hideAuthControls = $derived(
+		definitionsEditorRoute || hostGameRoute || playerControllerRoute
+	);
 
 	$effect(() => {
 		if (!browser) {
@@ -38,14 +42,18 @@
 	<title>{pageTitle()}</title>
 </svelte:head>
 
-<div class:app-shell-editor={definitionsEditorRoute} class="app-shell">
+<div
+	class:app-shell-editor={definitionsEditorRoute}
+	class:app-shell-host-game={hostGameRoute}
+	class="app-shell"
+>
 	<div
 		class:page-panel-editor={definitionsEditorRoute}
 		class:page-panel-wide={page.url.pathname.startsWith('/definitions')}
 		class:page-panel-host-game={hostGameRoute}
 		class="page-panel"
 	>
-		{#if !definitionsEditorRoute && !hostGameRoute}
+		{#if !hideAuthControls}
 			<div class="mb-4 flex flex-wrap items-center justify-end gap-3 text-sm">
 				{#if $currentUser}
 					<span class="font-semibold text-slate-700">{$currentUser.display_name}</span>

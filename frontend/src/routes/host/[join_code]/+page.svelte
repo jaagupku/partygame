@@ -1,4 +1,5 @@
 <script lang="ts">
+	import 'iconify-icon';
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -9,7 +10,8 @@
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
-	import { connectionLabel, formatPlayerStatus, messages, onOffLabel, pageTitle } from '$lib/i18n';
+	import { connectionLabel, messages, onOffLabel, pageTitle } from '$lib/i18n';
+	import { createQrCodeDataUrl } from '$lib/qr-code.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { createSoundSystem } from '$lib/sound-system.js';
 
@@ -25,6 +27,7 @@
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
 	let resyncIntervalId = $state<number | null>(null);
+	let joinQrDataUrl = $state('');
 	const playerMap = $derived(new Map($game.players.map((player) => [player.id, player])));
 	const buzzedPlayerName = $derived(
 		$game.buzzedPlayerId ? (playerMap.get($game.buzzedPlayerId)?.name ?? '') : ''
@@ -49,6 +52,7 @@
 	let activeReactions = $state<ActiveReaction[]>([]);
 	let lastReactionInstanceId = $state<string | undefined>(undefined);
 	let reactionCleanupIntervalId = $state<number | null>(null);
+	let qrGenerationId = 0;
 
 	function addReactionEffect(event: PlayerReactionEvent) {
 		const durationMs = 2600 + Math.random() * 1200;
@@ -78,6 +82,21 @@
 		}
 		lastReactionInstanceId = reaction.instance_id;
 		addReactionEffect(reaction);
+	});
+
+	$effect(() => {
+		if (!browser || !$game.join_code) {
+			return;
+		}
+		const nextJoinUrl = new URL('/play', window.location.origin);
+		nextJoinUrl.searchParams.set('join_code', $game.join_code);
+		const joinUrl = nextJoinUrl.toString();
+		const generationId = ++qrGenerationId;
+		void createQrCodeDataUrl(joinUrl).then((dataUrl) => {
+			if (generationId === qrGenerationId) {
+				joinQrDataUrl = dataUrl;
+			}
+		});
 	});
 
 	onMount(() => {
@@ -184,6 +203,22 @@
 			{$game.join_code}
 		</span>
 	</p>
+	{#if joinQrDataUrl}
+		<div
+			class="mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200"
+		>
+			<img
+				class="h-52 w-52"
+				src={joinQrDataUrl}
+				alt={$messages.hostView.joinQrAlt}
+				width="208"
+				height="208"
+			/>
+			<p class="max-w-64 text-center text-sm font-semibold text-slate-600">
+				{$messages.hostView.scanToJoin}
+			</p>
+		</div>
+	{/if}
 	<p class="page-subtitle mt-2">
 		{$messages.hostView.hostMode}: <span class="font-bold">{onOffLabel($game.host_enabled)}</span>
 	</p>
@@ -196,28 +231,40 @@
 	/>
 
 	{#if $game.players.length > 0}
-		<ul class="stack-md mt-8">
+		<ul class="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-4">
 			{#each $game.players as player}
-				<li class="card flex items-center justify-between gap-3">
+				<li>
 					<button
 						type="button"
-						class="flex min-w-0 items-center gap-3 text-left text-xl font-bold text-slate-800 transition-opacity hover:opacity-75"
+						class="grid w-24 justify-items-center gap-2 text-center transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500"
 						onclick={() => setHost(player.id)}
+						aria-label={`${player.name}${player.isHost ? `, ${$messages.common.host}` : ''}`}
 					>
 						<Avatar
 							name={player.name}
 							avatarKind={player.avatar_kind}
 							avatarPresetKey={player.avatar_preset_key}
 							avatarUrl={player.avatar_url}
+							sizeClass="h-16 w-16"
 						/>
-						<span class="truncate">{player.name}</span>
-					</button>
-					<div class="flex items-center gap-2">
+						<span
+							class="flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight text-slate-800"
+						>
+							{#if player.status === 'disconnected'}
+								<iconify-icon
+									class="shrink-0 text-base text-slate-500"
+									icon="fluent:plug-disconnected-16-filled"
+									title={$messages.common.disconnected}
+								></iconify-icon>
+							{/if}
+							<span class="truncate">{player.name}</span>
+						</span>
 						{#if player.isHost}
-							<span class="badge bg-sky-100 text-sky-700">{$messages.common.host}</span>
+							<span class="-mt-1 text-xs font-extrabold uppercase text-sky-700">
+								{$messages.common.host}
+							</span>
 						{/if}
-						<span class="text-sm text-slate-600">{formatPlayerStatus(player.status)}</span>
-					</div>
+					</button>
 				</li>
 			{/each}
 		</ul>

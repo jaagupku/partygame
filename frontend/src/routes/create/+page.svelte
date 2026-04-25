@@ -58,7 +58,7 @@
 			})
 		});
 		const lobby: Lobby = await res.json();
-		goto(`/host/${lobby.id}`);
+		goto(`/host/${lobby.join_code}`);
 	}
 </script>
 

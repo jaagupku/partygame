@@ -349,6 +349,15 @@
 	}
 
 	function onKick() {
+		try {
+			const playerDataByJoinCode = JSON.parse(
+				localStorage.getItem('playerDataByJoinCode') ?? '{}'
+			) as Record<string, Player>;
+			delete playerDataByJoinCode[lobby().join_code];
+			localStorage.setItem('playerDataByJoinCode', JSON.stringify(playerDataByJoinCode));
+		} catch {
+			localStorage.removeItem('playerDataByJoinCode');
+		}
 		localStorage.removeItem('playerData');
 		socket?.close();
 		socket = null;

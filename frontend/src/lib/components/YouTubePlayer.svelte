@@ -20,11 +20,16 @@
 	}: YouTubePlayerProps = $props();
 
 	let youtubeContainerElement = $state<HTMLDivElement | null>(null);
+	let frameShellElement = $state<HTMLDivElement | null>(null);
 	let youtubePlayer: YouTubePlayer | null = null;
 	let youtubePlayerReady = $state(false);
 	let youtubeMaskVisible = $state(true);
 	let shouldResumeMedia = $state(false);
 	let initializedYouTubeKey = '';
+	let frameShellWidth = $state(0);
+	let frameShellHeight = $state(0);
+
+	const YOUTUBE_ASPECT_RATIO = 16 / 9;
 
 	function destroyYouTubePlayer() {
 		youtubePlayerReady = false;
@@ -39,6 +44,39 @@
 			return '';
 		}
 		return `${media.videoId}:${media.startSeconds}:${loop ? 'loop' : 'once'}`;
+	});
+	const stageFrameStyle = $derived.by(() => {
+		if (!stageVariant || frameShellWidth <= 0 || frameShellHeight <= 0) {
+			return '';
+		}
+		const width = Math.min(frameShellWidth, frameShellHeight * YOUTUBE_ASPECT_RATIO);
+		const height = width / YOUTUBE_ASPECT_RATIO;
+		return `width:${width}px;height:${height}px;`;
+	});
+
+	function measureFrameShell() {
+		if (!frameShellElement) {
+			frameShellWidth = 0;
+			frameShellHeight = 0;
+			return;
+		}
+		frameShellWidth = frameShellElement.clientWidth;
+		frameShellHeight = frameShellElement.clientHeight;
+	}
+
+	$effect(() => {
+		if (!stageVariant || !frameShellElement || typeof window === 'undefined') {
+			return;
+		}
+		measureFrameShell();
+		if (!window.ResizeObserver) {
+			return;
+		}
+		const observer = new ResizeObserver(measureFrameShell);
+		observer.observe(frameShellElement);
+		return () => {
+			observer.disconnect();
+		};
 	});
 
 	$effect(() => {
@@ -165,14 +203,31 @@
 	});
 </script>
 
-<div class={`youtube-frame ${stageVariant ? 'youtube-frame-stage' : ''}`}>
-	<div bind:this={youtubeContainerElement} class="youtube-player"></div>
-	{#if youtubeMaskVisible}
-		<div class="youtube-mask" aria-hidden="true"></div>
-	{/if}
+<div
+	class={`youtube-frame-shell ${stageVariant ? 'youtube-frame-shell-stage' : ''}`}
+	bind:this={frameShellElement}
+>
+	<div class={`youtube-frame ${stageVariant ? 'youtube-frame-stage' : ''}`} style={stageFrameStyle}>
+		<div bind:this={youtubeContainerElement} class="youtube-player"></div>
+		{#if youtubeMaskVisible}
+			<div class="youtube-mask" aria-hidden="true"></div>
+		{/if}
+	</div>
 </div>
 
 <style lang="postcss">
+	.youtube-frame-shell {
+		width: 100%;
+	}
+
+	.youtube-frame-shell-stage {
+		display: grid;
+		place-items: center;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+	}
+
 	.youtube-frame {
 		position: relative;
 		overflow: hidden;
@@ -182,8 +237,7 @@
 	}
 
 	.youtube-frame-stage {
-		width: min(100%, calc(65vh * 16 / 9));
-		max-height: 65vh;
+		width: 100%;
 		margin-inline: auto;
 	}
 
