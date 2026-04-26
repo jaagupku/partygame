@@ -108,6 +108,7 @@ export function createSoundDetector({ timerWarningSeconds = 3 }: DetectorOptions
 	let initialized = false;
 	let currentState = normalizeSoundState();
 	let timerWarningStepId: string | null = null;
+	let timerWarningRemainingSecond: number | null = null;
 	let timerExpiredStepId: string | null = null;
 	const judgedBatches = new Map<string, JudgedBatchState>();
 
@@ -125,11 +126,17 @@ export function createSoundDetector({ timerWarningSeconds = 3 }: DetectorOptions
 		const remaining = currentRemainingSeconds(state, nowMs);
 		if (!state.stepId) {
 			timerWarningStepId = null;
+			timerWarningRemainingSecond = null;
 			timerExpiredStepId = null;
 			return;
 		}
-		timerWarningStepId =
-			remaining !== null && remaining <= timerWarningSeconds ? state.stepId : null;
+		if (remaining !== null && remaining <= timerWarningSeconds && remaining > 0) {
+			timerWarningStepId = state.stepId;
+			timerWarningRemainingSecond = Math.ceil(remaining);
+		} else {
+			timerWarningStepId = null;
+			timerWarningRemainingSecond = null;
+		}
 		timerExpiredStepId = remaining !== null && remaining <= 0 ? state.stepId : null;
 	}
 
@@ -158,6 +165,7 @@ export function createSoundDetector({ timerWarningSeconds = 3 }: DetectorOptions
 		if (nextState.stepId && nextState.stepId !== previousState.stepId) {
 			cues.push('stepOpen');
 			timerWarningStepId = null;
+			timerWarningRemainingSecond = null;
 			timerExpiredStepId = null;
 		}
 		if (
@@ -259,13 +267,16 @@ export function createSoundDetector({ timerWarningSeconds = 3 }: DetectorOptions
 			return [] as SoundCue[];
 		}
 		const cues: SoundCue[] = [];
+		const warningSecond = Math.ceil(remaining);
 		if (
 			remaining <= timerWarningSeconds &&
 			remaining > 0 &&
-			timerWarningStepId !== liveState.stepId
+			(timerWarningStepId !== liveState.stepId ||
+				timerWarningRemainingSecond !== warningSecond)
 		) {
 			cues.push('timerWarning');
 			timerWarningStepId = liveState.stepId;
+			timerWarningRemainingSecond = warningSecond;
 		}
 		if (remaining <= 0 && timerExpiredStepId !== liveState.stepId) {
 			cues.push('stepClosed');

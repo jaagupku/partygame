@@ -303,7 +303,6 @@
 					revealedSubmission={$game.revealedSubmission}
 					revealedAnswer={$game.revealedAnswer}
 					buzzerActive={$game.buzzerActive}
-					buzzedPlayerId={$game.buzzedPlayerId}
 					{buzzedPlayerName}
 					displayPhase={$game.displayPhase}
 					phaseLabel={$game.phase ?? 'question_active'}

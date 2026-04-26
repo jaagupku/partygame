@@ -178,7 +178,7 @@ describe('sound runtime', () => {
 		expect(calls).toEqual(['buzzerArmed', 'buzzerArmed']);
 	});
 
-	it('plays timer warning only once after crossing the threshold', () => {
+	it('plays timer warning once per countdown second after crossing the threshold', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(0);
 		const { player, calls } = createMockPlayer();
@@ -200,8 +200,10 @@ describe('sound runtime', () => {
 		runtime.tick(6_500);
 		runtime.tick(7_200);
 		runtime.tick(7_900);
+		runtime.tick(8_100);
+		runtime.tick(9_200);
 
-		expect(calls).toEqual(['timerWarning']);
+		expect(calls).toEqual(['timerWarning', 'timerWarning', 'timerWarning']);
 	});
 
 	it('plays finale cues for reveal and stage advancement', () => {

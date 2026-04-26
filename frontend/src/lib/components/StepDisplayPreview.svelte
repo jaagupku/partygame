@@ -26,7 +26,6 @@
 		revealedSubmission,
 		revealedAnswer,
 		buzzerActive = false,
-		buzzedPlayerId,
 		buzzedPlayerName,
 		displayPhase = 'question_active',
 		phaseLabel = 'question_active',
@@ -53,14 +52,8 @@
 		{revealedSubmission}
 		{revealedAnswer}
 		{buzzerActive}
-		{buzzedPlayerId}
 		{buzzedPlayerName}
 		{displayPhase}
-		title={stageLayout
-			? ''
-			: showingAnswerReveal
-				? $messages.common.answerReveal
-				: $messages.common.nowPlaying}
 		variant={stageLayout ? 'stage' : 'default'}
 	/>
 

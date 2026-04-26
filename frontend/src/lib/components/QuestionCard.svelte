@@ -7,11 +7,9 @@
 
 	interface QuestionCardProps {
 		step?: RuntimeStepState;
-		title?: string;
 		revealedSubmission?: RevealedSubmission;
 		revealedAnswer?: RevealedAnswer;
 		buzzerActive?: boolean;
-		buzzedPlayerId?: string;
 		buzzedPlayerName?: string;
 		displayPhase?: string;
 		variant?: 'default' | 'stage';
@@ -19,18 +17,15 @@
 
 	let {
 		step,
-		title = '',
 		revealedSubmission,
 		revealedAnswer,
 		buzzerActive = false,
-		buzzedPlayerId,
 		buzzedPlayerName,
 		displayPhase = 'question_active',
 		variant = 'default'
 	}: QuestionCardProps = $props();
 
 	const stageVariant = $derived(variant === 'stage');
-	const showCardTitle = $derived(Boolean(title?.trim()));
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const showInlineRevealedAnswer = $derived(showingAnswerReveal && revealedAnswer && !stageVariant);
 	const isBuzzerStep = $derived(step?.input_kind === 'buzzer');
@@ -49,13 +44,6 @@
 <section
 	class={`question-card overflow-hidden ${stageVariant ? 'question-card-stage-shell question-card-stage' : 'card stack-md'}`}
 >
-	{#if showCardTitle}
-		<h2
-			class={`label-title question-card-kicker ${stageVariant ? 'text-4xl md:text-5xl' : 'text-3xl'}`}
-		>
-			{title}
-		</h2>
-	{/if}
 	{#if step}
 		<h3
 			class={`question-card-step-title ${
