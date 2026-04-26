@@ -271,8 +271,7 @@ export function createSoundDetector({ timerWarningSeconds = 3 }: DetectorOptions
 		if (
 			remaining <= timerWarningSeconds &&
 			remaining > 0 &&
-			(timerWarningStepId !== liveState.stepId ||
-				timerWarningRemainingSecond !== warningSecond)
+			(timerWarningStepId !== liveState.stepId || timerWarningRemainingSecond !== warningSecond)
 		) {
 			cues.push('timerWarning');
 			timerWarningStepId = liveState.stepId;
