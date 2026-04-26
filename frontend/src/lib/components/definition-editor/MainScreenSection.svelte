@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
 	import EditorSectionCard from './EditorSectionCard.svelte';
+	import MarkdownBodyEditor from './MarkdownBodyEditor.svelte';
 	import MediaEditor from './MediaEditor.svelte';
 
 	type Props = {
@@ -42,16 +43,7 @@
 				placeholder={$messages.editor.stepTitlePlaceholder}
 			/>
 		</label>
-		<label class="input-wrap">
-			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-				{$messages.editor.body}
-			</span>
-			<textarea
-				bind:value={step.body}
-				class="input min-h-28 text-lg"
-				placeholder={$messages.editor.bodyPlaceholder}
-			></textarea>
-		</label>
+		<MarkdownBodyEditor {step} />
 		{#if showAdvancedFields}
 			<label class="input-wrap">
 				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">

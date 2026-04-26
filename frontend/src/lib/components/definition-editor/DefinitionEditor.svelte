@@ -14,6 +14,17 @@
 	import DefinitionStepTemplateModal from './DefinitionStepTemplateModal.svelte';
 	import { messages } from '$lib/i18n';
 	import {
+		createDefinitionHistoryState,
+		getUndoEntry,
+		popRedoEntry,
+		popUndoEntry,
+		recordDefinitionHistoryChange,
+		resetDefinitionHistory,
+		serializeDefinition,
+		type DefinitionHistoryEntry,
+		type StepSelectionSnapshot
+	} from './definition-history';
+	import {
 		DEFAULT_EVALUATION_BY_INPUT_KIND,
 		MEDIA_TYPES,
 		INPUT_KIND_EVALUATIONS,
@@ -70,6 +81,8 @@
 	let showDefinitionAdvancedFields = $state(false);
 	let editingTitle = $state(false);
 	let pendingStepInsert = $state<{ roundIndex: number; stepIndex: number } | null>(null);
+	let history = createDefinitionHistoryState();
+	let pendingUndoConfirmation = $state<DefinitionHistoryEntry | null>(null);
 	let pendingDelete = $state<
 		| {
 				type: 'round';
@@ -122,6 +135,35 @@
 	});
 
 	$effect(() => {
+		const snapshot = serializeDefinition(draft);
+		const selection = getSelectedStepSnapshot();
+		if (!history.ready) {
+			return;
+		}
+		if (history.suppressNextChange) {
+			history.lastDraftSnapshot = snapshot;
+			history.lastSelectionSnapshot = selection;
+			history.suppressNextChange = false;
+			return;
+		}
+		if (!history.lastDraftSnapshot || snapshot === history.lastDraftSnapshot) {
+			history.lastDraftSnapshot = snapshot;
+			history.lastSelectionSnapshot = selection;
+			return;
+		}
+		recordDefinitionHistoryChange(
+			history,
+			history.lastDraftSnapshot,
+			snapshot,
+			history.lastSelectionSnapshot,
+			selection,
+			$messages.editor.history
+		);
+		history.lastDraftSnapshot = snapshot;
+		history.lastSelectionSnapshot = selection;
+	});
+
+	$effect(() => {
 		if (flatSteps.length === 0) {
 			selectedStepKey = null;
 			return;
@@ -137,6 +179,7 @@
 			persistedDefinitionId = '';
 			draft = createEmptyDefinition();
 			selectedStepKey = buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null;
+			resetHistoryBaseline();
 			return;
 		}
 		isNewDefinition = false;
@@ -157,6 +200,71 @@
 		}
 		draft = structuredClone(loadedDefinition);
 		selectedStepKey = buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null;
+		resetHistoryBaseline();
+	}
+
+	function getSelectedStepSnapshot(): StepSelectionSnapshot {
+		return selectedFlatStep
+			? {
+					stepId: selectedFlatStep.step.id,
+					roundIndex: selectedFlatStep.roundIndex,
+					stepIndex: selectedFlatStep.stepIndex
+				}
+			: null;
+	}
+
+	function resetHistoryBaseline() {
+		resetDefinitionHistory(history, draft, getSelectedStepSnapshot());
+	}
+
+	async function applyHistorySnapshot(snapshot: string, selection: StepSelectionSnapshot) {
+		history.suppressNextChange = true;
+		draft = structuredClone(JSON.parse(snapshot)) as GameDefinition;
+		await tick();
+		selectedStepKey = selection
+			? getStepKeyByIdentity(draft, selection)
+			: (buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null);
+		history.lastDraftSnapshot = serializeDefinition(draft);
+		history.lastSelectionSnapshot = getSelectedStepSnapshot();
+	}
+
+	function requestUndo() {
+		const entry = getUndoEntry(history);
+		if (!entry) {
+			return;
+		}
+		if (Date.now() - entry.createdAt > 60_000) {
+			pendingUndoConfirmation = entry;
+			return;
+		}
+		void undoLatest(entry);
+	}
+
+	async function undoLatest(entry: DefinitionHistoryEntry) {
+		if (!popUndoEntry(history, entry)) {
+			return;
+		}
+		await applyHistorySnapshot(entry.before, entry.selectionBefore);
+		pendingUndoConfirmation = null;
+	}
+
+	async function redoLatest() {
+		const entry = popRedoEntry(history);
+		if (!entry) {
+			return;
+		}
+		await applyHistorySnapshot(entry.after, entry.selectionAfter);
+	}
+
+	function closeUndoConfirmation() {
+		pendingUndoConfirmation = null;
+	}
+
+	function confirmUndo() {
+		if (!pendingUndoConfirmation) {
+			return;
+		}
+		void undoLatest(pendingUndoConfirmation);
 	}
 
 	function getStepKey(step: StepDefinition): string {
@@ -820,6 +928,7 @@
 		selectedStepKey = selectionBeforeSave
 			? getStepKeyByIdentity(draft, selectionBeforeSave)
 			: (buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null);
+		resetHistoryBaseline();
 		statusMessage = $messages.definitions.definitionSaved;
 		if (wasNewDefinition) {
 			goto(`/definitions/${draft.id}`, { replaceState: true });
@@ -1028,6 +1137,21 @@
 		const isMac = navigator.platform.toLowerCase().includes('mac');
 		const modifierPressed = isMac ? event.metaKey : event.ctrlKey;
 		const isTypingTarget = isTextEditingTarget(event.target);
+
+		if (modifierPressed && !event.shiftKey && event.key.toLowerCase() === 'z') {
+			event.preventDefault();
+			requestUndo();
+			return;
+		}
+
+		if (
+			modifierPressed &&
+			(event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))
+		) {
+			event.preventDefault();
+			void redoLatest();
+			return;
+		}
 
 		if (modifierPressed && event.key.toLowerCase() === 's') {
 			event.preventDefault();
@@ -1264,5 +1388,15 @@
 		confirmLabel={pendingDelete.confirmLabel}
 		onClose={closeDeleteModal}
 		onConfirm={confirmDelete}
+	/>
+{/if}
+
+{#if pendingUndoConfirmation}
+	<DefinitionConfirmModal
+		title={$messages.editor.history.confirmUndoTitle}
+		message={$messages.editor.history.confirmUndoMessage(pendingUndoConfirmation.description)}
+		confirmLabel={$messages.editor.history.confirmUndoLabel}
+		onClose={closeUndoConfirmation}
+		onConfirm={confirmUndo}
 	/>
 {/if}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
+	import StepBodyMarkdown from '$lib/components/markdown/StepBodyMarkdown.svelte';
 	import VideoQuestionMedia from '$lib/components/VideoQuestionMedia.svelte';
 	import { messages } from '$lib/i18n';
 	import { formatRevealValue } from '$lib/reveal-format';
@@ -55,13 +56,7 @@
 			{step.title}
 		</h3>
 		{#if step.body}
-			<p
-				class={`question-card-body ${
-					stageVariant ? 'max-w-[86rem] text-[clamp(1rem,1.8vw,1.7rem)] leading-snug' : 'text-xl'
-				}`}
-			>
-				{step.body}
-			</p>
+			<StepBodyMarkdown source={step.body} {stageVariant} />
 		{/if}
 		<div class={`question-card-media ${stageVariant ? 'question-card-media-stage' : ''}`}>
 			{#if step.media?.type_ === 'image'}

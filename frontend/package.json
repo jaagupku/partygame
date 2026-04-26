@@ -44,6 +44,7 @@
 	"type": "module",
 	"dependencies": {
 		"qrcode": "^1.5.4",
+		"svelte-markdown": "^0.4.1",
 		"svelte-sound": "^0.6.0"
 	}
 }

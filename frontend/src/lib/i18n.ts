@@ -451,6 +451,8 @@ const en = defineMessages({
 				title: 'Editing',
 				items: [
 					{ keys: 'Cmd/Ctrl + S', label: 'Save Definition' },
+					{ keys: 'Cmd/Ctrl + Z', label: 'Undo' },
+					{ keys: 'Cmd/Ctrl + Y', label: 'Redo' },
 					{ keys: 'Cmd/Ctrl + Shift + A', label: 'Add Step After' },
 					{ keys: 'Cmd/Ctrl + ,', label: 'Toggle Advanced Fields' },
 					{ keys: 'Cmd/Ctrl + Backspace/Delete', label: 'Delete Step' }
@@ -613,6 +615,37 @@ const en = defineMessages({
 		previewFallback: 'No supporting text yet.',
 		slide: 'Slide',
 		untitledStep: 'Untitled step',
+		history: {
+			confirmUndoTitle: 'Confirm undo',
+			confirmUndoLabel: 'Undo',
+			confirmUndoMessage: (description: string) =>
+				`The last edit was made over a minute ago. Change: ${description}. Undo this change?`,
+			fallbackRoundLabel: (index: number) => `Round ${index}`,
+			fallbackStepLabel: (index: number) => `Slide ${index}`,
+			editedDefinitionTitle: (before: string, after: string) =>
+				`Edited definition title from "${before}" to "${after}"`,
+			editedDefinitionDescription: 'Edited definition description',
+			changedDefinitionVisibility: (visibility: string) =>
+				`Changed definition visibility to ${visibility}`,
+			addedRound: 'Added a round',
+			removedRound: 'Removed a round',
+			editedRoundTitle: (before: string, after: string) =>
+				`Edited round title from "${before}" to "${after}"`,
+			editedRoundId: (before: string, after: string) =>
+				`Edited round id from "${before}" to "${after}"`,
+			addedStep: (roundLabel: string) => `Added a step to ${roundLabel}`,
+			removedStep: (roundLabel: string) => `Removed a step from ${roundLabel}`,
+			editedStepId: (stepLabel: string) => `Edited step id for "${stepLabel}"`,
+			editedStepTitle: (before: string, after: string) =>
+				`Edited step title from "${before}" to "${after}"`,
+			editedStepBody: (stepLabel: string) => `Edited body for "${stepLabel}"`,
+			editedStepMedia: (stepLabel: string) => `Edited media for "${stepLabel}"`,
+			editedStepPlayerInput: (stepLabel: string) => `Edited player input for "${stepLabel}"`,
+			editedStepScoring: (stepLabel: string) => `Edited scoring for "${stepLabel}"`,
+			editedStepTimer: (stepLabel: string) => `Edited timer for "${stepLabel}"`,
+			editedStepHostBehavior: (stepLabel: string) => `Edited host behavior for "${stepLabel}"`,
+			editedDefinition: 'Edited definition'
+		},
 		deleteRoundTitle: (label: string) => `Delete ${label}?`,
 		deleteRoundMessage: 'This round and all of its steps will be removed from the definition.',
 		deleteRoundConfirm: 'Delete Round',
@@ -627,7 +660,7 @@ const en = defineMessages({
 	}
 } as const);
 
-type Messages = typeof en;
+export type Messages = typeof en;
 
 const et: Messages = {
 	common: {
@@ -1051,6 +1084,8 @@ const et: Messages = {
 				title: 'Muutmine',
 				items: [
 					{ keys: 'Cmd/Ctrl + S', label: 'Salvesta definitsioon' },
+					{ keys: 'Cmd/Ctrl + Z', label: 'Võta tagasi' },
+					{ keys: 'Cmd/Ctrl + Y', label: 'Tee uuesti' },
 					{ keys: 'Cmd/Ctrl + Shift + A', label: 'Lisa samm järele' },
 					{ keys: 'Cmd/Ctrl + ,', label: 'Lülita täpsemad väljad' },
 					{ keys: 'Cmd/Ctrl + Backspace/Delete', label: 'Kustuta samm' }
@@ -1213,6 +1248,37 @@ const et: Messages = {
 		previewFallback: 'Toetavat teksti veel pole.',
 		slide: 'Slaid',
 		untitledStep: 'Pealkirjata samm',
+		history: {
+			confirmUndoTitle: 'Kinnita tagasivõtmine',
+			confirmUndoLabel: 'Võta tagasi',
+			confirmUndoMessage: (description) =>
+				`Viimane muudatus tehti üle minuti tagasi. Muudatus: ${description}. Kas võtad selle tagasi?`,
+			fallbackRoundLabel: (index) => `Voor ${index}`,
+			fallbackStepLabel: (index) => `Slaid ${index}`,
+			editedDefinitionTitle: (before, after) =>
+				`Definitsiooni pealkiri muudeti väärtuselt "${before}" väärtusele "${after}"`,
+			editedDefinitionDescription: 'Definitsiooni kirjeldust muudeti',
+			changedDefinitionVisibility: (visibility) =>
+				`Definitsiooni nähtavuseks määrati ${visibility}`,
+			addedRound: 'Lisati voor',
+			removedRound: 'Eemaldati voor',
+			editedRoundTitle: (before, after) =>
+				`Vooru pealkiri muudeti väärtuselt "${before}" väärtusele "${after}"`,
+			editedRoundId: (before, after) =>
+				`Vooru id muudeti väärtuselt "${before}" väärtusele "${after}"`,
+			addedStep: (roundLabel) => `Vooru ${roundLabel} lisati samm`,
+			removedStep: (roundLabel) => `Voorust ${roundLabel} eemaldati samm`,
+			editedStepId: (stepLabel) => `Sammu "${stepLabel}" id-d muudeti`,
+			editedStepTitle: (before, after) =>
+				`Sammu pealkiri muudeti väärtuselt "${before}" väärtusele "${after}"`,
+			editedStepBody: (stepLabel) => `Sammu "${stepLabel}" sisu muudeti`,
+			editedStepMedia: (stepLabel) => `Sammu "${stepLabel}" meediat muudeti`,
+			editedStepPlayerInput: (stepLabel) => `Sammu "${stepLabel}" mängija sisendit muudeti`,
+			editedStepScoring: (stepLabel) => `Sammu "${stepLabel}" punktiarvestust muudeti`,
+			editedStepTimer: (stepLabel) => `Sammu "${stepLabel}" taimerit muudeti`,
+			editedStepHostBehavior: (stepLabel) => `Sammu "${stepLabel}" mängujuhi seadeid muudeti`,
+			editedDefinition: 'Definitsiooni muudeti'
+		},
 		deleteRoundTitle: (label) => `Kustuta ${label}?`,
 		deleteRoundMessage: 'See voor ja kõik selle sammud eemaldatakse definitsioonist.',
 		deleteRoundConfirm: 'Kustuta voor',
