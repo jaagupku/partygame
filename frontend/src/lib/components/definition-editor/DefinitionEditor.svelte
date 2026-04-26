@@ -53,6 +53,8 @@
 	let selectedStepKey = $state<string | null>(null);
 	let loadingEditor = $state(false);
 	let saving = $state(false);
+	let exportingDefinition = $state(false);
+	let importingDefinition = $state(false);
 	let statusMessage = $state('');
 	let errorMessage = $state('');
 	let uploadKey = $state<string | null>(null);
@@ -935,6 +937,65 @@
 		}
 	}
 
+	function downloadBlob(blob: Blob, filename: string) {
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		URL.revokeObjectURL(url);
+	}
+
+	async function exportDefinition() {
+		if (isNewDefinition || !persistedDefinitionId) {
+			errorMessage = $messages.definitions.saveBeforeExport;
+			return;
+		}
+		exportingDefinition = true;
+		errorMessage = '';
+		statusMessage = '';
+		const response = await fetch(`/api/v1/definitions/${persistedDefinitionId}/export`);
+		exportingDefinition = false;
+		if (!response.ok) {
+			errorMessage =
+				(await readErrorDetail(response)) || $messages.definitions.couldNotExportDefinition;
+			return;
+		}
+		const archive = await response.blob();
+		downloadBlob(archive, `${persistedDefinitionId}.zip`);
+		statusMessage = $messages.definitions.definitionExported;
+	}
+
+	async function importDefinition(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) {
+			return;
+		}
+		importingDefinition = true;
+		errorMessage = '';
+		statusMessage = '';
+		const response = await fetch('/api/v1/definitions/import', {
+			method: 'POST',
+			headers: {
+				'Content-Type': file.type || 'application/zip'
+			},
+			body: file
+		});
+		importingDefinition = false;
+		input.value = '';
+		if (!response.ok) {
+			errorMessage =
+				(await readErrorDetail(response)) || $messages.definitions.couldNotImportDefinition;
+			return;
+		}
+		const importedDefinition = (await response.json()) as GameDefinition;
+		statusMessage = $messages.definitions.definitionImported;
+		goto(`/definitions/${importedDefinition.id}`);
+	}
+
 	async function uploadMedia(event: Event, step: StepDefinition, stepId: string) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -1224,10 +1285,14 @@
 				{breadcrumbCurrentLabel}
 				{editingTitle}
 				{saving}
+				exporting={exportingDefinition}
+				importing={importingDefinition}
 				{loadingEditor}
 				onGoHome={() => goto('/')}
 				onManageDefinitions={() => goto('/definitions')}
 				onSave={saveDefinition}
+				onExport={!isNewDefinition ? exportDefinition : undefined}
+				onImport={importDefinition}
 				onAddStep={openStepTemplatePicker}
 				onAddRound={addRound}
 				onOpenDetails={openDefinitionDetailsModal}

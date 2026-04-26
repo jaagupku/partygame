@@ -1,15 +1,18 @@
 import json
 import os
+from io import BytesIO
+import zipfile
 
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
+from starlette.requests import Request
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from partygame.api.api_v1.endpoints import definitions as definitions_endpoints
 from partygame.db.postgres import Base
-from partygame.schemas import GameDefinition
+from partygame.schemas import GameDefinition, MediaKind
 from partygame.service.definitions import (
     DefinitionProvider,
     DefinitionSummary,
@@ -17,7 +20,32 @@ from partygame.service.definitions import (
     FileDefinitionProvider,
     PostgresDefinitionProvider,
 )
+from partygame.service.media import LocalFilesystemMediaStorage
+from partygame.state.auth_models import UserRecord, UserRole
 from partygame.state.definition_models import GameDefinitionRecord
+
+
+def _request_with_body(body: bytes) -> Request:
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/v1/definitions/import",
+        "headers": [],
+    }
+    return Request(scope, receive)
+
+
+def _user() -> UserRecord:
+    return UserRecord(
+        id="user-1",
+        email="user@example.com",
+        display_name="User",
+        password_hash="hash",
+        role=UserRole.USER.value,
+    )
 
 
 def _write_definition(path, title: str):
@@ -62,6 +90,42 @@ def _music_definition(definition_id: str = "music_night") -> GameDefinition:
                             "player_input": {"kind": "text"},
                             "evaluation": {"type_": "exact_text", "points": 2, "answer": "ABBA"},
                         }
+                    ],
+                }
+            ],
+        }
+    )
+
+
+def _media_definition(definition_id: str = "media_night", media_src: str = "/api/v1/media/asset"):
+    return GameDefinition.model_validate(
+        {
+            "id": definition_id,
+            "title": "Media Night",
+            "rounds": [
+                {
+                    "id": "round1",
+                    "steps": [
+                        {
+                            "id": "step1",
+                            "title": "Name the picture",
+                            "media": {
+                                "type_": "image",
+                                "src": media_src,
+                                "reveal": "none",
+                                "loop": False,
+                            },
+                        },
+                        {
+                            "id": "step2",
+                            "title": "Watch this",
+                            "media": {
+                                "type_": "video",
+                                "src": "https://youtu.be/example",
+                                "reveal": "none",
+                                "loop": False,
+                            },
+                        },
                     ],
                 }
             ],
@@ -170,6 +234,208 @@ async def test_update_definition_rejects_id_mismatch(tmp_path):
     assert error.value.status_code == 400
 
 
+@pytest.mark.asyncio
+async def test_export_definition_includes_definition_manifest_and_uploaded_media(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path / "games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+    asset = await storage.save(
+        content=b"<svg>hello</svg>",
+        kind=MediaKind.IMAGE,
+        filename="question.svg",
+        content_type="image/svg+xml",
+    )
+    await provider.create(_media_definition(media_src=asset.public_url))
+
+    response = await definitions_endpoints.export_definition(
+        definition_id="media_night",
+        definition_provider=provider,
+        media_storage=storage,
+    )
+
+    assert response.media_type == "application/zip"
+    with zipfile.ZipFile(BytesIO(response.body)) as archive:
+        names = set(archive.namelist())
+        definition = json.loads(archive.read("definition.json"))
+        manifest = json.loads(archive.read("manifest.json"))
+
+        assert "definition.json" in names
+        assert "manifest.json" in names
+        assert manifest["version"] == 1
+        assert manifest["media"][0]["src"] == asset.public_url
+        assert manifest["media"][0]["archive_path"] in names
+        assert archive.read(manifest["media"][0]["archive_path"]) == b"<svg>hello</svg>"
+        assert definition["rounds"][0]["steps"][0]["media"]["src"] == asset.public_url
+        assert definition["rounds"][0]["steps"][1]["media"]["src"] == "https://youtu.be/example"
+
+
+@pytest.mark.asyncio
+async def test_import_definition_rewrites_media_and_creates_copy_id_on_conflict(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path / "games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+    source_asset = await storage.save(
+        content=b"<svg>hello</svg>",
+        kind=MediaKind.IMAGE,
+        filename="question.svg",
+        content_type="image/svg+xml",
+    )
+    await provider.create(_media_definition(media_src=source_asset.public_url))
+    export_response = await definitions_endpoints.export_definition(
+        definition_id="media_night",
+        definition_provider=provider,
+        media_storage=storage,
+    )
+
+    imported = await definitions_endpoints.import_definition(
+        request=_request_with_body(export_response.body),
+        definition_provider=provider,
+        media_storage=storage,
+        current_user=_user(),
+    )
+
+    assert imported.id == "media_night_copy"
+    imported_media = imported.rounds[0].steps[0].media
+    assert imported_media is not None
+    assert imported_media.src != source_asset.public_url
+    assert imported_media.src.startswith("/api/v1/media/")
+    imported_asset_id = imported_media.src.rsplit("/", 1)[1]
+    imported_asset = await storage.get(imported_asset_id)
+    imported_file = await storage.open(imported_asset)
+    assert imported_file.read_bytes() == b"<svg>hello</svg>"
+    assert imported.rounds[0].steps[1].media.src == "https://youtu.be/example"
+
+
+@pytest.mark.asyncio
+async def test_import_definition_cleans_up_media_when_create_fails(tmp_path):
+    export_provider = FileDefinitionProvider(games_dir=tmp_path / "export_games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+    source_asset = await storage.save(
+        content=b"<svg>hello</svg>",
+        kind=MediaKind.IMAGE,
+        filename="question.svg",
+        content_type="image/svg+xml",
+    )
+    await export_provider.create(_media_definition(media_src=source_asset.public_url))
+    export_response = await definitions_endpoints.export_definition(
+        definition_id="media_night",
+        definition_provider=export_provider,
+        media_storage=storage,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.import_definition(
+            request=_request_with_body(export_response.body),
+            definition_provider=CreateFailingDefinitionProvider(),
+            media_storage=storage,
+            current_user=_user(),
+        )
+
+    assert error.value.status_code == 409
+    saved_metadata = sorted((tmp_path / "media" / "metadata").glob("*.json"))
+    assert [path.stem for path in saved_metadata] == [source_asset.id]
+
+
+@pytest.mark.asyncio
+async def test_import_definition_rejects_oversized_archive_body():
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.read_limited_request_body(
+            _request_with_body(b"12345"),
+            max_bytes=4,
+        )
+
+    assert error.value.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_import_definition_rejects_malformed_zip(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path / "games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.import_definition(
+            request=_request_with_body(b"not a zip"),
+            definition_provider=provider,
+            media_storage=storage,
+            current_user=_user(),
+        )
+
+    assert error.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_import_definition_rejects_missing_definition_json(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path / "games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+    archive_body = BytesIO()
+    with zipfile.ZipFile(archive_body, mode="w") as archive:
+        archive.writestr("manifest.json", json.dumps({"version": 1, "media": []}))
+
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.import_definition(
+            request=_request_with_body(archive_body.getvalue()),
+            definition_provider=provider,
+            media_storage=storage,
+            current_user=_user(),
+        )
+
+    assert error.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_import_definition_rejects_missing_manifest_media_file(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path / "games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+    archive_body = BytesIO()
+    with zipfile.ZipFile(archive_body, mode="w") as archive:
+        archive.writestr("definition.json", _media_definition().model_dump_json())
+        archive.writestr(
+            "manifest.json",
+            json.dumps(
+                {
+                    "version": 1,
+                    "media": [
+                        {
+                            "src": "/api/v1/media/missing",
+                            "archive_path": "media/missing.svg",
+                            "kind": "image",
+                            "filename": "missing.svg",
+                            "content_type": "image/svg+xml",
+                        }
+                    ],
+                }
+            ),
+        )
+
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.import_definition(
+            request=_request_with_body(archive_body.getvalue()),
+            definition_provider=provider,
+            media_storage=storage,
+            current_user=_user(),
+        )
+
+    assert error.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_import_definition_rejects_invalid_definition_json(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path / "games")
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+    archive_body = BytesIO()
+    with zipfile.ZipFile(archive_body, mode="w") as archive:
+        archive.writestr("definition.json", json.dumps({"id": "broken"}))
+        archive.writestr("manifest.json", json.dumps({"version": 1, "media": []}))
+
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.import_definition(
+            request=_request_with_body(archive_body.getvalue()),
+            definition_provider=provider,
+            media_storage=storage,
+            current_user=_user(),
+        )
+
+    assert error.value.status_code == 422
+
+
 @pytest_asyncio.fixture()
 async def postgres_provider():
     database_url = os.environ.get("POSTGRES_TEST_DATABASE_URL")
@@ -274,6 +540,20 @@ class MissingDefinitionProvider(DefinitionProvider):
 
     async def create(self, definition: GameDefinition):
         return definition
+
+    async def update(self, definition_id: str, definition: GameDefinition):
+        return definition
+
+
+class CreateFailingDefinitionProvider(DefinitionProvider):
+    async def load(self, definition_id: str) -> GameDefinition:
+        raise FileNotFoundError(f"Definition '{definition_id}' was not found")
+
+    async def list_definitions(self):
+        return []
+
+    async def create(self, definition: GameDefinition):
+        raise FileExistsError(f"Definition '{definition.id}' already exists")
 
     async def update(self, definition_id: str, definition: GameDefinition):
         return definition

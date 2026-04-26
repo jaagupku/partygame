@@ -7,10 +7,14 @@
 		breadcrumbCurrentLabel: string;
 		editingTitle: boolean;
 		saving: boolean;
+		exporting: boolean;
+		importing: boolean;
 		loadingEditor: boolean;
 		onGoHome: () => void;
 		onManageDefinitions: () => void;
 		onSave: () => void;
+		onExport?: () => void;
+		onImport: (event: Event) => void;
 		onAddStep: () => void;
 		onAddRound: () => void;
 		onOpenDetails: () => void;
@@ -25,10 +29,14 @@
 		breadcrumbCurrentLabel,
 		editingTitle,
 		saving,
+		exporting,
+		importing,
 		loadingEditor,
 		onGoHome,
 		onManageDefinitions,
 		onSave,
+		onExport,
+		onImport,
 		onAddStep,
 		onAddRound,
 		onOpenDetails,
@@ -39,6 +47,7 @@
 	}: Props = $props();
 
 	let titleInput = $state<HTMLInputElement | null>(null);
+	let importInput = $state<HTMLInputElement | null>(null);
 
 	$effect(() => {
 		if (!editingTitle || !titleInput) {
@@ -116,5 +125,30 @@
 		>
 			{saving ? $messages.editor.saving : $messages.common.save}
 		</button>
+		{#if onExport}
+			<button
+				class="btn btn-ghost px-4 py-2 text-sm"
+				type="button"
+				onclick={onExport}
+				disabled={exporting || loadingEditor}
+			>
+				{exporting ? $messages.editor.exportingDefinition : $messages.editor.exportDefinition}
+			</button>
+		{/if}
+		<button
+			class="btn btn-ghost px-4 py-2 text-sm"
+			type="button"
+			onclick={() => importInput?.click()}
+			disabled={importing || loadingEditor}
+		>
+			{importing ? $messages.editor.importingDefinition : $messages.editor.importDefinition}
+		</button>
+		<input
+			bind:this={importInput}
+			class="hidden"
+			type="file"
+			accept=".zip,application/zip"
+			onchange={onImport}
+		/>
 	</div>
 </div>

@@ -6,7 +6,11 @@
 
 	let definitions = $state<DefinitionSummary[]>([]);
 	let loading = $state(false);
+	let exportingDefinitionId = $state<string | null>(null);
+	let importing = $state(false);
 	let errorMessage = $state('');
+	let statusMessage = $state('');
+	let importInput = $state<HTMLInputElement | null>(null);
 
 	function visibilityLabel(visibility: DefinitionVisibility) {
 		if (visibility === 'private') {
@@ -18,7 +22,9 @@
 		return $messages.definitions.visibilityPublic;
 	}
 
-	onMount(async () => {
+	onMount(loadDefinitions);
+
+	async function loadDefinitions() {
 		loading = true;
 		const response = await fetch('/api/v1/definitions');
 		loading = false;
@@ -27,7 +33,72 @@
 			return;
 		}
 		definitions = await response.json();
-	});
+	}
+
+	function downloadBlob(blob: Blob, filename: string) {
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		URL.revokeObjectURL(url);
+	}
+
+	async function readErrorDetail(response: Response): Promise<string> {
+		try {
+			const payload = await response.json();
+			if (typeof payload?.detail === 'string') {
+				return payload.detail;
+			}
+		} catch {
+			return '';
+		}
+		return '';
+	}
+
+	async function exportDefinition(definitionId: string) {
+		exportingDefinitionId = definitionId;
+		errorMessage = '';
+		statusMessage = '';
+		const response = await fetch(`/api/v1/definitions/${definitionId}/export`);
+		exportingDefinitionId = null;
+		if (!response.ok) {
+			errorMessage =
+				(await readErrorDetail(response)) || $messages.definitions.couldNotExportDefinition;
+			return;
+		}
+		downloadBlob(await response.blob(), `${definitionId}.zip`);
+		statusMessage = $messages.definitions.definitionExported;
+	}
+
+	async function importDefinition(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) {
+			return;
+		}
+		importing = true;
+		errorMessage = '';
+		statusMessage = '';
+		const response = await fetch('/api/v1/definitions/import', {
+			method: 'POST',
+			headers: {
+				'Content-Type': file.type || 'application/zip'
+			},
+			body: file
+		});
+		importing = false;
+		input.value = '';
+		if (!response.ok) {
+			errorMessage =
+				(await readErrorDetail(response)) || $messages.definitions.couldNotImportDefinition;
+			return;
+		}
+		const importedDefinition = (await response.json()) as GameDefinition;
+		goto(`/definitions/${importedDefinition.id}`);
+	}
 </script>
 
 <svelte:head>
@@ -57,6 +128,21 @@
 			{$messages.common.createGame}
 		</button>
 		{#if $currentUser}
+			<button
+				class="btn btn-ghost text-lg"
+				type="button"
+				onclick={() => importInput?.click()}
+				disabled={importing}
+			>
+				{importing ? $messages.editor.importingDefinition : $messages.editor.importDefinition}
+			</button>
+			<input
+				bind:this={importInput}
+				class="hidden"
+				type="file"
+				accept=".zip,application/zip"
+				onchange={importDefinition}
+			/>
 			<button class="btn btn-accent text-lg" onclick={() => goto('/definitions/new')}
 				>{$messages.common.createDefinition}</button
 			>
@@ -81,7 +167,13 @@
 			<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
 				{errorMessage}
 			</div>
-		{:else if definitions.length === 0}
+		{:else if statusMessage}
+			<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700">
+				{statusMessage}
+			</div>
+		{/if}
+
+		{#if !errorMessage && definitions.length === 0}
 			<div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
 				<h3 class="text-2xl font-bold text-slate-800">{$messages.definitions.noDefinitionsYet}</h3>
 				<p class="mt-2 text-slate-600">{$messages.definitions.noDefinitionsHelp}</p>
@@ -95,7 +187,7 @@
 					</p>
 				{/if}
 			</div>
-		{:else}
+		{:else if !errorMessage}
 			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each definitions as definition}
 					<div class="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm">
@@ -127,6 +219,16 @@
 									{$messages.common.edit}
 								</button>
 							{/if}
+							<button
+								class="btn btn-ghost flex-1 px-4 py-2 text-sm"
+								type="button"
+								onclick={() => exportDefinition(definition.id)}
+								disabled={exportingDefinitionId === definition.id}
+							>
+								{exportingDefinitionId === definition.id
+									? $messages.editor.exportingDefinition
+									: $messages.editor.exportDefinition}
+							</button>
 						</div>
 					</div>
 				{/each}

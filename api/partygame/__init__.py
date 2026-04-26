@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, APIRouter
@@ -16,16 +17,26 @@ logging.basicConfig(
     level=logging.INFO, format="[%(asctime)s] %(name)s - %(levelname)s: %(message)s"
 )
 
-app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
-
-@app.on_event("startup")
 async def seed_builtin_game_definitions():
     async with AsyncSessionLocal() as session:
         await seed_admin_user(session)
     imported = await seed_missing_definitions(get_default_definition_provider())
     if imported:
         logging.getLogger(__name__).info("Seeded %s built-in game definitions", imported)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await seed_builtin_game_definitions()
+    yield
+
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
+)
 
 
 # Set all CORS enabled origins
