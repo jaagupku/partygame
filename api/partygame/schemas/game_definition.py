@@ -3,6 +3,8 @@ from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field, model_validator
 
+DEFINITION_ID_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,79}$"
+
 
 class MediaType(StrEnum):
     IMAGE = auto()
@@ -179,7 +181,7 @@ class RoundDefinition(BaseModel):
 
 
 class GameDefinition(BaseModel):
-    id: str
+    id: str = Field(pattern=DEFINITION_ID_PATTERN)
     title: str
     description: str | None = None
     rounds: list[RoundDefinition] = Field(default_factory=list)

@@ -1,7 +1,9 @@
 import re
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import Response
+from pydantic import ValidationError
 
 from partygame.core.config import settings
 from partygame.schemas import GameDefinition
@@ -30,6 +32,19 @@ def get_definition_provider() -> DefinitionProvider:
     return get_default_definition_provider()
 
 
+def create_definition_id(title: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", title.strip().lower())
+    slug = slug.strip("_")[:48]
+    return f"{slug or 'definition'}_{uuid4().hex[:8]}"
+
+
+def payload_with_definition_id(definition: GameDefinitionPayload) -> dict:
+    payload = definition.model_dump()
+    if not payload["id"].strip():
+        payload["id"] = create_definition_id(payload["title"])
+    return payload
+
+
 async def read_limited_request_body(request: Request, max_bytes: int) -> bytes:
     body = bytearray()
     async for chunk in request.stream():
@@ -56,16 +71,18 @@ async def create_definition(
     current_user: UserRecord = Depends(deps.get_current_user_required),
 ):
     try:
-        game_definition = GameDefinition.model_validate(definition.model_dump())
+        game_definition = GameDefinition.model_validate(payload_with_definition_id(definition))
         if isinstance(definition_provider, PostgresDefinitionProvider):
             return await definition_provider.create_for_user(
                 game_definition,
                 current_user,
                 definition.visibility,
             )
-        return await definition_provider.create(definition)
+        return await definition_provider.create(game_definition)
     except FileExistsError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except DefinitionValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -125,6 +142,8 @@ async def update_definition(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except PermissionError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except DefinitionValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 

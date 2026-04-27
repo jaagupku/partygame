@@ -22,6 +22,20 @@
 		return $messages.definitions.visibilityPublic;
 	}
 
+	function canEditDefinition(definition: DefinitionSummary) {
+		if (definition.can_edit) {
+			return true;
+		}
+		if (!$currentUser) {
+			return false;
+		}
+		return $currentUser.role === 'admin' || definition.owner_user_id === $currentUser.id;
+	}
+
+	function encodeDefinitionIdForPath(definitionId: string) {
+		return encodeURIComponent(definitionId);
+	}
+
 	onMount(loadDefinitions);
 
 	async function loadDefinitions() {
@@ -62,7 +76,9 @@
 		exportingDefinitionId = definitionId;
 		errorMessage = '';
 		statusMessage = '';
-		const response = await fetch(`/api/v1/definitions/${definitionId}/export`);
+		const response = await fetch(
+			`/api/v1/definitions/${encodeDefinitionIdForPath(definitionId)}/export`
+		);
 		exportingDefinitionId = null;
 		if (!response.ok) {
 			errorMessage =
@@ -97,7 +113,7 @@
 			return;
 		}
 		const importedDefinition = (await response.json()) as GameDefinition;
-		goto(`/definitions/${importedDefinition.id}`);
+		goto(`/definitions/${encodeDefinitionIdForPath(importedDefinition.id)}`);
 	}
 </script>
 
@@ -211,10 +227,10 @@
 						</p>
 
 						<div class="mt-4 flex flex-wrap gap-2">
-							{#if definition.can_edit}
+							{#if canEditDefinition(definition)}
 								<button
 									class="btn btn-primary flex-1 px-4 py-2 text-sm"
-									onclick={() => goto(`/definitions/${definition.id}`)}
+									onclick={() => goto(`/definitions/${encodeDefinitionIdForPath(definition.id)}`)}
 								>
 									{$messages.common.edit}
 								</button>

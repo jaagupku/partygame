@@ -18,11 +18,12 @@ from partygame.service.definitions import (
     DefinitionSummary,
     DefinitionValidationError,
     FileDefinitionProvider,
+    GameDefinitionPayload,
     PostgresDefinitionProvider,
 )
 from partygame.service.media import LocalFilesystemMediaStorage
 from partygame.state.auth_models import UserRecord, UserRole
-from partygame.state.definition_models import GameDefinitionRecord
+from partygame.state.definition_models import DefinitionVisibility, GameDefinitionRecord
 
 
 def _request_with_body(body: bytes) -> Request:
@@ -45,6 +46,16 @@ def _user() -> UserRecord:
         display_name="User",
         password_hash="hash",
         role=UserRole.USER.value,
+    )
+
+
+def _admin_user() -> UserRecord:
+    return UserRecord(
+        id="admin-1",
+        email="admin@example.com",
+        display_name="Admin",
+        password_hash="hash",
+        role=UserRole.ADMIN.value,
     )
 
 
@@ -232,6 +243,46 @@ async def test_update_definition_rejects_id_mismatch(tmp_path):
         )
 
     assert error.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_definition_generates_id_when_payload_id_is_blank(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path)
+    payload = GameDefinitionPayload.model_validate(
+        _music_definition().model_dump() | {"id": "", "visibility": "private"}
+    )
+
+    saved = await definitions_endpoints.create_definition(
+        definition=payload,
+        definition_provider=provider,
+        current_user=_user(),
+    )
+
+    assert saved.id.startswith("music_night_")
+    assert await provider.load(saved.id)
+
+
+@pytest.mark.asyncio
+async def test_create_definition_rejects_invalid_nonblank_id(tmp_path):
+    provider = FileDefinitionProvider(games_dir=tmp_path)
+    payload = GameDefinitionPayload.model_validate(
+        _music_definition().model_dump() | {"id": "Bad Definition ID", "visibility": "private"}
+    )
+
+    with pytest.raises(HTTPException) as error:
+        await definitions_endpoints.create_definition(
+            definition=payload,
+            definition_provider=provider,
+            current_user=_user(),
+        )
+
+    assert error.value.status_code == 422
+
+
+def test_game_definition_rejects_blank_and_url_unsafe_ids():
+    for definition_id in ["", "Bad Definition ID", "definition/with/slash"]:
+        with pytest.raises(ValueError):
+            _music_definition(definition_id=definition_id)
 
 
 @pytest.mark.asyncio
@@ -494,6 +545,56 @@ async def test_postgres_definition_provider_updates_existing_definition(postgres
 
     assert saved.title == "Updated Music Night"
     assert (await postgres_provider.load(definition.id)).title == "Updated Music Night"
+
+
+@pytest.mark.asyncio
+async def test_private_definitions_are_editable_and_playable_by_owner(postgres_provider):
+    owner = _user()
+    async with postgres_provider.sessionmaker() as session:
+        session.add(owner)
+        await session.commit()
+
+    saved = await postgres_provider.create_for_user(
+        _music_definition(),
+        owner,
+        DefinitionVisibility.PRIVATE,
+    )
+    owner_summaries = await postgres_provider.list_definitions_for_user(owner)
+
+    assert saved.visibility == DefinitionVisibility.PRIVATE
+    assert saved.owner_user_id == owner.id
+    assert saved.can_edit is True
+    assert owner_summaries[0].can_edit is True
+    assert owner_summaries[0].owner_user_id == owner.id
+    assert await postgres_provider.require_playable("music_night", owner)
+
+
+@pytest.mark.asyncio
+async def test_admin_can_edit_and_play_any_private_definition(postgres_provider):
+    owner = _user()
+    admin = _admin_user()
+    async with postgres_provider.sessionmaker() as session:
+        session.add_all([owner, admin])
+        await session.commit()
+    await postgres_provider.create_for_user(
+        _music_definition(),
+        owner,
+        DefinitionVisibility.PRIVATE,
+    )
+
+    admin_view = await postgres_provider.load_for_user("music_night", admin)
+    updated_definition = _music_definition()
+    updated_definition.title = "Admin Updated Music Night"
+    updated = await postgres_provider.update_for_user(
+        "music_night",
+        updated_definition,
+        admin,
+        DefinitionVisibility.PRIVATE,
+    )
+
+    assert admin_view.can_edit is True
+    assert await postgres_provider.require_playable("music_night", admin)
+    assert updated.title == "Admin Updated Music Night"
 
 
 @pytest.mark.asyncio

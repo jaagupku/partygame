@@ -27,6 +27,7 @@ class DefinitionSummary(BaseModel):
 
 
 class GameDefinitionPayload(GameDefinition):
+    id: str = ""
     visibility: DefinitionVisibility = DefinitionVisibility.PRIVATE
 
 

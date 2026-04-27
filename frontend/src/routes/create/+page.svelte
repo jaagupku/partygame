@@ -12,6 +12,10 @@
 		definitions.find((definition) => definition.id === definitionId) ?? null
 	);
 
+	function encodeDefinitionIdForPath(id: string) {
+		return encodeURIComponent(id);
+	}
+
 	onMount(async () => {
 		const res = await fetch('/api/v1/definitions');
 		if (!res.ok) {
@@ -36,7 +40,7 @@
 
 	async function loadDefinition(id: string) {
 		loadingDefinition = true;
-		const res = await fetch(`/api/v1/definitions/${id}`);
+		const res = await fetch(`/api/v1/definitions/${encodeDefinitionIdForPath(id)}`);
 		if (!res.ok) {
 			selectedDefinition = null;
 			loadingDefinition = false;

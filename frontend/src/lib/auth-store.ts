@@ -4,15 +4,18 @@ export const currentUser = writable<User | null>(null);
 export const authLoaded = writable(false);
 
 export async function loadCurrentUser() {
-	const response = await fetch('/api/v1/auth/me');
-	authLoaded.set(true);
-	if (!response.ok) {
-		currentUser.set(null);
-		return null;
+	try {
+		const response = await fetch('/api/v1/auth/me');
+		if (!response.ok) {
+			currentUser.set(null);
+			return null;
+		}
+		const user = (await response.json()) as User | null;
+		currentUser.set(user);
+		return user;
+	} finally {
+		authLoaded.set(true);
 	}
-	const user = (await response.json()) as User | null;
-	currentUser.set(user);
-	return user;
 }
 
 export async function logout() {

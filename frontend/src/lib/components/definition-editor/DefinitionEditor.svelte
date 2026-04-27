@@ -130,6 +130,7 @@
 			? $messages.definitions.newDefinitionBreadcrumb
 			: $messages.definitions.editDefinitionBreadcrumb
 	);
+	const canEditDraft = $derived(canEditDefinition(draft));
 	const shortcutGroups = $derived($messages.editor.shortcutGroups);
 
 	onMount(async () => {
@@ -189,14 +190,14 @@
 		loadingEditor = true;
 		errorMessage = '';
 		statusMessage = '';
-		const response = await fetch(`/api/v1/definitions/${definitionId}`);
+		const response = await fetch(`/api/v1/definitions/${encodeDefinitionIdForPath(definitionId)}`);
 		loadingEditor = false;
 		if (!response.ok) {
 			errorMessage = $messages.definitions.couldNotLoadDefinition(definitionId);
 			return;
 		}
 		const loadedDefinition = (await response.json()) as GameDefinition;
-		if (!loadedDefinition.can_edit) {
+		if (!canEditDefinition(loadedDefinition)) {
 			errorMessage = $messages.definitions.cannotEditDefinition;
 			return;
 		}
@@ -287,6 +288,30 @@
 			visibility: 'private',
 			rounds: [createEmptyRound(1, true)]
 		};
+	}
+
+	function canEditDefinition(definition: GameDefinition) {
+		if (definition.can_edit) {
+			return true;
+		}
+		if (!$currentUser) {
+			return false;
+		}
+		return $currentUser.role === 'admin' || definition.owner_user_id === $currentUser.id;
+	}
+
+	function encodeDefinitionIdForPath(definitionId: string) {
+		return encodeURIComponent(definitionId);
+	}
+
+	function createDefinitionId(title: string) {
+		const slug = title
+			.trim()
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '')
+			.slice(0, 48);
+		return `${slug || 'definition'}_${Date.now().toString(36)}`;
 	}
 
 	function createEmptyRound(index: number, withInitialStep = false): RoundDefinition {
@@ -476,9 +501,12 @@
 		} else if (pendingDelete.type === 'step') {
 			removeSelectedStep();
 		} else {
-			const response = await fetch(`/api/v1/definitions/${persistedDefinitionId}`, {
-				method: 'DELETE'
-			});
+			const response = await fetch(
+				`/api/v1/definitions/${encodeDefinitionIdForPath(persistedDefinitionId)}`,
+				{
+					method: 'DELETE'
+				}
+			);
 			if (!response.ok) {
 				errorMessage = $messages.definitions.couldNotDeleteDefinition;
 				closeDeleteModal();
@@ -816,8 +844,10 @@
 	}
 
 	function buildPayload(): GameDefinition {
+		const definitionId =
+			draft.id.trim() || (isNewDefinition ? createDefinitionId(draft.title) : '');
 		return {
-			id: draft.id.trim(),
+			id: definitionId,
 			title: draft.title.trim(),
 			description: draft.description?.trim() || undefined,
 			visibility: draft.visibility ?? 'private',
@@ -909,7 +939,7 @@
 		const payload = buildPayload();
 		const endpoint = isNewDefinition
 			? '/api/v1/definitions'
-			: `/api/v1/definitions/${persistedDefinitionId}`;
+			: `/api/v1/definitions/${encodeDefinitionIdForPath(persistedDefinitionId)}`;
 		const response = await fetch(endpoint, {
 			method: isNewDefinition ? 'POST' : 'PUT',
 			headers: {
@@ -933,7 +963,7 @@
 		resetHistoryBaseline();
 		statusMessage = $messages.definitions.definitionSaved;
 		if (wasNewDefinition) {
-			goto(`/definitions/${draft.id}`, { replaceState: true });
+			goto(`/definitions/${encodeDefinitionIdForPath(draft.id)}`, { replaceState: true });
 		}
 	}
 
@@ -949,14 +979,16 @@
 	}
 
 	async function exportDefinition() {
-		if (isNewDefinition || !persistedDefinitionId) {
+		if (isNewDefinition) {
 			errorMessage = $messages.definitions.saveBeforeExport;
 			return;
 		}
 		exportingDefinition = true;
 		errorMessage = '';
 		statusMessage = '';
-		const response = await fetch(`/api/v1/definitions/${persistedDefinitionId}/export`);
+		const response = await fetch(
+			`/api/v1/definitions/${encodeDefinitionIdForPath(persistedDefinitionId)}/export`
+		);
 		exportingDefinition = false;
 		if (!response.ok) {
 			errorMessage =
@@ -964,7 +996,7 @@
 			return;
 		}
 		const archive = await response.blob();
-		downloadBlob(archive, `${persistedDefinitionId}.zip`);
+		downloadBlob(archive, `${persistedDefinitionId || 'definition'}.zip`);
 		statusMessage = $messages.definitions.definitionExported;
 	}
 
@@ -993,7 +1025,7 @@
 		}
 		const importedDefinition = (await response.json()) as GameDefinition;
 		statusMessage = $messages.definitions.definitionImported;
-		goto(`/definitions/${importedDefinition.id}`);
+		goto(`/definitions/${encodeDefinitionIdForPath(importedDefinition.id)}`);
 	}
 
 	async function uploadMedia(event: Event, step: StepDefinition, stepId: string) {
@@ -1296,7 +1328,7 @@
 				onAddStep={openStepTemplatePicker}
 				onAddRound={addRound}
 				onOpenDetails={openDefinitionDetailsModal}
-				onDelete={!isNewDefinition && draft.can_edit ? requestDeleteDefinition : undefined}
+				onDelete={!isNewDefinition && canEditDraft ? requestDeleteDefinition : undefined}
 				onStartTitleEdit={beginTitleEdit}
 				onFinishTitleEdit={finishTitleEdit}
 				onTitleChange={(value) => (draft.title = value)}

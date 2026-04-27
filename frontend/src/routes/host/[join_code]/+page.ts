@@ -3,6 +3,10 @@ import { redirect } from '@sveltejs/kit';
 export const ssr = false;
 export const csr = true;
 
+function encodeDefinitionIdForPath(definitionId: string) {
+	return encodeURIComponent(definitionId);
+}
+
 export async function load({ fetch, params }) {
 	const routeJoinCode = params.join_code;
 	const joinCode = routeJoinCode.toUpperCase();
@@ -30,7 +34,9 @@ export async function load({ fetch, params }) {
 	let definitionTitle = lobby.definition_id;
 
 	if (lobby.definition_id) {
-		const definitionRes = await fetch(`/api/v1/definitions/${lobby.definition_id}`);
+		const definitionRes = await fetch(
+			`/api/v1/definitions/${encodeDefinitionIdForPath(lobby.definition_id)}`
+		);
 		if (definitionRes.ok) {
 			const definition: GameDefinition = await definitionRes.json();
 			definitionTitle = definition.title || definition.id;

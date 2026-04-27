@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,12 @@ class DefinitionVisibility(StrEnum):
 
 class GameDefinitionRecord(Base):
     __tablename__ = "game_definitions"
+    __table_args__ = (
+        CheckConstraint(
+            "id ~ '^[a-z0-9][a-z0-9_-]{0,79}$'",
+            name="ck_game_definitions_id_format",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
