@@ -58,6 +58,8 @@
 	const statusTone = $derived(
 		totalSeconds <= 5 ? 'danger' : totalSeconds <= 10 ? 'warning' : 'default'
 	);
+	const timerUrgent = $derived(totalSeconds > 0 && totalSeconds <= 5 && !paused);
+	const timerExpired = $derived(totalSeconds === 0);
 	const toneClasses = $derived(
 		statusTone === 'danger'
 			? {
@@ -87,7 +89,9 @@
 
 <div
 	in:fly={{ y: -5 }}
-	class={`timer-panel w-full rounded-[1.25rem] border px-3 py-2 shadow-sm transition-colors ${toneClasses.panel}`}
+	class={`timer-panel w-full rounded-[1.25rem] border px-3 py-2 shadow-sm transition-colors ${toneClasses.panel} ${
+		timerUrgent ? 'timer-urgent' : ''
+	} ${timerExpired ? 'timer-expired' : ''}`}
 	role="timer"
 	aria-label={`Time remaining: ${formattedTime}`}
 >
@@ -101,14 +105,14 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2 text-sm font-semibold text-slate-500">
-			<span class={`h-2.5 w-2.5 rounded-full ${toneClasses.pulse}`}></span>
+			<span class={`timer-dot h-2.5 w-2.5 rounded-full ${toneClasses.pulse}`}></span>
 			<span>{count}s</span>
 		</div>
 	</div>
 
 	<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
 		<div
-			class={`h-full rounded-full ${toneClasses.bar}`}
+			class={`timer-bar h-full rounded-full ${toneClasses.bar}`}
 			style={`width: ${progressPercent}%`}
 			aria-hidden="true"
 		></div>
@@ -122,5 +126,61 @@
 
 	.timer-panel p:last-child {
 		font-size: clamp(1.6rem, 4vw, 2.8rem);
+	}
+
+	.timer-urgent .timer-dot {
+		animation: timer-dot-pulse 700ms ease-in-out infinite;
+	}
+
+	.timer-urgent .timer-bar {
+		animation: timer-bar-pulse 700ms ease-in-out infinite;
+	}
+
+	.timer-expired {
+		animation: timer-expired-flash 520ms ease-out both;
+	}
+
+	@keyframes timer-dot-pulse {
+		0%,
+		100% {
+			transform: scale(1);
+			box-shadow: 0 0 0 0 rgb(239 68 68 / 0.42);
+		}
+
+		50% {
+			transform: scale(1.35);
+			box-shadow: 0 0 0 0.45rem rgb(239 68 68 / 0);
+		}
+	}
+
+	@keyframes timer-bar-pulse {
+		0%,
+		100% {
+			filter: brightness(1);
+		}
+
+		50% {
+			filter: brightness(1.22);
+		}
+	}
+
+	@keyframes timer-expired-flash {
+		0%,
+		100% {
+			filter: brightness(1);
+		}
+
+		45% {
+			filter: brightness(1.16);
+			box-shadow: 0 0 30px rgb(239 68 68 / 0.28);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.timer-urgent .timer-dot,
+		.timer-urgent .timer-bar,
+		.timer-expired {
+			animation: none;
+		}
 	}
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import CelebrationBackground from '$lib/components/endgame/CelebrationBackground.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import { messages } from '$lib/i18n';
 
@@ -36,7 +37,6 @@
 		}
 		return `${card.value}${card.unit ? ` ${card.unit}` : ''}`;
 	};
-	const confettiPieces = Array.from({ length: 18 }, (_, index) => index);
 	const podiumEntries = $derived(endGame.podium.toSorted((a, b) => a.place - b.place));
 	const visiblePodiumPlaces = $derived.by(() => {
 		if (stage === 'third_place') {
@@ -88,11 +88,7 @@
 
 	{#if stage === 'third_place' || stage === 'second_place' || stage === 'first_place'}
 		<section class="podium card">
-			<div class="confetti" aria-hidden="true">
-				{#each confettiPieces as piece (piece)}
-					<span style={`--piece:${piece};`}></span>
-				{/each}
-			</div>
+			<CelebrationBackground {stage} />
 			<div class="podium-stack">
 				{#if visiblePodiumGroups.length === 0}
 					<p class="text-lg text-slate-600">{$messages.finale.noFinalStandingsYet}</p>
@@ -172,22 +168,10 @@
 		min-height: 100%;
 		overflow: hidden;
 		background:
-			radial-gradient(circle at top, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.72)),
+			radial-gradient(circle at 50% 8%, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.48) 32%),
+			radial-gradient(circle at 18% 24%, rgb(253 186 116 / 0.42), transparent 34%),
+			radial-gradient(circle at 82% 18%, rgb(125 211 252 / 0.44), transparent 32%),
 			linear-gradient(145deg, #fef3c7, #dbeafe 52%, #dcfce7);
-	}
-
-	.confetti span {
-		position: absolute;
-		top: -10%;
-		left: calc((var(--piece) + 1) * 5%);
-		width: 0.9rem;
-		height: 1.6rem;
-		border-radius: 999px;
-		opacity: 0.9;
-		background: hsl(calc(var(--piece) * 22deg) 85% 62%);
-		animation: fall 3.6s linear infinite;
-		animation-delay: calc(var(--piece) * -0.18s);
-		transform: rotate(calc(var(--piece) * 12deg));
 	}
 
 	.podium-stack {
@@ -299,15 +283,6 @@
 		text-align: center;
 	}
 
-	@keyframes fall {
-		0% {
-			transform: translate3d(0, 0, 0) rotate(0deg);
-		}
-		100% {
-			transform: translate3d(calc((var(--piece) - 8) * 0.6rem), 115vh, 0) rotate(220deg);
-		}
-	}
-
 	@keyframes lift-in {
 		from {
 			opacity: 0;
@@ -322,6 +297,12 @@
 	@media (max-width: 640px) {
 		.finale-header {
 			flex-direction: column;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.podium-card {
+			animation: none;
 		}
 	}
 </style>

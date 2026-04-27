@@ -23,6 +23,9 @@
 	let circleKey = $state('');
 	let imageWrapWidth = $state(0);
 	let imageWrapHeight = $state(0);
+	let previousRevealState = $state('');
+	let revealFinishActive = $state(false);
+	let revealFinishTimeout: number | null = null;
 
 	function getImageMedia(media: RuntimeStepState['media']): RuntimeImageMediaState | null {
 		return media?.type_ === 'image' ? media : null;
@@ -71,7 +74,9 @@
 		return Math.min(revealElapsedSeconds / Math.max(revealDurationSeconds, 1), 1);
 	});
 	const imageRevealClass = $derived(
-		`${step.media?.reveal ? `reveal-${step.media.reveal}` : 'reveal-none'} reveal-state-${revealState}`
+		`${step.media?.reveal ? `reveal-${step.media.reveal}` : 'reveal-none'} reveal-state-${revealState} ${
+			revealFinishActive ? 'reveal-finish-active' : ''
+		}`
 	);
 	const imageRevealStyle = $derived(
 		[`--reveal-duration:${revealDurationSeconds}s`, `--reveal-progress:${revealProgress}`].join(';')
@@ -105,6 +110,11 @@
 		return '';
 	});
 	const circleClipPath = $derived.by(() => {
+		if (revealFinishActive) {
+			const centerX = circleX * imageWrapWidth;
+			const centerY = circleY * imageWrapHeight;
+			return `circle(150% at ${centerX}px ${centerY}px)`;
+		}
 		const centerX = circleX * imageWrapWidth;
 		const centerY = circleY * imageWrapHeight;
 		return `circle(${circleRadiusPx}px at ${centerX}px ${centerY}px)`;
@@ -114,11 +124,32 @@
 		const key = step.id && step.media?.type_ === 'image' ? `${step.id}:${step.media.src}` : '';
 		if (key && key !== circleKey) {
 			initializeCircleMotion(key);
+			revealFinishActive = false;
+			previousRevealState = revealState;
 		}
 		if (!key) {
 			circleKey = '';
 			lastCircleTimestamp = null;
 		}
+	});
+
+	$effect(() => {
+		if (
+			previousRevealState &&
+			previousRevealState !== 'revealed' &&
+			revealState === 'revealed' &&
+			imageMedia?.reveal !== 'none'
+		) {
+			revealFinishActive = true;
+			if (revealFinishTimeout !== null) {
+				clearTimeout(revealFinishTimeout);
+			}
+			revealFinishTimeout = window.setTimeout(() => {
+				revealFinishActive = false;
+				revealFinishTimeout = null;
+			}, 850);
+		}
+		previousRevealState = revealState;
 	});
 
 	$effect(() => {
@@ -184,6 +215,9 @@
 		if (frameHandle !== null) {
 			cancelAnimationFrame(frameHandle);
 		}
+		if (revealFinishTimeout !== null) {
+			clearTimeout(revealFinishTimeout);
+		}
 	});
 </script>
 
@@ -203,7 +237,7 @@
 				class={`media-image ${stageVariant ? 'media-image-stage' : ''}`}
 				style={imageStyle}
 			/>
-			{#if imageMedia?.reveal === 'blur_circle' && revealState !== 'revealed'}
+			{#if imageMedia?.reveal === 'blur_circle' && (revealState !== 'revealed' || revealFinishActive)}
 				<div
 					class="media-spotlight"
 					style={`background-image:url('${step.media.src}'); clip-path:${circleClipPath};`}
@@ -289,6 +323,24 @@
 		background-size: contain;
 		border-radius: 999px;
 		clip-path: circle(8% at 20% 20%);
+		transition: clip-path 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.media-frame::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background: linear-gradient(
+			105deg,
+			transparent 0%,
+			rgb(255 255 255 / 0) 35%,
+			rgb(255 255 255 / 0.62) 48%,
+			rgb(255 255 255 / 0) 61%,
+			transparent 100%
+		);
+		opacity: 0;
+		transform: translateX(-120%);
 	}
 
 	.reveal-none .media-image {
@@ -304,5 +356,54 @@
 	.reveal-blur_to_clear.reveal-state-revealed .media-image,
 	.reveal-blur_circle.reveal-state-revealed .media-image {
 		transition: filter 1s ease-out;
+	}
+
+	.reveal-finish-active .media-image {
+		animation: media-finish-pop 700ms ease-out both;
+	}
+
+	.reveal-finish-active::after {
+		animation: media-finish-sweep 720ms ease-out both;
+	}
+
+	@keyframes media-finish-pop {
+		0% {
+			filter: brightness(1);
+		}
+
+		38% {
+			filter: brightness(1.12);
+		}
+
+		100% {
+			filter: brightness(1);
+		}
+	}
+
+	@keyframes media-finish-sweep {
+		0% {
+			opacity: 0;
+			transform: translateX(-120%);
+		}
+
+		35% {
+			opacity: 1;
+		}
+
+		100% {
+			opacity: 0;
+			transform: translateX(120%);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.media-spotlight {
+			transition: none;
+		}
+
+		.reveal-finish-active .media-image,
+		.reveal-finish-active::after {
+			animation: none;
+		}
 	}
 </style>

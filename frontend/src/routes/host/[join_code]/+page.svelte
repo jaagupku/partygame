@@ -310,6 +310,7 @@
 					connectionLabel={connectionLabel(isConnected)}
 					layoutMode="host-stage"
 					showDisconnectedChip={true}
+					submissionCount={$game.submissionCount}
 					{countdown}
 				/>
 			{/if}
@@ -320,8 +321,10 @@
 		</section>
 
 		<aside
-			class={`pointer-events-none absolute inset-y-0 right-0 z-10 w-[min(30rem,38vw)] max-w-full p-3 transition-transform duration-300 ease-out ${
-				$game.scoreboardVisible ? 'translate-x-0' : 'translate-x-[calc(100%+1rem)]'
+			class={`pointer-events-none absolute inset-y-0 right-0 z-10 w-[min(30rem,38vw)] max-w-full p-3 transition duration-300 ease-out ${
+				$game.scoreboardVisible
+					? 'translate-x-0 scale-100 opacity-100'
+					: 'translate-x-[calc(100%+1rem)] scale-[0.98] opacity-0'
 			}`}
 		>
 			{#if !$game.endGame?.revealed}

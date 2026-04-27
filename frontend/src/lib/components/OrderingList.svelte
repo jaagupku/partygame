@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import { flip } from 'svelte/animate';
 
 	type OrderingListVariant = 'player' | 'editor';
 
@@ -27,6 +28,7 @@
 	let dropIndex = $state<number | null>(null);
 	let dragPointerId = $state<number | null>(null);
 	let listElement = $state<HTMLDivElement | null>(null);
+	let movedItemKey = $state<string | null>(null);
 
 	const rowLayoutClass = $derived(
 		variant === 'editor'
@@ -51,8 +53,8 @@
 	);
 	const handleClass = $derived(
 		variant === 'editor'
-			? 'inline-flex h-11 w-11 touch-none select-none items-center justify-center rounded-2xl bg-slate-100 text-slate-500 disabled:opacity-40'
-			: 'inline-flex h-10 w-10 touch-none select-none items-center justify-center rounded-xl bg-slate-100 text-slate-500 disabled:opacity-40'
+			? 'inline-flex h-11 w-11 cursor-grab touch-none select-none items-center justify-center rounded-2xl bg-slate-100 text-slate-500 active:cursor-grabbing disabled:cursor-default disabled:opacity-40'
+			: 'inline-flex h-10 w-10 cursor-grab touch-none select-none items-center justify-center rounded-xl bg-slate-100 text-slate-500 active:cursor-grabbing disabled:cursor-default disabled:opacity-40'
 	);
 	const itemClass = $derived(
 		variant === 'editor'
@@ -81,7 +83,17 @@
 	}
 
 	function moveItem(index: number, direction: -1 | 1) {
+		const nextIndex = index + direction;
+		movedItemKey = itemKey(items[index], index);
 		reorderItems(index, index + direction);
+		window.setTimeout(() => {
+			movedItemKey = null;
+		}, 420);
+	}
+
+	function itemKey(item: string, index: number) {
+		const occurrence = items.slice(0, index + 1).filter((value) => value === item).length;
+		return `${item}::${occurrence}`;
 	}
 
 	function startDrag(index: number) {
@@ -117,7 +129,7 @@
 	}
 
 	function startPointerDrag(event: PointerEvent, index: number) {
-		if (disabled || event.pointerType === 'mouse') {
+		if (disabled) {
 			return;
 		}
 		event.preventDefault();
@@ -178,11 +190,12 @@
 </script>
 
 <div class={variant === 'editor' ? 'grid gap-3' : 'stack-md'} bind:this={listElement}>
-	{#each items as item, index}
+	{#each items as item, index (itemKey(item, index))}
 		<div
 			class={`${rowLayoutClass} ${
 				draggedIndex === index ? draggedRowClass : dropIndex === index ? dropRowClass : idleRowClass
-			}`}
+			} ${movedItemKey === itemKey(item, index) ? 'ordering-row-moved' : ''}`}
+			animate:flip={{ duration: 220 }}
 			role="listitem"
 			data-ordering-index={index}
 			aria-grabbed={draggedIndex === index}
@@ -238,3 +251,32 @@
 		</div>
 	{/each}
 </div>
+
+<style>
+	.ordering-row-moved {
+		animation: ordering-row-moved 360ms ease-out both;
+	}
+
+	@keyframes ordering-row-moved {
+		0% {
+			filter: brightness(1);
+			box-shadow: 0 0 0 rgb(14 165 233 / 0);
+		}
+
+		45% {
+			filter: brightness(1.06);
+			box-shadow: 0 0 24px rgb(14 165 233 / 0.22);
+		}
+
+		100% {
+			filter: brightness(1);
+			box-shadow: 0 0 0 rgb(14 165 233 / 0);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ordering-row-moved {
+			animation: none;
+		}
+	}
+</style>

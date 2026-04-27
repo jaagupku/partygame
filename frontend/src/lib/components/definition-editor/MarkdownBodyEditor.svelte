@@ -103,7 +103,7 @@
 	}
 </script>
 
-<label class="input-wrap">
+<div class="input-wrap">
 	<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
 		{$messages.editor.body}
 	</span>
@@ -111,7 +111,7 @@
 		{#each actions as action}
 			<button
 				type="button"
-				class="inline-flex h-8 min-w-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-sm font-black text-slate-700 shadow-sm hover:border-sky-300 hover:text-sky-700"
+				class="inline-flex h-8 min-w-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-sky-400 hover:bg-sky-50 hover:text-sky-800 active:border-sky-500 active:bg-sky-100 active:text-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
 				title={action.title}
 				aria-label={action.title}
 				onclick={action.run}
@@ -126,4 +126,4 @@
 		class="input min-h-32 text-lg"
 		placeholder={$messages.editor.bodyPlaceholder}
 	></textarea>
-</label>
+</div>
