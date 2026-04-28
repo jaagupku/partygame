@@ -16,7 +16,7 @@ repos:
         entry: bash .hooks/prettier-wrapper.sh
         language: system
         files: ^frontend/
-        types_or: [javascript, json, markdown, svelte, css, yaml]
+        types_or: [javascript, ts, tsx, json, markdown, svelte, css, yaml]
         exclude: ^(api/|gateway/|.*lock\.yaml|.*lock\.json)
         pass_filenames: true
         stages: [pre-commit]
