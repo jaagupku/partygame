@@ -1,4 +1,4 @@
-FROM node:22-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
@@ -7,7 +7,7 @@ COPY . .
 RUN pnpm run build
 RUN pnpm prune --prod
 
-FROM node:22-alpine
+FROM node:25-alpine
 RUN apk --no-cache add curl
 WORKDIR /app
 COPY --from=builder /app/build build/
