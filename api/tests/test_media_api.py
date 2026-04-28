@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from starlette.requests import Request
 
+from partygame.core.config import settings
 from partygame.schemas import MediaKind
 from partygame.service.media import LocalFilesystemMediaStorage
 from partygame.api.api_v1.endpoints import media as media_endpoints
@@ -43,6 +45,32 @@ async def test_media_upload_and_fetch(tmp_path):
     file_response = await media_endpoints.get_media_file(asset_id=asset_id, storage=storage)
     assert file_response.media_type == "image/svg+xml"
     assert Path(file_response.path).read_bytes() == b"<svg>hello</svg>"
+
+
+@pytest.mark.asyncio
+async def test_media_upload_limit_comes_from_settings(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "MEDIA_MAX_UPLOAD_MB", 1)
+    storage = LocalFilesystemMediaStorage(root=tmp_path / "media", public_base="/api/v1/media")
+
+    upload_response = await media_endpoints.upload_media(
+        request=_request_with_body(b"x" * (1024 * 1024)),
+        kind=MediaKind.VIDEO,
+        filename="clip.mp4",
+        content_type="video/mp4",
+        storage=storage,
+    )
+    assert upload_response.size_bytes == 1024 * 1024
+
+    with pytest.raises(HTTPException) as error:
+        await media_endpoints.upload_media(
+            request=_request_with_body(b"x" * (1024 * 1024 + 1)),
+            kind=MediaKind.VIDEO,
+            filename="clip-too-large.mp4",
+            content_type="video/mp4",
+            storage=storage,
+        )
+
+    assert getattr(error.value, "status_code") == 413
 
 
 @pytest.mark.asyncio
