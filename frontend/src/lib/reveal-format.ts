@@ -41,8 +41,8 @@ export function isOptionRevealStep(step?: RuntimeStepState): boolean {
 export function isOrderingRevealStep(step?: RuntimeStepState): boolean {
 	return Boolean(
 		step?.input_options?.length &&
-			step.input_kind === 'ordering' &&
-			step.evaluation_type === 'ordering_match'
+		step.input_kind === 'ordering' &&
+		step.evaluation_type === 'ordering_match'
 	);
 }
 
