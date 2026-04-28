@@ -201,6 +201,27 @@ class RuntimeStepState(BaseModel):
     timer: RuntimeTimerState = Field(default_factory=RuntimeTimerState)
 
 
+class RuntimeRoundState(BaseModel):
+    id: str
+    title: str | None = None
+    number: int
+    total: int
+
+
+class RuntimeStepItemState(BaseModel):
+    type_: Literal["step"] = "step"
+    step: RuntimeStepState
+
+
+class RuntimeRoundIntroItemState(BaseModel):
+    type_: Literal["round_intro"] = "round_intro"
+    round: RuntimeRoundState
+    duration_seconds: float = 5.0
+
+
+RuntimeItemState = RuntimeStepItemState | RuntimeRoundIntroItemState
+
+
 class RuntimeLobbyState(BaseModel):
     id: str
     join_code: str
@@ -233,6 +254,8 @@ class RuntimeSnapshotEvent(BaseEvent):
     revision: int = 0
     lobby: RuntimeLobbyState
     players: list[Player] = Field(default_factory=list)
+    active_item: RuntimeItemState | None = None
+    active_round: RuntimeRoundState | None = None
     active_step: RuntimeStepState | None = None
     display_phase: str = "question_active"
     scoreboard_visible: bool = False

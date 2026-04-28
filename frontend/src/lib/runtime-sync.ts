@@ -13,6 +13,8 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.current_step = event.lobby.current_step;
 	state.host_enabled = event.lobby.host_enabled;
 	state.host_id = event.lobby.host_id;
+	state.activeItem = event.active_item ?? undefined;
+	state.activeRound = event.active_round ?? undefined;
 	state.activeStep = event.active_step;
 	state.displayPhase = event.display_phase;
 	state.scoreboardVisible = event.scoreboard_visible;
@@ -59,6 +61,12 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 	if ('active_step' in changes) {
 		state.activeStep = changes.active_step;
 	}
+	if ('active_item' in changes) {
+		state.activeItem = changes.active_item ?? undefined;
+	}
+	if ('active_round' in changes) {
+		state.activeRound = changes.active_round ?? undefined;
+	}
 	if (changes.display_phase !== undefined) {
 		state.displayPhase = changes.display_phase;
 	}
@@ -102,6 +110,8 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.hostEnabled = event.lobby.host_enabled;
 	state.starterPlayerId = event.lobby.starter_id;
 	state.isHost = event.lobby.host_id === state.id;
+	state.activeItem = event.active_item ?? undefined;
+	state.activeRound = event.active_round ?? undefined;
 	state.activeStep = event.active_step;
 	state.displayPhase = event.display_phase;
 	state.scoreboardVisible = event.scoreboard_visible;
@@ -155,6 +165,12 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 	}
 	if ('active_step' in changes) {
 		state.activeStep = changes.active_step;
+	}
+	if ('active_item' in changes) {
+		state.activeItem = changes.active_item ?? undefined;
+	}
+	if ('active_round' in changes) {
+		state.activeRound = changes.active_round ?? undefined;
 	}
 	if (changes.display_phase !== undefined) {
 		state.displayPhase = changes.display_phase;

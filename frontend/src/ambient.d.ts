@@ -302,6 +302,26 @@ type RuntimeStepState = {
 	timer: RuntimeTimerState;
 };
 
+type RuntimeRoundState = {
+	id: string;
+	title?: string;
+	number: number;
+	total: number;
+};
+
+type RuntimeStepItemState = {
+	type_: 'step';
+	step: RuntimeStepState;
+};
+
+type RuntimeRoundIntroItemState = {
+	type_: 'round_intro';
+	round: RuntimeRoundState;
+	duration_seconds: number;
+};
+
+type RuntimeItemState = RuntimeStepItemState | RuntimeRoundIntroItemState;
+
 type RuntimeLobbyState = {
 	id: string;
 	join_code: string;
@@ -356,6 +376,8 @@ type RuntimeSnapshotEvent = {
 	revision: number;
 	lobby: RuntimeLobbyState;
 	players: Player[];
+	active_item?: RuntimeItemState | null;
+	active_round?: RuntimeRoundState | null;
 	active_step?: RuntimeStepState;
 	display_phase: string;
 	scoreboard_visible: boolean;
@@ -379,6 +401,8 @@ type RuntimePatchEvent = {
 	changes: {
 		lobby?: Partial<RuntimeLobbyState>;
 		players?: Player[];
+		active_item?: RuntimeItemState | null;
+		active_round?: RuntimeRoundState | null;
 		active_step?: RuntimeStepState;
 		display_phase?: string;
 		scoreboard_visible?: boolean;
@@ -474,7 +498,9 @@ type PlayerReactionEvent = {
 
 type HostGameState = Lobby & {
 	lastRevision: number;
+	activeItem?: RuntimeItemState;
 	activeStep?: RuntimeStepState;
+	activeRound?: RuntimeRoundState;
 	displayPhase: string;
 	scoreboardVisible: boolean;
 	buzzerActive: boolean;
@@ -498,6 +524,8 @@ type ControllerState = {
 	currentStep: number;
 	hostEnabled: boolean;
 	starterPlayerId?: string;
+	activeItem?: RuntimeItemState;
+	activeRound?: RuntimeRoundState;
 	activeStep?: RuntimeStepState;
 	displayPhase: string;
 	scoreboardVisible: boolean;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from time import time
 from typing import Any
 from uuid import uuid4
@@ -13,6 +14,7 @@ from partygame.schemas.game_definition import (
     MediaType,
     PlayerInputDefinition,
     PlayerInputKind,
+    RoundDefinition,
     StepDefinition,
 )
 from partygame.service.definitions import DefinitionProvider, get_default_definition_provider
@@ -27,6 +29,7 @@ END_GAME_SEQUENCE_STAGES = (
     "stats",
     "scoreboard",
 )
+ROUND_INTRO_DURATION_SECONDS = 5.0
 HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.EXACT_TEXT,
     EvaluationType.EXACT_NUMBER,
@@ -34,6 +37,15 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.ORDERING_MATCH,
     EvaluationType.MULTI_SELECT_WEIGHTED,
 }
+
+
+@dataclass(frozen=True)
+class FlattenedStep:
+    step: StepDefinition
+    round_definition: RoundDefinition
+    round_number: int
+    total_rounds: int
+    is_round_end: bool
 
 
 class GameRuntimeService:
@@ -48,34 +60,60 @@ class GameRuntimeService:
     async def _flatten_steps_with_metadata(
         self,
         lobby: schemas.Lobby,
-    ) -> list[tuple[StepDefinition, bool]]:
+    ) -> list[FlattenedStep]:
         definition_id = lobby.definition_id or "quiz_demo"
         definition = await self.definition_provider.load(definition_id)
-        steps: list[tuple[StepDefinition, bool]] = []
+        visible_rounds: list[tuple[RoundDefinition, list[StepDefinition]]] = []
         for round_definition in definition.rounds:
             compatible_steps = [
                 step
                 for step in round_definition.steps
                 if lobby.host_enabled or self._is_hostless_compatible_step(lobby, step)
             ]
+            if compatible_steps:
+                visible_rounds.append((round_definition, compatible_steps))
+
+        steps: list[FlattenedStep] = []
+        total_rounds = len(visible_rounds)
+        for round_index, (round_definition, compatible_steps) in enumerate(visible_rounds):
             for index, step in enumerate(compatible_steps):
-                steps.append((step, index == len(compatible_steps) - 1))
+                steps.append(
+                    FlattenedStep(
+                        step=step,
+                        round_definition=round_definition,
+                        round_number=round_index + 1,
+                        total_rounds=total_rounds,
+                        is_round_end=index == len(compatible_steps) - 1,
+                    )
+                )
         return steps
 
     async def _flatten_steps(self, lobby: schemas.Lobby) -> list[StepDefinition]:
-        return [step for step, _is_round_end in await self._flatten_steps_with_metadata(lobby)]
+        return [item.step for item in await self._flatten_steps_with_metadata(lobby)]
 
     async def get_current_step(self, lobby: schemas.Lobby) -> StepDefinition | None:
         steps = await self._flatten_steps_with_metadata(lobby)
         if lobby.current_step >= len(steps):
             return None
-        return steps[lobby.current_step][0]
+        return steps[lobby.current_step].step
+
+    async def get_current_round(self, lobby: schemas.Lobby) -> schemas.RuntimeRoundState | None:
+        steps = await self._flatten_steps_with_metadata(lobby)
+        if lobby.current_step >= len(steps):
+            return None
+        current = steps[lobby.current_step]
+        return schemas.RuntimeRoundState(
+            id=current.round_definition.id,
+            title=current.round_definition.title,
+            number=current.round_number,
+            total=current.total_rounds,
+        )
 
     async def is_current_step_round_end(self, lobby: schemas.Lobby) -> bool:
         steps = await self._flatten_steps_with_metadata(lobby)
         if lobby.current_step >= len(steps):
             return False
-        return steps[lobby.current_step][1]
+        return steps[lobby.current_step].is_round_end
 
     async def start_game(self, lobby: schemas.Lobby) -> tuple[schemas.Lobby, StepDefinition | None]:
         await self._initialize_end_game_state(lobby.id, auto_reveal=not lobby.host_enabled)
@@ -141,6 +179,36 @@ class GameRuntimeService:
                 **self._initial_reveal_state(step, started_at),
             },
         )
+
+    async def begin_round_intro(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:
+        await self.repo.set_lobby_fields(lobby.id, phase="round_intro")
+        lobby.phase = "round_intro"
+        await self.repo.set_step_cache(
+            lobby.id,
+            {
+                "display_phase": "round_intro",
+                "scoreboard_visible": False,
+                "buzzer_active": False,
+                "buzzed_player_id": "",
+                "buzzer_opened_at": None,
+                "buzz_reaction_seconds": None,
+            },
+        )
+        return await self.build_snapshot(lobby)
+
+    async def open_current_step_after_round_intro(
+        self,
+        lobby: schemas.Lobby,
+    ) -> schemas.RuntimeSnapshotEvent | None:
+        if lobby.phase != "round_intro":
+            return None
+        step = await self.get_current_step(lobby)
+        if step is None:
+            return None
+        await self.repo.set_lobby_fields(lobby.id, phase="question_active")
+        lobby.phase = "question_active"
+        await self.initialize_step_state(lobby, step)
+        return await self.build_snapshot(lobby)
 
     async def get_step_state(self, lobby_id: str) -> dict[str, Any]:
         return await self.repo.get_step_cache(lobby_id)
@@ -762,6 +830,7 @@ class GameRuntimeService:
         revision: int | None = None,
     ) -> schemas.RuntimeSnapshotEvent:
         step = await self.get_current_step(lobby)
+        active_round = await self.get_current_round(lobby)
         step_state = await self.get_step_state(lobby.id)
         players = await self.repo.get_players(lobby.id)
         snapshot_revision = (
@@ -769,7 +838,7 @@ class GameRuntimeService:
         )
 
         active_step = None
-        if step is not None:
+        if step is not None and lobby.phase != "round_intro":
             evaluation_type = await self._resolve_evaluation_type(lobby, step)
             active_step = schemas.RuntimeStepState(
                 id=step.id,
@@ -794,6 +863,15 @@ class GameRuntimeService:
                     remaining_seconds=self._remaining_timer_seconds(step_state),
                 ),
             )
+
+        active_item = None
+        if active_round is not None and lobby.phase == "round_intro":
+            active_item = schemas.RuntimeRoundIntroItemState(
+                round=active_round,
+                duration_seconds=ROUND_INTRO_DURATION_SECONDS,
+            )
+        elif active_step is not None:
+            active_item = schemas.RuntimeStepItemState(step=active_step)
 
         revealed_submission = None
         player_id = step_state.get("revealed_submission_player_id")
@@ -828,6 +906,8 @@ class GameRuntimeService:
                 current_step=lobby.current_step,
             ),
             players=players,
+            active_item=active_item,
+            active_round=active_round,
             active_step=active_step,
             display_phase=str(step_state.get("display_phase") or "question_active"),
             scoreboard_visible=bool(step_state.get("scoreboard_visible")),

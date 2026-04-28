@@ -7,6 +7,7 @@
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import FinaleDisplay from '$lib/components/endgame/FinaleDisplay.svelte';
 	import ReactionBurstOverlay from '$lib/components/host/ReactionBurstOverlay.svelte';
+	import RoundIntroOverlay from '$lib/components/host/RoundIntroOverlay.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
@@ -297,6 +298,8 @@
 						/>
 					</div>
 				</section>
+			{:else if $game.activeItem?.type_ === 'round_intro'}
+				<RoundIntroOverlay round={$game.activeItem.round} persistent={true} />
 			{:else}
 				<StepDisplayPreview
 					step={$game.activeStep}

@@ -124,4 +124,4 @@ Configured hooks include:
 - The backend targets Python `3.14`
 - Demo media can be seeded from `api/media_seed/` when files are present
 
-For more implementation details and workflow expectations, see [`AGENTS.md`](/home/jaagup/theority/partygame/AGENTS.md) and [`SPEC.md`](/home/jaagup/theority/partygame/SPEC.md).
+For more implementation details and workflow expectations, see [`AGENTS.md`](/home/jaagup/theority/partygame/AGENTS.md)

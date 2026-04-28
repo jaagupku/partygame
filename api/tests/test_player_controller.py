@@ -618,6 +618,59 @@ async def test_hostless_advisory_timer_is_scheduled(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_round_intro_timer_is_scheduled(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_enabled=True,
+        phase="round_intro",
+    )
+    player = schemas.Player(id="p1", game_id="g1", name="Host")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    snapshot = schemas.RuntimeSnapshotEvent(
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            state=lobby.state,
+            phase="round_intro",
+            current_step=lobby.current_step,
+        ),
+        active_round=schemas.RuntimeRoundState(
+            id="round1",
+            title="Round One",
+            number=1,
+            total=2,
+        ),
+        active_item=schemas.RuntimeRoundIntroItemState(
+            round=schemas.RuntimeRoundState(
+                id="round1",
+                title="Round One",
+                number=1,
+                total=2,
+            ),
+            duration_seconds=5.0,
+        ),
+    )
+
+    created = {"count": 0}
+
+    def fake_create_task(coroutine):
+        created["count"] += 1
+        coroutine.close()
+        return DummyTask()
+
+    monkeypatch.setattr(player_service.asyncio, "create_task", fake_create_task)
+
+    await controller._schedule_timer_from_snapshot(snapshot)
+
+    assert created["count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_hostless_end_game_autoplay_is_scheduled(monkeypatch):
     lobby = schemas.Lobby(
         id="g1",

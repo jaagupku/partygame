@@ -5,7 +5,9 @@ export function createGameStore(initialState: Lobby) {
 	const initial: HostGameState = {
 		...initialState,
 		lastRevision: 0,
+		activeItem: undefined,
 		activeStep: undefined,
+		activeRound: undefined,
 		displayPhase: 'question_active',
 		scoreboardVisible: false,
 		buzzerActive: false,

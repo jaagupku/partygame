@@ -337,6 +337,67 @@ class TwoRoundHostlessProvider:
         return []
 
 
+class HostlessFilteredRoundsProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Filtered Rounds",
+            rounds=[
+                RoundDefinition(
+                    id="visible1",
+                    title="Visible One",
+                    steps=[
+                        StepDefinition(
+                            id="visible1_step",
+                            title="Visible 1",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_TEXT,
+                                points=1,
+                                answer="ok",
+                            ),
+                        )
+                    ],
+                ),
+                RoundDefinition(
+                    id="hidden",
+                    title="Hidden Host Round",
+                    steps=[
+                        StepDefinition(
+                            id="hidden_step",
+                            title="Hidden",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.BUZZER),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=1,
+                                answer="ok",
+                            ),
+                        )
+                    ],
+                ),
+                RoundDefinition(
+                    id="visible2",
+                    title="Visible Two",
+                    steps=[
+                        StepDefinition(
+                            id="visible2_step",
+                            title="Visible 2",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NUMBER),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_NUMBER,
+                                points=1,
+                                answer=2,
+                            ),
+                        )
+                    ],
+                ),
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 @pytest.mark.asyncio
 async def test_start_game_skips_buzzer_when_host_disabled():
     repo = FakeRepo()
@@ -349,6 +410,94 @@ async def test_start_game_skips_buzzer_when_host_disabled():
     assert updated_lobby.phase == "question_active"
     assert step is not None
     assert step.id == "number_step"
+
+
+@pytest.mark.asyncio
+async def test_snapshot_includes_active_round_metadata_across_rounds():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=TwoRoundHostlessProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_round is not None
+    assert snapshot.active_round.id == "round1"
+    assert snapshot.active_round.title is None
+    assert snapshot.active_round.number == 1
+    assert snapshot.active_round.total == 2
+    assert snapshot.active_item is not None
+    assert snapshot.active_item.type_ == "step"
+    assert snapshot.active_item.step.id == "r1s1"
+
+    events = await service.advance_step(lobby)
+    next_snapshot = events[-1]
+
+    assert isinstance(next_snapshot, schemas.RuntimeSnapshotEvent)
+    assert next_snapshot.active_round is not None
+    assert next_snapshot.active_round.id == "round2"
+    assert next_snapshot.active_round.number == 2
+    assert next_snapshot.active_round.total == 2
+    assert next_snapshot.active_item is not None
+    assert next_snapshot.active_item.type_ == "step"
+    assert next_snapshot.active_item.step.id == "r2s1"
+
+
+@pytest.mark.asyncio
+async def test_round_intro_snapshot_hides_active_step_until_opened():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    intro_snapshot = await service.begin_round_intro(lobby)
+
+    assert lobby.phase == "round_intro"
+    assert intro_snapshot.lobby.phase == "round_intro"
+    assert intro_snapshot.active_round is not None
+    assert intro_snapshot.active_round.id == "round1"
+    assert intro_snapshot.active_item is not None
+    assert intro_snapshot.active_item.type_ == "round_intro"
+    assert intro_snapshot.active_item.round.id == "round1"
+    assert intro_snapshot.active_item.duration_seconds == 5.0
+    assert intro_snapshot.active_step is None
+    assert repo.steps["g1"]["display_phase"] == "round_intro"
+
+    opened_snapshot = await service.open_current_step_after_round_intro(lobby)
+
+    assert opened_snapshot is not None
+    assert lobby.phase == "question_active"
+    assert opened_snapshot.active_step is not None
+    assert opened_snapshot.active_step.id == "buzzer_step"
+    assert opened_snapshot.active_item is not None
+    assert opened_snapshot.active_item.type_ == "step"
+    assert opened_snapshot.active_item.step.id == "buzzer_step"
+    assert opened_snapshot.active_step.input_enabled is True
+    assert repo.steps["g1"]["display_phase"] == "question_active"
+
+
+@pytest.mark.asyncio
+async def test_hostless_snapshot_round_metadata_uses_visible_rounds():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostlessFilteredRoundsProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_round is not None
+    assert snapshot.active_round.id == "visible1"
+    assert snapshot.active_round.title == "Visible One"
+    assert snapshot.active_round.number == 1
+    assert snapshot.active_round.total == 2
+
+    await service.advance_step(lobby)
+    next_snapshot = await service.build_snapshot(lobby)
+
+    assert next_snapshot.active_round is not None
+    assert next_snapshot.active_round.id == "visible2"
+    assert next_snapshot.active_round.number == 2
+    assert next_snapshot.active_round.total == 2
 
 
 @pytest.mark.asyncio

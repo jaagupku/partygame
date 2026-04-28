@@ -17,12 +17,11 @@ from partygame.schemas import Lobby, Player, ConnectionStatus
 from partygame.utils import publish
 from partygame.service.game import GameRuntimeService
 from partygame.service.media import get_media_storage
+from partygame.service.runtime import RuntimeTransitionScheduler
 from . import realtime
 from partygame.state import GameStateRepository, GameKeyFactory
 
 log = logging.getLogger(__name__)
-HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS = 4.0
-HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS = 4.5
 PLAYER_REACTION_WINDOW_SECONDS = 2.0
 PLAYER_REACTION_BURST_LIMIT = 8
 
@@ -134,6 +133,7 @@ class ClientController:
         self.pubsub = None
         self.send_task: asyncio.Task | None = None
         self.timer_task: asyncio.Task | None = None
+        self.transition_scheduler = RuntimeTransitionScheduler()
         self.reaction_timestamps: deque[float] = deque()
 
     def _snapshot_for_viewer(
@@ -255,6 +255,28 @@ class ClientController:
         await self._send_runtime_patch(before_snapshot, snapshot)
         await self._schedule_timer_from_snapshot(snapshot)
         return snapshot
+
+    def _entered_new_round(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent,
+        after_snapshot: schemas.RuntimeSnapshotEvent,
+    ) -> bool:
+        before_round_id = before_snapshot.active_round.id if before_snapshot.active_round else None
+        after_round_id = after_snapshot.active_round.id if after_snapshot.active_round else None
+        return (
+            after_snapshot.lobby.phase == "question_active"
+            and after_round_id is not None
+            and after_round_id != before_round_id
+        )
+
+    async def _begin_round_intro_if_needed(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent,
+        after_snapshot: schemas.RuntimeSnapshotEvent,
+    ) -> schemas.RuntimeSnapshotEvent:
+        if not self._entered_new_round(before_snapshot, after_snapshot):
+            return after_snapshot
+        return await self.runtime.begin_round_intro(self.lobby)
 
     def is_host(self) -> bool:
         return self.lobby.host_id == self.player.id
@@ -486,6 +508,7 @@ class ClientController:
     async def start_game(self):
         before_snapshot = await self.runtime.build_snapshot(self.lobby)
         self.lobby, _ = await self.runtime.start_game(self.lobby)
+        await self.runtime.begin_round_intro(self.lobby)
         await self.relay_event(schemas.StartGameEvent())
         await self._emit_runtime_state(before_snapshot, force_snapshot=True)
 
@@ -604,6 +627,8 @@ class ClientController:
             for event in events:
                 if not isinstance(event, schemas.RuntimeSnapshotEvent):
                     await self.relay_event(event)
+            after_snapshot = await self.runtime.build_snapshot(self.lobby)
+            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
             return
@@ -616,6 +641,8 @@ class ClientController:
             for event in events:
                 if not isinstance(event, schemas.RuntimeSnapshotEvent):
                     await self.relay_event(event)
+            after_snapshot = await self.runtime.build_snapshot(self.lobby)
+            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
             return
@@ -694,50 +721,46 @@ class ClientController:
             self.timer_task = None
 
         snapshot = snapshot or await self.runtime.build_snapshot(self.lobby)
-        if (
-            not self.lobby.host_enabled
-            and snapshot.end_game is not None
-            and snapshot.end_game.revealed
-            and snapshot.end_game.autoplay_enabled
-            and snapshot.end_game.sequence_stage != "scoreboard"
-        ):
-            self.timer_task = asyncio.create_task(
-                self._advance_hostless_end_game_stage(HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS)
-            )
-            return
-        if (
-            not self.lobby.host_enabled
-            and snapshot.active_step is not None
-            and self.lobby.phase == "step_complete"
-            and snapshot.display_phase == "answer_reveal"
-        ):
-            current_step = await self.runtime.get_current_step(self.lobby)
-            if current_step is None or not self.runtime._is_hostless_auto_progress_step(
-                self.lobby, current_step
-            ):
-                return
-            self.timer_task = asyncio.create_task(
-                self._advance_hostless_reveal(HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS)
-            )
-            return
-        if (
-            snapshot.active_step is None
-            or snapshot.active_step.timer.ends_at is None
-            or self.lobby.phase != "question_active"
-        ):
+        transition = await self.transition_scheduler.next_transition(
+            lobby=self.lobby,
+            snapshot=snapshot,
+            runtime=self.runtime,
+        )
+        if transition is None:
             return
 
-        current_step = await self.runtime.get_current_step(self.lobby)
-        if current_step is None:
+        if transition.kind == "round_intro":
+            self.timer_task = asyncio.create_task(
+                self._finish_round_intro(transition.delay_seconds)
+            )
             return
-        if not snapshot.active_step.timer.enforced and not (
-            not self.lobby.host_enabled
-            and self.runtime._is_hostless_auto_progress_step(self.lobby, current_step)
-        ):
+        if transition.kind == "hostless_end_game_stage":
+            self.timer_task = asyncio.create_task(
+                self._advance_hostless_end_game_stage(transition.delay_seconds)
+            )
             return
+        if transition.kind == "hostless_answer_reveal":
+            self.timer_task = asyncio.create_task(
+                self._advance_hostless_reveal(transition.delay_seconds)
+            )
+            return
+        if transition.kind == "timer_expired":
+            self.timer_task = asyncio.create_task(self._expire_timer(transition.delay_seconds))
 
-        delay = max(0, snapshot.active_step.timer.ends_at - time())
-        self.timer_task = asyncio.create_task(self._expire_timer(delay))
+    async def _finish_round_intro(self, delay: float):
+        await asyncio.sleep(delay)
+        lobby = await self.repo.get_lobby_meta(self.lobby.id)
+        if lobby is None:
+            return
+        self.lobby = lobby
+        if self.lobby.phase != "round_intro":
+            return
+        before_snapshot = await self.runtime.build_snapshot(self.lobby)
+        snapshot = await self.runtime.open_current_step_after_round_intro(self.lobby)
+        if snapshot is None:
+            return
+        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
+        await self.sync_host_runtime_state(snapshot)
 
     async def _advance_hostless_reveal(self, delay: float):
         await asyncio.sleep(delay)
@@ -757,6 +780,8 @@ class ClientController:
         for event in events:
             if not isinstance(event, schemas.RuntimeSnapshotEvent):
                 await self.relay_event(event)
+        after_snapshot = await self.runtime.build_snapshot(self.lobby)
+        await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
         snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
         await self.sync_host_runtime_state(snapshot)
 
@@ -798,5 +823,7 @@ class ClientController:
         for event in events:
             if not isinstance(event, schemas.RuntimeSnapshotEvent):
                 await self.relay_event(event)
+        after_snapshot = await self.runtime.build_snapshot(self.lobby)
+        await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
         snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
         await self.sync_host_runtime_state(snapshot)

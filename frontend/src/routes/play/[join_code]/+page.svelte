@@ -36,6 +36,8 @@
 			currentStep: lobby().current_step ?? 0,
 			hostEnabled: lobby().host_enabled,
 			starterPlayerId: lobby().starter_id,
+			activeItem: undefined,
+			activeRound: undefined,
 			activeStep: undefined,
 			displayPhase: 'question_active',
 			scoreboardVisible: false,
@@ -492,7 +494,13 @@
 			</section>
 		{/if}
 
-		{#if $controller.isHost && !gameFinished && !$controller.endGame?.revealed}
+		{#if $controller.isHost && !gameFinished && !$controller.endGame?.revealed && $controller.activeItem?.type_ === 'round_intro'}
+			<section class="card text-center">
+				<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
+			</section>
+		{/if}
+
+		{#if $controller.isHost && !gameFinished && !$controller.endGame?.revealed && $controller.activeItem?.type_ !== 'round_intro'}
 			<HostControlsPanel
 				activeStep={$controller.activeStep}
 				buzzerActive={$controller.buzzerActive}
