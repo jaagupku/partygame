@@ -37,11 +37,12 @@
 
 	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
+	const useNumberSlider = $derived(hasConfiguredNumberSlider(activeStep));
 
 	$effect(() => {
 		const step = activeStep;
 		if (step?.id !== inputStepId) {
-			answerValue = '';
+			answerValue = hasConfiguredNumberSlider(step) ? step.slider_min : '';
 			selectedRadioOption = null;
 			selectedCheckboxOptions = [];
 			inputStepId = step?.id;
@@ -109,6 +110,20 @@
 		}
 		selectedCheckboxOptions = [...selectedCheckboxOptions, option];
 	}
+
+	function hasConfiguredNumberSlider(
+		step: RuntimeStepState | undefined
+	): step is RuntimeStepState & { slider_min: number; slider_max: number; slider_step: number } {
+		return (
+			step?.input_kind === 'number' &&
+			step.slider_min !== undefined &&
+			step.slider_min !== null &&
+			step.slider_max !== undefined &&
+			step.slider_max !== null &&
+			step.slider_step !== undefined &&
+			step.slider_step !== null
+		);
+	}
 </script>
 
 {#if activeStep?.input_kind === 'buzzer'}
@@ -165,16 +180,37 @@
 					: $messages.gameplay.stepClosedAnswersDisabled}
 			</p>
 		{/if}
-		<input
-			class="input"
-			type="number"
-			min={activeStep?.slider_min}
-			max={activeStep?.slider_max}
-			step={activeStep?.slider_step ?? 1}
-			bind:value={answerValue}
-			disabled={inputDisabled}
-			placeholder={activeStep?.input_placeholder ?? $messages.gameplay.enterNumber}
-		/>
+		{#if useNumberSlider}
+			<div class="stack-md">
+				<div class="flex items-center justify-between gap-4">
+					<span class="text-sm font-bold text-slate-600">{activeStep?.slider_min}</span>
+					<output class="rounded-2xl border bg-white px-5 py-2 text-center text-3xl font-extrabold">
+						{answerValue}
+					</output>
+					<span class="text-sm font-bold text-slate-600">{activeStep?.slider_max}</span>
+				</div>
+				<input
+					class="number-slider"
+					type="range"
+					min={activeStep?.slider_min}
+					max={activeStep?.slider_max}
+					step={activeStep?.slider_step}
+					bind:value={answerValue}
+					disabled={inputDisabled}
+				/>
+			</div>
+		{:else}
+			<input
+				class="input"
+				type="number"
+				min={activeStep?.slider_min}
+				max={activeStep?.slider_max}
+				step={activeStep?.slider_step ?? 1}
+				bind:value={answerValue}
+				disabled={inputDisabled}
+				placeholder={activeStep?.input_placeholder ?? $messages.gameplay.enterNumber}
+			/>
+		{/if}
 		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
 			{$messages.gameplay.submitAnswer}
 		</button>
@@ -268,3 +304,54 @@
 		{/if}
 	</section>
 {/if}
+
+<style>
+	.number-slider {
+		appearance: none;
+		width: 100%;
+		min-height: 3.5rem;
+		background: transparent;
+	}
+
+	.number-slider::-webkit-slider-runnable-track {
+		height: 0.85rem;
+		border-radius: 999px;
+		background: linear-gradient(140deg, var(--party-primary), var(--party-primary-strong));
+	}
+
+	.number-slider::-moz-range-track {
+		height: 0.85rem;
+		border-radius: 999px;
+		background: linear-gradient(140deg, var(--party-primary), var(--party-primary-strong));
+	}
+
+	.number-slider::-webkit-slider-thumb {
+		appearance: none;
+		width: 2.75rem;
+		height: 2.75rem;
+		margin-top: -0.95rem;
+		border: 4px solid white;
+		border-radius: 999px;
+		background: var(--party-accent);
+		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+	}
+
+	.number-slider::-moz-range-thumb {
+		width: 2.35rem;
+		height: 2.35rem;
+		border: 4px solid white;
+		border-radius: 999px;
+		background: var(--party-accent);
+		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+	}
+
+	.number-slider:focus-visible {
+		outline: 4px solid rgba(14, 165, 233, 0.24);
+		outline-offset: 0.25rem;
+		border-radius: 999px;
+	}
+
+	.number-slider:disabled {
+		opacity: 0.5;
+	}
+</style>
