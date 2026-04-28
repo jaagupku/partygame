@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { DEFAULT_ZOOM_OUT_ORIGIN_X, DEFAULT_ZOOM_OUT_ORIGIN_Y } from '$lib/media/image-reveal';
+	import {
+		DEFAULT_ZOOM_OUT_ORIGIN_X,
+		DEFAULT_ZOOM_OUT_ORIGIN_Y,
+		DEFAULT_ZOOM_OUT_START
+	} from '$lib/media/image-reveal';
 
 	interface ImageQuestionMediaProps {
 		step: RuntimeStepState;
@@ -99,9 +103,11 @@
 			return `filter: blur(${blur}px); transform: none;`;
 		}
 		if (imageMedia.reveal === 'zoom_out') {
+			const startZoom = imageMedia.zoom_start ?? DEFAULT_ZOOM_OUT_START;
 			const originX = (imageMedia.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100;
 			const originY = (imageMedia.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100;
-			return `transform: none; transform-origin: ${originX}% ${originY}%;`;
+			const scale = 1 + (startZoom - 1) * (1 - revealProgress);
+			return `transform: scale(${scale}); transform-origin: ${originX}% ${originY}%;`;
 		}
 		if (imageMedia.reveal === 'blur_circle') {
 			return 'filter: blur(18px);';
@@ -316,7 +322,7 @@
 	}
 
 	.reveal-zoom_out .media-image {
-		transform: none;
+		transform: scale(2.4);
 		transform-origin: 58% 42%;
 	}
 
