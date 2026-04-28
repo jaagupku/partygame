@@ -170,6 +170,10 @@ class RuntimeMediaState(BaseModel):
     paused: bool = False
     reveal: str | None = None
     loop: bool = False
+    autoplay: bool = True
+    playback_revision: int = 0
+    blur_circle_background: str = "blur"
+    blur_circle_background_color: str = "#0f172a"
     zoom_start: float | None = None
     zoom_origin_x: float | None = None
     zoom_origin_y: float | None = None
@@ -277,7 +281,8 @@ class AdvanceEndGameStageEvent(BaseEvent):
 
 class MediaPlaybackEvent(BaseEvent):
     type_: str = Event.MEDIA_PLAYBACK
-    paused: bool
+    paused: bool | None = None
+    restart: bool = False
 
 
 class ToggleEndGameAutoplayEvent(BaseEvent):

@@ -531,7 +531,10 @@
 		const newStep = createStepFromTemplate(roundIndex + 1, stepIndex + 1, templateId);
 		round.steps.splice(stepIndex, 0, newStep);
 		draft.rounds = [...draft.rounds];
-		return getStepKey(newStep);
+		const insertedStep = draft.rounds[roundIndex]?.steps[stepIndex] ?? newStep;
+		const newStepKey = getStepKey(insertedStep);
+		selectedStepKey = newStepKey;
+		return newStepKey;
 	}
 
 	function openStepTemplatePicker() {
@@ -560,7 +563,7 @@
 		pendingStepInsert = null;
 	}
 
-	async function addStepAfterSelected(
+	function addStepAfterSelected(
 		templateId: Parameters<typeof createStepFromTemplate>[2] = 'blank'
 	) {
 		let newStepKey: string | null = null;
@@ -588,7 +591,6 @@
 		if (!newStepKey) {
 			return;
 		}
-		await tick();
 		selectedStepKey = newStepKey;
 	}
 
@@ -805,6 +807,8 @@
 			src: '',
 			reveal: 'none',
 			loop: false,
+			blur_circle_background: 'blur',
+			blur_circle_background_color: '#0f172a',
 			zoom_start: undefined,
 			zoom_origin_x: undefined,
 			zoom_origin_y: undefined
@@ -829,14 +833,32 @@
 				src: previousMedia.src,
 				reveal: previousMedia.type_ === 'image' ? previousMedia.reveal : 'none',
 				loop: previousMedia.loop,
+				blur_circle_background:
+					previousMedia.type_ === 'image'
+						? (previousMedia.blur_circle_background ?? 'blur')
+						: 'blur',
+				blur_circle_background_color:
+					previousMedia.type_ === 'image'
+						? (previousMedia.blur_circle_background_color ?? '#0f172a')
+						: '#0f172a',
 				zoom_start: previousMedia.type_ === 'image' ? previousMedia.zoom_start : undefined,
 				zoom_origin_x: previousMedia.type_ === 'image' ? previousMedia.zoom_origin_x : undefined,
 				zoom_origin_y: previousMedia.type_ === 'image' ? previousMedia.zoom_origin_y : undefined
 			};
 			return;
 		}
+		if (mediaType === 'video') {
+			step.media = {
+				type_: 'video',
+				src: previousMedia.src,
+				reveal: 'none',
+				loop: previousMedia.loop,
+				autoplay: previousMedia.type_ === 'video' ? (previousMedia.autoplay ?? true) : true
+			};
+			return;
+		}
 		step.media = {
-			type_: mediaType,
+			type_: 'audio',
 			src: previousMedia.src,
 			reveal: 'none',
 			loop: previousMedia.loop
@@ -889,6 +911,8 @@
 										src: step.media.src.trim(),
 										reveal: step.media.reveal,
 										loop: step.media.loop,
+										blur_circle_background: step.media.blur_circle_background,
+										blur_circle_background_color: step.media.blur_circle_background_color,
 										zoom_start: step.media.zoom_start,
 										zoom_origin_x: step.media.zoom_origin_x,
 										zoom_origin_y: step.media.zoom_origin_y
@@ -897,7 +921,9 @@
 										type_: step.media.type_,
 										src: step.media.src.trim(),
 										reveal: step.media.reveal,
-										loop: step.media.loop
+										loop: step.media.loop,
+										autoplay:
+											step.media.type_ === 'video' ? (step.media.autoplay ?? true) : undefined
 									}
 							: undefined
 				}))

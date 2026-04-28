@@ -19,6 +19,11 @@ class ImageRevealMode(StrEnum):
     ZOOM_OUT = auto()
 
 
+class BlurCircleBackgroundMode(StrEnum):
+    BLUR = auto()
+    SOLID = auto()
+
+
 class PlayerInputKind(StrEnum):
     NONE = auto()
     BUZZER = auto()
@@ -44,6 +49,9 @@ class MediaDefinition(BaseModel):
     src: str
     reveal: ImageRevealMode = ImageRevealMode.NONE
     loop: bool = False
+    autoplay: bool = True
+    blur_circle_background: BlurCircleBackgroundMode = BlurCircleBackgroundMode.BLUR
+    blur_circle_background_color: str = "#0f172a"
     zoom_start: float | None = Field(default=None, ge=1.0)
     zoom_origin_x: float | None = Field(default=None, ge=0.0, le=1.0)
     zoom_origin_y: float | None = Field(default=None, ge=0.0, le=1.0)

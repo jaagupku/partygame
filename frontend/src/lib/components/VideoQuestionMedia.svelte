@@ -19,6 +19,8 @@
 	let videoElement = $state<HTMLVideoElement | null>(null);
 	let shouldResumeMedia = $state(false);
 	let lastAutoplayKey = $state('');
+	let lastPlaybackKey = $state('');
+	let lastPlaybackRevision = $state(0);
 
 	const mediaKey = $derived(
 		step.media?.type_ === 'video' ? `${step.id}:${step.media.src}:${step.media.loop}` : ''
@@ -29,7 +31,7 @@
 			return null;
 		}
 		return getYouTubeMedia(step.media.src, {
-			autoplay: true,
+			autoplay: !shouldPauseMedia,
 			controls: false,
 			loop: step.media.loop,
 			origin: typeof window !== 'undefined' ? window.location.origin : undefined
@@ -38,6 +40,22 @@
 
 	$effect(() => {
 		if (!videoElement) {
+			return;
+		}
+
+		const playbackRevision =
+			step.media?.type_ === 'video' ? (step.media.playback_revision ?? 0) : 0;
+		if (mediaKey !== lastPlaybackKey) {
+			lastPlaybackKey = mediaKey;
+			lastPlaybackRevision = playbackRevision;
+		}
+		if (playbackRevision > lastPlaybackRevision) {
+			lastPlaybackRevision = playbackRevision;
+			videoElement.currentTime = 0;
+			shouldResumeMedia = false;
+			videoElement.play().catch(() => {
+				// Ignore autoplay restrictions; the host can press play again if needed.
+			});
 			return;
 		}
 
@@ -84,12 +102,13 @@
 			{stageVariant}
 			{shouldPauseMedia}
 			{shouldResumePausedMedia}
+			playbackRevision={step.media.playback_revision ?? 0}
 		/>
 	{:else}
 		<video
 			bind:this={videoElement}
 			class={`w-full rounded-xl ${stageVariant ? 'mx-auto block max-h-[65vh] max-w-full object-contain' : ''}`}
-			autoplay
+			autoplay={!shouldPauseMedia}
 			controls
 			loop={step.media.loop}
 			playsinline

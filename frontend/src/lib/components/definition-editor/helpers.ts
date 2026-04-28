@@ -343,9 +343,11 @@ function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState
 	const sharedState = {
 		type_: media.type_,
 		src: media.src,
-		paused: false,
+		paused: media.type_ === 'video' ? !(media.autoplay ?? true) : false,
 		reveal: media.reveal,
 		loop: media.loop,
+		autoplay: media.type_ === 'video' ? (media.autoplay ?? true) : true,
+		playback_revision: 0,
 		reveal_state: revealState,
 		reveal_elapsed_seconds: 0,
 		reveal_started_at: Date.now() / 1000,
@@ -355,6 +357,8 @@ function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState
 		return {
 			...sharedState,
 			type_: 'image',
+			blur_circle_background: media.blur_circle_background,
+			blur_circle_background_color: media.blur_circle_background_color,
 			zoom_start: media.zoom_start,
 			zoom_origin_x: media.zoom_origin_x,
 			zoom_origin_y: media.zoom_origin_y

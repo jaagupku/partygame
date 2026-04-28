@@ -15,6 +15,7 @@
 		onNextStep: () => void;
 		onPreviousStep: () => void;
 		onResetStep: () => void;
+		onRestartMedia: () => void;
 		onToggleBuzzer: () => void;
 		onToggleMediaPlayback: () => void;
 		onToggleScoreboardVisibility: () => void;
@@ -34,6 +35,7 @@
 		onNextStep,
 		onPreviousStep,
 		onResetStep,
+		onRestartMedia,
 		onToggleBuzzer,
 		onToggleMediaPlayback,
 		onToggleScoreboardVisibility
@@ -95,6 +97,9 @@
 		{#if activeStep?.media?.type_ === 'video'}
 			<button type="button" class="btn btn-ghost" onclick={onToggleMediaPlayback}>
 				{activeStep.media.paused ? $messages.gameplay.resumeMedia : $messages.gameplay.pauseMedia}
+			</button>
+			<button type="button" class="btn btn-ghost" onclick={onRestartMedia}>
+				{$messages.gameplay.restartMedia}
 			</button>
 		{/if}
 		{#if canAutoEvaluate}

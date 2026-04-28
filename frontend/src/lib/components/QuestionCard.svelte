@@ -194,6 +194,7 @@
 		gap: clamp(0.35rem, 0.8vh, 0.75rem);
 		height: 100%;
 		min-height: 0;
+		min-width: 0;
 		padding: clamp(0.5rem, 1.1vw, 1.25rem);
 	}
 
@@ -210,9 +211,13 @@
 	}
 
 	.question-card-media-stage {
+		display: grid;
+		place-items: center;
 		grid-row: 4;
 		min-height: 0;
+		min-width: 0;
 		height: 100%;
+		overflow: hidden;
 	}
 
 	.question-card-options {

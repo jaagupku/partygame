@@ -585,7 +585,11 @@ class ClientController:
         if event_type == Event.MEDIA_PLAYBACK:
             playback = schemas.MediaPlaybackEvent.model_validate(data)
             before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.set_media_paused(self.lobby, playback.paused)
+            events = await self.runtime.set_media_playback(
+                self.lobby,
+                paused=playback.paused,
+                restart=playback.restart,
+            )
             if not events:
                 return
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)

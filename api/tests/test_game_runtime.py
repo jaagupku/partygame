@@ -194,6 +194,15 @@ class VideoDefinitionProvider:
         return []
 
 
+class ManualVideoDefinitionProvider(VideoDefinitionProvider):
+    async def load(self, definition_id: str) -> GameDefinition:
+        definition = await super().load(definition_id)
+        media = definition.rounds[0].steps[0].media
+        assert media is not None
+        media.autoplay = False
+        return definition
+
+
 class HostlessCompatibilityProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -844,6 +853,40 @@ async def test_video_media_pause_is_reflected_in_snapshot():
     assert snapshot.active_step is not None
     assert snapshot.active_step.media is not None
     assert snapshot.active_step.media.paused is True
+
+
+@pytest.mark.asyncio
+async def test_video_media_can_start_paused_from_definition():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=ManualVideoDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.autoplay is False
+    assert snapshot.active_step.media.paused is True
+
+
+@pytest.mark.asyncio
+async def test_video_media_restart_updates_playback_revision_and_resumes():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=VideoDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.set_media_playback(lobby, paused=True)
+    await service.set_media_playback(lobby, restart=True)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.paused is False
+    assert snapshot.active_step.media.playback_revision == 1
 
 
 @pytest.mark.asyncio

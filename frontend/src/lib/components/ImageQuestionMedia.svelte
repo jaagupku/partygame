@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import {
-		DEFAULT_ZOOM_OUT_ORIGIN_X,
-		DEFAULT_ZOOM_OUT_ORIGIN_Y,
-		DEFAULT_ZOOM_OUT_START
-	} from '$lib/media/image-reveal';
+	import { DEFAULT_ZOOM_OUT_ORIGIN_X, DEFAULT_ZOOM_OUT_ORIGIN_Y } from '$lib/media/image-reveal';
 
 	interface ImageQuestionMediaProps {
 		step: RuntimeStepState;
@@ -75,11 +71,17 @@
 	});
 	const imageRevealClass = $derived(
 		`${step.media?.reveal ? `reveal-${step.media.reveal}` : 'reveal-none'} reveal-state-${revealState} ${
-			revealFinishActive ? 'reveal-finish-active' : ''
-		}`
+			imageMedia?.reveal === 'blur_circle' && imageMedia.blur_circle_background === 'solid'
+				? 'blur-circle-solid-background'
+				: ''
+		} ${revealFinishActive ? 'reveal-finish-active' : ''}`
 	);
 	const imageRevealStyle = $derived(
-		[`--reveal-duration:${revealDurationSeconds}s`, `--reveal-progress:${revealProgress}`].join(';')
+		[
+			`--reveal-duration:${revealDurationSeconds}s`,
+			`--reveal-progress:${revealProgress}`,
+			`--blur-circle-background:${imageMedia?.blur_circle_background_color ?? '#0f172a'}`
+		].join(';')
 	);
 	const circleRadiusPx = $derived.by(() => {
 		const minDimension = Math.min(imageWrapWidth, imageWrapHeight);
@@ -94,15 +96,12 @@
 		}
 		if (imageMedia.reveal === 'blur_to_clear') {
 			const blur = 18 * (1 - revealProgress);
-			const scale = 1 + 0.04 * (1 - revealProgress);
-			return `filter: blur(${blur}px); transform: scale(${scale});`;
+			return `filter: blur(${blur}px); transform: none;`;
 		}
 		if (imageMedia.reveal === 'zoom_out') {
-			const startZoom = imageMedia.zoom_start ?? DEFAULT_ZOOM_OUT_START;
 			const originX = (imageMedia.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100;
 			const originY = (imageMedia.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100;
-			const scale = 1 + (startZoom - 1) * (1 - revealProgress);
-			return `transform: scale(${scale}); transform-origin: ${originX}% ${originY}%;`;
+			return `transform: none; transform-origin: ${originX}% ${originY}%;`;
 		}
 		if (imageMedia.reveal === 'blur_circle') {
 			return 'filter: blur(18px);';
@@ -235,7 +234,7 @@
 				src={step.media.src}
 				alt={step.title}
 				class={`media-image ${stageVariant ? 'media-image-stage' : ''}`}
-				style={imageStyle}
+				style={`${imageStyle}; width:100%; height:100%; object-fit:contain;`}
 			/>
 			{#if imageMedia?.reveal === 'blur_circle' && (revealState !== 'revealed' || revealFinishActive)}
 				<div
@@ -255,27 +254,39 @@
 		overflow: hidden;
 		border-radius: 1rem;
 		background: rgba(15, 23, 42, 0.08);
+		height: clamp(14rem, 46vh, 34rem);
+		min-height: 0;
+		min-width: 0;
+		max-height: 100%;
 	}
 
 	.media-image-wrap {
 		position: relative;
 		display: inline-grid;
-		width: 100%;
+		place-items: center;
+		width: auto;
+		height: auto;
+		min-width: 0;
+		min-height: 0;
 		max-width: 100%;
+		max-height: 100%;
+		overflow: hidden;
 	}
 
 	.media-image {
 		display: block;
 		grid-area: 1 / 1;
-		width: 100%;
+		width: auto;
 		height: auto;
-		object-fit: cover;
+		min-width: 0;
+		min-height: 0;
+		object-fit: contain;
 	}
 
 	.media-image-wrap-stage {
 		justify-self: center;
 		align-self: center;
-		width: auto;
+		width: 100%;
 		height: 100%;
 		max-width: 100%;
 		max-height: 100%;
@@ -283,10 +294,8 @@
 
 	.media-image-stage {
 		position: relative;
-		width: auto;
+		/* width: 100%; */
 		height: 100%;
-		max-width: 100%;
-		max-height: 100%;
 		min-width: 0;
 		min-height: 0;
 		object-fit: contain;
@@ -295,10 +304,11 @@
 	.stage-media-frame {
 		position: relative;
 		min-height: 0;
+		min-width: 0;
 		height: 100%;
-		width: auto;
+		/* width: 100%; */
 		max-width: 100%;
-		max-height: 100%;
+		max-height: min(100%, 65vh);
 	}
 
 	.reveal-blur_to_clear .media-image {
@@ -306,12 +316,20 @@
 	}
 
 	.reveal-zoom_out .media-image {
-		transform: scale(2.4);
+		transform: none;
 		transform-origin: 58% 42%;
 	}
 
 	.reveal-blur_circle .media-image {
 		filter: blur(18px);
+	}
+
+	.blur-circle-solid-background {
+		background: var(--blur-circle-background, #0f172a);
+	}
+
+	.blur-circle-solid-background.reveal-blur_circle:not(.reveal-state-revealed) .media-image {
+		opacity: 0;
 	}
 
 	.media-spotlight {

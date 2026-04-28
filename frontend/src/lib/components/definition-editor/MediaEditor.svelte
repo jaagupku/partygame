@@ -7,6 +7,7 @@
 		DEFAULT_ZOOM_OUT_START
 	} from '$lib/media/image-reveal';
 	import { messages } from '$lib/i18n';
+	import BlurCircleRevealControls from './BlurCircleRevealControls.svelte';
 	import { IMAGE_REVEALS, MEDIA_TYPES } from './helpers';
 
 	type Props = {
@@ -235,6 +236,10 @@
 							{/each}
 						</div>
 
+						{#if step.media.reveal === 'blur_circle'}
+							<BlurCircleRevealControls media={step.media} />
+						{/if}
+
 						{#if step.media.reveal === 'zoom_out'}
 							<div class="grid gap-4 md:grid-cols-3">
 								<label class="input-wrap">
@@ -346,6 +351,26 @@
 						</div>
 						<input bind:checked={step.media.loop} type="checkbox" class="h-5 w-5" />
 					</label>
+
+					{#if step.media.type_ === 'video'}
+						<label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
+							<div>
+								<p class="text-lg font-bold">{$messages.editor.autoplayVideo}</p>
+								<p class="text-sm text-slate-600">{$messages.editor.autoplayVideoHelp}</p>
+							</div>
+							<input
+								checked={step.media.autoplay ?? true}
+								type="checkbox"
+								class="h-5 w-5"
+								onchange={(event) => {
+									if (step.media?.type_ !== 'video') {
+										return;
+									}
+									step.media.autoplay = (event.currentTarget as HTMLInputElement).checked;
+								}}
+							/>
+						</label>
+					{/if}
 
 					<label class="input-wrap">
 						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">

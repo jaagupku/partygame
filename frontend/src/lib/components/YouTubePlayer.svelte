@@ -9,6 +9,7 @@
 		stageVariant?: boolean;
 		shouldPauseMedia?: boolean;
 		shouldResumePausedMedia?: boolean;
+		playbackRevision?: number;
 	}
 
 	let {
@@ -16,7 +17,8 @@
 		loop = false,
 		stageVariant = false,
 		shouldPauseMedia = false,
-		shouldResumePausedMedia = false
+		shouldResumePausedMedia = false,
+		playbackRevision = 0
 	}: YouTubePlayerProps = $props();
 
 	let youtubeContainerElement = $state<HTMLDivElement | null>(null);
@@ -28,6 +30,7 @@
 	let initializedYouTubeKey = '';
 	let frameShellWidth = $state(0);
 	let frameShellHeight = $state(0);
+	let lastPlaybackRevision = $state(0);
 
 	const YOUTUBE_ASPECT_RATIO = 16 / 9;
 
@@ -89,10 +92,19 @@
 		// Read pause/resume props before any early return so this effect stays subscribed to them.
 		const pauseRequested = shouldPauseMedia;
 		const resumeRequested = shouldResumePausedMedia;
+		const restartRevision = playbackRevision;
 		const currentPlayer = youtubePlayer;
 		const playerReady = youtubePlayerReady;
 		const yt = typeof window !== 'undefined' ? window.YT : undefined;
 		if (!currentPlayer || !playerReady || !yt) {
+			return;
+		}
+
+		if (restartRevision > lastPlaybackRevision) {
+			lastPlaybackRevision = restartRevision;
+			currentPlayer.seekTo(media?.startSeconds ?? 0, true);
+			currentPlayer.playVideo();
+			shouldResumeMedia = false;
 			return;
 		}
 
@@ -128,6 +140,7 @@
 		destroyYouTubePlayer();
 		youtubeMaskVisible = true;
 		initializedYouTubeKey = currentPlayerKey;
+		lastPlaybackRevision = untrack(() => playbackRevision);
 
 		loadYouTubeIframeApi()
 			.then((YT) => {
@@ -136,7 +149,7 @@
 				}
 
 				const playerVars: Record<string, string | number> = {
-					autoplay: 1,
+					autoplay: untrack(() => shouldPauseMedia) ? 0 : 1,
 					controls: 0,
 					disablekb: 1,
 					fs: 0,

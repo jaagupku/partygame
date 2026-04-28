@@ -93,6 +93,8 @@ type ImageMediaDefinition = {
 	src: string;
 	reveal: string;
 	loop: boolean;
+	blur_circle_background?: 'blur' | 'solid';
+	blur_circle_background_color?: string;
 	zoom_start?: number;
 	zoom_origin_x?: number;
 	zoom_origin_y?: number;
@@ -110,6 +112,7 @@ type VideoMediaDefinition = {
 	src: string;
 	reveal: string;
 	loop: boolean;
+	autoplay?: boolean;
 };
 
 type StepMediaDefinition = ImageMediaDefinition | AudioMediaDefinition | VideoMediaDefinition;
@@ -242,6 +245,8 @@ type RuntimeImageMediaState = {
 	paused: boolean;
 	reveal?: string;
 	loop: boolean;
+	blur_circle_background?: 'blur' | 'solid';
+	blur_circle_background_color?: string;
 	zoom_start?: number;
 	zoom_origin_x?: number;
 	zoom_origin_y?: number;
@@ -269,6 +274,8 @@ type RuntimeVideoMediaState = {
 	paused: boolean;
 	reveal?: string;
 	loop: boolean;
+	autoplay?: boolean;
+	playback_revision?: number;
 	reveal_state: string;
 	reveal_started_at?: number;
 	reveal_elapsed_seconds: number;
@@ -412,7 +419,8 @@ type StepAdvancedEvent = {
 
 type MediaPlaybackEvent = {
 	type_: 'media_playback';
-	paused: boolean;
+	paused?: boolean;
+	restart?: boolean;
 };
 
 type ScoresUpdatedEvent = {
@@ -515,6 +523,7 @@ type YouTubePlayer = {
 	getPlayerState: () => YouTubePlayerState;
 	pauseVideo: () => void;
 	playVideo: () => void;
+	seekTo: (seconds: number, allowSeekAhead: boolean) => void;
 };
 
 type YouTubeNamespace = {

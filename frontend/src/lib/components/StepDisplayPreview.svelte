@@ -143,7 +143,10 @@
 
 <style>
 	.question-stage-enter {
+		height: 100%;
 		min-height: 0;
+		min-width: 0;
+		overflow: hidden;
 		animation: question-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 	}
 

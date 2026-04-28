@@ -275,6 +275,17 @@
 		});
 	}
 
+	function restartMedia() {
+		if ($controller.activeStep?.media?.type_ !== 'video') {
+			return;
+		}
+		sendAction({
+			type_: 'media_playback',
+			paused: false,
+			restart: true
+		});
+	}
+
 	function evaluateStep() {
 		sendAction({ type_: 'scores_updated' });
 	}
@@ -496,6 +507,7 @@
 				onNextStep={nextStep}
 				onPreviousStep={previousStep}
 				onResetStep={resetStep}
+				onRestartMedia={restartMedia}
 				onToggleBuzzer={toggleBuzzerState}
 				onToggleMediaPlayback={toggleMediaPlayback}
 				onToggleScoreboardVisibility={toggleScoreboardVisibility}
