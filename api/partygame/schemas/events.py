@@ -189,6 +189,7 @@ class RuntimeStepState(BaseModel):
     body: str | None = None
     evaluation_type: str = ""
     evaluation_points: int = 0
+    max_points: int = 0
     input_enabled: bool = False
     input_kind: PlayerInputKind = PlayerInputKind.NONE
     input_prompt: str | None = None

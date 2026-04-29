@@ -846,6 +846,7 @@ class GameRuntimeService:
                 body=step.body,
                 evaluation_type=str(evaluation_type),
                 evaluation_points=step.evaluation.points,
+                max_points=self._max_points_for_step(step, evaluation_type),
                 input_enabled=lobby.phase == "question_active",
                 input_kind=step.player_input.kind,
                 input_prompt=step.player_input.prompt,
@@ -1186,6 +1187,24 @@ class GameRuntimeService:
             or 0.0,
             reveal_duration_seconds=self._to_float(step_state.get("media_reveal_duration_seconds")),
         )
+
+    def _max_points_for_step(self, step: StepDefinition, evaluation_type: EvaluationType) -> int:
+        if evaluation_type != EvaluationType.MULTI_SELECT_WEIGHTED:
+            return step.evaluation.points
+
+        answer = step.evaluation.answer
+        option_scores = answer.get("option_scores") if isinstance(answer, dict) else None
+        if not isinstance(option_scores, list):
+            return step.evaluation.points
+
+        max_points = 0
+        for entry in option_scores:
+            if not isinstance(entry, dict):
+                continue
+            points = entry.get("points")
+            if isinstance(points, int) and points > 0:
+                max_points += points
+        return max_points
 
     def _to_float(self, value: Any) -> float | None:
         if value in (None, ""):

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
-	import type { CheckboxOptionScore } from './helpers';
+	import { getRadioCorrectOption, type CheckboxOptionScore } from './helpers';
 
 	type Props = {
 		step: StepDefinition;
@@ -71,7 +71,7 @@
 						<input
 							type="radio"
 							name={`radio-correct-${step.id}`}
-							checked={step.evaluation.answer === step.player_input.options[optionIndex]}
+							checked={getRadioCorrectOption(step) === step.player_input.options[optionIndex]}
 							onchange={() =>
 								onSetRadioCorrectOption(step, step.player_input.options[optionIndex] ?? '')}
 						/>

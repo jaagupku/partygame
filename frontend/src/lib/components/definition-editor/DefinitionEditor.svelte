@@ -35,6 +35,7 @@
 		getStepTemplates,
 		getCheckboxOptionScores,
 		getOrderingAnswer,
+		getRadioCorrectOption,
 		isCheckboxWeightedAnswer,
 		normalizeAnswer
 	} from './helpers';
@@ -651,11 +652,7 @@
 			return;
 		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
-			const currentAnswer = String(step.evaluation.answer ?? '');
-			step.evaluation.answer =
-				step.player_input.options.find((option) => option === currentAnswer) ??
-				step.player_input.options[0] ??
-				'';
+			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
 			return;
 		}
 		if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
@@ -702,11 +699,7 @@
 			return;
 		}
 		if (evaluationType === 'exact_text' && step.player_input.kind === 'radio') {
-			const currentAnswer = String(step.evaluation.answer ?? '');
-			step.evaluation.answer =
-				step.player_input.options.find((option) => option === currentAnswer) ??
-				step.player_input.options[0] ??
-				'';
+			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
 			return;
 		}
 		if (evaluationType === 'none') {
@@ -731,7 +724,7 @@
 			return;
 		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
-			step.evaluation.answer = step.player_input.options[0] ?? '';
+			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
 		}
 	}
 
@@ -747,7 +740,7 @@
 			return;
 		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
-			if (step.evaluation.answer === removedOption) {
+			if (getRadioCorrectOption(step) === removedOption) {
 				step.evaluation.answer = step.player_input.options[0] ?? '';
 			}
 		}
@@ -784,7 +777,7 @@
 			return;
 		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
-			if (step.evaluation.answer === previousValue) {
+			if (getRadioCorrectOption(step) === previousValue) {
 				step.evaluation.answer = value;
 			}
 		}

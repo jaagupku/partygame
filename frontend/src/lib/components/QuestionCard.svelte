@@ -65,6 +65,9 @@
 		}
 		return !media.paused && (!isBuzzerStep || buzzerActive);
 	});
+	const fullCreditPointsLabel = $derived(
+		step ? `${step.max_points ?? step.evaluation_points} ${$messages.common.pointsWord}` : ''
+	);
 
 	function orderingItemKey(items: string[], item: string, index: number) {
 		const occurrence = items.slice(0, index + 1).filter((value) => value === item).length;
@@ -78,15 +81,20 @@
 	} ${showingAnswerReveal ? 'question-card-reveal-pulse' : ''}`}
 >
 	{#if step}
-		<h3
-			class={`question-card-step-title ${
-				stageVariant
-					? 'text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight'
-					: 'text-3xl font-extrabold'
-			}`}
-		>
-			{step.title}
-		</h3>
+		<div class="question-card-title-row">
+			<h3
+				class={`question-card-step-title ${
+					stageVariant
+						? 'text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight'
+						: 'text-3xl font-extrabold'
+				}`}
+			>
+				{step.title}
+			</h3>
+			<span class={`question-card-points-badge ${stageVariant ? 'points-badge-stage' : ''}`}>
+				{fullCreditPointsLabel}
+			</span>
+		</div>
 		{#if step.body}
 			<StepBodyMarkdown source={step.body} {stageVariant} />
 		{/if}
@@ -218,6 +226,39 @@
 		min-width: 0;
 		height: 100%;
 		overflow: hidden;
+	}
+
+	.question-card-title-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: clamp(0.75rem, 2vw, 1.5rem);
+		min-width: 0;
+	}
+
+	.question-card-step-title {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.question-card-points-badge {
+		flex: 0 0 auto;
+		margin-top: 0.15rem;
+		border-radius: 999px;
+		border: 1px solid rgb(191 219 254);
+		background: rgb(239 246 255 / 0.92);
+		color: rgb(30 64 175);
+		font-size: 0.82rem;
+		font-weight: 950;
+		line-height: 1;
+		padding: 0.55rem 0.75rem;
+		white-space: nowrap;
+	}
+
+	.points-badge-stage {
+		margin-top: 0.35rem;
+		font-size: clamp(0.9rem, 1.2vw, 1.15rem);
+		padding: 0.65rem 0.9rem;
 	}
 
 	.question-card-options {

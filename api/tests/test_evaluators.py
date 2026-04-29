@@ -248,3 +248,6 @@ async def test_multi_select_weighted_evaluation_sums_selected_option_points():
     assert repo.scores["p1"] == 5
     assert repo.scores["p2"] == 0
     assert score_events[-1].updates == {}
+    snapshot = await service.build_snapshot(lobby)
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.max_points == 5

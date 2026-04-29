@@ -662,6 +662,21 @@ export function getCheckboxOptionScores(step: StepDefinition): CheckboxOptionSco
 	}));
 }
 
+export function getRadioCorrectOption(step: StepDefinition): string {
+	if (step.player_input.kind !== 'radio' || step.evaluation.type_ !== 'exact_text') {
+		return '';
+	}
+	if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
+		return '';
+	}
+	const answer = String(step.evaluation.answer ?? '');
+	return (
+		step.player_input.options.find((option) => option === answer) ??
+		step.player_input.options.find((option) => option.trim() === answer.trim()) ??
+		''
+	);
+}
+
 export function getTextAnswer(step: StepDefinition): string {
 	if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
 		return '';
@@ -697,6 +712,16 @@ export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluatio
 	return value || null;
 }
 
+export function getMaximumStepPoints(step: StepDefinition): number {
+	if (step.evaluation.type_ !== 'multi_select_weighted') {
+		return step.evaluation.points;
+	}
+	return getCheckboxOptionScores(step).reduce(
+		(total, entry) => total + Math.max(0, Math.trunc(entry.points)),
+		0
+	);
+}
+
 export function buildRuntimePreviewStep(step: StepDefinition): RuntimeStepState {
 	return {
 		id: step.id,
@@ -704,6 +729,7 @@ export function buildRuntimePreviewStep(step: StepDefinition): RuntimeStepState 
 		body: step.body,
 		evaluation_type: step.evaluation.type_,
 		evaluation_points: step.evaluation.points,
+		max_points: getMaximumStepPoints(step),
 		input_enabled: true,
 		input_kind: step.player_input.kind,
 		input_prompt: step.player_input.prompt,
