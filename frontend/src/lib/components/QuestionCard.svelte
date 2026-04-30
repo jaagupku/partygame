@@ -102,9 +102,22 @@
 			{#if step.media?.type_ === 'image'}
 				<ImageQuestionMedia {step} {stageVariant} />
 			{:else if step.media?.type_ === 'audio'}
-				<AudioQuestionMedia src={step.media.src} {shouldPauseMedia} {shouldResumePausedMedia} />
+				<AudioQuestionMedia
+					src={step.media.src}
+					loop={step.media.loop}
+					volume={step.media.volume ?? 1}
+					{shouldPauseMedia}
+					{shouldResumePausedMedia}
+					playbackRevision={step.media.playback_revision ?? 0}
+				/>
 			{:else if step.media?.type_ === 'video'}
-				<VideoQuestionMedia {step} {stageVariant} {shouldPauseMedia} {shouldResumePausedMedia} />
+				<VideoQuestionMedia
+					{step}
+					{stageVariant}
+					volume={step.media.volume ?? 1}
+					{shouldPauseMedia}
+					{shouldResumePausedMedia}
+				/>
 			{/if}
 		</div>
 		{#if showOptionGrid}

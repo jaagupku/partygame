@@ -168,6 +168,7 @@ class RuntimeMediaState(BaseModel):
     type_: str
     src: str
     paused: bool = False
+    volume: float = 1
     reveal: str | None = None
     loop: bool = False
     autoplay: bool = True
@@ -307,6 +308,7 @@ class MediaPlaybackEvent(BaseEvent):
     type_: str = Event.MEDIA_PLAYBACK
     paused: bool | None = None
     restart: bool = False
+    volume: float | None = None
 
 
 class ToggleEndGameAutoplayEvent(BaseEvent):

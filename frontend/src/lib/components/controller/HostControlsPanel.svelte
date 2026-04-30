@@ -16,6 +16,7 @@
 		onPreviousStep: () => void;
 		onResetStep: () => void;
 		onRestartMedia: () => void;
+		onSetMediaVolume: (volume: number) => void;
 		onToggleBuzzer: () => void;
 		onToggleMediaPlayback: () => void;
 		onToggleScoreboardVisibility: () => void;
@@ -36,6 +37,7 @@
 		onPreviousStep,
 		onResetStep,
 		onRestartMedia,
+		onSetMediaVolume,
 		onToggleBuzzer,
 		onToggleMediaPlayback,
 		onToggleScoreboardVisibility
@@ -52,6 +54,10 @@
 	});
 
 	const canAutoEvaluate = $derived(!hostEnabled || activeStep?.evaluation_type !== 'host_judged');
+	const hasControllableMedia = $derived(
+		activeStep?.media?.type_ === 'audio' || activeStep?.media?.type_ === 'video'
+	);
+	const mediaVolumePercent = $derived(Math.round((activeStep?.media?.volume ?? 1) * 100));
 </script>
 
 <section class="card stack-md">
@@ -94,13 +100,29 @@
 		<button type="button" class="btn btn-ghost" onclick={onToggleScoreboardVisibility}>
 			{scoreboardVisible ? $messages.gameplay.hideScoreboard : $messages.gameplay.showScoreboard}
 		</button>
-		{#if activeStep?.media?.type_ === 'video'}
+		{#if hasControllableMedia}
 			<button type="button" class="btn btn-ghost" onclick={onToggleMediaPlayback}>
-				{activeStep.media.paused ? $messages.gameplay.resumeMedia : $messages.gameplay.pauseMedia}
+				{activeStep?.media?.paused ? $messages.gameplay.resumeMedia : $messages.gameplay.pauseMedia}
 			</button>
 			<button type="button" class="btn btn-ghost" onclick={onRestartMedia}>
 				{$messages.gameplay.restartMedia}
 			</button>
+			<label
+				class="flex min-w-48 items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700"
+			>
+				<span>{$messages.gameplay.mediaVolume}</span>
+				<input
+					class="w-28 accent-sky-500"
+					type="range"
+					min="0"
+					max="100"
+					step="5"
+					value={mediaVolumePercent}
+					oninput={(event) =>
+						onSetMediaVolume(Number((event.currentTarget as HTMLInputElement).value) / 100)}
+				/>
+				<span class="tabular-nums">{mediaVolumePercent}%</span>
+			</label>
 		{/if}
 		{#if canAutoEvaluate}
 			<button type="button" class="btn btn-ghost" onclick={onEvaluateStep}>

@@ -5,6 +5,7 @@
 	interface VideoQuestionMediaProps {
 		step: RuntimeStepState;
 		stageVariant?: boolean;
+		volume?: number;
 		shouldPauseMedia?: boolean;
 		shouldResumePausedMedia?: boolean;
 	}
@@ -12,6 +13,7 @@
 	let {
 		step,
 		stageVariant = false,
+		volume = 1,
 		shouldPauseMedia = false,
 		shouldResumePausedMedia = false
 	}: VideoQuestionMediaProps = $props();
@@ -25,6 +27,10 @@
 	const mediaKey = $derived(
 		step.media?.type_ === 'video' ? `${step.id}:${step.media.src}:${step.media.loop}` : ''
 	);
+
+	function normalizedVolume(value: number) {
+		return Math.max(0, Math.min(1, value));
+	}
 
 	const youtubeMedia = $derived.by(() => {
 		if (step.media?.type_ !== 'video') {
@@ -42,6 +48,8 @@
 		if (!videoElement) {
 			return;
 		}
+
+		videoElement.volume = normalizedVolume(volume);
 
 		const playbackRevision =
 			step.media?.type_ === 'video' ? (step.media.playback_revision ?? 0) : 0;
@@ -103,6 +111,7 @@
 			{shouldPauseMedia}
 			{shouldResumePausedMedia}
 			playbackRevision={step.media.playback_revision ?? 0}
+			{volume}
 		/>
 	{:else}
 		<video

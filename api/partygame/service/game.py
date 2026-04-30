@@ -155,6 +155,7 @@ class GameRuntimeService:
                     else False
                 ),
                 "media_playback_revision": 0,
+                "media_volume": 1,
                 "answers": {},
                 "evaluated": False,
                 "buzzer_active": lobby.host_enabled
@@ -406,15 +407,26 @@ class GameRuntimeService:
         lobby: schemas.Lobby,
         paused: bool | None = None,
         restart: bool = False,
+        volume: float | None = None,
     ) -> list[schemas.BaseEvent]:
         step = await self.get_current_step(lobby)
-        if step is None or step.media is None or step.media.type_ != MediaType.VIDEO:
+        if (
+            step is None
+            or step.media is None
+            or step.media.type_
+            not in {
+                MediaType.AUDIO,
+                MediaType.VIDEO,
+            }
+        ):
             return []
 
         state = await self.get_step_state(lobby.id)
         next_state = dict(state)
         if paused is not None:
             next_state["media_paused"] = paused
+        if volume is not None:
+            next_state["media_volume"] = max(0, min(1, volume))
         if restart:
             next_state["media_paused"] = False if paused is None else paused
             next_state["media_playback_revision"] = (
@@ -426,6 +438,7 @@ class GameRuntimeService:
             for key, value in {
                 "media_paused": next_state.get("media_paused"),
                 "media_playback_revision": next_state.get("media_playback_revision"),
+                "media_volume": next_state.get("media_volume"),
             }.items()
             if state.get(key) != value
         }
@@ -1172,6 +1185,9 @@ class GameRuntimeService:
             type_=str(media.type_),
             src=media.src,
             paused=bool(step_state.get("media_paused")),
+            volume=float(
+                1 if step_state.get("media_volume") is None else step_state.get("media_volume")
+            ),
             reveal=str(media.reveal),
             loop=media.loop,
             autoplay=media.autoplay,

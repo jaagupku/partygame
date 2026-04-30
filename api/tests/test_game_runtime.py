@@ -194,6 +194,37 @@ class VideoDefinitionProvider:
         return []
 
 
+class AudioDefinitionProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Audio Test",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="audio_step",
+                            title="Listen to this",
+                            media=MediaDefinition(
+                                type_=MediaType.AUDIO,
+                                src="/media/question.mp3",
+                            ),
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NONE),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.NONE,
+                                points=0,
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 class ManualVideoDefinitionProvider(VideoDefinitionProvider):
     async def load(self, definition_id: str) -> GameDefinition:
         definition = await super().load(definition_id)
@@ -1036,6 +1067,48 @@ async def test_video_media_restart_updates_playback_revision_and_resumes():
     assert snapshot.active_step.media is not None
     assert snapshot.active_step.media.paused is False
     assert snapshot.active_step.media.playback_revision == 1
+
+
+@pytest.mark.asyncio
+async def test_audio_media_restart_updates_playback_revision_and_resumes():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=AudioDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.set_media_playback(lobby, paused=True)
+    await service.set_media_playback(lobby, restart=True)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.paused is False
+    assert snapshot.active_step.media.playback_revision == 1
+
+
+@pytest.mark.asyncio
+async def test_media_volume_is_clamped_and_reflected_in_snapshot():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=AudioDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.set_media_playback(lobby, volume=0)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.volume == 0
+
+    await service.set_media_playback(lobby, volume=1.5)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.volume == 1
 
 
 @pytest.mark.asyncio

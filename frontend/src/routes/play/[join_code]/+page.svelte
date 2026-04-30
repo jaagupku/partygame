@@ -268,7 +268,10 @@
 	}
 
 	function toggleMediaPlayback() {
-		if ($controller.activeStep?.media?.type_ !== 'video') {
+		if (
+			$controller.activeStep?.media?.type_ !== 'audio' &&
+			$controller.activeStep?.media?.type_ !== 'video'
+		) {
 			return;
 		}
 		sendAction({
@@ -278,13 +281,29 @@
 	}
 
 	function restartMedia() {
-		if ($controller.activeStep?.media?.type_ !== 'video') {
+		if (
+			$controller.activeStep?.media?.type_ !== 'audio' &&
+			$controller.activeStep?.media?.type_ !== 'video'
+		) {
 			return;
 		}
 		sendAction({
 			type_: 'media_playback',
 			paused: false,
 			restart: true
+		});
+	}
+
+	function setMediaVolume(volume: number) {
+		if (
+			$controller.activeStep?.media?.type_ !== 'audio' &&
+			$controller.activeStep?.media?.type_ !== 'video'
+		) {
+			return;
+		}
+		sendAction({
+			type_: 'media_playback',
+			volume
 		});
 	}
 
@@ -516,6 +535,7 @@
 				onPreviousStep={previousStep}
 				onResetStep={resetStep}
 				onRestartMedia={restartMedia}
+				onSetMediaVolume={setMediaVolume}
 				onToggleBuzzer={toggleBuzzerState}
 				onToggleMediaPlayback={toggleMediaPlayback}
 				onToggleScoreboardVisibility={toggleScoreboardVisibility}

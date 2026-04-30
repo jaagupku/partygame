@@ -10,6 +10,7 @@
 		shouldPauseMedia?: boolean;
 		shouldResumePausedMedia?: boolean;
 		playbackRevision?: number;
+		volume?: number;
 	}
 
 	let {
@@ -18,7 +19,8 @@
 		stageVariant = false,
 		shouldPauseMedia = false,
 		shouldResumePausedMedia = false,
-		playbackRevision = 0
+		playbackRevision = 0,
+		volume = 1
 	}: YouTubePlayerProps = $props();
 
 	let youtubeContainerElement = $state<HTMLDivElement | null>(null);
@@ -33,6 +35,10 @@
 	let lastPlaybackRevision = $state(0);
 
 	const YOUTUBE_ASPECT_RATIO = 16 / 9;
+
+	function youtubeVolume(value: number) {
+		return Math.round(Math.max(0, Math.min(1, value)) * 100);
+	}
 
 	function destroyYouTubePlayer() {
 		youtubePlayerReady = false;
@@ -93,12 +99,15 @@
 		const pauseRequested = shouldPauseMedia;
 		const resumeRequested = shouldResumePausedMedia;
 		const restartRevision = playbackRevision;
+		const requestedVolume = volume;
 		const currentPlayer = youtubePlayer;
 		const playerReady = youtubePlayerReady;
 		const yt = typeof window !== 'undefined' ? window.YT : undefined;
 		if (!currentPlayer || !playerReady || !yt) {
 			return;
 		}
+
+		currentPlayer.setVolume(youtubeVolume(requestedVolume));
 
 		if (restartRevision > lastPlaybackRevision) {
 			lastPlaybackRevision = restartRevision;
@@ -177,6 +186,7 @@
 							}
 							youtubePlayerReady = true;
 							youtubeMaskVisible = false;
+							youtubePlayer.setVolume(youtubeVolume(untrack(() => volume)));
 							if (untrack(() => shouldPauseMedia)) {
 								shouldResumeMedia = true;
 								youtubePlayer.pauseVideo();

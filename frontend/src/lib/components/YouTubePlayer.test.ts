@@ -20,6 +20,7 @@ type MockYouTubePlayer = {
 	pauseVideo: ReturnType<typeof vi.fn>;
 	playVideo: ReturnType<typeof vi.fn>;
 	seekTo: ReturnType<typeof vi.fn>;
+	setVolume: ReturnType<typeof vi.fn>;
 };
 
 const TEST_MEDIA = {
@@ -46,7 +47,8 @@ describe('YouTubePlayer', () => {
 			getPlayerState: vi.fn(() => 1),
 			pauseVideo: vi.fn(),
 			playVideo: vi.fn(),
-			seekTo: vi.fn()
+			seekTo: vi.fn(),
+			setVolume: vi.fn()
 		};
 
 		const mockNamespace = {
@@ -117,7 +119,8 @@ describe('YouTubePlayer', () => {
 			getPlayerState: vi.fn(() => 1),
 			pauseVideo: vi.fn(),
 			playVideo: vi.fn(),
-			seekTo: vi.fn()
+			seekTo: vi.fn(),
+			setVolume: vi.fn()
 		};
 
 		const mockNamespace = {

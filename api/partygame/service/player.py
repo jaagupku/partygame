@@ -612,6 +612,7 @@ class ClientController:
                 self.lobby,
                 paused=playback.paused,
                 restart=playback.restart,
+                volume=playback.volume,
             )
             if not events:
                 return
