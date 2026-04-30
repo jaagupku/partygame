@@ -17,7 +17,7 @@
 		mangle: false
 	};
 
-	const renderers = {
+	const renderers: Record<string, unknown> = {
 		html: MarkdownHtmlText,
 		image: MarkdownImageText,
 		link: MarkdownSafeLink

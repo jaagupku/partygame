@@ -357,6 +357,7 @@ function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState
 		return {
 			...sharedState,
 			type_: 'image',
+			blur_amount: media.blur_amount,
 			blur_circle_background: media.blur_circle_background,
 			blur_circle_background_color: media.blur_circle_background_color,
 			zoom_start: media.zoom_start,

@@ -2,9 +2,11 @@
 	import 'iconify-icon';
 	import { getYouTubeMedia } from '$lib/media/youtube.js';
 	import {
+		DEFAULT_IMAGE_BLUR_AMOUNT,
 		DEFAULT_ZOOM_OUT_ORIGIN_X,
 		DEFAULT_ZOOM_OUT_ORIGIN_Y,
-		DEFAULT_ZOOM_OUT_START
+		DEFAULT_ZOOM_OUT_START,
+		getScaledImageBlurAmount
 	} from '$lib/media/image-reveal';
 	import { messages } from '$lib/i18n';
 	import BlurCircleRevealControls from './BlurCircleRevealControls.svelte';
@@ -21,6 +23,8 @@
 
 	let { step, uploadKey, onAddMedia, onRemoveMedia, onUpdateMediaType, onUploadMedia }: Props =
 		$props();
+	let previewImageWidth = $state(0);
+	let previewImageHeight = $state(0);
 
 	function getImageMedia(media: StepDefinition['media']): ImageMediaDefinition | null {
 		return media?.type_ === 'image' ? media : null;
@@ -78,6 +82,14 @@
 		if (!imageMedia) {
 			return '';
 		}
+		if (imageMedia.reveal === 'blur_to_clear' || imageMedia.reveal === 'blur_circle') {
+			const blur = getScaledImageBlurAmount(
+				getBlurAmountValue(),
+				previewImageWidth,
+				previewImageHeight
+			);
+			return `filter: blur(${blur}px);`;
+		}
 		if (imageMedia.reveal !== 'zoom_out') {
 			return '';
 		}
@@ -90,6 +102,18 @@
 	const ZOOM_SLIDER_MIN = 0;
 	const ZOOM_SLIDER_MAX = 9;
 	const ZOOM_SLIDER_STEP = 0.1;
+	const BLUR_AMOUNT_MIN = 0;
+	const BLUR_AMOUNT_MAX = 96;
+	const BLUR_AMOUNT_STEP = 1;
+
+	function getBlurAmountValue() {
+		const imageMedia = getImageMedia(step.media);
+		return imageMedia?.blur_amount ?? DEFAULT_IMAGE_BLUR_AMOUNT;
+	}
+
+	function getBlurAmountDisplayValue() {
+		return getScaledImageBlurAmount(getBlurAmountValue(), previewImageWidth, previewImageHeight);
+	}
 
 	function zoomFactorFromSlider(value: number) {
 		return 2 ** (value / 2);
@@ -238,6 +262,40 @@
 
 						{#if step.media.reveal === 'blur_circle'}
 							<BlurCircleRevealControls media={step.media} />
+						{/if}
+
+						{#if step.media.reveal === 'blur_to_clear' || step.media.reveal === 'blur_circle'}
+							<label class="input-wrap">
+								<div class="flex items-center justify-between gap-3">
+									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+										{$messages.editor.blurAmount}
+									</span>
+									<span class="text-sm font-semibold text-slate-700">
+										{getBlurAmountDisplayValue().toFixed(0)}px
+									</span>
+								</div>
+								<input
+									type="range"
+									min={BLUR_AMOUNT_MIN}
+									max={BLUR_AMOUNT_MAX}
+									step={BLUR_AMOUNT_STEP}
+									class="h-3 w-full cursor-pointer accent-sky-500"
+									value={getBlurAmountValue()}
+									oninput={(event) =>
+										bindOptionalNumber(
+											event,
+											(value) => {
+												const imageMedia = getImageMedia(step.media);
+												if (!imageMedia) {
+													return;
+												}
+												imageMedia.blur_amount = value;
+											},
+											{ min: BLUR_AMOUNT_MIN, max: BLUR_AMOUNT_MAX }
+										)}
+								/>
+								<p class="text-sm text-slate-500">{$messages.editor.blurAmountHelp}</p>
+							</label>
 						{/if}
 
 						{#if step.media.reveal === 'zoom_out'}
@@ -408,6 +466,8 @@
 										alt={step.title}
 										class="max-h-64 w-full object-cover transition-transform duration-200"
 										style={getImagePreviewStyle()}
+										bind:clientWidth={previewImageWidth}
+										bind:clientHeight={previewImageHeight}
 									/>
 									{#if step.media.reveal === 'zoom_out'}
 										<div

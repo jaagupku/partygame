@@ -1,12 +1,19 @@
 <script lang="ts">
-	export let href = '';
-	export let title: string | undefined = undefined;
+	import type { Snippet } from 'svelte';
 
-	$: safeHref = /^(https?:|mailto:|tel:)/i.test(href) ? href : '';
+	type Props = {
+		href?: string;
+		title?: string;
+		children?: Snippet;
+	};
+
+	let { href = '', title = undefined, children }: Props = $props();
+
+	const safeHref = $derived(/^(https?:|mailto:|tel:)/i.test(href) ? href : '');
 </script>
 
 {#if safeHref}
-	<a href={safeHref} {title} target="_blank" rel="noreferrer noopener"><slot /></a>
+	<a href={safeHref} {title} target="_blank" rel="noreferrer noopener">{@render children?.()}</a>
 {:else}
-	<span><slot /></span>
+	<span>{@render children?.()}</span>
 {/if}

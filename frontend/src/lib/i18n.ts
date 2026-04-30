@@ -377,6 +377,9 @@ const en = defineMessages({
 		resetZoomDefaults: 'Use default zoom',
 		zoomFocusPreviewCaption:
 			'The marker shows the zoom focal point used at the start of the reveal.',
+		blurAmount: 'Blur amount',
+		blurAmountHelp:
+			'Scales with the displayed image size so small previews and large screens feel consistent.',
 		blurCircleBackground: 'Circle reveal background',
 		blurCircleBackgroundBlur: 'Blurred image',
 		blurCircleBackgroundSolid: 'Solid color',
@@ -1027,6 +1030,9 @@ const et: Messages = {
 		resetZoomDefaults: 'Kasuta vaikimisi suumi',
 		zoomFocusPreviewCaption:
 			'Marker näitab suumi fookuspunkti, mida kasutatakse paljastuse alguses.',
+		blurAmount: 'Udu tugevus',
+		blurAmountHelp:
+			'Skaleerub kuvatava pildi suurusega, et väike eelvaade ja suur ekraan mõjuksid sarnaselt.',
 		howPlayersAnswer: 'Kuidas mängijad vastavad',
 		howPlayersAnswerHelp:
 			'Vali esmalt suhtlusviis ja seejärel seadista küsimus ning võimalikud valikud.',

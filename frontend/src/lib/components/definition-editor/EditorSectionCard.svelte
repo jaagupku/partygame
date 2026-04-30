@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import type { Snippet } from 'svelte';
 
 	type Props = {
 		id?: string;
@@ -7,9 +8,10 @@
 		iconClass: string;
 		title: string;
 		description: string;
+		children?: Snippet;
 	};
 
-	let { id, icon, iconClass, title, description }: Props = $props();
+	let { id, icon, iconClass, title, description, children }: Props = $props();
 </script>
 
 <section {id} class="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-sm">
@@ -26,6 +28,6 @@
 	</div>
 
 	<div class="mt-4">
-		<slot />
+		{@render children?.()}
 	</div>
 </section>

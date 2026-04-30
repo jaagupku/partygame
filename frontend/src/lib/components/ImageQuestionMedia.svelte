@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import {
+		DEFAULT_IMAGE_BLUR_AMOUNT,
 		DEFAULT_ZOOM_OUT_ORIGIN_X,
 		DEFAULT_ZOOM_OUT_ORIGIN_Y,
-		DEFAULT_ZOOM_OUT_START
+		DEFAULT_ZOOM_OUT_START,
+		getScaledImageBlurAmount
 	} from '$lib/media/image-reveal';
 
 	interface ImageQuestionMediaProps {
@@ -53,6 +55,10 @@
 		return baseElapsed + Math.max(0, nowMs / 1000 - startedAt);
 	});
 	const revealDurationSeconds = $derived(step.media?.reveal_duration_seconds ?? 14);
+	const blurAmount = $derived(imageMedia?.blur_amount ?? DEFAULT_IMAGE_BLUR_AMOUNT);
+	const scaledBlurAmount = $derived(
+		getScaledImageBlurAmount(blurAmount, imageWrapWidth, imageWrapHeight)
+	);
 	const timerProgress = $derived.by(() => {
 		const totalDuration = step.timer.seconds;
 		if (totalDuration === undefined || totalDuration === null) {
@@ -84,6 +90,7 @@
 		[
 			`--reveal-duration:${revealDurationSeconds}s`,
 			`--reveal-progress:${revealProgress}`,
+			`--image-blur-amount:${scaledBlurAmount}px`,
 			`--blur-circle-background:${imageMedia?.blur_circle_background_color ?? '#0f172a'}`
 		].join(';')
 	);
@@ -99,7 +106,7 @@
 			return '';
 		}
 		if (imageMedia.reveal === 'blur_to_clear') {
-			const blur = 18 * (1 - revealProgress);
+			const blur = scaledBlurAmount * (1 - revealProgress);
 			return `filter: blur(${blur}px); transform: none;`;
 		}
 		if (imageMedia.reveal === 'zoom_out') {
@@ -110,7 +117,7 @@
 			return `transform: scale(${scale}); transform-origin: ${originX}% ${originY}%;`;
 		}
 		if (imageMedia.reveal === 'blur_circle') {
-			return 'filter: blur(18px);';
+			return `filter: blur(${scaledBlurAmount}px);`;
 		}
 		return '';
 	});
@@ -318,7 +325,7 @@
 	}
 
 	.reveal-blur_to_clear .media-image {
-		filter: blur(18px);
+		filter: blur(var(--image-blur-amount, 18px));
 	}
 
 	.reveal-zoom_out .media-image {
@@ -327,7 +334,7 @@
 	}
 
 	.reveal-blur_circle .media-image {
-		filter: blur(18px);
+		filter: blur(var(--image-blur-amount, 18px));
 	}
 
 	.blur-circle-solid-background {
