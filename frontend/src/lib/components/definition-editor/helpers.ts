@@ -347,6 +347,7 @@ function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState
 		reveal: media.reveal,
 		loop: media.loop,
 		autoplay: media.type_ === 'video' ? (media.autoplay ?? true) : true,
+		hide_youtube_title: media.type_ === 'video' ? (media.hide_youtube_title ?? false) : false,
 		playback_revision: 0,
 		reveal_state: revealState,
 		reveal_elapsed_seconds: 0,

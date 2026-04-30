@@ -235,6 +235,7 @@ class ManualVideoDefinitionProvider(VideoDefinitionProvider):
         media = definition.rounds[0].steps[0].media
         assert media is not None
         media.autoplay = False
+        media.hide_youtube_title = True
         return definition
 
 
@@ -1085,6 +1086,7 @@ async def test_video_media_can_start_paused_from_definition():
     assert snapshot.active_step is not None
     assert snapshot.active_step.media is not None
     assert snapshot.active_step.media.autoplay is False
+    assert snapshot.active_step.media.hide_youtube_title is True
     assert snapshot.active_step.media.paused is True
 
 

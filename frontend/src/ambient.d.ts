@@ -119,6 +119,7 @@ type VideoMediaDefinition = {
 	reveal: string;
 	loop: boolean;
 	autoplay?: boolean;
+	hide_youtube_title?: boolean;
 };
 
 type StepMediaDefinition = ImageMediaDefinition | AudioMediaDefinition | VideoMediaDefinition;
@@ -290,6 +291,7 @@ type RuntimeVideoMediaState = {
 	reveal?: string;
 	loop: boolean;
 	autoplay?: boolean;
+	hide_youtube_title?: boolean;
 	playback_revision?: number;
 	reveal_state: string;
 	reveal_started_at?: number;

@@ -168,4 +168,35 @@ describe('YouTubePlayer', () => {
 
 		expect(mockPlayer.destroy).toHaveBeenCalledTimes(1);
 	});
+
+	it('renders a top overlay when requested', async () => {
+		const mockPlayer: MockYouTubePlayer = {
+			destroy: vi.fn(),
+			getPlayerState: vi.fn(() => 1),
+			pauseVideo: vi.fn(),
+			playVideo: vi.fn(),
+			seekTo: vi.fn(),
+			setVolume: vi.fn()
+		};
+
+		const mockNamespace = {
+			PlayerState: {
+				BUFFERING: 3,
+				PLAYING: 1
+			},
+			Player: vi.fn(() => mockPlayer)
+		};
+
+		window.YT = mockNamespace as unknown as YouTubeNamespace;
+		vi.mocked(loadYouTubeIframeApi).mockResolvedValue(mockNamespace as unknown as YouTubeNamespace);
+
+		const view = render(YouTubePlayer, {
+			media: TEST_MEDIA,
+			hideTitleOverlay: true
+		});
+
+		await flushEffects();
+
+		expect(view.container.querySelector('.youtube-title-overlay')).not.toBeNull();
+	});
 });

@@ -10,6 +10,7 @@
 		shouldPauseMedia?: boolean;
 		shouldResumePausedMedia?: boolean;
 		playbackRevision?: number;
+		hideTitleOverlay?: boolean;
 		volume?: number;
 	}
 
@@ -20,6 +21,7 @@
 		shouldPauseMedia = false,
 		shouldResumePausedMedia = false,
 		playbackRevision = 0,
+		hideTitleOverlay = false,
 		volume = 1
 	}: YouTubePlayerProps = $props();
 
@@ -235,6 +237,9 @@
 		{#if youtubeMaskVisible}
 			<div class="youtube-mask" aria-hidden="true"></div>
 		{/if}
+		{#if hideTitleOverlay}
+			<div class="youtube-title-overlay" aria-hidden="true"></div>
+		{/if}
 	</div>
 </div>
 
@@ -282,6 +287,14 @@
 		background:
 			radial-gradient(circle at 50% 50%, rgb(30 41 59 / 0.12), rgb(15 23 42 / 0.88)),
 			linear-gradient(180deg, rgb(15 23 42 / 0.96), rgb(15 23 42 / 0.85));
+		pointer-events: none;
+	}
+
+	.youtube-title-overlay {
+		position: absolute;
+		inset: 0 0 auto;
+		height: clamp(3.25rem, 13%, 5.75rem);
+		background: #000;
 		pointer-events: none;
 	}
 </style>

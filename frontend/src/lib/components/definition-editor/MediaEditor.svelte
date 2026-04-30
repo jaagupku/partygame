@@ -84,6 +84,10 @@
 		);
 	}
 
+	function hasYouTubeVideo(): boolean {
+		return getPreviewYouTubeEmbed() !== null;
+	}
+
 	function getRevealLabel(revealMode: (typeof IMAGE_REVEALS)[number]) {
 		return $messages.editor.imageReveal[revealMode].label;
 	}
@@ -475,6 +479,20 @@
 								}}
 							/>
 						</label>
+
+						{#if hasYouTubeVideo()}
+							<label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
+								<div>
+									<p class="text-lg font-bold">{$messages.editor.hideYouTubeTitle}</p>
+									<p class="text-sm text-slate-600">{$messages.editor.hideYouTubeTitleHelp}</p>
+								</div>
+								<input
+									bind:checked={step.media.hide_youtube_title}
+									type="checkbox"
+									class="h-5 w-5"
+								/>
+							</label>
+						{/if}
 					{/if}
 
 					<label class="input-wrap">
@@ -538,14 +556,22 @@
 						{:else if step.media.type_ === 'video'}
 							{@const youtubeEmbedUrl = getPreviewYouTubeEmbed()}
 							{#if youtubeEmbedUrl}
-								<iframe
-									class="mt-3 aspect-video w-full rounded-2xl border-0"
-									src={youtubeEmbedUrl}
-									title={`${step.title || $messages.common.question} video preview`}
-									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-									referrerpolicy="strict-origin-when-cross-origin"
-									allowfullscreen
-								></iframe>
+								<div class="relative mt-3 aspect-video overflow-hidden rounded-2xl bg-black">
+									<iframe
+										class="h-full w-full border-0"
+										src={youtubeEmbedUrl}
+										title={`${step.title || $messages.common.question} video preview`}
+										allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+										referrerpolicy="strict-origin-when-cross-origin"
+										allowfullscreen
+									></iframe>
+									{#if step.media.hide_youtube_title}
+										<div
+											class="pointer-events-none absolute inset-x-0 top-0 h-[13%] min-h-10 max-h-16 bg-black"
+											aria-hidden="true"
+										></div>
+									{/if}
+								</div>
 							{:else}
 								<video
 									class="mt-3 max-h-64 w-full rounded-2xl"

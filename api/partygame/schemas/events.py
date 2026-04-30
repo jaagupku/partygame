@@ -172,6 +172,7 @@ class RuntimeMediaState(BaseModel):
     reveal: str | None = None
     loop: bool = False
     autoplay: bool = True
+    hide_youtube_title: bool = False
     playback_revision: int = 0
     blur_amount: float = 18.0
     blur_circle_start_size: float = 0.07

@@ -111,6 +111,7 @@
 			{shouldPauseMedia}
 			{shouldResumePausedMedia}
 			playbackRevision={step.media.playback_revision ?? 0}
+			hideTitleOverlay={step.media.hide_youtube_title ?? false}
 			{volume}
 		/>
 	{:else}

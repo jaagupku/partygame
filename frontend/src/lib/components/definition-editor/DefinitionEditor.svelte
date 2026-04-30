@@ -860,7 +860,9 @@
 				src: previousMedia.src,
 				reveal: 'none',
 				loop: previousMedia.loop,
-				autoplay: previousMedia.type_ === 'video' ? (previousMedia.autoplay ?? true) : true
+				autoplay: previousMedia.type_ === 'video' ? (previousMedia.autoplay ?? true) : true,
+				hide_youtube_title:
+					previousMedia.type_ === 'video' ? (previousMedia.hide_youtube_title ?? false) : false
 			};
 			return;
 		}
@@ -935,7 +937,11 @@
 										reveal: step.media.reveal,
 										loop: step.media.loop,
 										autoplay:
-											step.media.type_ === 'video' ? (step.media.autoplay ?? true) : undefined
+											step.media.type_ === 'video' ? (step.media.autoplay ?? true) : undefined,
+										hide_youtube_title:
+											step.media.type_ === 'video'
+												? (step.media.hide_youtube_title ?? false)
+												: undefined
 									}
 							: undefined
 				}))

@@ -1191,6 +1191,7 @@ class GameRuntimeService:
             reveal=str(media.reveal),
             loop=media.loop,
             autoplay=media.autoplay,
+            hide_youtube_title=media.hide_youtube_title,
             playback_revision=int(step_state.get("media_playback_revision") or 0),
             blur_amount=media.blur_amount,
             blur_circle_start_size=media.blur_circle_start_size,
