@@ -54,9 +54,27 @@ class MediaDefinition(BaseModel):
     blur_circle_start_size: float = Field(default=0.07, ge=0.01, le=1.0)
     blur_circle_background: BlurCircleBackgroundMode = BlurCircleBackgroundMode.BLUR
     blur_circle_background_color: str = "#0f172a"
+    blur_reveal_curve: tuple[float, float, float, float] | None = None
+    blur_circle_reveal_curve: tuple[float, float, float, float] | None = None
+    zoom_reveal_curve: tuple[float, float, float, float] | None = None
     zoom_start: float | None = Field(default=None, ge=1.0)
     zoom_origin_x: float | None = Field(default=None, ge=0.0, le=1.0)
     zoom_origin_y: float | None = Field(default=None, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def validate_reveal_curves(self) -> "MediaDefinition":
+        for curve_name in (
+            "blur_reveal_curve",
+            "blur_circle_reveal_curve",
+            "zoom_reveal_curve",
+        ):
+            curve = getattr(self, curve_name)
+            if curve is None:
+                continue
+            for value in curve:
+                if value < 0 or value > 1:
+                    raise ValueError(f"{curve_name} values must be between 0 and 1")
+        return self
 
 
 class TimerDefinition(BaseModel):

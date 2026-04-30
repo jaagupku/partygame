@@ -177,6 +177,9 @@ class RuntimeMediaState(BaseModel):
     blur_circle_start_size: float = 0.07
     blur_circle_background: str = "blur"
     blur_circle_background_color: str = "#0f172a"
+    blur_reveal_curve: tuple[float, float, float, float] | None = None
+    blur_circle_reveal_curve: tuple[float, float, float, float] | None = None
+    zoom_reveal_curve: tuple[float, float, float, float] | None = None
     zoom_start: float | None = None
     zoom_origin_x: float | None = None
     zoom_origin_y: float | None = None

@@ -7,6 +7,7 @@
 		DEFAULT_ZOOM_OUT_ORIGIN_Y,
 		DEFAULT_ZOOM_OUT_START,
 		getBlurCircleRadius,
+		mapRevealProgress,
 		getScaledImageBlurAmount
 	} from '$lib/media/image-reveal';
 
@@ -84,6 +85,15 @@
 		}
 		return Math.min(revealElapsedSeconds / Math.max(revealDurationSeconds, 1), 1);
 	});
+	const blurRevealProgress = $derived(
+		mapRevealProgress(revealProgress, imageMedia?.blur_reveal_curve)
+	);
+	const blurCircleRevealProgress = $derived(
+		mapRevealProgress(revealProgress, imageMedia?.blur_circle_reveal_curve)
+	);
+	const zoomRevealProgress = $derived(
+		mapRevealProgress(revealProgress, imageMedia?.zoom_reveal_curve)
+	);
 	const imageRevealClass = $derived(
 		`${step.media?.reveal ? `reveal-${step.media.reveal}` : 'reveal-none'} reveal-state-${revealState} ${
 			imageMedia?.reveal === 'blur_circle' && imageMedia.blur_circle_background === 'solid'
@@ -102,7 +112,7 @@
 	const circleRadiusPx = $derived.by(() => {
 		return getBlurCircleRadius(
 			blurCircleStartSize,
-			revealProgress,
+			blurCircleRevealProgress,
 			imageWrapWidth,
 			imageWrapHeight
 		);
@@ -112,14 +122,14 @@
 			return '';
 		}
 		if (imageMedia.reveal === 'blur_to_clear') {
-			const blur = scaledBlurAmount * (1 - revealProgress);
+			const blur = scaledBlurAmount * (1 - blurRevealProgress);
 			return `filter: blur(${blur}px); transform: none;`;
 		}
 		if (imageMedia.reveal === 'zoom_out') {
 			const startZoom = imageMedia.zoom_start ?? DEFAULT_ZOOM_OUT_START;
 			const originX = (imageMedia.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100;
 			const originY = (imageMedia.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100;
-			const scale = 1 + (startZoom - 1) * (1 - revealProgress);
+			const scale = 1 + (startZoom - 1) * (1 - zoomRevealProgress);
 			return `transform: scale(${scale}); transform-origin: ${originX}% ${originY}%;`;
 		}
 		if (imageMedia.reveal === 'blur_circle') {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getMaximumStepPoints, getRadioCorrectOption } from './helpers';
+import { buildRuntimePreviewStep, getMaximumStepPoints, getRadioCorrectOption } from './helpers';
 
 describe('definition editor helpers', () => {
 	it('matches saved radio answers to the canonical option text', () => {
@@ -60,5 +60,49 @@ describe('definition editor helpers', () => {
 		} satisfies StepDefinition;
 
 		expect(getMaximumStepPoints(step)).toBe(5);
+	});
+
+	it('preserves image reveal curves in runtime previews', () => {
+		const step = {
+			id: 'step_1',
+			title: 'Image',
+			body: '',
+			timer: { seconds: 30, enforced: false },
+			player_input: {
+				kind: 'none',
+				options: [],
+				prompt: '',
+				placeholder: ''
+			},
+			evaluation: {
+				type_: 'none',
+				points: 0,
+				answer: undefined
+			},
+			host_behavior: {
+				reveal_answers: true,
+				show_submissions: true,
+				allow_custom_points: true
+			},
+			media: {
+				type_: 'image',
+				src: '/image.png',
+				reveal: 'zoom_out',
+				loop: false,
+				blur_reveal_curve: [0.1, 0.2, 0.3, 0.4],
+				blur_circle_reveal_curve: [0.2, 0.3, 0.4, 0.5],
+				zoom_reveal_curve: [0.3, 0.4, 0.5, 0.6]
+			}
+		} satisfies StepDefinition;
+
+		const preview = buildRuntimePreviewStep(step);
+
+		expect(preview.media?.type_).toBe('image');
+		if (preview.media?.type_ !== 'image') {
+			throw new Error('Expected image media');
+		}
+		expect(preview.media.blur_reveal_curve).toEqual([0.1, 0.2, 0.3, 0.4]);
+		expect(preview.media.blur_circle_reveal_curve).toEqual([0.2, 0.3, 0.4, 0.5]);
+		expect(preview.media.zoom_reveal_curve).toEqual([0.3, 0.4, 0.5, 0.6]);
 	});
 });

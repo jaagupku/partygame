@@ -1,6 +1,7 @@
 from time import time
 
 import pytest
+from pydantic import ValidationError
 
 from partygame.schemas import Lobby
 from partygame.schemas.game_definition import (
@@ -97,6 +98,9 @@ class MixedDefinitionProvider:
                                 type_=MediaType.IMAGE,
                                 src="/media/question.png",
                                 reveal=ImageRevealMode.BLUR_TO_CLEAR,
+                                blur_reveal_curve=(0.1, 0.2, 0.3, 0.4),
+                                blur_circle_reveal_curve=(0.2, 0.3, 0.4, 0.5),
+                                zoom_reveal_curve=(0.3, 0.4, 0.5, 0.6),
                             ),
                             player_input=PlayerInputDefinition(kind=PlayerInputKind.BUZZER),
                             evaluation=EvaluationRule(
@@ -720,6 +724,39 @@ async def test_snapshot_includes_players():
 
     assert [player.id for player in snapshot.players] == ["p1", "p2"]
     assert [player.name for player in snapshot.players] == ["Alice", "Bob"]
+
+
+def test_media_definition_validates_reveal_curve_values():
+    media = MediaDefinition(
+        type_=MediaType.IMAGE,
+        src="/media/question.png",
+        blur_reveal_curve=(0, 0.25, 0.75, 1),
+    )
+
+    assert media.blur_reveal_curve == (0, 0.25, 0.75, 1)
+
+    with pytest.raises(ValidationError):
+        MediaDefinition(
+            type_=MediaType.IMAGE,
+            src="/media/question.png",
+            blur_reveal_curve=(0, 1.2, 0.75, 1),
+        )
+
+
+@pytest.mark.asyncio
+async def test_snapshot_includes_image_reveal_curves():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.media is not None
+    assert snapshot.active_step.media.blur_reveal_curve == (0.1, 0.2, 0.3, 0.4)
+    assert snapshot.active_step.media.blur_circle_reveal_curve == (0.2, 0.3, 0.4, 0.5)
+    assert snapshot.active_step.media.zoom_reveal_curve == (0.3, 0.4, 0.5, 0.6)
 
 
 @pytest.mark.asyncio

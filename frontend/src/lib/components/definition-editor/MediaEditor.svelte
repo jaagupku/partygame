@@ -13,6 +13,7 @@
 	import { messages } from '$lib/i18n';
 	import BlurCircleRevealControls from './BlurCircleRevealControls.svelte';
 	import { IMAGE_REVEALS, MEDIA_TYPES } from './helpers';
+	import RevealCurveEditor from './RevealCurveEditor.svelte';
 
 	type Props = {
 		step: StepDefinition;
@@ -21,10 +22,18 @@
 		onRemoveMedia: (step: StepDefinition) => void;
 		onUpdateMediaType: (step: StepDefinition, mediaType: (typeof MEDIA_TYPES)[number]) => void;
 		onUploadMedia: (event: Event, step: StepDefinition, stepId: string) => void;
+		showAdvancedFields: boolean;
 	};
 
-	let { step, uploadKey, onAddMedia, onRemoveMedia, onUpdateMediaType, onUploadMedia }: Props =
-		$props();
+	let {
+		step,
+		uploadKey,
+		onAddMedia,
+		onRemoveMedia,
+		onUpdateMediaType,
+		onUploadMedia,
+		showAdvancedFields
+	}: Props = $props();
 	let previewImageWidth = $state(0);
 	let previewImageHeight = $state(0);
 
@@ -276,6 +285,24 @@
 							<BlurCircleRevealControls media={step.media} />
 						{/if}
 
+						{#if showAdvancedFields && step.media.reveal === 'blur_to_clear'}
+							<RevealCurveEditor
+								media={step.media}
+								curveKey="blur_reveal_curve"
+								label={$messages.editor.blurRevealCurve}
+								help={$messages.editor.blurRevealCurveHelp}
+							/>
+						{/if}
+
+						{#if showAdvancedFields && step.media.reveal === 'blur_circle'}
+							<RevealCurveEditor
+								media={step.media}
+								curveKey="blur_circle_reveal_curve"
+								label={$messages.editor.blurCircleRevealCurve}
+								help={$messages.editor.blurCircleRevealCurveHelp}
+							/>
+						{/if}
+
 						{#if step.media.reveal === 'blur_to_clear' || step.media.reveal === 'blur_circle'}
 							<label class="input-wrap">
 								<div class="flex items-center justify-between gap-3">
@@ -411,6 +438,14 @@
 									{$messages.editor.resetZoomDefaults}
 								</button>
 							</div>
+							{#if showAdvancedFields}
+								<RevealCurveEditor
+									media={step.media}
+									curveKey="zoom_reveal_curve"
+									label={$messages.editor.zoomRevealCurve}
+									help={$messages.editor.zoomRevealCurveHelp}
+								/>
+							{/if}
 						{/if}
 					{/if}
 

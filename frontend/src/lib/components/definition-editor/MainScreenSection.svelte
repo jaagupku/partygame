@@ -62,6 +62,7 @@
 			{onRemoveMedia}
 			{onUpdateMediaType}
 			{onUploadMedia}
+			{showAdvancedFields}
 		/>
 	</div>
 </EditorSectionCard>

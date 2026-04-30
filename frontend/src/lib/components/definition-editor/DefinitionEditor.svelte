@@ -804,6 +804,9 @@
 			blur_circle_start_size: undefined,
 			blur_circle_background: 'blur',
 			blur_circle_background_color: '#0f172a',
+			blur_reveal_curve: undefined,
+			blur_circle_reveal_curve: undefined,
+			zoom_reveal_curve: undefined,
 			zoom_start: undefined,
 			zoom_origin_x: undefined,
 			zoom_origin_y: undefined
@@ -839,6 +842,12 @@
 					previousMedia.type_ === 'image'
 						? (previousMedia.blur_circle_background_color ?? '#0f172a')
 						: '#0f172a',
+				blur_reveal_curve:
+					previousMedia.type_ === 'image' ? previousMedia.blur_reveal_curve : undefined,
+				blur_circle_reveal_curve:
+					previousMedia.type_ === 'image' ? previousMedia.blur_circle_reveal_curve : undefined,
+				zoom_reveal_curve:
+					previousMedia.type_ === 'image' ? previousMedia.zoom_reveal_curve : undefined,
 				zoom_start: previousMedia.type_ === 'image' ? previousMedia.zoom_start : undefined,
 				zoom_origin_x: previousMedia.type_ === 'image' ? previousMedia.zoom_origin_x : undefined,
 				zoom_origin_y: previousMedia.type_ === 'image' ? previousMedia.zoom_origin_y : undefined
@@ -913,6 +922,9 @@
 										blur_circle_start_size: step.media.blur_circle_start_size,
 										blur_circle_background: step.media.blur_circle_background,
 										blur_circle_background_color: step.media.blur_circle_background_color,
+										blur_reveal_curve: step.media.blur_reveal_curve,
+										blur_circle_reveal_curve: step.media.blur_circle_reveal_curve,
+										zoom_reveal_curve: step.media.zoom_reveal_curve,
 										zoom_start: step.media.zoom_start,
 										zoom_origin_x: step.media.zoom_origin_x,
 										zoom_origin_y: step.media.zoom_origin_y

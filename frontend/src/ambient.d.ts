@@ -11,6 +11,7 @@ type EvaluationType =
 	| 'multi_select_weighted';
 type UserRole = 'admin' | 'user';
 type DefinitionVisibility = 'private' | 'login_required' | 'public';
+type RevealCurve = [number, number, number, number];
 
 type User = {
 	id: string;
@@ -97,6 +98,9 @@ type ImageMediaDefinition = {
 	blur_circle_start_size?: number;
 	blur_circle_background?: 'blur' | 'solid';
 	blur_circle_background_color?: string;
+	blur_reveal_curve?: RevealCurve;
+	blur_circle_reveal_curve?: RevealCurve;
+	zoom_reveal_curve?: RevealCurve;
 	zoom_start?: number;
 	zoom_origin_x?: number;
 	zoom_origin_y?: number;
@@ -252,6 +256,9 @@ type RuntimeImageMediaState = {
 	blur_circle_start_size?: number;
 	blur_circle_background?: 'blur' | 'solid';
 	blur_circle_background_color?: string;
+	blur_reveal_curve?: RevealCurve;
+	blur_circle_reveal_curve?: RevealCurve;
+	zoom_reveal_curve?: RevealCurve;
 	zoom_start?: number;
 	zoom_origin_x?: number;
 	zoom_origin_y?: number;

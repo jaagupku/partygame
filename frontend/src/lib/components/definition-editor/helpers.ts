@@ -361,6 +361,9 @@ function buildRuntimePreviewMedia(media: StepMediaDefinition): RuntimeMediaState
 			blur_circle_start_size: media.blur_circle_start_size,
 			blur_circle_background: media.blur_circle_background,
 			blur_circle_background_color: media.blur_circle_background_color,
+			blur_reveal_curve: media.blur_reveal_curve,
+			blur_circle_reveal_curve: media.blur_circle_reveal_curve,
+			zoom_reveal_curve: media.zoom_reveal_curve,
 			zoom_start: media.zoom_start,
 			zoom_origin_x: media.zoom_origin_x,
 			zoom_origin_y: media.zoom_origin_y
