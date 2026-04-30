@@ -801,6 +801,7 @@
 			reveal: 'none',
 			loop: false,
 			blur_amount: undefined,
+			blur_circle_start_size: undefined,
 			blur_circle_background: 'blur',
 			blur_circle_background_color: '#0f172a',
 			zoom_start: undefined,
@@ -828,6 +829,8 @@
 				reveal: previousMedia.type_ === 'image' ? previousMedia.reveal : 'none',
 				loop: previousMedia.loop,
 				blur_amount: previousMedia.type_ === 'image' ? previousMedia.blur_amount : undefined,
+				blur_circle_start_size:
+					previousMedia.type_ === 'image' ? previousMedia.blur_circle_start_size : undefined,
 				blur_circle_background:
 					previousMedia.type_ === 'image'
 						? (previousMedia.blur_circle_background ?? 'blur')
@@ -907,6 +910,7 @@
 										reveal: step.media.reveal,
 										loop: step.media.loop,
 										blur_amount: step.media.blur_amount,
+										blur_circle_start_size: step.media.blur_circle_start_size,
 										blur_circle_background: step.media.blur_circle_background,
 										blur_circle_background_color: step.media.blur_circle_background_color,
 										zoom_start: step.media.zoom_start,

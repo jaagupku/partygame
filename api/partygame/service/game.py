@@ -1193,6 +1193,7 @@ class GameRuntimeService:
             autoplay=media.autoplay,
             playback_revision=int(step_state.get("media_playback_revision") or 0),
             blur_amount=media.blur_amount,
+            blur_circle_start_size=media.blur_circle_start_size,
             blur_circle_background=str(media.blur_circle_background),
             blur_circle_background_color=media.blur_circle_background_color,
             zoom_start=media.zoom_start,

@@ -380,6 +380,9 @@ const en = defineMessages({
 		blurAmount: 'Blur amount',
 		blurAmountHelp:
 			'Scales with the displayed image size so small previews and large screens feel consistent.',
+		blurCircleStartSize: 'Start circle size',
+		blurCircleStartSizeHelp:
+			'Relative to the displayed image; the circle grows to cover most of the image by the end.',
 		blurCircleBackground: 'Circle reveal background',
 		blurCircleBackgroundBlur: 'Blurred image',
 		blurCircleBackgroundSolid: 'Solid color',
@@ -1033,6 +1036,8 @@ const et: Messages = {
 		blurAmount: 'Udu tugevus',
 		blurAmountHelp:
 			'Skaleerub kuvatava pildi suurusega, et väike eelvaade ja suur ekraan mõjuksid sarnaselt.',
+		blurCircleStartSize: 'Ringi algsuurus',
+		blurCircleStartSizeHelp: 'Kuvatava pildi suhtes; ring kasvab lõpuks suurema osa pildi peale.',
 		howPlayersAnswer: 'Kuidas mängijad vastavad',
 		howPlayersAnswerHelp:
 			'Vali esmalt suhtlusviis ja seejärel seadista küsimus ning võimalikud valikud.',

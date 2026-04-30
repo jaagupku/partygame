@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import {
+		DEFAULT_BLUR_CIRCLE_START_SIZE,
 		DEFAULT_IMAGE_BLUR_AMOUNT,
 		DEFAULT_ZOOM_OUT_ORIGIN_X,
 		DEFAULT_ZOOM_OUT_ORIGIN_Y,
 		DEFAULT_ZOOM_OUT_START,
+		getBlurCircleRadius,
 		getScaledImageBlurAmount
 	} from '$lib/media/image-reveal';
 
@@ -56,6 +58,9 @@
 	});
 	const revealDurationSeconds = $derived(step.media?.reveal_duration_seconds ?? 14);
 	const blurAmount = $derived(imageMedia?.blur_amount ?? DEFAULT_IMAGE_BLUR_AMOUNT);
+	const blurCircleStartSize = $derived(
+		imageMedia?.blur_circle_start_size ?? DEFAULT_BLUR_CIRCLE_START_SIZE
+	);
 	const scaledBlurAmount = $derived(
 		getScaledImageBlurAmount(blurAmount, imageWrapWidth, imageWrapHeight)
 	);
@@ -95,11 +100,12 @@
 		].join(';')
 	);
 	const circleRadiusPx = $derived.by(() => {
-		const minDimension = Math.min(imageWrapWidth, imageWrapHeight);
-		if (minDimension <= 0) {
-			return 0;
-		}
-		return minDimension * (0.07 + 0.11 * revealProgress);
+		return getBlurCircleRadius(
+			blurCircleStartSize,
+			revealProgress,
+			imageWrapWidth,
+			imageWrapHeight
+		);
 	});
 	const imageStyle = $derived.by(() => {
 		if (!imageMedia || revealState === 'revealed' || imageMedia.reveal === 'none') {
@@ -131,6 +137,22 @@
 		const centerY = circleY * imageWrapHeight;
 		return `circle(${circleRadiusPx}px at ${centerX}px ${centerY}px)`;
 	});
+	function getBoundedCirclePosition(
+		position: number,
+		velocity: number,
+		radiusFraction: number
+	): { position: number; velocity: number } {
+		if (radiusFraction >= 0.5) {
+			return { position: 0.5, velocity };
+		}
+		if (position <= radiusFraction) {
+			return { position: radiusFraction, velocity: Math.abs(velocity) };
+		}
+		if (position >= 1 - radiusFraction) {
+			return { position: 1 - radiusFraction, velocity: -Math.abs(velocity) };
+		}
+		return { position, velocity };
+	}
 
 	$effect(() => {
 		const key = step.id && step.media?.type_ === 'image' ? `${step.id}:${step.media.src}` : '';
@@ -187,21 +209,12 @@
 					let nextVelocityX = circleVelocityX;
 					let nextVelocityY = circleVelocityY;
 
-					if (nextX <= radiusX) {
-						nextX = radiusX;
-						nextVelocityX = Math.abs(nextVelocityX);
-					} else if (nextX >= 1 - radiusX) {
-						nextX = 1 - radiusX;
-						nextVelocityX = -Math.abs(nextVelocityX);
-					}
-
-					if (nextY <= radiusY) {
-						nextY = radiusY;
-						nextVelocityY = Math.abs(nextVelocityY);
-					} else if (nextY >= 1 - radiusY) {
-						nextY = 1 - radiusY;
-						nextVelocityY = -Math.abs(nextVelocityY);
-					}
+					const boundedX = getBoundedCirclePosition(nextX, nextVelocityX, radiusX);
+					const boundedY = getBoundedCirclePosition(nextY, nextVelocityY, radiusY);
+					nextX = boundedX.position;
+					nextVelocityX = boundedX.velocity;
+					nextY = boundedY.position;
+					nextVelocityY = boundedY.velocity;
 
 					circleX = nextX;
 					circleY = nextY;

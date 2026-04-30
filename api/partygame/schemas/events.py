@@ -174,6 +174,7 @@ class RuntimeMediaState(BaseModel):
     autoplay: bool = True
     playback_revision: int = 0
     blur_amount: float = 18.0
+    blur_circle_start_size: float = 0.07
     blur_circle_background: str = "blur"
     blur_circle_background_color: str = "#0f172a"
     zoom_start: float | None = None

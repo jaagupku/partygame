@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { DEFAULT_BLUR_CIRCLE_START_SIZE } from '$lib/media/image-reveal';
 	import { messages } from '$lib/i18n';
 
 	type Props = {
@@ -6,6 +7,14 @@
 	};
 
 	let { media }: Props = $props();
+
+	const START_SIZE_MIN = 2;
+	const START_SIZE_MAX = 28;
+	const START_SIZE_STEP = 1;
+
+	function getStartSizePercent() {
+		return (media.blur_circle_start_size ?? DEFAULT_BLUR_CIRCLE_START_SIZE) * 100;
+	}
 
 	function setBackgroundMode(mode: 'blur' | 'solid') {
 		media.blur_circle_background = mode;
@@ -16,6 +25,30 @@
 </script>
 
 <div class="grid gap-3 rounded-2xl bg-white p-4">
+	<label class="grid gap-2">
+		<div class="flex items-center justify-between gap-3">
+			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				{$messages.editor.blurCircleStartSize}
+			</span>
+			<span class="text-sm font-semibold text-slate-700">
+				{getStartSizePercent().toFixed(0)}%
+			</span>
+		</div>
+		<input
+			type="range"
+			min={START_SIZE_MIN}
+			max={START_SIZE_MAX}
+			step={START_SIZE_STEP}
+			value={getStartSizePercent()}
+			class="h-3 w-full cursor-pointer accent-sky-500"
+			oninput={(event) => {
+				media.blur_circle_start_size =
+					Number((event.currentTarget as HTMLInputElement).value) / 100;
+			}}
+		/>
+		<p class="text-sm text-slate-500">{$messages.editor.blurCircleStartSizeHelp}</p>
+	</label>
+
 	<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
 		{$messages.editor.blurCircleBackground}
 	</p>

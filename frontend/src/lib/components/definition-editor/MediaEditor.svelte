@@ -2,10 +2,12 @@
 	import 'iconify-icon';
 	import { getYouTubeMedia } from '$lib/media/youtube.js';
 	import {
+		DEFAULT_BLUR_CIRCLE_START_SIZE,
 		DEFAULT_IMAGE_BLUR_AMOUNT,
 		DEFAULT_ZOOM_OUT_ORIGIN_X,
 		DEFAULT_ZOOM_OUT_ORIGIN_Y,
 		DEFAULT_ZOOM_OUT_START,
+		getBlurCircleRadius,
 		getScaledImageBlurAmount
 	} from '$lib/media/image-reveal';
 	import { messages } from '$lib/i18n';
@@ -97,6 +99,16 @@
 		const originX = (imageMedia.zoom_origin_x ?? DEFAULT_ZOOM_OUT_ORIGIN_X) * 100;
 		const originY = (imageMedia.zoom_origin_y ?? DEFAULT_ZOOM_OUT_ORIGIN_Y) * 100;
 		return `transform: scale(${zoom}); transform-origin: ${originX}% ${originY}%;`;
+	}
+
+	function getBlurCirclePreviewStyle() {
+		const imageMedia = getImageMedia(step.media);
+		if (!imageMedia || imageMedia.reveal !== 'blur_circle') {
+			return '';
+		}
+		const startSize = imageMedia.blur_circle_start_size ?? DEFAULT_BLUR_CIRCLE_START_SIZE;
+		const radius = getBlurCircleRadius(startSize, 0, previewImageWidth, previewImageHeight);
+		return `background-image:url('${imageMedia.src}'); clip-path:circle(${radius}px at 50% 50%);`;
 	}
 
 	const ZOOM_SLIDER_MIN = 0;
@@ -469,6 +481,12 @@
 										bind:clientWidth={previewImageWidth}
 										bind:clientHeight={previewImageHeight}
 									/>
+									{#if step.media.reveal === 'blur_circle'}
+										<div
+											class="pointer-events-none absolute inset-0 bg-center bg-cover"
+											style={getBlurCirclePreviewStyle()}
+										></div>
+									{/if}
 									{#if step.media.reveal === 'zoom_out'}
 										<div
 											class="pointer-events-none absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-sky-500/30 shadow-[0_0_0_1px_rgba(14,165,233,0.6)]"

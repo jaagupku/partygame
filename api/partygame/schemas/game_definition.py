@@ -51,6 +51,7 @@ class MediaDefinition(BaseModel):
     loop: bool = False
     autoplay: bool = True
     blur_amount: float = Field(default=18.0, ge=0.0, le=80.0)
+    blur_circle_start_size: float = Field(default=0.07, ge=0.01, le=1.0)
     blur_circle_background: BlurCircleBackgroundMode = BlurCircleBackgroundMode.BLUR
     blur_circle_background_color: str = "#0f172a"
     zoom_start: float | None = Field(default=None, ge=1.0)

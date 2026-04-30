@@ -94,6 +94,7 @@ type ImageMediaDefinition = {
 	reveal: string;
 	loop: boolean;
 	blur_amount?: number;
+	blur_circle_start_size?: number;
 	blur_circle_background?: 'blur' | 'solid';
 	blur_circle_background_color?: string;
 	zoom_start?: number;
@@ -248,6 +249,7 @@ type RuntimeImageMediaState = {
 	reveal?: string;
 	loop: boolean;
 	blur_amount?: number;
+	blur_circle_start_size?: number;
 	blur_circle_background?: 'blur' | 'solid';
 	blur_circle_background_color?: string;
 	zoom_start?: number;
