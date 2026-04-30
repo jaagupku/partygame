@@ -1,17 +1,17 @@
 import { browser } from '$app/environment';
 import answerRevealWav from '$lib/assets/sounds/answer-reveal.wav';
 import buzzerArmedWav from '$lib/assets/sounds/buzzer-armed.wav';
-import buzzerWav from '$lib/assets/sounds/buzzer.wav';
+import buzzerOgg from '$lib/assets/sounds/buzzer.ogg';
 import correctWav from '$lib/assets/sounds/correct.wav';
 import finaleRevealWav from '$lib/assets/sounds/finale-reveal.wav';
-import finaleStageWav from '$lib/assets/sounds/finale-stage.wav';
+import finaleStageOgg from '$lib/assets/sounds/finale-stage.ogg';
 import pendingReviewClearedWav from '$lib/assets/sounds/pending-review-cleared.wav';
-import scoreboardShownWav from '$lib/assets/sounds/scoreboard-shown.wav';
+import scoreboardShownOgg from '$lib/assets/sounds/scoreboard-shown.ogg';
 import stepClosedWav from '$lib/assets/sounds/step-closed.wav';
-import stepOpenWav from '$lib/assets/sounds/step-open.wav';
-import submissionReceivedWav from '$lib/assets/sounds/submission-received.wav';
+import stepOpenOgg from '$lib/assets/sounds/step-open.ogg';
+import submissionReceivedOgg from '$lib/assets/sounds/submission-received.ogg';
 import timerWarningWav from '$lib/assets/sounds/timer-warning.wav';
-import winnerPodiumWav from '$lib/assets/sounds/winner-podium.wav';
+import winnerPodiumOgg from '$lib/assets/sounds/winner-podium.ogg';
 import wrongWav from '$lib/assets/sounds/wrong.wav';
 
 import type { SoundCue, SoundPlayer } from '$lib/sound-runtime.js';
@@ -31,17 +31,17 @@ const DEFAULT_SURFACE_ENABLED: Record<SoundSurface, boolean> = {
 const SAMPLE_BY_CUE: Record<SoundCue, string> = {
 	answerReveal: answerRevealWav,
 	buzzerArmed: buzzerArmedWav,
-	buzz: buzzerWav,
+	buzz: buzzerOgg,
 	correct: correctWav,
 	finaleReveal: finaleRevealWav,
-	finaleStage: finaleStageWav,
+	finaleStage: finaleStageOgg,
 	pendingReviewCleared: pendingReviewClearedWav,
-	scoreboardShown: scoreboardShownWav,
+	scoreboardShown: scoreboardShownOgg,
 	stepClosed: stepClosedWav,
-	stepOpen: stepOpenWav,
-	submissionReceived: submissionReceivedWav,
+	stepOpen: stepOpenOgg,
+	submissionReceived: submissionReceivedOgg,
 	timerWarning: timerWarningWav,
-	winnerPodium: winnerPodiumWav,
+	winnerPodium: winnerPodiumOgg,
 	wrong: wrongWav
 };
 

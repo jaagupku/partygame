@@ -1329,7 +1329,18 @@ const translations = {
 	et
 } satisfies Record<Locale, Messages>;
 
-export const locale = createLocalStorageStore<Locale>('partygame-locale', fallbackLocale);
+function getDefaultLocale(): Locale {
+	if (typeof navigator === 'undefined') {
+		return fallbackLocale;
+	}
+
+	const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+	return languages.some((language) => language.toLowerCase().startsWith('et'))
+		? 'et'
+		: fallbackLocale;
+}
+
+export const locale = createLocalStorageStore<Locale>('partygame-locale', getDefaultLocale());
 
 export const messages = derived(
 	locale,
