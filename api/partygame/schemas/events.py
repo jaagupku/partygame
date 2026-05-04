@@ -230,6 +230,19 @@ class RuntimeRoundIntroItemState(BaseModel):
 RuntimeItemState = RuntimeStepItemState | RuntimeRoundIntroItemState
 
 
+class NextHostActionState(BaseModel):
+    kind: Literal[
+        "answer_reveal",
+        "next_question",
+        "round_intro",
+        "finale",
+        "blocked_review",
+        "reactivate_buzzers",
+    ]
+    title: str | None = None
+    disabled: bool = False
+
+
 class RuntimeLobbyState(BaseModel):
     id: str
     join_code: str
@@ -263,6 +276,8 @@ class RuntimeSnapshotEvent(BaseEvent):
     lobby: RuntimeLobbyState
     players: list[Player] = Field(default_factory=list)
     active_item: RuntimeItemState | None = None
+    next_item: RuntimeItemState | None = None
+    next_host_action: NextHostActionState | None = None
     active_round: RuntimeRoundState | None = None
     active_step: RuntimeStepState | None = None
     display_phase: str = "question_active"

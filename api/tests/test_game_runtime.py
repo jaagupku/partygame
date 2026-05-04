@@ -671,6 +671,52 @@ async def test_rejected_buzzer_disables_player_and_keeps_step_in_review():
 
 
 @pytest.mark.asyncio
+async def test_rejected_buzzer_snapshot_prioritizes_reactivation_before_reveal():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+
+    snapshot = await service.build_snapshot(lobby)
+    reveal_events = await service.show_answer_reveal(lobby)
+
+    assert snapshot.next_host_action is not None
+    assert snapshot.next_host_action.kind == "reactivate_buzzers"
+    assert reveal_events[-1].display_phase == "question_active"
+    assert repo.steps["g1"]["display_phase"] == "question_active"
+    assert repo.steps["g1"]["revealed_answer_value"] is None
+
+
+@pytest.mark.asyncio
+async def test_rejected_buzzer_can_reveal_when_no_players_remain_eligible():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "buzz")
+    await service.review_submission(
+        lobby,
+        schemas.ReviewSubmissionEvent(player_id="p1", accepted=False),
+    )
+    repo.steps["g1"]["disabled_buzzer_player_ids"] = ["p1", "p2"]
+
+    snapshot = await service.build_snapshot(lobby)
+    reveal_events = await service.show_answer_reveal(lobby)
+
+    assert snapshot.next_host_action is not None
+    assert snapshot.next_host_action.kind == "answer_reveal"
+    assert reveal_events[-1].display_phase == "answer_reveal"
+    assert repo.steps["g1"]["revealed_answer_value"] == "Correct Answer"
+
+
+@pytest.mark.asyncio
 async def test_reactivating_buzzer_keeps_rejected_player_disabled():
     repo = FakeRepo()
     service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())

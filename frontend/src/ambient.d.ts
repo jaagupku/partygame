@@ -361,6 +361,18 @@ type RevealedAnswer = {
 	value: unknown;
 };
 
+type NextHostAction = {
+	kind:
+		| 'answer_reveal'
+		| 'next_question'
+		| 'round_intro'
+		| 'finale'
+		| 'blocked_review'
+		| 'reactivate_buzzers';
+	title?: string;
+	disabled: boolean;
+};
+
 type FinalStandingEntry = {
 	player_id: string;
 	name: string;
@@ -395,6 +407,8 @@ type RuntimeSnapshotEvent = {
 	lobby: RuntimeLobbyState;
 	players: Player[];
 	active_item?: RuntimeItemState | null;
+	next_item?: RuntimeItemState | null;
+	next_host_action?: NextHostAction | null;
 	active_round?: RuntimeRoundState | null;
 	active_step?: RuntimeStepState;
 	display_phase: string;
@@ -420,6 +434,8 @@ type RuntimePatchEvent = {
 		lobby?: Partial<RuntimeLobbyState>;
 		players?: Player[];
 		active_item?: RuntimeItemState | null;
+		next_item?: RuntimeItemState | null;
+		next_host_action?: NextHostAction | null;
 		active_round?: RuntimeRoundState | null;
 		active_step?: RuntimeStepState;
 		display_phase?: string;
@@ -518,6 +534,8 @@ type PlayerReactionEvent = {
 type HostGameState = Lobby & {
 	lastRevision: number;
 	activeItem?: RuntimeItemState;
+	nextItem?: RuntimeItemState;
+	nextHostAction?: NextHostAction;
 	activeStep?: RuntimeStepState;
 	activeRound?: RuntimeRoundState;
 	displayPhase: string;
@@ -538,12 +556,15 @@ type ControllerState = {
 	players: Player[];
 	lastRevision: number;
 	isHost: boolean;
+	answerResult: 'correct' | 'wrong' | 'none';
 	gameState: GameState;
 	lobbyPhase: string;
 	currentStep: number;
 	hostEnabled: boolean;
 	starterPlayerId?: string;
 	activeItem?: RuntimeItemState;
+	nextItem?: RuntimeItemState;
+	nextHostAction?: NextHostAction;
 	activeRound?: RuntimeRoundState;
 	activeStep?: RuntimeStepState;
 	displayPhase: string;

@@ -6,6 +6,8 @@ export function createGameStore(initialState: Lobby) {
 		...initialState,
 		lastRevision: 0,
 		activeItem: undefined,
+		nextItem: undefined,
+		nextHostAction: undefined,
 		activeStep: undefined,
 		activeRound: undefined,
 		displayPhase: 'question_active',
