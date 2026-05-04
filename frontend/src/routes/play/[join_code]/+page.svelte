@@ -31,12 +31,15 @@
 			players: lobby().players,
 			lastRevision: 0,
 			isHost: lobby().host_id === $player?.id,
+			answerResult: 'none',
 			gameState: lobby().state,
 			lobbyPhase: lobby().phase ?? 'waiting',
 			currentStep: lobby().current_step ?? 0,
 			hostEnabled: lobby().host_enabled,
 			starterPlayerId: lobby().starter_id,
 			activeItem: undefined,
+			nextItem: undefined,
+			nextHostAction: undefined,
 			activeRound: undefined,
 			activeStep: undefined,
 			displayPhase: 'question_active',
@@ -65,6 +68,7 @@
 	let resyncPending = $state(false);
 	let resyncIntervalId: number | null = null;
 	let finaleAutoplayIntervalId: number | null = null;
+	let answerResultTimeoutId: number | null = null;
 	let reviewStepId = $state<string | undefined>(undefined);
 	let pendingReviewedPlayerIds = $state<string[]>([]);
 
@@ -93,6 +97,26 @@
 			$controller.lobbyPhase === 'question_active'
 	);
 	const canSendReactions = $derived($controller.gameState !== 'waiting_for_players');
+
+	$effect(() => {
+		if (answerResultTimeoutId !== null) {
+			clearTimeout(answerResultTimeoutId);
+			answerResultTimeoutId = null;
+		}
+		if (!browser || $controller.answerResult === 'none') {
+			return;
+		}
+		answerResultTimeoutId = window.setTimeout(() => {
+			controller.clearAnswerResult();
+			answerResultTimeoutId = null;
+		}, 2500);
+		return () => {
+			if (answerResultTimeoutId !== null) {
+				clearTimeout(answerResultTimeoutId);
+				answerResultTimeoutId = null;
+			}
+		};
+	});
 
 	$effect(() => {
 		const stepId = $controller.activeStep?.id;
@@ -185,6 +209,10 @@
 				clearInterval(finaleAutoplayIntervalId);
 				finaleAutoplayIntervalId = null;
 			}
+			if (answerResultTimeoutId !== null) {
+				clearTimeout(answerResultTimeoutId);
+				answerResultTimeoutId = null;
+			}
 			soundSystem.dispose();
 			socket?.close();
 			socket = null;
@@ -199,6 +227,10 @@
 		if (finaleAutoplayIntervalId !== null) {
 			clearInterval(finaleAutoplayIntervalId);
 			finaleAutoplayIntervalId = null;
+		}
+		if (answerResultTimeoutId !== null) {
+			clearTimeout(answerResultTimeoutId);
+			answerResultTimeoutId = null;
 		}
 		soundSystem.dispose();
 		socket?.close();
@@ -414,6 +446,18 @@
 	showDisconnectedChip={true}
 />
 
+{#if !$controller.isHost && $controller.answerResult !== 'none'}
+	<div
+		class={`answer-result-border answer-result-border-${$controller.answerResult}`}
+		aria-hidden="true"
+	></div>
+	<div class={`answer-result-toast answer-result-toast-${$controller.answerResult}`} role="status">
+		{$controller.answerResult === 'correct'
+			? $messages.gameplay.answerMarkedCorrect
+			: $messages.gameplay.answerMarkedWrong}
+	</div>
+{/if}
+
 {#if $controller.scoreboardVisible && !$controller.endGame?.revealed && !$controller.isHost}
 	<p class="mt-3 text-center text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
 		{$messages.gameplay.scoreboardShowingOnMainScreen}
@@ -523,9 +567,11 @@
 			<HostControlsPanel
 				activeStep={$controller.activeStep}
 				buzzerActive={$controller.buzzerActive}
+				disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
 				displayPhase={$controller.displayPhase}
 				hostEnabled={$controller.hostEnabled}
 				lobbyPhase={$controller.lobbyPhase}
+				nextHostAction={$controller.nextHostAction}
 				pendingReviewCount={$controller.pendingReviewCount}
 				scoreboardVisible={$controller.scoreboardVisible}
 				submissionCount={$controller.submissionCount}
@@ -572,3 +618,80 @@
 		{/if}
 	</div>
 {/if}
+
+<style>
+	.answer-result-border {
+		position: fixed;
+		inset: 0;
+		z-index: 60;
+		pointer-events: none;
+		border: 10px solid transparent;
+		border-radius: 1.5rem;
+		animation: answer-result-pulse 420ms ease-out;
+	}
+
+	.answer-result-border-correct {
+		border-color: rgba(34, 197, 94, 0.86);
+		box-shadow:
+			inset 0 0 32px rgba(34, 197, 94, 0.42),
+			0 0 28px rgba(34, 197, 94, 0.34);
+	}
+
+	.answer-result-border-wrong {
+		border-color: rgba(239, 68, 68, 0.86);
+		box-shadow:
+			inset 0 0 32px rgba(239, 68, 68, 0.4),
+			0 0 28px rgba(239, 68, 68, 0.32);
+	}
+
+	.answer-result-toast {
+		position: fixed;
+		left: 50%;
+		top: max(1rem, env(safe-area-inset-top));
+		z-index: 61;
+		width: min(calc(100vw - 2rem), 28rem);
+		transform: translateX(-50%);
+		border-radius: 1rem;
+		padding: 0.9rem 1rem;
+		text-align: center;
+		font-size: 1.1rem;
+		font-weight: 900;
+		line-height: 1.15;
+		box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+		animation: answer-result-toast-in 220ms ease-out;
+	}
+
+	.answer-result-toast-correct {
+		border: 1px solid rgba(22, 163, 74, 0.28);
+		background: rgb(220, 252, 231);
+		color: rgb(20, 83, 45);
+	}
+
+	.answer-result-toast-wrong {
+		border: 1px solid rgba(220, 38, 38, 0.26);
+		background: rgb(254, 226, 226);
+		color: rgb(127, 29, 29);
+	}
+
+	@keyframes answer-result-pulse {
+		0% {
+			opacity: 0;
+			transform: scale(0.985);
+		}
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	@keyframes answer-result-toast-in {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -0.5rem);
+		}
+		100% {
+			opacity: 1;
+			transform: translate(-50%, 0);
+		}
+	}
+</style>

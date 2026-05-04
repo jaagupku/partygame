@@ -4,6 +4,13 @@ import { applyControllerPatch, applyControllerSnapshot } from '$lib/runtime-sync
 export function createControllerStore(initialState: ControllerState, onKick: CallableFunction) {
 	const controller = writable(initialState);
 
+	function clearAnswerResult() {
+		controller.update((state) => {
+			state.answerResult = 'none';
+			return state;
+		});
+	}
+
 	function setHost(playerId: string) {
 		controller.update((state) => {
 			state.isHost = playerId === state.id;
@@ -13,7 +20,11 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 
 	function applySnapshot(event: RuntimeSnapshotEvent) {
 		controller.update((state) => {
+			const previousStepId = state.activeStep?.id;
 			applyControllerSnapshot(state, event);
+			if (state.activeStep?.id !== previousStepId) {
+				state.answerResult = 'none';
+			}
 			return state;
 		});
 	}
@@ -37,10 +48,24 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 			case 'runtime_patch': {
 				let applied = true;
 				controller.update((state) => {
+					const previousStepId = state.activeStep?.id;
 					applied = applyControllerPatch(state, messageData as RuntimePatchEvent);
+					if (applied && state.activeStep?.id !== previousStepId) {
+						state.answerResult = 'none';
+					}
 					return state;
 				});
 				return applied ? 'ok' : 'resync_required';
+			}
+			case 'answer_judged': {
+				const event: AnswerJudgedEvent = messageData;
+				controller.update((state) => {
+					if (event.player_id === state.id) {
+						state.answerResult = event.accepted ? 'correct' : 'wrong';
+					}
+					return state;
+				});
+				break;
 			}
 			case 'player_reaction': {
 				const event: PlayerReactionEvent = messageData;
@@ -86,6 +111,9 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 					state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
 					state.buzzedPlayerId = event.accepted ? event.player_id : undefined;
 					state.buzzerActive = false;
+					if (event.player_id === state.id) {
+						state.answerResult = event.accepted ? 'correct' : 'wrong';
+					}
 					return state;
 				});
 				break;
@@ -96,6 +124,7 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 
 	return {
 		...controller,
+		clearAnswerResult,
 		setHost,
 		onMessage
 	};

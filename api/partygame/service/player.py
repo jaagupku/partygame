@@ -689,7 +689,7 @@ class ClientController:
             )
             for event in review_events:
                 exclude = None
-                if not isinstance(event, schemas.BuzzerReviewedEvent):
+                if not isinstance(event, (schemas.AnswerJudgedEvent, schemas.BuzzerReviewedEvent)):
                     exclude = getattr(event, "player_id", None)
                 await self.relay_event(event, exclude=exclude)
             await self._emit_runtime_state(before_snapshot, force_snapshot=False)
