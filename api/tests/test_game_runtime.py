@@ -624,6 +624,7 @@ async def test_review_submission_awards_points_and_completes_review():
     assert [event.type_ for event in events] == ["answer_judged", "buzzer_reviewed", "update_score"]
     assert repo.scores["p1"] == 2
     assert lobby.phase == "step_complete"
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
     assert repo.steps["g1"]["media_reveal_state"] == "revealed"
     assert repo.steps["g1"]["revealed_answer_value"] == "Correct Answer"
 
@@ -824,6 +825,9 @@ async def test_accepted_buzzer_review_snapshot_includes_revealed_answer():
     assert snapshot.active_step is not None
     assert snapshot.active_step.media is not None
     assert snapshot.active_step.media.reveal_state == "revealed"
+    assert snapshot.display_phase == "answer_reveal"
+    assert snapshot.next_host_action is not None
+    assert snapshot.next_host_action.kind == "next_question"
     assert snapshot.revealed_answer is not None
     assert snapshot.revealed_answer.value == "Correct Answer"
 
@@ -1415,6 +1419,55 @@ async def test_end_game_stats_include_correct_wrong_accuracy_and_fastest_buzz():
     assert stats_by_id["highest_accuracy"].value == 100
     assert stats_by_id["fastest_buzz"].winner_player_ids == ["p1"]
     assert stats_by_id["fastest_buzz"].value > 0
+
+
+@pytest.mark.asyncio
+async def test_end_game_stats_include_reaction_cards_and_freeze_after_finish():
+    repo = FakeRepo()
+    repo.players.append(schemas.Player(id="host", game_id="g1", name="Host", score=99))
+    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=True,
+        host_id="host",
+    )
+
+    await service.start_game(lobby)
+    await service.record_player_reaction(lobby, "p1", "😂")
+    await service.record_player_reaction(lobby, "p1", "😂")
+    await service.record_player_reaction(lobby, "p2", "🤮")
+    await service.record_player_reaction(lobby, "p2", "🤮")
+    await service.record_player_reaction(lobby, "p2", "🤮")
+    await service.record_player_reaction(lobby, "host", "🔥")
+    await service.record_player_reaction(lobby, "host", "🔥")
+    await service.record_player_reaction(lobby, "host", "🔥")
+    await service.record_player_reaction(lobby, "host", "🔥")
+    await service.advance_step(lobby)
+    await service.advance_step(lobby)
+    await service.record_player_reaction(lobby, "p1", "😂")
+    await service.record_player_reaction(lobby, "p1", "😂")
+    await service.reveal_end_game(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.end_game is not None
+    stats_by_id = {card.id: card for card in snapshot.end_game.stats_cards}
+    assert stats_by_id["most_reactions"].winner_player_ids == ["p2"]
+    assert stats_by_id["most_reactions"].value == 3
+    assert stats_by_id["signature_reaction"].winner_player_ids == ["p2"]
+    assert stats_by_id["signature_reaction"].value == 3
+    assert stats_by_id["signature_reaction"].emoji == "🤮"
+    assert stats_by_id["signature_reaction"].reaction_key == "vomit"
+    assert stats_by_id["signature_reaction"].headline is None
+    assert stats_by_id["signature_reaction"].description is None
+    assert stats_by_id["game_mood"].winner_player_ids == []
+    assert stats_by_id["game_mood"].value == 3
+    assert stats_by_id["game_mood"].emoji == "🤮"
+    assert stats_by_id["game_mood"].reaction_key == "vomit"
+    assert stats_by_id["game_mood"].headline is None
+    assert stats_by_id["game_mood"].description is None
 
 
 @pytest.mark.asyncio

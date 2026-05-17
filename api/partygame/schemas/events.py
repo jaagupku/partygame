@@ -366,6 +366,9 @@ class EndGameStatCard(BaseModel):
     value: float | int
     unit: str | None = None
     description: str | None = None
+    emoji: str | None = None
+    headline: str | None = None
+    reaction_key: str | None = None
 
 
 class EndGameState(BaseModel):

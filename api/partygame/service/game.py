@@ -22,6 +22,14 @@ from partygame.state import GameStateRepository
 
 END_GAME_COMPONENT_ID = "end_game"
 PLAYER_METRICS_COMPONENT_ID = "player_metrics"
+REACTION_KEYS = {
+    "😂": "laugh",
+    "🔥": "fire",
+    "👏": "clap",
+    "😱": "shock",
+    "💩": "poop",
+    "🤮": "vomit",
+}
 END_GAME_SEQUENCE_STAGES = (
     "third_place",
     "second_place",
@@ -470,6 +478,24 @@ class GameRuntimeService:
         await self.repo.set_player_score(lobby.id, event.player_id, score)
         return schemas.UpdateScoreEvent(player_id=event.player_id, set_score=score)
 
+    async def record_player_reaction(
+        self,
+        lobby: schemas.Lobby,
+        player_id: str,
+        reaction: str,
+    ):
+        if lobby.phase == "finished":
+            return
+        await self._apply_player_metric_updates(
+            lobby.id,
+            {
+                player_id: {
+                    "reaction_count": 1,
+                    "reaction_counts": {reaction: 1},
+                }
+            },
+        )
+
     async def review_submission(
         self,
         lobby: schemas.Lobby,
@@ -537,6 +563,7 @@ class GameRuntimeService:
                     schemas.UpdateScoreEvent(player_id=event.player_id, add_score=points),
                 )
                 updates.update(self._reveal_answer_state(step))
+                updates["display_phase"] = "answer_reveal"
                 updates["buzzed_player_id"] = event.player_id
                 await self.repo.set_step_cache(lobby.id, updates)
                 await self.repo.set_lobby_fields(lobby.id, phase="step_complete")
@@ -1141,12 +1168,27 @@ class GameRuntimeService:
                     "answered_count": 0,
                     "correct_count": 0,
                     "wrong_count": 0,
+                    "reaction_count": 0,
+                    "reaction_counts": {},
                     "fastest_buzz_seconds": None,
                 },
             )
             current["answered_count"] += int(changes.get("answered_count", 0))
             current["correct_count"] += int(changes.get("correct_count", 0))
             current["wrong_count"] += int(changes.get("wrong_count", 0))
+            current["reaction_count"] = int(current.get("reaction_count", 0)) + int(
+                changes.get("reaction_count", 0)
+            )
+            current_reactions = current.get("reaction_counts")
+            if not isinstance(current_reactions, dict):
+                current_reactions = {}
+                current["reaction_counts"] = current_reactions
+            reaction_changes = changes.get("reaction_counts", {})
+            if isinstance(reaction_changes, dict):
+                for reaction, count in reaction_changes.items():
+                    current_reactions[str(reaction)] = int(
+                        current_reactions.get(reaction, 0)
+                    ) + int(count)
             next_fastest = self._to_float(changes.get("fastest_buzz_seconds"))
             current_fastest = self._to_float(current.get("fastest_buzz_seconds"))
             if next_fastest is not None and (
@@ -1298,6 +1340,77 @@ class GameRuntimeService:
             },
             unit="percent",
         )
+        add_stat(
+            stat_id="most_reactions",
+            label="Most Reactions",
+            description="Certified button-mashing energy.",
+            values={
+                player_id: int(data.get("reaction_count", 0))
+                for player_id, data in filtered_metrics.items()
+            },
+            unit="reactions",
+        )
+
+        signature_entries: list[tuple[int, str, str]] = []
+        game_reaction_counts: dict[str, int] = {}
+        for player_id, data in filtered_metrics.items():
+            reaction_counts = data.get("reaction_counts", {})
+            if not isinstance(reaction_counts, dict):
+                continue
+            for reaction, raw_count in reaction_counts.items():
+                count = int(raw_count)
+                if count <= 0:
+                    continue
+                reaction_key = str(reaction)
+                signature_entries.append((count, reaction_key, player_id))
+                game_reaction_counts[reaction_key] = (
+                    game_reaction_counts.get(reaction_key, 0) + count
+                )
+
+        if signature_entries:
+            best_signature_count = max(count for count, _reaction, _player_id in signature_entries)
+            best_signature_reaction = sorted(
+                {
+                    reaction
+                    for count, reaction, _player_id in signature_entries
+                    if count == best_signature_count
+                }
+            )[0]
+            signature_winners = sorted(
+                player_id
+                for count, reaction, player_id in signature_entries
+                if count == best_signature_count and reaction == best_signature_reaction
+            )
+            stats.append(
+                schemas.EndGameStatCard(
+                    id="signature_reaction",
+                    label="",
+                    winner_player_ids=signature_winners,
+                    value=best_signature_count,
+                    unit="uses",
+                    emoji=best_signature_reaction,
+                    reaction_key=REACTION_KEYS.get(best_signature_reaction),
+                )
+            )
+
+        if game_reaction_counts:
+            best_game_count = max(game_reaction_counts.values())
+            best_game_reaction = sorted(
+                reaction
+                for reaction, count in game_reaction_counts.items()
+                if count == best_game_count
+            )[0]
+            stats.append(
+                schemas.EndGameStatCard(
+                    id="game_mood",
+                    label="",
+                    winner_player_ids=[],
+                    value=best_game_count,
+                    unit="uses",
+                    emoji=best_game_reaction,
+                    reaction_key=REACTION_KEYS.get(best_game_reaction),
+                )
+            )
         return stats
 
     async def sync_lobby(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:

@@ -28,12 +28,39 @@
 	const stage = $derived(endGame.sequence_stage || 'third_place');
 	const statWinnerNames = (card: EndGameStatCard) =>
 		card.winner_player_ids.map((playerId) => playerMap.get(playerId)?.name ?? playerId).join(', ');
+	const reactionStatKey = (card: EndGameStatCard) =>
+		card.id === 'most_reactions' || card.id === 'signature_reaction' || card.id === 'game_mood'
+			? card.id
+			: undefined;
+	const statLabel = (card: EndGameStatCard) => {
+		const key = reactionStatKey(card);
+		return key ? $messages.finale.statLabels[key] : card.label;
+	};
+	const statHeadline = (card: EndGameStatCard) => {
+		if (card.headline) {
+			return card.headline;
+		}
+		if (card.id === 'signature_reaction' && card.reaction_key) {
+			return $messages.finale.reactionSignatureHeadlines[card.reaction_key](statWinnerNames(card));
+		}
+		if (card.id === 'game_mood' && card.reaction_key) {
+			return $messages.finale.reactionMoodHeadlines[card.reaction_key];
+		}
+		return statWinnerNames(card);
+	};
+	const statDescription = (card: EndGameStatCard) => {
+		const key = reactionStatKey(card);
+		return key ? $messages.finale.statDescriptions[key] : card.description;
+	};
 	const formatStatValue = (card: EndGameStatCard) => {
 		if (card.unit === 'seconds') {
 			return `${Number(card.value).toFixed(2)}s`;
 		}
 		if (card.unit === 'percent') {
 			return `${Number(card.value).toFixed(0)}%`;
+		}
+		if (card.unit === 'reactions' || card.unit === 'uses') {
+			return `${card.value} ${$messages.finale.reactionStatUnits[card.unit]}`;
 		}
 		return `${card.value}${card.unit ? ` ${card.unit}` : ''}`;
 	};
@@ -123,11 +150,14 @@
 		<section class="stats-grid">
 			{#each endGame.stats_cards as card (card.id)}
 				<article class="card stat-card">
-					<p class="stat-label">{card.label}</p>
-					<h2 class="stat-winners">{statWinnerNames(card)}</h2>
+					<p class="stat-label">{statLabel(card)}</p>
+					{#if card.emoji}
+						<p class="stat-emoji" aria-hidden="true">{card.emoji}</p>
+					{/if}
+					<h2 class="stat-winners">{statHeadline(card)}</h2>
 					<p class="stat-value">{formatStatValue(card)}</p>
-					{#if card.description}
-						<p class="stat-description">{card.description}</p>
+					{#if statDescription(card)}
+						<p class="stat-description">{statDescription(card)}</p>
 					{/if}
 				</article>
 			{/each}
@@ -239,6 +269,13 @@
 		font-weight: 900;
 		line-height: 1;
 		color: #0f172a;
+	}
+
+	.stat-emoji {
+		margin-top: 0.7rem;
+		font-size: clamp(3rem, 8vw, 5.5rem);
+		line-height: 1;
+		filter: drop-shadow(0 14px 20px rgb(15 23 42 / 0.18));
 	}
 
 	.podium-avatar-wrap {

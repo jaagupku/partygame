@@ -21,8 +21,12 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 	function applySnapshot(event: RuntimeSnapshotEvent) {
 		controller.update((state) => {
 			const previousStepId = state.activeStep?.id;
+			const previousDisplayPhase = state.displayPhase;
 			applyControllerSnapshot(state, event);
-			if (state.activeStep?.id !== previousStepId) {
+			if (
+				state.activeStep?.id !== previousStepId ||
+				(previousDisplayPhase === 'answer_reveal' && state.displayPhase !== 'answer_reveal')
+			) {
 				state.answerResult = 'none';
 			}
 			return state;
@@ -49,8 +53,13 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				let applied = true;
 				controller.update((state) => {
 					const previousStepId = state.activeStep?.id;
+					const previousDisplayPhase = state.displayPhase;
 					applied = applyControllerPatch(state, messageData as RuntimePatchEvent);
-					if (applied && state.activeStep?.id !== previousStepId) {
+					if (
+						applied &&
+						(state.activeStep?.id !== previousStepId ||
+							(previousDisplayPhase === 'answer_reveal' && state.displayPhase !== 'answer_reveal'))
+					) {
 						state.answerResult = 'none';
 					}
 					return state;

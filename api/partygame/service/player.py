@@ -503,6 +503,7 @@ class ClientController:
             )
         except TypeError, ValueError, ValidationError:
             return
+        await self.runtime.record_player_reaction(self.lobby, event.player_id, event.reaction)
         await self.relay_event(event)
 
     async def start_game(self):

@@ -273,6 +273,8 @@ const en = defineMessages({
 		manualScore: 'Manual Score',
 		reactionBarTitle: 'Reaction Spam',
 		reactionBarHelp: 'Tap fast to send fun reactions to the main screen.',
+		chooseReaction: 'Choose reaction',
+		sendSelectedReaction: (reaction: string) => `Send ${reaction}`,
 		reactionBurstOverlayLabel: 'Live audience reactions',
 		reactionLabels: {
 			laugh: 'Laugh reaction',
@@ -315,7 +317,37 @@ const en = defineMessages({
 		topThreeFinish: 'Top 3 finish',
 		finalStandingsIn: 'Final standings are in',
 		notIncludedInStandings:
-			'Your controller is connected, but you were not included in the final standings.'
+			'Your controller is connected, but you were not included in the final standings.',
+		statLabels: {
+			most_reactions: 'Most Reactions',
+			signature_reaction: 'Signature Reaction',
+			game_mood: 'Game Mood'
+		},
+		statDescriptions: {
+			most_reactions: 'Certified button-mashing energy.',
+			signature_reaction: 'That reaction was their whole personality.',
+			game_mood: 'Most popular reaction across the room.'
+		},
+		reactionStatUnits: {
+			reactions: 'reactions',
+			uses: 'uses'
+		},
+		reactionSignatureHeadlines: {
+			laugh: (players: string) => `${players} could not stop laughing.`,
+			fire: (players: string) => `${players} kept setting the room on fire.`,
+			clap: (players: string) => `${players} led the official hype squad.`,
+			shock: (players: string) => `${players} spent the game in shock.`,
+			poop: (players: string) => `${players} brought chaotic bathroom energy.`,
+			vomit: (players: string) => `${players} felt the most nauseous.`
+		},
+		reactionMoodHeadlines: {
+			laugh: 'The room could not keep it together 😂',
+			fire: 'The room was on fire 🔥',
+			clap: 'The room became its own hype squad 👏',
+			shock: 'The room spent the game in shock 😱',
+			poop: 'The room chose chaos 💩',
+			vomit: 'The vibes were medically concerning 🤮'
+		}
 	},
 	editor: {
 		detailsTitle: 'Definition Details',
@@ -950,6 +982,8 @@ const et: Messages = {
 		manualScore: 'Käsitsi skoor',
 		reactionBarTitle: 'Reaktsioonid',
 		reactionBarHelp: 'Puuduta kiiresti, et saata lõbusaid reaktsioone põhiekraanile.',
+		chooseReaction: 'Vali reaktsioon',
+		sendSelectedReaction: (reaction) => `Saada ${reaction}`,
 		reactionBurstOverlayLabel: 'Reaalajas publiku reaktsioonid',
 		reactionLabels: {
 			laugh: 'Naerureaktsioon',
@@ -991,7 +1025,37 @@ const et: Messages = {
 		youWonTheGame: 'Sa võitsid mängu',
 		topThreeFinish: 'Koht esikolmikus',
 		finalStandingsIn: 'Lõppjärjestus on teada',
-		notIncludedInStandings: 'Sinu kontroller on ühendatud, kuid sind ei kaasatud lõppjärjestusse.'
+		notIncludedInStandings: 'Sinu kontroller on ühendatud, kuid sind ei kaasatud lõppjärjestusse.',
+		statLabels: {
+			most_reactions: 'Kõige rohkem reaktsioone',
+			signature_reaction: 'Tunnusreaktsioon',
+			game_mood: 'Mängu meeleolu'
+		},
+		statDescriptions: {
+			most_reactions: 'Sertifitseeritud nupumasindamise energia.',
+			signature_reaction: 'See reaktsioon oli nende kogu isiksus.',
+			game_mood: 'Kõige populaarsem reaktsioon kogu ruumis.'
+		},
+		reactionStatUnits: {
+			reactions: 'reaktsiooni',
+			uses: 'korda'
+		},
+		reactionSignatureHeadlines: {
+			laugh: (players) => `${players} ei suutnud naermist lõpetada.`,
+			fire: (players) => `${players} pani ruumi põlema.`,
+			clap: (players) => `${players} oli ametlik ergutustiim.`,
+			shock: (players) => `${players} oli terve mängu šokis.`,
+			poop: (players) => `${players} tõi mängu kaootilise energia.`,
+			vomit: (players) => `${players} tundis kõige rohkem iiveldust.`
+		},
+		reactionMoodHeadlines: {
+			laugh: 'Ruum ei suutnud naeru tagasi hoida 😂',
+			fire: 'Ruum oli leekides 🔥',
+			clap: 'Ruum muutus iseenda ergutustiimiks 👏',
+			shock: 'Ruum oli terve mängu šokis 😱',
+			poop: 'Ruum valis kaose 💩',
+			vomit: 'Vibratsioonid olid meditsiiniliselt kahtlased 🤮'
+		}
 	},
 	editor: {
 		detailsTitle: 'Definitsiooni detailid',

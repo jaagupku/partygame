@@ -68,7 +68,6 @@
 	let resyncPending = $state(false);
 	let resyncIntervalId: number | null = null;
 	let finaleAutoplayIntervalId: number | null = null;
-	let answerResultTimeoutId: number | null = null;
 	let reviewStepId = $state<string | undefined>(undefined);
 	let pendingReviewedPlayerIds = $state<string[]>([]);
 
@@ -97,26 +96,6 @@
 			$controller.lobbyPhase === 'question_active'
 	);
 	const canSendReactions = $derived($controller.gameState !== 'waiting_for_players');
-
-	$effect(() => {
-		if (answerResultTimeoutId !== null) {
-			clearTimeout(answerResultTimeoutId);
-			answerResultTimeoutId = null;
-		}
-		if (!browser || $controller.answerResult === 'none') {
-			return;
-		}
-		answerResultTimeoutId = window.setTimeout(() => {
-			controller.clearAnswerResult();
-			answerResultTimeoutId = null;
-		}, 2500);
-		return () => {
-			if (answerResultTimeoutId !== null) {
-				clearTimeout(answerResultTimeoutId);
-				answerResultTimeoutId = null;
-			}
-		};
-	});
 
 	$effect(() => {
 		const stepId = $controller.activeStep?.id;
@@ -209,10 +188,6 @@
 				clearInterval(finaleAutoplayIntervalId);
 				finaleAutoplayIntervalId = null;
 			}
-			if (answerResultTimeoutId !== null) {
-				clearTimeout(answerResultTimeoutId);
-				answerResultTimeoutId = null;
-			}
 			soundSystem.dispose();
 			socket?.close();
 			socket = null;
@@ -227,10 +202,6 @@
 		if (finaleAutoplayIntervalId !== null) {
 			clearInterval(finaleAutoplayIntervalId);
 			finaleAutoplayIntervalId = null;
-		}
-		if (answerResultTimeoutId !== null) {
-			clearTimeout(answerResultTimeoutId);
-			answerResultTimeoutId = null;
 		}
 		soundSystem.dispose();
 		socket?.close();
@@ -480,7 +451,9 @@
 		{/if}
 	</div>
 {:else}
-	<div class="mt-0 stack-lg">
+	<div
+		class={`mt-0 stack-lg ${canSendReactions && !$controller.isHost ? 'player-reaction-safe-area' : ''}`}
+	>
 		{#if $controller.endGame?.revealed}
 			<FinaleControllerCard endGame={$controller.endGame} playerId={$controller.id} />
 
@@ -534,10 +507,6 @@
 						: $messages.gameplay.waitingForFinalResults}
 				</p>
 			</section>
-		{/if}
-
-		{#if canSendReactions && !$controller.isHost}
-			<ReactionBar connected={isConnected} onReact={sendReaction} />
 		{/if}
 
 		{#if $controller.isHost && !$controller.endGame?.revealed && gameFinished}
@@ -619,7 +588,15 @@
 	</div>
 {/if}
 
+{#if canSendReactions && !$controller.isHost}
+	<ReactionBar connected={isConnected} onReact={sendReaction} />
+{/if}
+
 <style>
+	.player-reaction-safe-area {
+		padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+	}
+
 	.answer-result-border {
 		position: fixed;
 		inset: 0;

@@ -390,10 +390,14 @@ async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
     async def relay_event(event, players=None, exclude=None):
         called["relayed"].append((event, players, exclude))
 
+    async def record_player_reaction(lobby, player_id, reaction):
+        called["recorded"] = (lobby.id, player_id, reaction)
+
     controller.runtime = SimpleNamespace(
         build_snapshot=lambda _lobby: (_ for _ in ()).throw(
             AssertionError("runtime snapshot not expected")
-        )
+        ),
+        record_player_reaction=record_player_reaction,
     )
     monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
     monkeypatch.setattr(controller, "relay_event", relay_event)
@@ -407,6 +411,41 @@ async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
     assert event.player_id == "p2"
     assert event.reaction == "🔥"
     assert event.instance_id
+    assert called["recorded"] == ("g1", "p2", "🔥")
+
+
+@pytest.mark.asyncio
+async def test_finished_player_reaction_relays_through_runtime_guard(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_id="p1",
+        state=schemas.GameState.RUNNING,
+        phase="finished",
+    )
+    player = schemas.Player(id="p2", game_id="g1", name="Player")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+
+    called = {"refresh": 0, "relayed": 0, "recorded": 0}
+
+    async def refresh_lobby():
+        called["refresh"] += 1
+
+    async def relay_event(event, players=None, exclude=None):
+        called["relayed"] += 1
+
+    async def record_player_reaction(lobby, player_id, reaction):
+        called["recorded"] += 1
+
+    controller.runtime = SimpleNamespace(record_player_reaction=record_player_reaction)
+    monkeypatch.setattr(controller, "refresh_lobby", refresh_lobby)
+    monkeypatch.setattr(controller, "relay_event", relay_event)
+
+    await controller.process_input({"type_": "player_reaction", "reaction": "🤮"})
+
+    assert called == {"refresh": 1, "relayed": 1, "recorded": 1}
 
 
 @pytest.mark.asyncio

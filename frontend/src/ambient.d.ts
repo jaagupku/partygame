@@ -390,6 +390,9 @@ type EndGameStatCard = {
 	value: number;
 	unit?: string;
 	description?: string;
+	emoji?: string;
+	headline?: string;
+	reaction_key?: import('$lib/reactions').ReactionId;
 };
 
 type EndGameState = {
