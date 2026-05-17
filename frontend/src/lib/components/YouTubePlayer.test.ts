@@ -56,22 +56,20 @@ describe('YouTubePlayer', () => {
 				BUFFERING: 3,
 				PLAYING: 1
 			},
-			Player: vi.fn(
-				(
-					_element: HTMLDivElement,
-					options: {
-						events?: {
-							onReady?: () => void;
-							onStateChange?: (event: { data: number }) => void;
-						};
-					}
-				) => {
-					queueMicrotask(() => {
-						options.events?.onReady?.();
-					});
-					return mockPlayer;
+			Player: vi.fn(function (
+				_element: HTMLDivElement,
+				options: {
+					events?: {
+						onReady?: () => void;
+						onStateChange?: (event: { data: number }) => void;
+					};
 				}
-			)
+			) {
+				queueMicrotask(() => {
+					options.events?.onReady?.();
+				});
+				return mockPlayer;
+			})
 		};
 
 		window.YT = mockNamespace as unknown as YouTubeNamespace;
@@ -128,22 +126,20 @@ describe('YouTubePlayer', () => {
 				BUFFERING: 3,
 				PLAYING: 1
 			},
-			Player: vi.fn(
-				(
-					_element: HTMLDivElement,
-					options: {
-						events?: {
-							onReady?: () => void;
-							onStateChange?: (event: { data: number }) => void;
-						};
-					}
-				) => {
-					queueMicrotask(() => {
-						options.events?.onReady?.();
-					});
-					return mockPlayer;
+			Player: vi.fn(function (
+				_element: HTMLDivElement,
+				options: {
+					events?: {
+						onReady?: () => void;
+						onStateChange?: (event: { data: number }) => void;
+					};
 				}
-			)
+			) {
+				queueMicrotask(() => {
+					options.events?.onReady?.();
+				});
+				return mockPlayer;
+			})
 		};
 
 		window.YT = mockNamespace as unknown as YouTubeNamespace;
@@ -184,7 +180,9 @@ describe('YouTubePlayer', () => {
 				BUFFERING: 3,
 				PLAYING: 1
 			},
-			Player: vi.fn(() => mockPlayer)
+			Player: vi.fn(function () {
+				return mockPlayer;
+			})
 		};
 
 		window.YT = mockNamespace as unknown as YouTubeNamespace;
