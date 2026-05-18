@@ -123,6 +123,7 @@ class EvaluationRule(BaseModel):
     type_: EvaluationType = EvaluationType.NONE
     points: int = 1
     answer: Any = None
+    max_distance: int = Field(default=2, ge=0)
 
 
 class HostBehavior(BaseModel):

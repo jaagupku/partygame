@@ -656,9 +656,14 @@ class GameRuntimeService:
         evaluation_type = await self._resolve_evaluation_type(lobby, step)
 
         if evaluation_type == EvaluationType.EXACT_TEXT:
-            expected = str(step.evaluation.answer or "").strip().casefold()
+            accepted_answers = self._exact_text_answers(step)
+            max_distance = (
+                step.evaluation.max_distance
+                if step.player_input.kind == PlayerInputKind.TEXT
+                else 0
+            )
             for player_id, value in answers.items():
-                if str(value).strip().casefold() == expected:
+                if self._matches_exact_text_answer(value, accepted_answers, max_distance):
                     new_score = (
                         await self.repo.get_player_score(lobby.id, player_id)
                         + step.evaluation.points
@@ -1552,7 +1557,7 @@ class GameRuntimeService:
     ) -> bool:
         answer = step.evaluation.answer
         if evaluation_type in (EvaluationType.EXACT_TEXT,):
-            return isinstance(answer, str) and bool(answer.strip())
+            return bool(self._exact_text_answers(step))
         if evaluation_type in (EvaluationType.EXACT_NUMBER, EvaluationType.CLOSEST_NUMBER):
             try:
                 return answer is not None and float(answer) == float(answer)
@@ -1731,10 +1736,57 @@ class GameRuntimeService:
         if isinstance(answer, str):
             return bool(answer.strip())
         if isinstance(answer, list):
-            return len(answer) > 0
+            return any(str(value).strip() for value in answer)
         if isinstance(answer, dict):
             return len(answer) > 0
         return True
+
+    def _exact_text_answers(self, step: StepDefinition) -> list[str]:
+        answer = step.evaluation.answer
+        if isinstance(answer, list):
+            return [normalized for value in answer if (normalized := str(value).strip().casefold())]
+        if isinstance(answer, str):
+            normalized = answer.strip().casefold()
+            return [normalized] if normalized else []
+        return []
+
+    def _matches_exact_text_answer(
+        self,
+        value: Any,
+        accepted_answers: list[str],
+        max_distance: int,
+    ) -> bool:
+        submitted = str(value).strip().casefold()
+        if not submitted or not accepted_answers:
+            return False
+        distance = max(0, max_distance)
+        return any(
+            self._levenshtein_distance(submitted, answer, distance) <= distance
+            for answer in accepted_answers
+        )
+
+    def _levenshtein_distance(self, left: str, right: str, max_distance: int) -> int:
+        if left == right:
+            return 0
+        if abs(len(left) - len(right)) > max_distance:
+            return max_distance + 1
+        if len(left) > len(right):
+            left, right = right, left
+
+        previous = list(range(len(left) + 1))
+        for right_index, right_char in enumerate(right, start=1):
+            current = [right_index]
+            row_min = current[0]
+            for left_index, left_char in enumerate(left, start=1):
+                insert_cost = current[left_index - 1] + 1
+                delete_cost = previous[left_index] + 1
+                replace_cost = previous[left_index - 1] + (left_char != right_char)
+                current.append(min(insert_cost, delete_cost, replace_cost))
+                row_min = min(row_min, current[-1])
+            if row_min > max_distance:
+                return max_distance + 1
+            previous = current
+        return previous[-1]
 
     def _uses_timed_image_reveal(self, step: StepDefinition) -> bool:
         return bool(

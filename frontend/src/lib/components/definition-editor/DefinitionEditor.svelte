@@ -653,6 +653,14 @@
 		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
 			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
+			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
+			return;
+		}
+		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'text') {
+			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
+			if (isCheckboxWeightedAnswer(step.evaluation.answer)) {
+				step.evaluation.answer = [''];
+			}
 			return;
 		}
 		if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
@@ -700,6 +708,18 @@
 		}
 		if (evaluationType === 'exact_text' && step.player_input.kind === 'radio') {
 			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
+			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
+			return;
+		}
+		if (evaluationType === 'exact_text' && step.player_input.kind === 'text') {
+			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
+			if (
+				step.evaluation.answer === null ||
+				step.evaluation.answer === undefined ||
+				isCheckboxWeightedAnswer(step.evaluation.answer)
+			) {
+				step.evaluation.answer = [''];
+			}
 			return;
 		}
 		if (evaluationType === 'none') {
@@ -905,7 +925,11 @@
 					evaluation: {
 						type_: step.evaluation.type_,
 						points: step.evaluation.points,
-						answer: normalizeAnswer(step)
+						answer: normalizeAnswer(step),
+						max_distance:
+							step.evaluation.type_ === 'exact_text'
+								? Math.max(0, Math.trunc(Number(step.evaluation.max_distance ?? 2)))
+								: undefined
 					},
 					host_behavior: {
 						reveal_answers: step.host_behavior.reveal_answers,

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildOrderingRevealItems, buildRevealedOptionStates } from '$lib/reveal-format.js';
+import {
+	buildOrderingRevealItems,
+	buildRevealedOptionStates,
+	formatRevealValue
+} from '$lib/reveal-format.js';
 
 function optionStep(overrides: Partial<RuntimeStepState> = {}): RuntimeStepState {
 	return {
@@ -119,5 +123,11 @@ describe('ordering reveal items', () => {
 		);
 
 		expect(items).toEqual(['1', '2', '3', '4']);
+	});
+});
+
+describe('reveal value formatting', () => {
+	it('formats multiple text answers as a readable list', () => {
+		expect(formatRevealValue(['Paris', 'City of Light'])).toBe('Paris · City of Light');
 	});
 });

@@ -488,6 +488,11 @@ const en = defineMessages({
 			'Use this when answers are subjective or spoken aloud instead of auto-checked.',
 		expectedAnswer: 'Expected answer',
 		expectedAnswerPlaceholder: 'Enter the expected answer',
+		acceptedAnswers: 'Accepted answers',
+		addAcceptedAnswer: 'Add answer',
+		removeAcceptedAnswer: 'Remove',
+		typoTolerance: 'Typo tolerance',
+		typoToleranceHelp: 'Maximum Levenshtein distance accepted for typed answers.',
 		noAnswerRequired: 'No answer required',
 		noAnswerRequiredHelp: 'Use this for reveal-only slides or host-led moments.',
 		timer: 'Timer',
@@ -647,7 +652,7 @@ const en = defineMessages({
 			},
 			exact_text: {
 				label: 'Exact Match',
-				description: 'Players must match the expected answer exactly.'
+				description: 'Players can match accepted answers, with optional typo tolerance.'
 			},
 			exact_number: {
 				label: 'Exact Number',
@@ -1195,6 +1200,11 @@ const et: Messages = {
 			'Kasuta seda siis, kui vastused on subjektiivsed või öeldakse valjult välja.',
 		expectedAnswer: 'Oodatud vastus',
 		expectedAnswerPlaceholder: 'Sisesta oodatud vastus',
+		acceptedAnswers: 'Lubatud vastused',
+		addAcceptedAnswer: 'Lisa vastus',
+		removeAcceptedAnswer: 'Eemalda',
+		typoTolerance: 'Trükivea taluvus',
+		typoToleranceHelp: 'Suurim lubatud Levenshteini kaugus sisestatud vastuste jaoks.',
 		noAnswerRequired: 'Vastust pole vaja',
 		noAnswerRequiredHelp: 'Kasuta seda paljastusslaidide või mängujuhi juhitud hetkede jaoks.',
 		timer: 'Taimer',
@@ -1357,7 +1367,8 @@ const et: Messages = {
 			},
 			exact_text: {
 				label: 'Täielik vaste',
-				description: 'Mängijad peavad oodatud vastusega täpselt kattuma.'
+				description:
+					'Mängijad võivad sobida lubatud vastustega koos valikulise trükivea taluvusega.'
 			},
 			exact_number: {
 				label: 'Täpne number',

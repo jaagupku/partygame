@@ -61,7 +61,24 @@ class FakeRepo:
 
 
 class ExactTextDefinitionProvider:
+    def __init__(
+        self,
+        answer="Paris",
+        max_distance: int | None = None,
+        input_kind: PlayerInputKind = PlayerInputKind.TEXT,
+    ):
+        self.answer = answer
+        self.max_distance = max_distance
+        self.input_kind = input_kind
+
     async def load(self, definition_id: str) -> GameDefinition:
+        evaluation_kwargs = {
+            "type_": EvaluationType.EXACT_TEXT,
+            "points": 3,
+            "answer": self.answer,
+        }
+        if self.max_distance is not None:
+            evaluation_kwargs["max_distance"] = self.max_distance
         return GameDefinition(
             id=definition_id,
             title="Test",
@@ -72,12 +89,8 @@ class ExactTextDefinitionProvider:
                         StepDefinition(
                             id="text_step",
                             title="Exact text",
-                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
-                            evaluation=EvaluationRule(
-                                type_=EvaluationType.EXACT_TEXT,
-                                points=3,
-                                answer="Paris",
-                            ),
+                            player_input=PlayerInputDefinition(kind=self.input_kind),
+                            evaluation=EvaluationRule(**evaluation_kwargs),
                         )
                     ],
                 )
@@ -106,8 +119,93 @@ async def test_exact_text_evaluation_awards_matching_answers():
     assert score_events[-1].updates == {}
 
 
+@pytest.mark.asyncio
+async def test_exact_text_evaluation_accepts_multiple_answers():
+    repo = FakeRepo()
+    service = GameRuntimeService(
+        repo=repo,
+        definition_provider=ExactTextDefinitionProvider(answer=["Paris", "City of Light"]),
+    )
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "city of light")
+    await service.submit_player_input(lobby, "p2", "Paris")
+    await service.submit_player_input(lobby, "p3", "London")
+
+    await service.evaluate_auto_step(lobby)
+
+    assert repo.scores["p1"] == 3
+    assert repo.scores["p2"] == 3
+    assert repo.scores["p3"] == 0
+
+
+@pytest.mark.asyncio
+async def test_exact_text_evaluation_accepts_answers_within_default_distance():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=ExactTextDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "Pariss")
+    await service.submit_player_input(lobby, "p2", "Pris")
+    await service.submit_player_input(lobby, "p3", "London")
+
+    await service.evaluate_auto_step(lobby)
+
+    assert repo.scores["p1"] == 3
+    assert repo.scores["p2"] == 3
+    assert repo.scores["p3"] == 0
+
+
+@pytest.mark.asyncio
+async def test_exact_text_evaluation_rejects_answers_beyond_distance():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=ExactTextDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "London")
+    await service.submit_player_input(lobby, "p2", "Lyon")
+
+    await service.evaluate_auto_step(lobby)
+
+    assert repo.scores["p1"] == 0
+    assert repo.scores["p2"] == 0
+
+
+@pytest.mark.asyncio
+async def test_exact_text_evaluation_zero_distance_preserves_exact_matching():
+    repo = FakeRepo()
+    service = GameRuntimeService(
+        repo=repo,
+        definition_provider=ExactTextDefinitionProvider(max_distance=0),
+    )
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "Paris")
+    await service.submit_player_input(lobby, "p2", "Pariss")
+
+    await service.evaluate_auto_step(lobby)
+
+    assert repo.scores["p1"] == 3
+    assert repo.scores["p2"] == 0
+
+
 class HostJudgedFallbackProvider:
+    def __init__(self, answer="blue", max_distance: int | None = None):
+        self.answer = answer
+        self.max_distance = max_distance
+
     async def load(self, definition_id: str) -> GameDefinition:
+        evaluation_kwargs = {
+            "type_": EvaluationType.HOST_JUDGED,
+            "points": 2,
+            "answer": self.answer,
+        }
+        if self.max_distance is not None:
+            evaluation_kwargs["max_distance"] = self.max_distance
         return GameDefinition(
             id=definition_id,
             title="Fallback test",
@@ -119,11 +217,7 @@ class HostJudgedFallbackProvider:
                             id="text_step",
                             title="Host judged text",
                             player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
-                            evaluation=EvaluationRule(
-                                type_=EvaluationType.HOST_JUDGED,
-                                points=2,
-                                answer="blue",
-                            ),
+                            evaluation=EvaluationRule(**evaluation_kwargs),
                         )
                     ],
                 )
@@ -147,6 +241,27 @@ async def test_host_disabled_host_judged_text_falls_back_to_exact_text():
     score_events = await service.evaluate_auto_step(lobby)
 
     assert score_events[-1].updates == {"p1": 2}
+
+
+@pytest.mark.asyncio
+async def test_host_disabled_host_judged_text_fallback_uses_aliases_and_distance():
+    repo = FakeRepo()
+    service = GameRuntimeService(
+        repo=repo,
+        definition_provider=HostJudgedFallbackProvider(answer=["blue", "azure"]),
+    )
+    lobby = Lobby(id="g2", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "azur")
+    await service.submit_player_input(lobby, "p2", "bleu")
+    await service.submit_player_input(lobby, "p3", "green")
+
+    await service.evaluate_auto_step(lobby)
+
+    assert repo.scores["p1"] == 2
+    assert repo.scores["p2"] == 2
+    assert repo.scores["p3"] == 0
 
 
 class RadioFallbackProvider:
