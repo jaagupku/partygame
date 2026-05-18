@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildRuntimePreviewStep, getMaximumStepPoints, getRadioCorrectOption } from './helpers';
+import {
+	buildRuntimePreviewStep,
+	createStepFromTemplate,
+	getExactTextMaxDistance,
+	getMaximumStepPoints,
+	getRadioCorrectOption,
+	normalizeAnswer
+} from './helpers';
 
 describe('definition editor helpers', () => {
 	it('matches saved radio answers to the canonical option text', () => {
@@ -27,6 +34,41 @@ describe('definition editor helpers', () => {
 		} satisfies StepDefinition;
 
 		expect(getRadioCorrectOption(step)).toBe('Sentinel 2');
+	});
+
+	it('normalizes exact text aliases by trimming blanks', () => {
+		const step = {
+			id: 'step_1',
+			title: 'Trivia',
+			body: '',
+			timer: { seconds: 30, enforced: false },
+			player_input: {
+				kind: 'text',
+				options: [],
+				prompt: '',
+				placeholder: ''
+			},
+			evaluation: {
+				type_: 'exact_text',
+				points: 1,
+				answer: [' Paris ', '', ' City of Light '],
+				max_distance: 2
+			},
+			host_behavior: {
+				reveal_answers: true,
+				show_submissions: true,
+				allow_custom_points: true
+			}
+		} satisfies StepDefinition;
+
+		expect(normalizeAnswer(step)).toEqual(['Paris', 'City of Light']);
+	});
+
+	it('defaults new exact text steps to typo distance 2', () => {
+		const step = createStepFromTemplate(0, 0, 'open_answer');
+
+		expect(step.evaluation.type_).toBe('exact_text');
+		expect(getExactTextMaxDistance(step)).toBe(2);
 	});
 
 	it('calculates checkbox weighted maximum from positive option scores', () => {

@@ -396,8 +396,8 @@ export function createStepFromTemplate(
 		answer = [...options];
 	} else if (template?.evaluationType === 'multi_select_weighted') {
 		answer = buildCheckboxWeightedAnswer(options);
-	} else if (template?.evaluationType === 'exact_text' && template?.inputKind === 'radio') {
-		answer = options[0] ?? '';
+	} else if (template?.evaluationType === 'exact_text') {
+		answer = template?.inputKind === 'radio' ? (options[0] ?? '') : [''];
 	} else if (
 		template?.evaluationType === 'exact_number' ||
 		template?.evaluationType === 'closest_number'
@@ -427,7 +427,8 @@ export function createStepFromTemplate(
 		evaluation: {
 			type_: template?.evaluationType ?? 'exact_text',
 			points: 1,
-			answer
+			answer,
+			max_distance: template?.evaluationType === 'exact_text' ? 2 : undefined
 		},
 		host_behavior: {
 			reveal_answers: true,
@@ -471,7 +472,7 @@ export function isHostlessInformationSlide(step: StepDefinition): boolean {
 export function hasUsableHostlessAnswer(step: StepDefinition): boolean {
 	const evaluationType = getHostlessEvaluationType(step);
 	if (evaluationType === 'exact_text') {
-		return getTextAnswer(step).trim().length > 0;
+		return getTextAnswers(step).some((value) => value.trim().length > 0);
 	}
 	if (evaluationType === 'exact_number' || evaluationType === 'closest_number') {
 		return Number.isFinite(Number(step.evaluation.answer));
@@ -690,6 +691,22 @@ export function getTextAnswer(step: StepDefinition): string {
 	return String(step.evaluation.answer ?? '');
 }
 
+export function getTextAnswers(step: StepDefinition): string[] {
+	if (Array.isArray(step.evaluation.answer)) {
+		return step.evaluation.answer.map((value) => String(value));
+	}
+	if (isCheckboxWeightedAnswer(step.evaluation.answer)) {
+		return [];
+	}
+	const value = String(step.evaluation.answer ?? '');
+	return value ? [value] : [''];
+}
+
+export function getExactTextMaxDistance(step: StepDefinition): number {
+	const value = Number(step.evaluation.max_distance ?? 2);
+	return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 2;
+}
+
 export function getNumberAnswer(step: StepDefinition): number | undefined {
 	const value = Number(step.evaluation.answer);
 	return Number.isFinite(value) ? value : undefined;
@@ -713,6 +730,12 @@ export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluatio
 	}
 	if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
 		return step.evaluation.answer === '' ? null : Number(step.evaluation.answer);
+	}
+	if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'text') {
+		const values = getTextAnswers(step)
+			.map((value) => value.trim())
+			.filter(Boolean);
+		return values.length > 0 ? values : null;
 	}
 	const value = getTextAnswer(step).trim();
 	return value || null;

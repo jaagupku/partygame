@@ -146,6 +146,7 @@ type StepDefinition = {
 		type_: EvaluationType;
 		points: number;
 		answer?: string | number | string[] | CheckboxWeightedAnswer | null;
+		max_distance?: number;
 	};
 	host_behavior: {
 		reveal_answers: boolean;
