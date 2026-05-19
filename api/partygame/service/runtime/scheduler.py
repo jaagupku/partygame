@@ -5,7 +5,7 @@ from time import time
 from typing import Literal
 
 from partygame import schemas
-from partygame.service.game import ROUND_INTRO_DURATION_SECONDS
+from partygame.service.runtime.snapshots import ROUND_INTRO_DURATION_SECONDS
 
 HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS = 4.0
 HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS = 4.5
