@@ -1,12 +1,25 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
 	import EditorSectionCard from './EditorSectionCard.svelte';
+	import { DEFAULT_TIMER_SECONDS } from './helpers';
 
 	type Props = {
 		step: StepDefinition;
 	};
 
 	let { step }: Props = $props();
+
+	const timerEnabled = $derived(step.timer.seconds !== undefined && step.timer.seconds !== null);
+
+	function setTimerEnabled(event: Event) {
+		const checked = (event.currentTarget as HTMLInputElement).checked;
+		if (checked) {
+			step.timer.seconds = DEFAULT_TIMER_SECONDS;
+			return;
+		}
+		step.timer.seconds = undefined;
+		step.timer.enforced = false;
+	}
 </script>
 
 <div class="grid gap-5">
@@ -17,22 +30,36 @@
 		title={$messages.editor.timer}
 		description={$messages.editor.timerHelp}
 	>
-		<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
-					{$messages.editor.timerSeconds}
-				</span>
-				<input bind:value={step.timer.seconds} type="number" min="0" class="input text-lg" />
-			</label>
+		<div class="grid gap-4">
 			<label
 				class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
 			>
 				<div>
-					<p class="text-lg font-bold">{$messages.editor.enforcedTimer}</p>
-					<p class="text-sm text-slate-600">{$messages.editor.enforcedTimerHelp}</p>
+					<p class="text-lg font-bold">{$messages.editor.timerEnabled}</p>
+					<p class="text-sm text-slate-600">{$messages.editor.timerEnabledHelp}</p>
 				</div>
-				<input bind:checked={step.timer.enforced} type="checkbox" class="h-5 w-5" />
+				<input checked={timerEnabled} onchange={setTimerEnabled} type="checkbox" class="h-5 w-5" />
 			</label>
+
+			{#if timerEnabled}
+				<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+					<label class="input-wrap">
+						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+							{$messages.editor.timerSeconds}
+						</span>
+						<input bind:value={step.timer.seconds} type="number" min="0" class="input text-lg" />
+					</label>
+					<label
+						class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+					>
+						<div>
+							<p class="text-lg font-bold">{$messages.editor.enforcedTimer}</p>
+							<p class="text-sm text-slate-600">{$messages.editor.enforcedTimerHelp}</p>
+						</div>
+						<input bind:checked={step.timer.enforced} type="checkbox" class="h-5 w-5" />
+					</label>
+				</div>
+			{/if}
 		</div>
 	</EditorSectionCard>
 

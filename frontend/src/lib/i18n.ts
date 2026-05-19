@@ -530,6 +530,8 @@ const en = defineMessages({
 		timer: 'Timer',
 		timerHelp:
 			'Set the pace of the question and decide whether the step should close automatically.',
+		timerEnabled: 'Enable timer',
+		timerEnabledHelp: 'Show a countdown for this step.',
 		timerSeconds: 'Timer seconds',
 		durationSeconds: 'Duration (seconds)',
 		enforcedTimer: 'Enforced timer',
@@ -1287,6 +1289,8 @@ const et: Messages = {
 		noAnswerRequiredHelp: 'Kasuta seda paljastusslaidide või mängujuhi juhitud hetkede jaoks.',
 		timer: 'Taimer',
 		timerHelp: 'Määra küsimuse tempo ja otsusta, kas samm peaks automaatselt sulguma.',
+		timerEnabled: 'Luba taimer',
+		timerEnabledHelp: 'Näita selle sammu jaoks loendurit.',
 		timerSeconds: 'Taimeri sekundid',
 		durationSeconds: 'Kestus (sekundites)',
 		enforcedTimer: 'Sunnitud taimer',

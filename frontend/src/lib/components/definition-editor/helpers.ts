@@ -48,6 +48,8 @@ export type StepTemplateDefinition = {
 	timerSeconds?: number;
 };
 
+export const DEFAULT_TIMER_SECONDS = 60;
+
 export const INPUT_KINDS: PlayerInputKind[] = [
 	'none',
 	'buzzer',
@@ -311,7 +313,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'exact_text',
 			prompt: localized.trivia.prompt,
 			options: localized.trivia.options,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'multiple_choice',
@@ -322,7 +324,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'multi_select_weighted',
 			prompt: localized.multiple_choice.prompt,
 			options: localized.multiple_choice.options,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'closest_guess',
@@ -333,7 +335,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'closest_number',
 			prompt: localized.closest_guess.prompt,
 			placeholder: localized.closest_guess.placeholder,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'exact_number',
@@ -344,7 +346,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'exact_number',
 			prompt: localized.exact_number.prompt,
 			placeholder: localized.exact_number.placeholder,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'ordering',
@@ -355,7 +357,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'ordering_match',
 			prompt: localized.ordering.prompt,
 			options: localized.ordering.options,
-			timerSeconds: 45
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'map_point',
@@ -365,7 +367,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			inputKind: 'map',
 			evaluationType: 'map_distance',
 			prompt: localized.map_point.prompt,
-			timerSeconds: 45
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'open_answer',
@@ -376,7 +378,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'exact_text',
 			prompt: localized.open_answer.prompt,
 			placeholder: localized.open_answer.placeholder,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'host_judged',
@@ -387,7 +389,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'host_judged',
 			prompt: localized.host_judged.prompt,
 			placeholder: localized.host_judged.placeholder,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'buzzer',
@@ -397,7 +399,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			inputKind: 'buzzer',
 			evaluationType: 'host_judged',
 			prompt: localized.buzzer.prompt,
-			timerSeconds: 15
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		},
 		{
 			id: 'blank',
@@ -408,7 +410,7 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'exact_text',
 			prompt: localized.blank.prompt,
 			placeholder: localized.blank.placeholder,
-			timerSeconds: 30
+			timerSeconds: DEFAULT_TIMER_SECONDS
 		}
 	];
 }
@@ -492,7 +494,7 @@ export function createStepFromTemplate(
 		title: `Step ${stepIndex}`,
 		body: '',
 		timer: {
-			seconds: template?.timerSeconds ?? 30,
+			seconds: template?.timerSeconds ?? DEFAULT_TIMER_SECONDS,
 			enforced: false
 		},
 		player_input: {
@@ -637,14 +639,6 @@ export function getStepHealthIssues(step: StepDefinition): StepHealthIssue[] {
 			id: 'missing-media',
 			label: health.missingMedia,
 			icon: 'fluent:image-16-filled'
-		});
-	}
-
-	if (step.timer.seconds === undefined || step.timer.seconds === null) {
-		issues.push({
-			id: 'missing-timer',
-			label: health.missingTimer,
-			icon: 'fluent:timer-off-16-filled'
 		});
 	}
 
