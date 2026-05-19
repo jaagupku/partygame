@@ -38,6 +38,12 @@ type CheckboxWeightedAnswer = {
 	option_scores: CheckboxOptionScore[];
 };
 
+type NumberToleranceBand = {
+	distance: number;
+	points: number;
+	label?: string;
+};
+
 type MapPoint = {
 	lat: number;
 	lng: number;
@@ -70,8 +76,8 @@ type MapDistanceAnswer = {
 	correct_point: MapPoint;
 	scoring_mode: 'bands' | 'linear';
 	max_points: number;
-	zero_distance_m: number;
-	full_credit_distance_m?: number;
+	zero_distance_m?: number | null;
+	full_credit_distance_m?: number | null;
 	bands?: MapDistanceBand[];
 };
 
@@ -194,6 +200,7 @@ type StepDefinition = {
 		points: number;
 		answer?: string | number | string[] | CheckboxWeightedAnswer | MapDistanceAnswer | null;
 		max_distance?: number;
+		number_bands?: NumberToleranceBand[];
 	};
 	host_behavior: {
 		reveal_answers: boolean;

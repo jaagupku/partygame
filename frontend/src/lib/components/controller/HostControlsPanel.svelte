@@ -10,6 +10,7 @@
 		lobbyPhase: string;
 		nextHostAction?: NextHostAction;
 		pendingReviewCount: number;
+		pendingSubmissionPlayerNames: string[];
 		scoreboardVisible: boolean;
 		submissionCount: number;
 		submittedPlayerNames: string[];
@@ -33,6 +34,7 @@
 		lobbyPhase,
 		nextHostAction,
 		pendingReviewCount,
+		pendingSubmissionPlayerNames,
 		scoreboardVisible,
 		submissionCount,
 		submittedPlayerNames,
@@ -54,6 +56,7 @@
 		activeStep?.media?.type_ === 'audio' || activeStep?.media?.type_ === 'video'
 	);
 	const mediaVolumePercent = $derived(Math.round((activeStep?.media?.volume ?? 1) * 100));
+	let pendingSubmissionsOpen = $state(false);
 
 	function hostActionLabel(action?: NextHostAction): string {
 		switch (action?.kind) {
@@ -97,7 +100,7 @@
 
 <section class="card stack-md">
 	<h2 class="label-title text-2xl">{$messages.gameplay.hostControls}</h2>
-	<div class="grid gap-2 sm:grid-cols-3">
+	<div class="grid gap-2 sm:grid-cols-4">
 		<p class="rounded-xl bg-white/70 px-3 py-2 text-sm font-semibold text-slate-700">
 			<span class="block text-xs font-black uppercase text-slate-500"
 				>{$messages.gameplay.phaseLabel}</span
@@ -116,6 +119,37 @@
 			>
 			{pendingReviewCount}
 		</p>
+		<div class="relative">
+			<button
+				type="button"
+				class="w-full rounded-xl bg-white/70 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+				aria-expanded={pendingSubmissionsOpen}
+				onclick={() => (pendingSubmissionsOpen = !pendingSubmissionsOpen)}
+			>
+				<span class="block text-xs font-black uppercase text-slate-500"
+					>{$messages.gameplay.pendingSubmissionsLabel}</span
+				>
+				{pendingSubmissionPlayerNames.length}
+			</button>
+			{#if pendingSubmissionsOpen}
+				<div
+					class="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-lg"
+				>
+					<p class="font-bold text-slate-900">{$messages.gameplay.pendingSubmissionsLabel}</p>
+					{#if pendingSubmissionPlayerNames.length === 0}
+						<p class="mt-2 text-slate-500">{$messages.gameplay.noPendingSubmissions}</p>
+					{:else}
+						<ul class="mt-2 space-y-1 text-slate-700">
+							{#each pendingSubmissionPlayerNames as name}
+								<li class="wrap-break-word rounded-lg bg-slate-50 px-2 py-1 font-semibold">
+									{name}
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	</div>
 	{#if submittedPlayerNames.length > 0}
 		<div class="flex flex-wrap gap-2">

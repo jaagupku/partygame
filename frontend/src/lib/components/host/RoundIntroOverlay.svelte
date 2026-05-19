@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { messages } from '$lib/i18n';
+	import { tick } from 'svelte';
 
 	interface RoundIntroOverlayProps {
 		round?: RuntimeRoundState;
@@ -13,6 +14,10 @@
 	let lastRoundId = $state<string | undefined>(undefined);
 	let visible = $state(false);
 	let hideTimeoutId = $state<number | null>(null);
+	let contentElement = $state<HTMLDivElement>();
+	let titleElement = $state<HTMLHeadingElement>();
+	let titleFontSize = $state('');
+	let titleResizeObserver: ResizeObserver | undefined;
 
 	const variants = ['pop', 'slide', 'shimmer', 'flip'] as const;
 	type AnimationVariant = (typeof variants)[number];
@@ -54,6 +59,28 @@
 				window.clearTimeout(hideTimeoutId);
 				hideTimeoutId = null;
 			}
+			titleResizeObserver?.disconnect();
+		};
+	});
+
+	$effect(() => {
+		roundTitle;
+		visibleRound;
+		void fitTitleToSingleLine();
+	});
+
+	$effect(() => {
+		if (!browser || !contentElement) {
+			return;
+		}
+		titleResizeObserver?.disconnect();
+		titleResizeObserver = new ResizeObserver(() => {
+			void fitTitleToSingleLine();
+		});
+		titleResizeObserver.observe(contentElement);
+		return () => {
+			titleResizeObserver?.disconnect();
+			titleResizeObserver = undefined;
 		};
 	});
 
@@ -68,6 +95,47 @@
 		}
 		return variants[hash % variants.length];
 	}
+
+	function preferredTitleFontSizePx() {
+		if (!browser) {
+			return 54;
+		}
+		const rootFontSize =
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+		return Math.min(Math.max(3.4 * rootFontSize, window.innerWidth * 0.1), 9.5 * rootFontSize);
+	}
+
+	async function fitTitleToSingleLine() {
+		if (!browser || !titleElement || !contentElement) {
+			return;
+		}
+		await tick();
+		if (!titleElement || !contentElement) {
+			return;
+		}
+
+		const availableWidth = contentElement.clientWidth;
+		if (availableWidth <= 0) {
+			return;
+		}
+
+		let low = 4;
+		let high = preferredTitleFontSizePx();
+		for (let step = 0; step < 12; step += 1) {
+			const midpoint = (low + high) / 2;
+			titleElement.style.fontSize = `${midpoint}px`;
+			if (titleElement.scrollWidth <= availableWidth) {
+				low = midpoint;
+			} else {
+				high = midpoint;
+			}
+		}
+		titleElement.style.fontSize = `${low}px`;
+		if (titleElement.scrollWidth > availableWidth) {
+			low = Math.max(4, low * (availableWidth / titleElement.scrollWidth));
+		}
+		titleFontSize = `${Math.floor(low)}px`;
+	}
 </script>
 
 {#if visibleRound}
@@ -76,9 +144,11 @@
 		aria-live="polite"
 		aria-atomic="true"
 	>
-		<div class="round-intro-content">
+		<div class="round-intro-content" bind:this={contentElement}>
 			<p class="round-intro-kicker">{roundMeta}</p>
-			<h2 class="round-intro-title">{roundTitle}</h2>
+			<h2 class="round-intro-title" style:font-size={titleFontSize} bind:this={titleElement}>
+				{roundTitle}
+			</h2>
 		</div>
 	</div>
 {/if}
@@ -159,7 +229,7 @@
 		position: relative;
 		z-index: 1;
 		max-width: 100%;
-		overflow-wrap: anywhere;
+		white-space: nowrap;
 		font-size: clamp(3.4rem, 10vw, 9.5rem);
 		font-weight: 1000;
 		line-height: 0.94;

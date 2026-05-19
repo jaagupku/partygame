@@ -167,6 +167,67 @@ class NoneEvaluationProvider:
         return []
 
 
+class HostJudgedTextProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Host judged",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="host_judged_text",
+                            title="Host judged text",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=2,
+                                answer="Correct Answer",
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
+class ClosestNumberBandsProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Number bands",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="number_bands",
+                            title="Year",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NUMBER),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.CLOSEST_NUMBER,
+                                points=4,
+                                answer=2000,
+                                number_bands=[
+                                    {"distance": 5, "points": 3},
+                                    {"distance": 10, "points": 2},
+                                    {"distance": 20, "points": 1},
+                                ],
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 class VideoDefinitionProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -863,6 +924,46 @@ async def test_show_answer_reveal_moves_auto_step_to_answer_phase_without_advanc
 
 
 @pytest.mark.asyncio
+async def test_host_judged_step_can_reveal_answer_before_reviews():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostJudgedTextProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "guess")
+    await service.submit_player_input(lobby, "p2", "another")
+
+    events = await service.show_answer_reveal(lobby)
+    snapshot = events[-1]
+
+    assert snapshot.type_ == "runtime_snapshot"
+    assert lobby.phase == "host_review"
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert repo.steps["g1"]["revealed_answer_value"] == "Correct Answer"
+    assert snapshot.pending_review_count == 2
+    assert snapshot.next_host_action is not None
+    assert snapshot.next_host_action.kind == "blocked_review"
+
+
+@pytest.mark.asyncio
+async def test_host_judged_pending_review_snapshot_offers_reveal_before_blocking():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostJudgedTextProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", "guess")
+    await service.close_step(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+
+    assert lobby.phase == "host_review"
+    assert snapshot.pending_review_count == 1
+    assert snapshot.next_host_action is not None
+    assert snapshot.next_host_action.kind == "answer_reveal"
+
+
+@pytest.mark.asyncio
 async def test_auto_evaluate_marks_all_submissions_reviewed():
     repo = FakeRepo()
     service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
@@ -883,6 +984,31 @@ async def test_auto_evaluate_marks_all_submissions_reviewed():
     assert score_events[-1].updates == {}
     assert repo.steps["g1"]["reviewed_player_ids"] == ["p1", "p2"]
     assert review_events == []
+
+
+@pytest.mark.asyncio
+async def test_closest_number_awards_winner_and_tolerance_bands():
+    repo = FakeRepo()
+    repo.players.extend(
+        [
+            schemas.Player(id="p3", game_id="g1", name="Cara"),
+            schemas.Player(id="p4", game_id="g1", name="Dan"),
+        ]
+    )
+    repo.scores = {"p1": 0, "p2": 0, "p3": 0, "p4": 0}
+    service = GameRuntimeService(repo=repo, definition_provider=ClosestNumberBandsProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=False)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 1998)
+    await service.submit_player_input(lobby, "p2", 2004)
+    await service.submit_player_input(lobby, "p3", 2012)
+    events, handled = await service.submit_player_input(lobby, "p4", 2030)
+
+    assert handled is True
+    assert events[-1].type_ == "runtime_snapshot"
+    assert repo.scores == {"p1": 4, "p2": 3, "p3": 1, "p4": 0}
+    assert repo.steps["g1"]["reviewed_player_ids"] == ["p1", "p2", "p3", "p4"]
 
 
 @pytest.mark.asyncio

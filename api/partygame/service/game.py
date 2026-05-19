@@ -343,6 +343,15 @@ class GameRuntimeService:
         if lobby.phase == "question_active":
             events = await self.close_step(lobby)
             state = await self.get_step_state(lobby.id)
+            if (
+                lobby.phase == "host_review"
+                and step.evaluation.type_ == EvaluationType.HOST_JUDGED
+                and state.get("display_phase") != "answer_reveal"
+            ):
+                updates["display_phase"] = "answer_reveal"
+                updates.update(self._answer_reveal_updates(step))
+                await self.repo.set_step_cache(lobby.id, updates)
+                return [*events[:-1], await self.build_snapshot(lobby)]
             if lobby.phase == "host_review":
                 return events
             if state.get("display_phase") == "answer_reveal":
@@ -651,16 +660,27 @@ class GameRuntimeService:
                     except TypeError, ValueError:
                         continue
             if diffs:
-                diffs.sort(key=lambda item: item[0])
+                diffs.sort(key=lambda item: (item[0], item[1]))
                 winner = diffs[0][1]
-                new_score = (
-                    await self.repo.get_player_score(lobby.id, winner) + step.evaluation.points
+                number_bands = sorted(
+                    step.evaluation.number_bands,
+                    key=lambda band: band.distance,
                 )
-                await self.repo.set_player_score(lobby.id, winner, new_score)
-                updates[winner] = new_score
-                accepted_player_ids.add(winner)
-                metric_updates[winner]["correct_count"] = 1
-                metric_updates[winner]["wrong_count"] = 0
+                for difference, player_id in diffs:
+                    delta = step.evaluation.points if player_id == winner else 0
+                    if player_id != winner:
+                        for band in number_bands:
+                            if difference <= band.distance:
+                                delta = band.points
+                                break
+                    if delta <= 0:
+                        continue
+                    new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                    await self.repo.set_player_score(lobby.id, player_id, new_score)
+                    updates[player_id] = new_score
+                    accepted_player_ids.add(player_id)
+                    metric_updates[player_id]["correct_count"] = 1
+                    metric_updates[player_id]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.ORDERING_MATCH:
             expected = step.evaluation.answer
             if isinstance(expected, list):
