@@ -1,9 +1,12 @@
 <script lang="ts">
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Timer from '$lib/components/util/Timer.svelte';
+	import { DEFAULT_AVATAR_PRESET_KEY } from '$lib/avatar-presets';
 	import { messages } from '$lib/i18n';
 	import { formatRevealValue, isOptionRevealStep, isOrderingRevealStep } from '$lib/reveal-format';
+	import { onDestroy } from 'svelte';
 
 	interface StepDisplayPreviewProps {
 		step?: RuntimeStepState;
@@ -20,6 +23,8 @@
 		countdown?: number;
 		connected?: boolean | null;
 		submissionCount?: number;
+		players?: Player[];
+		submissions?: SubmissionItem[];
 	}
 
 	let {
@@ -35,19 +40,27 @@
 		showDisconnectedChip = false,
 		countdown = 0,
 		connected = null,
-		submissionCount = 0
+		submissionCount = 0,
+		players = [],
+		submissions = []
 	}: StepDisplayPreviewProps = $props();
 
 	let lastSubmissionCount = $state(0);
 	let hasSeenSubmissionCount = $state(false);
 	let submissionPulseKey = $state(0);
+	let mapRevealMarkersVisible = $state(false);
+	let mapRevealTimer: number | null = null;
 
 	const stageLayout = $derived(layoutMode === 'host-stage');
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
+	const mapRevealStep = $derived(
+		step?.input_kind === 'map' && step?.evaluation_type === 'map_distance'
+	);
 	const showStageRevealCard = $derived(
 		stageLayout &&
 			showingAnswerReveal &&
 			revealedAnswer &&
+			!mapRevealStep &&
 			!isOptionRevealStep(step) &&
 			!isOrderingRevealStep(step)
 	);
@@ -55,6 +68,27 @@
 		stageLayout && submissionCount > 0 && !showingAnswerReveal
 	);
 	const showBuzzerWinner = $derived(stageLayout && Boolean(buzzedPlayerName));
+	const playerMap = $derived(new Map(players.map((player) => [player.id, player])));
+	const correctMapPoint = $derived(getCorrectMapPoint(revealedAnswer));
+	const mapGuessMarkers = $derived(
+		submissions
+			.map((submission) => {
+				const point = getMapPoint(submission.value);
+				const player = playerMap.get(submission.player_id);
+				if (!point || !player) {
+					return null;
+				}
+				return {
+					id: submission.player_id,
+					name: player.name,
+					point,
+					avatarKind: player.avatar_kind ?? 'preset',
+					avatarPresetKey: player.avatar_preset_key ?? DEFAULT_AVATAR_PRESET_KEY,
+					avatarUrl: player.avatar_url ?? null
+				};
+			})
+			.filter((marker): marker is NonNullable<typeof marker> => marker !== null)
+	);
 
 	$effect(() => {
 		if (hasSeenSubmissionCount && submissionCount > lastSubmissionCount) {
@@ -63,6 +97,55 @@
 		lastSubmissionCount = submissionCount;
 		hasSeenSubmissionCount = true;
 	});
+
+	$effect(() => {
+		if (mapRevealTimer !== null) {
+			clearTimeout(mapRevealTimer);
+			mapRevealTimer = null;
+		}
+		mapRevealMarkersVisible = false;
+		if (!showingAnswerReveal || !mapRevealStep) {
+			return;
+		}
+		mapRevealTimer = window.setTimeout(() => {
+			mapRevealMarkersVisible = true;
+			mapRevealTimer = null;
+		}, 1000);
+	});
+
+	onDestroy(() => {
+		if (mapRevealTimer !== null) {
+			clearTimeout(mapRevealTimer);
+		}
+	});
+
+	function getMapPoint(value: unknown): MapPoint | null {
+		if (typeof value === 'string') {
+			try {
+				return getMapPoint(JSON.parse(value));
+			} catch {
+				return null;
+			}
+		}
+		if (!value || typeof value !== 'object') {
+			return null;
+		}
+		const point = value as Partial<MapPoint>;
+		const lat = Number(point.lat);
+		const lng = Number(point.lng);
+		if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+			return null;
+		}
+		return { lat, lng };
+	}
+
+	function getCorrectMapPoint(answer?: RevealedAnswer): MapPoint | null {
+		if (!answer?.value || typeof answer.value !== 'object') {
+			return null;
+		}
+		const value = answer.value as Partial<MapDistanceAnswer>;
+		return getMapPoint(value.correct_point);
+	}
 </script>
 
 <div
@@ -100,19 +183,47 @@
 		{/key}
 	{/if}
 
-	{#key step?.id ?? 'empty-step'}
-		<div class="question-stage-enter">
-			<QuestionCard
-				{step}
-				{revealedSubmission}
-				{revealedAnswer}
-				{buzzerActive}
-				{buzzedPlayerName}
-				{displayPhase}
-				variant={stageLayout ? 'stage' : 'default'}
+	{#if showingAnswerReveal && mapRevealStep && step?.map}
+		<section class="map-reveal-stage question-stage-enter">
+			<div class="question-card-title-row">
+				<h3
+					class="question-card-step-title text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight"
+				>
+					{step.title}
+				</h3>
+				<span class="question-card-points-badge points-badge-stage">
+					{step.max_points ?? step.evaluation_points}
+					{$messages.common.pointsWord}
+				</span>
+			</div>
+			<MapPointEditor
+				mode="reveal"
+				mapConfig={step.map}
+				baseLayer="osm"
+				correctPoint={correctMapPoint}
+				guessMarkers={mapGuessMarkers}
+				showCorrect={mapRevealMarkersVisible}
+				showGuesses={mapRevealMarkersVisible}
+				showLines={mapRevealMarkersVisible}
+				guessLabelMode="hover"
+				heightClass="h-full"
 			/>
-		</div>
-	{/key}
+		</section>
+	{:else}
+		{#key step?.id ?? 'empty-step'}
+			<div class="question-stage-enter">
+				<QuestionCard
+					{step}
+					{revealedSubmission}
+					{revealedAnswer}
+					{buzzerActive}
+					{buzzedPlayerName}
+					{displayPhase}
+					variant={stageLayout ? 'stage' : 'default'}
+				/>
+			</div>
+		{/key}
+	{/if}
 
 	{#if showStageRevealCard}
 		<div class="reveal-answer-card card w-full border-emerald-200 bg-emerald-50 p-4 md:p-5">
@@ -148,6 +259,41 @@
 		min-width: 0;
 		overflow: hidden;
 		animation: question-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	}
+
+	.map-reveal-stage {
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr);
+		gap: clamp(0.5rem, 1.2vh, 1rem);
+		height: 100%;
+		min-height: 0;
+		min-width: 0;
+		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+	}
+
+	.question-card-title-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: clamp(0.75rem, 2vw, 1.5rem);
+		min-width: 0;
+	}
+
+	.question-card-step-title {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.question-card-points-badge {
+		flex: 0 0 auto;
+		margin-top: 0.15rem;
+		border-radius: 999px;
+		background: rgb(255 255 255 / 0.88);
+		padding: 0.45rem 0.8rem;
+		font-size: 0.78rem;
+		font-weight: 900;
+		text-transform: uppercase;
+		color: rgb(15 23 42);
 	}
 
 	.reveal-answer-card {

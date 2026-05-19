@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from .lobby import GameState, Player
-from .game_definition import PlayerInputKind
+from .game_definition import MapInputConfig, PlayerInputKind
 
 
 class Event(StrEnum):
@@ -205,6 +205,7 @@ class RuntimeStepState(BaseModel):
     slider_min: float | None = None
     slider_max: float | None = None
     slider_step: float | None = None
+    map: MapInputConfig | None = None
     media: RuntimeMediaState | None = None
     timer: RuntimeTimerState = Field(default_factory=RuntimeTimerState)
 

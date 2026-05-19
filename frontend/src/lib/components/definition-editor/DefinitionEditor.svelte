@@ -26,16 +26,21 @@
 	} from './definition-history';
 	import {
 		DEFAULT_EVALUATION_BY_INPUT_KIND,
+		DEFAULT_MAP_CONFIG,
 		MEDIA_TYPES,
 		INPUT_KIND_EVALUATIONS,
 		buildCheckboxWeightedAnswer,
+		buildDefaultMapDistanceAnswer,
 		buildFlatSteps,
 		buildRuntimePreviewStep,
+		clampMapPointToBounds,
 		createStepFromTemplate,
 		getStepTemplates,
 		getCheckboxOptionScores,
+		getMapDistanceAnswer,
 		getOrderingAnswer,
 		getRadioCorrectOption,
+		isMapDistanceAnswer,
 		isCheckboxWeightedAnswer,
 		normalizeAnswer
 	} from './helpers';
@@ -651,6 +656,17 @@
 			syncCheckboxWeightedAnswer(step);
 			return;
 		}
+		if (step.evaluation.type_ === 'map_distance') {
+			step.player_input.map = step.player_input.map ?? structuredClone(DEFAULT_MAP_CONFIG);
+			const answer =
+				getMapDistanceAnswer(step) ?? buildDefaultMapDistanceAnswer(step.player_input.map);
+			step.evaluation.answer = {
+				...answer,
+				correct_point: clampMapPointToBounds(answer.correct_point, step.player_input.map.bounds)
+			};
+			step.evaluation.points = answer.max_points;
+			return;
+		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio') {
 			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
 			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
@@ -658,7 +674,10 @@
 		}
 		if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'text') {
 			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
-			if (isCheckboxWeightedAnswer(step.evaluation.answer)) {
+			if (
+				isCheckboxWeightedAnswer(step.evaluation.answer) ||
+				isMapDistanceAnswer(step.evaluation.answer)
+			) {
 				step.evaluation.answer = [''];
 			}
 			return;
@@ -667,7 +686,11 @@
 			step.evaluation.answer = Number(step.evaluation.answer ?? 0);
 			return;
 		}
-		if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
+		if (
+			Array.isArray(step.evaluation.answer) ||
+			isCheckboxWeightedAnswer(step.evaluation.answer) ||
+			isMapDistanceAnswer(step.evaluation.answer)
+		) {
 			step.evaluation.answer = '';
 		}
 	}
@@ -683,6 +706,11 @@
 			}
 		} else {
 			step.player_input.options = [];
+		}
+		if (kind === 'map') {
+			step.player_input.map = step.player_input.map ?? structuredClone(DEFAULT_MAP_CONFIG);
+		} else {
+			step.player_input.map = undefined;
 		}
 		if (kind !== 'number') {
 			step.player_input.min_value = undefined;
@@ -706,6 +734,12 @@
 			syncCheckboxWeightedAnswer(step);
 			return;
 		}
+		if (evaluationType === 'map_distance') {
+			step.player_input.map = step.player_input.map ?? structuredClone(DEFAULT_MAP_CONFIG);
+			step.evaluation.answer = buildDefaultMapDistanceAnswer(step.player_input.map);
+			step.evaluation.points = getMapDistanceAnswer(step)?.max_points ?? step.evaluation.points;
+			return;
+		}
 		if (evaluationType === 'exact_text' && step.player_input.kind === 'radio') {
 			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
 			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;
@@ -716,7 +750,8 @@
 			if (
 				step.evaluation.answer === null ||
 				step.evaluation.answer === undefined ||
-				isCheckboxWeightedAnswer(step.evaluation.answer)
+				isCheckboxWeightedAnswer(step.evaluation.answer) ||
+				isMapDistanceAnswer(step.evaluation.answer)
 			) {
 				step.evaluation.answer = [''];
 			}
@@ -726,7 +761,11 @@
 			step.evaluation.answer = null;
 			return;
 		}
-		if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
+		if (
+			Array.isArray(step.evaluation.answer) ||
+			isCheckboxWeightedAnswer(step.evaluation.answer) ||
+			isMapDistanceAnswer(step.evaluation.answer)
+		) {
 			step.evaluation.answer = '';
 		}
 	}
@@ -920,7 +959,11 @@
 						options: step.player_input.options.map((option) => option.trim()).filter(Boolean),
 						min_value: step.player_input.min_value ?? undefined,
 						max_value: step.player_input.max_value ?? undefined,
-						step: step.player_input.step ?? undefined
+						step: step.player_input.step ?? undefined,
+						map:
+							step.player_input.kind === 'map'
+								? (step.player_input.map ?? structuredClone(DEFAULT_MAP_CONFIG))
+								: undefined
 					},
 					evaluation: {
 						type_: step.evaluation.type_,

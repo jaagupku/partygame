@@ -11,6 +11,7 @@ export type InputKindPresentation = {
 	usesPlaceholder: boolean;
 	usesOptions: boolean;
 	usesNumericRange: boolean;
+	usesMap: boolean;
 };
 
 export type EvaluationPresentation = {
@@ -28,6 +29,7 @@ export type StepTemplateId =
 	| 'closest_guess'
 	| 'exact_number'
 	| 'ordering'
+	| 'map_point'
 	| 'open_answer'
 	| 'host_judged'
 	| 'buzzer'
@@ -53,7 +55,8 @@ export const INPUT_KINDS: PlayerInputKind[] = [
 	'number',
 	'ordering',
 	'radio',
-	'checkbox'
+	'checkbox',
+	'map'
 ];
 
 export const EVALUATION_TYPES: EvaluationType[] = [
@@ -63,7 +66,8 @@ export const EVALUATION_TYPES: EvaluationType[] = [
 	'exact_number',
 	'closest_number',
 	'ordering_match',
-	'multi_select_weighted'
+	'multi_select_weighted',
+	'map_distance'
 ];
 
 export const INPUT_KIND_EVALUATIONS: Record<PlayerInputKind, EvaluationType[]> = {
@@ -73,7 +77,8 @@ export const INPUT_KIND_EVALUATIONS: Record<PlayerInputKind, EvaluationType[]> =
 	number: ['none', 'host_judged', 'exact_number', 'closest_number'],
 	ordering: ['none', 'host_judged', 'ordering_match'],
 	radio: ['none', 'host_judged', 'exact_text'],
-	checkbox: ['none', 'host_judged', 'multi_select_weighted']
+	checkbox: ['none', 'host_judged', 'multi_select_weighted'],
+	map: ['none', 'host_judged', 'map_distance']
 };
 
 export const DEFAULT_EVALUATION_BY_INPUT_KIND: Record<PlayerInputKind, EvaluationType> = {
@@ -83,8 +88,44 @@ export const DEFAULT_EVALUATION_BY_INPUT_KIND: Record<PlayerInputKind, Evaluatio
 	number: 'exact_number',
 	ordering: 'ordering_match',
 	radio: 'exact_text',
-	checkbox: 'multi_select_weighted'
+	checkbox: 'multi_select_weighted',
+	map: 'map_distance'
 };
+
+export const DEFAULT_MAP_CONFIG: MapInputConfig = {
+	selection_mode: 'point',
+	base_layer: 'osm',
+	bounds: {
+		north: 85,
+		south: -85,
+		east: 180,
+		west: -180
+	},
+	initial_center: {
+		lat: 20,
+		lng: 0
+	},
+	initial_zoom: 2,
+	min_zoom: 2,
+	max_zoom: 18
+};
+
+export function buildDefaultMapDistanceAnswer(
+	mapConfig: MapInputConfig = DEFAULT_MAP_CONFIG
+): MapDistanceAnswer {
+	return {
+		correct_point: { ...mapConfig.initial_center },
+		scoring_mode: 'bands',
+		max_points: 5,
+		zero_distance_m: 50_000,
+		full_credit_distance_m: 500,
+		bands: [
+			{ distance_m: 500, points: 5, label: 'Exact area' },
+			{ distance_m: 5_000, points: 3, label: 'Nearby' },
+			{ distance_m: 20_000, points: 1, label: 'Same region' }
+		]
+	};
+}
 
 export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresentation> {
 	const localized = getMessages().editor.inputKinds;
@@ -98,7 +139,8 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: true,
 			usesPlaceholder: true,
 			usesOptions: false,
-			usesNumericRange: false
+			usesNumericRange: false,
+			usesMap: false
 		},
 		number: {
 			kind: 'number',
@@ -109,7 +151,8 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: true,
 			usesPlaceholder: true,
 			usesOptions: false,
-			usesNumericRange: true
+			usesNumericRange: true,
+			usesMap: false
 		},
 		ordering: {
 			kind: 'ordering',
@@ -120,7 +163,8 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: true,
 			usesPlaceholder: false,
 			usesOptions: true,
-			usesNumericRange: false
+			usesNumericRange: false,
+			usesMap: false
 		},
 		radio: {
 			kind: 'radio',
@@ -131,7 +175,8 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: true,
 			usesPlaceholder: false,
 			usesOptions: true,
-			usesNumericRange: false
+			usesNumericRange: false,
+			usesMap: false
 		},
 		checkbox: {
 			kind: 'checkbox',
@@ -142,7 +187,20 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: true,
 			usesPlaceholder: false,
 			usesOptions: true,
-			usesNumericRange: false
+			usesNumericRange: false,
+			usesMap: false
+		},
+		map: {
+			kind: 'map',
+			label: localized.map.label,
+			description: localized.map.description,
+			icon: 'fluent:map-16-filled',
+			recommendedEvaluation: 'map_distance',
+			usesPrompt: true,
+			usesPlaceholder: false,
+			usesOptions: false,
+			usesNumericRange: false,
+			usesMap: true
 		},
 		buzzer: {
 			kind: 'buzzer',
@@ -153,7 +211,8 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: true,
 			usesPlaceholder: false,
 			usesOptions: false,
-			usesNumericRange: false
+			usesNumericRange: false,
+			usesMap: false
 		},
 		none: {
 			kind: 'none',
@@ -164,7 +223,8 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesPrompt: false,
 			usesPlaceholder: false,
 			usesOptions: false,
-			usesNumericRange: false
+			usesNumericRange: false,
+			usesMap: false
 		}
 	};
 }
@@ -227,6 +287,14 @@ export function getEvaluationDetails(): Record<EvaluationType, EvaluationPresent
 			icon: 'fluent:checkbox-person-16-filled',
 			requiresAnswer: true,
 			manualReview: false
+		},
+		map_distance: {
+			type: 'map_distance',
+			label: localized.map_distance.label,
+			description: localized.map_distance.description,
+			icon: 'fluent:map-16-filled',
+			requiresAnswer: true,
+			manualReview: false
 		}
 	};
 }
@@ -287,6 +355,16 @@ export function getStepTemplates(): StepTemplateDefinition[] {
 			evaluationType: 'ordering_match',
 			prompt: localized.ordering.prompt,
 			options: localized.ordering.options,
+			timerSeconds: 45
+		},
+		{
+			id: 'map_point',
+			label: localized.map_point.label,
+			description: localized.map_point.description,
+			icon: 'fluent:map-16-filled',
+			inputKind: 'map',
+			evaluationType: 'map_distance',
+			prompt: localized.map_point.prompt,
 			timerSeconds: 45
 		},
 		{
@@ -403,6 +481,8 @@ export function createStepFromTemplate(
 		template?.evaluationType === 'closest_number'
 	) {
 		answer = 0;
+	} else if (template?.evaluationType === 'map_distance') {
+		answer = buildDefaultMapDistanceAnswer();
 	} else if (template?.evaluationType === 'none') {
 		answer = null;
 	}
@@ -422,7 +502,8 @@ export function createStepFromTemplate(
 			options,
 			min_value: undefined,
 			max_value: undefined,
-			step: undefined
+			step: undefined,
+			map: template?.inputKind === 'map' ? structuredClone(DEFAULT_MAP_CONFIG) : undefined
 		},
 		evaluation: {
 			type_: template?.evaluationType ?? 'exact_text',
@@ -462,6 +543,9 @@ export function getHostlessEvaluationType(step: StepDefinition): EvaluationType 
 	if (step.player_input.kind === 'ordering') {
 		return 'ordering_match';
 	}
+	if (step.player_input.kind === 'map') {
+		return 'map_distance';
+	}
 	return 'none';
 }
 
@@ -483,6 +567,9 @@ export function hasUsableHostlessAnswer(step: StepDefinition): boolean {
 	if (evaluationType === 'multi_select_weighted') {
 		return getCheckboxOptionScores(step).length > 0;
 	}
+	if (evaluationType === 'map_distance') {
+		return getMapDistanceAnswer(step) !== null;
+	}
 	return false;
 }
 
@@ -500,7 +587,8 @@ export function isHostlessCompatibleStep(step: StepDefinition): boolean {
 			'exact_number',
 			'closest_number',
 			'ordering_match',
-			'multi_select_weighted'
+			'multi_select_weighted',
+			'map_distance'
 		].includes(evaluationType) && hasUsableHostlessAnswer(step)
 	);
 }
@@ -533,7 +621,9 @@ export function getStepHealthIssues(step: StepDefinition): StepHealthIssue[] {
 		? step.evaluation.answer.some((value) => String(value).trim())
 		: isCheckboxWeightedAnswer(step.evaluation.answer)
 			? step.evaluation.answer.option_scores.length > 0
-			: String(step.evaluation.answer ?? '').trim().length > 0;
+			: isMapDistanceAnswer(step.evaluation.answer)
+				? Boolean(step.evaluation.answer.correct_point)
+				: String(step.evaluation.answer ?? '').trim().length > 0;
 	if (evaluationDetails.requiresAnswer && !hasAnswer) {
 		issues.push({
 			id: 'missing-answer',
@@ -647,6 +737,47 @@ export function isCheckboxWeightedAnswer(answer: unknown): answer is CheckboxWei
 	);
 }
 
+export function isMapPoint(value: unknown): value is MapPoint {
+	if (!value || typeof value !== 'object') {
+		return false;
+	}
+	const point = value as Partial<MapPoint>;
+	return Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng));
+}
+
+export function isMapDistanceAnswer(answer: unknown): answer is MapDistanceAnswer {
+	if (!answer || typeof answer !== 'object' || !('correct_point' in answer)) {
+		return false;
+	}
+	const value = answer as Partial<MapDistanceAnswer>;
+	return isMapPoint(value.correct_point);
+}
+
+export function getMapDistanceAnswer(step: StepDefinition): MapDistanceAnswer | null {
+	if (isMapDistanceAnswer(step.evaluation.answer)) {
+		return {
+			...buildDefaultMapDistanceAnswer(step.player_input.map ?? DEFAULT_MAP_CONFIG),
+			...step.evaluation.answer,
+			correct_point: {
+				lat: Number(step.evaluation.answer.correct_point.lat),
+				lng: Number(step.evaluation.answer.correct_point.lng)
+			},
+			bands: Array.isArray(step.evaluation.answer.bands) ? step.evaluation.answer.bands : []
+		};
+	}
+	if (step.player_input.kind === 'map' && step.evaluation.type_ === 'map_distance') {
+		return buildDefaultMapDistanceAnswer(step.player_input.map ?? DEFAULT_MAP_CONFIG);
+	}
+	return null;
+}
+
+export function clampMapPointToBounds(point: MapPoint, bounds: MapBounds): MapPoint {
+	return {
+		lat: Math.min(bounds.north, Math.max(bounds.south, point.lat)),
+		lng: Math.min(bounds.east, Math.max(bounds.west, point.lng))
+	};
+}
+
 export function buildCheckboxWeightedAnswer(options: string[]): CheckboxWeightedAnswer {
 	return {
 		option_scores: options.map((option) => ({ option, points: 0 }))
@@ -685,7 +816,11 @@ export function getRadioCorrectOption(step: StepDefinition): string {
 }
 
 export function getTextAnswer(step: StepDefinition): string {
-	if (Array.isArray(step.evaluation.answer) || isCheckboxWeightedAnswer(step.evaluation.answer)) {
+	if (
+		Array.isArray(step.evaluation.answer) ||
+		isCheckboxWeightedAnswer(step.evaluation.answer) ||
+		isMapDistanceAnswer(step.evaluation.answer)
+	) {
 		return '';
 	}
 	return String(step.evaluation.answer ?? '');
@@ -697,6 +832,9 @@ export function getTextAnswers(step: StepDefinition): string[] {
 	}
 	if (isCheckboxWeightedAnswer(step.evaluation.answer)) {
 		return [];
+	}
+	if (isMapDistanceAnswer(step.evaluation.answer)) {
+		return [''];
 	}
 	const value = String(step.evaluation.answer ?? '');
 	return value ? [value] : [''];
@@ -731,6 +869,9 @@ export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluatio
 	if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
 		return step.evaluation.answer === '' ? null : Number(step.evaluation.answer);
 	}
+	if (step.evaluation.type_ === 'map_distance') {
+		return getMapDistanceAnswer(step);
+	}
 	if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'text') {
 		const values = getTextAnswers(step)
 			.map((value) => value.trim())
@@ -742,6 +883,9 @@ export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluatio
 }
 
 export function getMaximumStepPoints(step: StepDefinition): number {
+	if (step.evaluation.type_ === 'map_distance') {
+		return getMapDistanceAnswer(step)?.max_points ?? step.evaluation.points;
+	}
 	if (step.evaluation.type_ !== 'multi_select_weighted') {
 		return step.evaluation.points;
 	}
@@ -767,6 +911,7 @@ export function buildRuntimePreviewStep(step: StepDefinition): RuntimeStepState 
 		slider_min: step.player_input.min_value,
 		slider_max: step.player_input.max_value,
 		slider_step: step.player_input.step,
+		map: step.player_input.map,
 		media: step.media
 			? {
 					...buildRuntimePreviewMedia(step.media),

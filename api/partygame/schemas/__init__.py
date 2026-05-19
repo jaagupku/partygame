@@ -62,6 +62,11 @@ from .events import (
 
 from .game_definition import (
     GameDefinition,
+    MapBounds,
+    MapDistanceAnswer,
+    MapDistanceBand,
+    MapInputConfig,
+    MapPoint,
     RoundDefinition,
     StepDefinition,
     EvaluationType,
@@ -136,6 +141,11 @@ __all__ = (
     "EndGameStatCard",
     "EndGameState",
     "GameDefinition",
+    "MapBounds",
+    "MapDistanceAnswer",
+    "MapDistanceBand",
+    "MapInputConfig",
+    "MapPoint",
     "RoundDefinition",
     "StepDefinition",
     "EvaluationType",

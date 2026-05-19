@@ -125,6 +125,13 @@
 				</div>
 			{/if}
 
+			{#if inputDetails.usesMap}
+				<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+					<p class="font-bold text-slate-900">{$messages.editor.mapLockedArea}</p>
+					<p class="mt-2">{$messages.editor.mapCombinedEditorHelp}</p>
+				</div>
+			{/if}
+
 			{#if inputDetails.usesOptions}
 				<InputOptionsEditor
 					{step}

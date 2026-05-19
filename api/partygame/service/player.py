@@ -47,6 +47,23 @@ def key(game_id: str, player_id: str) -> str:
     return GameKeyFactory.game_player(game_id, player_id)
 
 
+def public_runtime_snapshot(
+    snapshot: schemas.RuntimeSnapshotEvent,
+) -> schemas.RuntimeSnapshotEvent:
+    submissions = snapshot.submissions if _should_reveal_public_submissions(snapshot) else []
+    return snapshot.model_copy(update={"host_answer": None, "submissions": submissions})
+
+
+def _should_reveal_public_submissions(snapshot: schemas.RuntimeSnapshotEvent) -> bool:
+    step = snapshot.active_step
+    return (
+        snapshot.display_phase == "answer_reveal"
+        and step is not None
+        and step.input_kind == schemas.PlayerInputKind.MAP
+        and step.evaluation_type == schemas.EvaluationType.MAP_DISTANCE
+    )
+
+
 async def remove(
     redis: Redis,
     *,
@@ -144,7 +161,7 @@ class ClientController:
     ) -> schemas.RuntimeSnapshotEvent:
         if include_host_answer:
             return snapshot
-        return snapshot.model_copy(update={"host_answer": None, "submissions": []})
+        return public_runtime_snapshot(snapshot)
 
     def _build_patch_changes(
         self,

@@ -3,6 +3,7 @@ import {
 	buildRuntimePreviewStep,
 	createStepFromTemplate,
 	getExactTextMaxDistance,
+	getMapDistanceAnswer,
 	getMaximumStepPoints,
 	getRadioCorrectOption,
 	normalizeAnswer
@@ -146,5 +147,35 @@ describe('definition editor helpers', () => {
 		expect(preview.media.blur_reveal_curve).toEqual([0.1, 0.2, 0.3, 0.4]);
 		expect(preview.media.blur_circle_reveal_curve).toEqual([0.2, 0.3, 0.4, 0.5]);
 		expect(preview.media.zoom_reveal_curve).toEqual([0.3, 0.4, 0.5, 0.6]);
+	});
+
+	it('creates map steps with runtime map config and map max points', () => {
+		const step = createStepFromTemplate(0, 0, 'map_point');
+
+		expect(step.player_input.kind).toBe('map');
+		expect(step.evaluation.type_).toBe('map_distance');
+		expect(getMapDistanceAnswer(step)?.max_points).toBe(5);
+		expect(getMaximumStepPoints(step)).toBe(5);
+
+		const preview = buildRuntimePreviewStep(step);
+
+		expect(preview.input_kind).toBe('map');
+		expect(preview.map?.selection_mode).toBe('point');
+		expect(preview.max_points).toBe(5);
+	});
+
+	it('normalizes map distance answers for saving', () => {
+		const step = createStepFromTemplate(0, 0, 'map_point');
+		step.evaluation.answer = {
+			correct_point: { lat: 59.4, lng: 24.7 },
+			scoring_mode: 'linear',
+			max_points: 7,
+			zero_distance_m: 10000,
+			full_credit_distance_m: 1000,
+			bands: []
+		};
+
+		expect(normalizeAnswer(step)).toEqual(step.evaluation.answer);
+		expect(getMaximumStepPoints(step)).toBe(7);
 	});
 });

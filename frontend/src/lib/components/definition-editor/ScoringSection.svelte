@@ -43,7 +43,7 @@
 				<p class="text-lg font-bold text-slate-900">{evaluationDetails.label}</p>
 				<p class="text-sm text-slate-600">{evaluationDetails.description}</p>
 			</div>
-			{#if step.evaluation.type_ !== 'multi_select_weighted' && step.evaluation.type_ !== 'none'}
+			{#if step.evaluation.type_ !== 'multi_select_weighted' && step.evaluation.type_ !== 'map_distance' && step.evaluation.type_ !== 'none'}
 				<label class="input-wrap min-w-32">
 					<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
 						{$messages.editor.points}
