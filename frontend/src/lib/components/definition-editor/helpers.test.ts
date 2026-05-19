@@ -7,7 +7,8 @@ import {
 	getMapDistanceAnswer,
 	getMaximumStepPoints,
 	getRadioCorrectOption,
-	normalizeAnswer
+	normalizeAnswer,
+	normalizeMapDistanceAnswerForMode
 } from './helpers';
 
 describe('definition editor helpers', () => {
@@ -179,5 +180,34 @@ describe('definition editor helpers', () => {
 
 		expect(normalizeAnswer(step)).toEqual(step.evaluation.answer);
 		expect(getMaximumStepPoints(step)).toBe(7);
+	});
+
+	it('normalizes map band scoring without smooth decay distances', () => {
+		const answer = normalizeMapDistanceAnswerForMode({
+			correct_point: { lat: 59.4, lng: 24.7 },
+			scoring_mode: 'bands',
+			max_points: 5,
+			zero_distance_m: 10000,
+			full_credit_distance_m: 1000,
+			bands: [{ distance_m: 500, points: 5, label: 'Close' }]
+		});
+
+		expect(answer.zero_distance_m).toBeNull();
+		expect(answer.full_credit_distance_m).toBeNull();
+		expect(answer.bands).toEqual([{ distance_m: 500, points: 5, label: 'Close' }]);
+	});
+
+	it('normalizes map smooth decay scoring with required distances', () => {
+		const answer = normalizeMapDistanceAnswerForMode({
+			correct_point: { lat: 59.4, lng: 24.7 },
+			scoring_mode: 'linear',
+			max_points: 5,
+			zero_distance_m: null,
+			full_credit_distance_m: null,
+			bands: [{ distance_m: 500, points: 5, label: 'Close' }]
+		});
+
+		expect(answer.zero_distance_m).toBe(50000);
+		expect(answer.full_credit_distance_m).toBe(500);
 	});
 });

@@ -105,17 +105,12 @@ class MapDistanceAnswer(BaseModel):
     correct_point: MapPoint
     scoring_mode: Literal["bands", "linear"] = "bands"
     max_points: int = Field(ge=0)
-    zero_distance_m: float = Field(gt=0.0)
+    zero_distance_m: float | None = Field(default=None, gt=0.0)
     full_credit_distance_m: float | None = Field(default=None, ge=0.0)
     bands: list[MapDistanceBand] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_scoring(self) -> "MapDistanceAnswer":
-        if (
-            self.full_credit_distance_m is not None
-            and self.full_credit_distance_m > self.zero_distance_m
-        ):
-            raise ValueError("full_credit_distance_m must be less than or equal to zero_distance_m")
         if self.scoring_mode == "bands":
             if not self.bands:
                 raise ValueError("map distance band scoring requires at least one band")
@@ -129,6 +124,16 @@ class MapDistanceAnswer(BaseModel):
                 band.model_copy(update={"points": min(max(band.points, 0), self.max_points)})
                 for band in sorted_bands
             ]
+        if self.scoring_mode == "linear":
+            if self.zero_distance_m is None:
+                raise ValueError("linear map distance scoring requires zero_distance_m")
+            if (
+                self.full_credit_distance_m is not None
+                and self.full_credit_distance_m > self.zero_distance_m
+            ):
+                raise ValueError(
+                    "full_credit_distance_m must be less than or equal to zero_distance_m"
+                )
         return self
 
 
@@ -220,6 +225,13 @@ class EvaluationRule(BaseModel):
     points: int = 1
     answer: Any = None
     max_distance: int = Field(default=2, ge=0)
+    number_bands: list["NumberToleranceBand"] = Field(default_factory=list)
+
+
+class NumberToleranceBand(BaseModel):
+    distance: float = Field(ge=0)
+    points: int = Field(ge=0)
+    label: str | None = None
 
 
 class HostBehavior(BaseModel):

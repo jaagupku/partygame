@@ -83,6 +83,46 @@
 			.map((playerId) => playerMap.get(playerId)?.name ?? playerId)
 			.filter(Boolean)
 	);
+	const pendingSubmissionPlayerNames = $derived(
+		$controller.activeStep?.input_kind &&
+			!['none', 'buzzer'].includes($controller.activeStep.input_kind)
+			? $controller.players
+					.filter(
+						(entry) =>
+							entry.id !== $controller.id && !$controller.submittedPlayerIds.includes(entry.id)
+					)
+					.map((entry) => entry.name)
+			: []
+	);
+	const currentPlayerStanding = $derived.by(() => {
+		const currentPlayer = playerMap.get($controller.id);
+		if (!currentPlayer) {
+			return undefined;
+		}
+		const rankedPlayers = $controller.players
+			.filter((entry) => !entry.isHost && entry.id !== lobby().host_id)
+			.toSorted(
+				(a, b) => b.score - a.score || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+			);
+		let lastScore: number | undefined;
+		let lastPlace = 0;
+		for (const [index, entry] of rankedPlayers.entries()) {
+			if (entry.score !== lastScore) {
+				lastPlace = index + 1;
+				lastScore = entry.score;
+			}
+			if (entry.id === currentPlayer.id) {
+				return {
+					score: entry.score,
+					place: lastPlace
+				};
+			}
+		}
+		return {
+			score: currentPlayer.score,
+			place: rankedPlayers.length + 1
+		};
+	});
 	const gameFinished = $derived(
 		$controller.lobbyPhase === 'finished' || Boolean($controller.endGame)
 	);
@@ -451,9 +491,34 @@
 		{/if}
 	</div>
 {:else}
-	<div
-		class={`mt-0 stack-lg ${canSendReactions && !$controller.isHost ? 'player-reaction-safe-area' : ''}`}
-	>
+	<div class="mt-0 stack-lg">
+		{#if !$controller.isHost && !$controller.endGame?.revealed && currentPlayerStanding}
+			<section class="card grid grid-cols-2 gap-2 p-3">
+				<div class="rounded-lg bg-white/70 px-3 py-2 text-center">
+					<p class="text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
+						{$messages.common.score}
+					</p>
+					<p class="mt-0.5 text-2xl font-black leading-none text-slate-950">
+						{currentPlayerStanding.score}
+					</p>
+					<p class="mt-0.5 text-[0.65rem] font-bold text-slate-500">
+						{$messages.common.pointsWord}
+					</p>
+				</div>
+				<div class="rounded-lg bg-white/70 px-3 py-2 text-center">
+					<p class="text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
+						{$messages.gameplay.currentPlace}
+					</p>
+					<p class="mt-0.5 text-2xl font-black leading-none text-sky-700">
+						#{currentPlayerStanding.place}
+					</p>
+					<p class="mt-0.5 text-[0.65rem] font-bold text-slate-500">
+						{$messages.finale.place(currentPlayerStanding.place)}
+					</p>
+				</div>
+			</section>
+		{/if}
+
 		{#if $controller.endGame?.revealed}
 			<FinaleControllerCard endGame={$controller.endGame} playerId={$controller.id} />
 
@@ -542,6 +607,7 @@
 				lobbyPhase={$controller.lobbyPhase}
 				nextHostAction={$controller.nextHostAction}
 				pendingReviewCount={$controller.pendingReviewCount}
+				{pendingSubmissionPlayerNames}
 				scoreboardVisible={$controller.scoreboardVisible}
 				submissionCount={$controller.submissionCount}
 				{submittedPlayerNames}
@@ -593,10 +659,6 @@
 {/if}
 
 <style>
-	.player-reaction-safe-area {
-		padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
-	}
-
 	.answer-result-border {
 		position: fixed;
 		inset: 0;

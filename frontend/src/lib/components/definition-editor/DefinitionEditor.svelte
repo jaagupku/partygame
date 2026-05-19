@@ -684,6 +684,10 @@
 		}
 		if (step.evaluation.type_ === 'exact_number' || step.evaluation.type_ === 'closest_number') {
 			step.evaluation.answer = Number(step.evaluation.answer ?? 0);
+			step.evaluation.number_bands =
+				step.evaluation.type_ === 'closest_number'
+					? (step.evaluation.number_bands ?? [])
+					: undefined;
 			return;
 		}
 		if (
@@ -728,6 +732,8 @@
 		}
 		if (evaluationType === 'exact_number' || evaluationType === 'closest_number') {
 			step.evaluation.answer = Number(step.evaluation.answer ?? 0);
+			step.evaluation.number_bands =
+				evaluationType === 'closest_number' ? (step.evaluation.number_bands ?? []) : undefined;
 			return;
 		}
 		if (evaluationType === 'multi_select_weighted') {
@@ -972,6 +978,18 @@
 						max_distance:
 							step.evaluation.type_ === 'exact_text'
 								? Math.max(0, Math.trunc(Number(step.evaluation.max_distance ?? 2)))
+								: undefined,
+						number_bands:
+							step.evaluation.type_ === 'closest_number'
+								? (step.evaluation.number_bands ?? [])
+										.map((band) => ({
+											distance: Math.max(0, Number(band.distance)),
+											points: Math.max(0, Math.trunc(Number(band.points))),
+											label: band.label?.trim() || undefined
+										}))
+										.filter(
+											(band) => Number.isFinite(band.distance) && Number.isFinite(band.points)
+										)
 								: undefined
 					},
 					host_behavior: {

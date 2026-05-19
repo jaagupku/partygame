@@ -119,8 +119,8 @@ export function buildDefaultMapDistanceAnswer(
 		correct_point: { ...mapConfig.initial_center },
 		scoring_mode: 'bands',
 		max_points: 5,
-		zero_distance_m: 50_000,
-		full_credit_distance_m: 500,
+		zero_distance_m: null,
+		full_credit_distance_m: null,
 		bands: [
 			{ distance_m: 500, points: 5, label: 'Exact area' },
 			{ distance_m: 5_000, points: 3, label: 'Nearby' },
@@ -511,7 +511,8 @@ export function createStepFromTemplate(
 			type_: template?.evaluationType ?? 'exact_text',
 			points: 1,
 			answer,
-			max_distance: template?.evaluationType === 'exact_text' ? 2 : undefined
+			max_distance: template?.evaluationType === 'exact_text' ? 2 : undefined,
+			number_bands: template?.evaluationType === 'closest_number' ? [] : undefined
 		},
 		host_behavior: {
 			reveal_answers: true,
@@ -747,17 +748,44 @@ export function isMapDistanceAnswer(answer: unknown): answer is MapDistanceAnswe
 	return isMapPoint(value.correct_point);
 }
 
+export function normalizeMapDistanceAnswerForMode(
+	answer: MapDistanceAnswer,
+	mapConfig: MapInputConfig = DEFAULT_MAP_CONFIG
+): MapDistanceAnswer {
+	const defaults = buildDefaultMapDistanceAnswer(mapConfig);
+	const scoringMode = answer.scoring_mode ?? defaults.scoring_mode;
+	const normalized: MapDistanceAnswer = {
+		...defaults,
+		...answer,
+		scoring_mode: scoringMode,
+		correct_point: {
+			lat: Number(answer.correct_point.lat),
+			lng: Number(answer.correct_point.lng)
+		},
+		bands: Array.isArray(answer.bands) ? answer.bands : []
+	};
+
+	if (scoringMode === 'bands') {
+		return {
+			...normalized,
+			zero_distance_m: null,
+			full_credit_distance_m: null
+		};
+	}
+
+	return {
+		...normalized,
+		zero_distance_m: Math.max(1, Number(answer.zero_distance_m ?? 50_000) || 1),
+		full_credit_distance_m: Math.max(0, Number(answer.full_credit_distance_m ?? 500) || 0)
+	};
+}
+
 export function getMapDistanceAnswer(step: StepDefinition): MapDistanceAnswer | null {
 	if (isMapDistanceAnswer(step.evaluation.answer)) {
-		return {
-			...buildDefaultMapDistanceAnswer(step.player_input.map ?? DEFAULT_MAP_CONFIG),
-			...step.evaluation.answer,
-			correct_point: {
-				lat: Number(step.evaluation.answer.correct_point.lat),
-				lng: Number(step.evaluation.answer.correct_point.lng)
-			},
-			bands: Array.isArray(step.evaluation.answer.bands) ? step.evaluation.answer.bands : []
-		};
+		return normalizeMapDistanceAnswerForMode(
+			step.evaluation.answer,
+			step.player_input.map ?? DEFAULT_MAP_CONFIG
+		);
 	}
 	if (step.player_input.kind === 'map' && step.evaluation.type_ === 'map_distance') {
 		return buildDefaultMapDistanceAnswer(step.player_input.map ?? DEFAULT_MAP_CONFIG);
@@ -844,6 +872,14 @@ export function getNumberAnswer(step: StepDefinition): number | undefined {
 	return Number.isFinite(value) ? value : undefined;
 }
 
+export function getNumberToleranceBands(step: StepDefinition): NumberToleranceBand[] {
+	return (step.evaluation.number_bands ?? []).map((band) => ({
+		distance: Number.isFinite(Number(band.distance)) ? Math.max(0, Number(band.distance)) : 0,
+		points: Number.isFinite(Number(band.points)) ? Math.max(0, Math.trunc(Number(band.points))) : 0,
+		label: band.label ?? ''
+	}));
+}
+
 export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluation']['answer'] {
 	if (step.evaluation.type_ === 'ordering_match') {
 		return getOrderingAnswer(step)
@@ -864,7 +900,11 @@ export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluatio
 		return step.evaluation.answer === '' ? null : Number(step.evaluation.answer);
 	}
 	if (step.evaluation.type_ === 'map_distance') {
-		return getMapDistanceAnswer(step);
+		const answer = getMapDistanceAnswer(step);
+		if (!answer) {
+			return null;
+		}
+		return normalizeMapDistanceAnswerForMode(answer, step.player_input.map ?? DEFAULT_MAP_CONFIG);
 	}
 	if (step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'text') {
 		const values = getTextAnswers(step)
@@ -877,6 +917,12 @@ export function normalizeAnswer(step: StepDefinition): StepDefinition['evaluatio
 }
 
 export function getMaximumStepPoints(step: StepDefinition): number {
+	if (step.evaluation.type_ === 'closest_number') {
+		return Math.max(
+			step.evaluation.points,
+			...getNumberToleranceBands(step).map((band) => band.points)
+		);
+	}
 	if (step.evaluation.type_ === 'map_distance') {
 		return getMapDistanceAnswer(step)?.max_points ?? step.evaluation.points;
 	}

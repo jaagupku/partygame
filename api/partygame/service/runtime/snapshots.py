@@ -202,7 +202,15 @@ class SnapshotBuilder:
             return None
 
         display_phase = str(step_state.get("display_phase") or "question_active")
-        if lobby.phase == "host_review" and pending_review_count > 0:
+        if (
+            lobby.phase == "host_review"
+            and pending_review_count > 0
+            and (
+                display_phase == "answer_reveal"
+                or step is None
+                or step.evaluation.type_ != "host_judged"
+            )
+        ):
             return schemas.NextHostActionState(kind="blocked_review", disabled=True)
 
         if (

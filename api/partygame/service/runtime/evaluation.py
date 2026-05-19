@@ -28,6 +28,10 @@ class EvaluationRuntime:
         self.get_step_state = get_step_state
 
     def _max_points_for_step(self, step: StepDefinition, evaluation_type: EvaluationType) -> int:
+        if evaluation_type == EvaluationType.CLOSEST_NUMBER:
+            band_points = [band.points for band in step.evaluation.number_bands]
+            return max([step.evaluation.points, *band_points])
+
         if evaluation_type == EvaluationType.MAP_DISTANCE:
             answer = self._map_distance_answer(step)
             if answer is not None:

@@ -205,6 +205,7 @@
 				showCorrect={mapRevealMarkersVisible}
 				showGuesses={mapRevealMarkersVisible}
 				showLines={mapRevealMarkersVisible}
+				fitRevealToGuesses={mapRevealMarkersVisible}
 				guessLabelMode="hover"
 				heightClass="h-full"
 			/>

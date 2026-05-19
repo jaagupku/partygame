@@ -245,6 +245,9 @@ const en = defineMessages({
 		phaseLabel: 'Phase',
 		submissionsLabel: 'Submissions',
 		pendingReviewLabel: 'Pending review',
+		pendingSubmissionsLabel: 'Not submitted',
+		noPendingSubmissions: 'Everyone has submitted.',
+		currentPlace: 'Current place',
 		answered: 'answered',
 		previous: 'Previous',
 		advanceStep: 'Advance Step',
@@ -509,7 +512,15 @@ const en = defineMessages({
 		displayOnlyHelp: 'This step is display-only or reviewed outside the automatic scoring flow.',
 		scoringSummary: 'Scoring summary',
 		exactNumberSummary: 'Only the exact number scores.',
-		closestNumberSummary: 'Nearest numeric answer wins the points.',
+		closestNumberSummary:
+			'Nearest numeric answer wins the main points. Optional bands can award partial points.',
+		numberBands: 'Tolerance bands',
+		numberBandsHelp:
+			'Players within a band get its points unless they are the closest answer winner.',
+		addNumberBand: 'Add band',
+		removeNumberBand: 'Remove band',
+		numberBandDistance: '+/- distance',
+		numberBandLabel: 'Label',
 		configureScoresAbove: 'Configure scores in the option list above',
 		configureScoresAboveHelp:
 			'Each selected option can add or subtract points when players submit.',
@@ -1006,6 +1017,9 @@ const et: Messages = {
 		phaseLabel: 'Faas',
 		submissionsLabel: 'Vastuseid',
 		pendingReviewLabel: 'Ootab ülevaatust',
+		pendingSubmissionsLabel: 'Pole vastanud',
+		noPendingSubmissions: 'Kõik on vastanud.',
+		currentPlace: 'Praegune koht',
 		answered: 'vastas',
 		previous: 'Eelmine',
 		advanceStep: 'Liigu edasi',
@@ -1269,7 +1283,15 @@ const et: Messages = {
 			'See samm on ainult näitamiseks või vaadatakse üle väljaspool automaatset hindamist.',
 		scoringSummary: 'Punktide kokkuvõte',
 		exactNumberSummary: 'Punkte annab ainult täpne number.',
-		closestNumberSummary: 'Punktid saab lähim arvuline vastus.',
+		closestNumberSummary:
+			'Lähim arvuline vastus saab põhipunktid. Vahemikud võivad anda osalisi punkte.',
+		numberBands: 'Vahemikud',
+		numberBandsHelp:
+			'Vahemikku jäävad mängijad saavad selle punktid, kui nad ei ole lähima vastuse võitjad.',
+		addNumberBand: 'Lisa vahemik',
+		removeNumberBand: 'Eemalda vahemik',
+		numberBandDistance: '+/- kaugus',
+		numberBandLabel: 'Silt',
 		configureScoresAbove: 'Seadista punktid ülal olevas valikute loendis',
 		configureScoresAboveHelp:
 			'Iga valitud vastus võib mängijate esitamisel punkte lisada või maha võtta.',

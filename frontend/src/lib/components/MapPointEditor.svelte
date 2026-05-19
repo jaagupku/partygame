@@ -8,6 +8,7 @@
 		DEFAULT_MAP_CONFIG
 	} from '$lib/components/definition-editor/helpers';
 	import { getMapTileLayerDefinition } from '$lib/map-layers';
+	import { buildMapRevealFitTarget, revealFitKey } from '$lib/map-reveal-fit';
 
 	type LeafletModule = typeof import('leaflet');
 	type MapEditorMode = 'author' | 'player' | 'reveal' | 'custom';
@@ -37,6 +38,7 @@
 		editableBounds?: boolean;
 		scoringAnswer?: MapDistanceAnswer | null;
 		editableScoring?: boolean;
+		fitRevealToGuesses?: boolean;
 		editingWorldView?: boolean;
 		guessLabelMode?: GuessLabelMode;
 		selectionBounds?: MapBounds;
@@ -64,6 +66,7 @@
 		editableBounds = undefined,
 		scoringAnswer = null,
 		editableScoring = undefined,
+		fitRevealToGuesses = undefined,
 		editingWorldView = undefined,
 		guessLabelMode = undefined,
 		selectionBounds = undefined,
@@ -87,6 +90,7 @@
 	let scoringLayer: import('leaflet').LayerGroup | null = null;
 	let tileLayer: import('leaflet').TileLayer | null = null;
 	let activeBaseLayer: MapInputConfig['base_layer'] | undefined = undefined;
+	let lastRevealFitKey = '';
 
 	const displayedBaseLayer = $derived(baseLayer ?? mapConfig.base_layer ?? 'osm');
 	const selectionLimitBounds = $derived(selectionBounds ?? mapConfig.bounds);
@@ -100,6 +104,7 @@
 	const effectiveShowBounds = $derived(showBounds ?? true);
 	const effectiveEditableBounds = $derived(editableBounds ?? mode === 'author');
 	const effectiveEditableScoring = $derived(editableScoring ?? mode === 'author');
+	const effectiveFitRevealToGuesses = $derived(fitRevealToGuesses ?? mode === 'reveal');
 	const effectiveEditingWorldView = $derived(editingWorldView ?? mode === 'author');
 	const effectiveGuessLabelMode = $derived(
 		guessLabelMode ?? (mode === 'reveal' ? 'hover' : 'always')
@@ -195,6 +200,7 @@
 		effectiveEditablePoint;
 		effectiveEditableViewport;
 		effectiveEditableScoring;
+		effectiveFitRevealToGuesses;
 		effectiveEditingWorldView;
 		effectiveShowCorrect;
 		effectiveShowGuesses;
@@ -224,7 +230,10 @@
 		syncGuessMarkers();
 		syncBounds();
 		syncScoringCircles();
-		window.setTimeout(() => map?.invalidateSize(), 0);
+		window.setTimeout(() => {
+			map?.invalidateSize();
+			fitRevealBounds();
+		}, 0);
 	}
 
 	function syncBaseLayer() {
@@ -392,6 +401,42 @@
 		}
 	}
 
+	function fitRevealBounds() {
+		if (!map || !leaflet || !effectiveFitRevealToGuesses || !effectiveShowGuesses) {
+			lastRevealFitKey = '';
+			return;
+		}
+		const target = buildMapRevealFitTarget(guessMarkers, correctPoint, {
+			includeCorrect: effectiveShowCorrect,
+			maxZoom: mapConfig.max_zoom,
+			padding: [72, 72]
+		});
+		if (!target) {
+			lastRevealFitKey = '';
+			return;
+		}
+		const fitKey =
+			target.kind === 'point' ? revealFitKey([target.point]) : revealFitKey(target.points);
+		if (fitKey === lastRevealFitKey) {
+			return;
+		}
+		lastRevealFitKey = fitKey;
+		if (target.kind === 'point') {
+			map.flyTo([target.point.lat, target.point.lng], target.zoom, {
+				animate: true,
+				duration: 1.15
+			});
+			return;
+		}
+		const bounds = leaflet.latLngBounds(target.points.map((point) => [point.lat, point.lng]));
+		map.flyToBounds(bounds, {
+			animate: true,
+			duration: 1.15,
+			padding: target.padding,
+			maxZoom: target.maxZoom
+		});
+	}
+
 	function scoringRadii(answer: MapDistanceAnswer) {
 		const radii: Array<{
 			kind: 'full' | 'zero' | 'band';
@@ -400,7 +445,7 @@
 			label: string;
 			color: string;
 		}> = [];
-		if (answer.full_credit_distance_m !== undefined) {
+		if (answer.scoring_mode === 'linear' && answer.full_credit_distance_m != null) {
 			radii.push({
 				kind: 'full',
 				index: -1,
@@ -420,13 +465,15 @@
 				});
 			}
 		}
-		radii.push({
-			kind: 'zero',
-			index: -1,
-			distance_m: answer.zero_distance_m,
-			label: `Zero points: ${formatDistanceMeters(answer.zero_distance_m)}`,
-			color: '#ef4444'
-		});
+		if (answer.scoring_mode === 'linear' && answer.zero_distance_m != null) {
+			radii.push({
+				kind: 'zero',
+				index: -1,
+				distance_m: answer.zero_distance_m,
+				label: `Zero points: ${formatDistanceMeters(answer.zero_distance_m)}`,
+				color: '#ef4444'
+			});
+		}
 		return radii.filter((radius) => radius.distance_m > 0);
 	}
 
@@ -436,9 +483,10 @@
 		}
 		const nextDistance = Math.max(1, distance);
 		if (kind === 'full') {
+			const zeroDistance = scoringAnswer.zero_distance_m ?? nextDistance;
 			onScoringAnswerChange({
 				...scoringAnswer,
-				full_credit_distance_m: Math.min(nextDistance, scoringAnswer.zero_distance_m)
+				full_credit_distance_m: Math.min(nextDistance, zeroDistance)
 			});
 			return;
 		}
