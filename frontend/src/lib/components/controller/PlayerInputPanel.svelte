@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
 	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
+	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
 	import OrderingList from '$lib/components/OrderingList.svelte';
 
 	interface PlayerInputPanelProps {
@@ -31,6 +32,7 @@
 	let orderingItems = $state<string[]>([]);
 	let selectedRadioOption = $state<string | null>(null);
 	let selectedCheckboxOptions = $state<string[]>([]);
+	let selectedMapPoint = $state<MapPoint | null>(null);
 	let orderingStepId = $state<string | undefined>(undefined);
 	let inputStepId = $state<string | undefined>(undefined);
 	let pendingSubmissionStepId = $state<string | undefined>(undefined);
@@ -45,6 +47,7 @@
 			answerValue = hasConfiguredNumberSlider(step) ? step.slider_min : '';
 			selectedRadioOption = null;
 			selectedCheckboxOptions = [];
+			selectedMapPoint = null;
 			inputStepId = step?.id;
 			pendingSubmissionStepId = undefined;
 		}
@@ -80,6 +83,8 @@
 			value = selectedRadioOption;
 		} else if (step.input_kind === 'checkbox') {
 			value = selectedCheckboxOptions;
+		} else if (step.input_kind === 'map') {
+			value = selectedMapPoint;
 		} else if (step.input_kind === 'text') {
 			value = String(answerValue);
 		}
@@ -291,6 +296,35 @@
 			disabled={inputDisabled || selectedCheckboxOptions.length === 0}
 		>
 			{$messages.gameplay.submitSelection}
+		</button>
+	</section>
+{:else if activeStep?.input_kind === 'map'}
+	<section class="card stack-md">
+		<h2 class="label-title text-2xl">{$messages.gameplay.mapAnswer}</h2>
+		<p class="text-sm text-slate-600">
+			{inputDisabled
+				? hasSubmitted
+					? $messages.gameplay.mapGuessSubmitted
+					: $messages.gameplay.stepClosedAnswersDisabled
+				: $messages.gameplay.tapMapToGuess}
+		</p>
+		{#if activeStep.map}
+			<MapPointEditor
+				mode="player"
+				mapConfig={activeStep.map}
+				selectedPoint={selectedMapPoint}
+				editablePoint={!inputDisabled}
+				heightClass="h-96"
+				onPointChange={(point) => (selectedMapPoint = point)}
+			/>
+		{/if}
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={submitAnswer}
+			disabled={inputDisabled || !selectedMapPoint}
+		>
+			{$messages.gameplay.submitMapGuess}
 		</button>
 	</section>
 {:else}

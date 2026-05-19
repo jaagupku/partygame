@@ -128,6 +128,22 @@ export function formatRevealValue(value: unknown): string {
 		}
 	}
 
+	if (value && typeof value === 'object' && 'correct_point' in value) {
+		const point = (value as Partial<MapDistanceAnswer>).correct_point;
+		if (point) {
+			return formatRevealValue(point);
+		}
+	}
+
+	if (value && typeof value === 'object' && 'lat' in value && 'lng' in value) {
+		const point = value as Partial<MapPoint>;
+		const lat = Number(point.lat);
+		const lng = Number(point.lng);
+		if (Number.isFinite(lat) && Number.isFinite(lng)) {
+			return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+		}
+	}
+
 	if (value && typeof value === 'object') {
 		return JSON.stringify(value);
 	}

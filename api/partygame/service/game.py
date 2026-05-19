@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import asin, cos, radians, sin, sqrt
 from time import time
 from typing import Any
 from uuid import uuid4
@@ -44,6 +45,7 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.CLOSEST_NUMBER,
     EvaluationType.ORDERING_MATCH,
     EvaluationType.MULTI_SELECT_WEIGHTED,
+    EvaluationType.MAP_DISTANCE,
 }
 
 
@@ -258,6 +260,10 @@ class GameRuntimeService:
 
         answers = state.get("answers", {})
         if player_id in answers:
+            return [], False
+        if step.player_input.kind == PlayerInputKind.MAP and not self._is_valid_map_submission(
+            step, value
+        ):
             return [], False
         answers[player_id] = value
         await self.repo.set_step_cache(lobby.id, {"answers": answers})
@@ -754,6 +760,17 @@ class GameRuntimeService:
                         accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
+        elif evaluation_type == EvaluationType.MAP_DISTANCE:
+            for player_id, value in answers.items():
+                delta = self._score_map_distance_answer(step, value)
+                if delta <= 0:
+                    continue
+                new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                await self.repo.set_player_score(lobby.id, player_id, new_score)
+                updates[player_id] = new_score
+                accepted_player_ids.add(player_id)
+                metric_updates[player_id]["correct_count"] = 1
+                metric_updates[player_id]["wrong_count"] = 0
 
         await self._apply_player_metric_updates(lobby.id, metric_updates)
 
@@ -794,6 +811,7 @@ class GameRuntimeService:
             EvaluationType.CLOSEST_NUMBER,
             EvaluationType.ORDERING_MATCH,
             EvaluationType.MULTI_SELECT_WEIGHTED,
+            EvaluationType.MAP_DISTANCE,
         ):
             for auto_event in await self.evaluate_auto_step(lobby):
                 if isinstance(auto_event, schemas.ScoresUpdatedEvent) and not auto_event.updates:
@@ -1003,6 +1021,7 @@ class GameRuntimeService:
             slider_min=step.player_input.min_value,
             slider_max=step.player_input.max_value,
             slider_step=step.player_input.step,
+            map=step.player_input.map,
             media=self._serialize_media(step.media, step_state),
             timer=schemas.RuntimeTimerState(
                 seconds=step.timer.seconds,
@@ -1458,6 +1477,12 @@ class GameRuntimeService:
         )
 
     def _max_points_for_step(self, step: StepDefinition, evaluation_type: EvaluationType) -> int:
+        if evaluation_type == EvaluationType.MAP_DISTANCE:
+            answer = self._map_distance_answer(step)
+            if answer is not None:
+                return int(answer.get("max_points", step.evaluation.points) or 0)
+            return step.evaluation.points
+
         if evaluation_type != EvaluationType.MULTI_SELECT_WEIGHTED:
             return step.evaluation.points
 
@@ -1474,6 +1499,92 @@ class GameRuntimeService:
             if isinstance(points, int) and points > 0:
                 max_points += points
         return max_points
+
+    def _map_distance_answer(self, step: StepDefinition) -> dict[str, Any] | None:
+        answer = step.evaluation.answer
+        if not isinstance(answer, dict):
+            return None
+        correct_point = answer.get("correct_point")
+        if self._coerce_map_point(correct_point) is None:
+            return None
+        return answer
+
+    def _is_valid_map_submission(self, step: StepDefinition, value: Any) -> bool:
+        point = self._coerce_map_point(value)
+        if point is None or step.player_input.map is None:
+            return False
+        bounds = step.player_input.map.bounds
+        return (
+            bounds.south <= point["lat"] <= bounds.north
+            and bounds.west <= point["lng"] <= bounds.east
+        )
+
+    def _score_map_distance_answer(self, step: StepDefinition, value: Any) -> int:
+        answer = self._map_distance_answer(step)
+        submitted = self._coerce_map_point(value)
+        if answer is None or submitted is None:
+            return 0
+        correct = self._coerce_map_point(answer.get("correct_point"))
+        if correct is None:
+            return 0
+
+        distance_m = self._haversine_distance_m(submitted, correct)
+        max_points = max(0, int(answer.get("max_points", step.evaluation.points) or 0))
+        if answer.get("scoring_mode") == "linear":
+            zero_distance = self._to_float(answer.get("zero_distance_m")) or 0.0
+            full_credit_distance = self._to_float(answer.get("full_credit_distance_m")) or 0.0
+            if zero_distance <= 0:
+                return 0
+            if distance_m <= full_credit_distance:
+                return max_points
+            if distance_m >= zero_distance:
+                return 0
+            ratio = (distance_m - full_credit_distance) / (zero_distance - full_credit_distance)
+            return max(0, min(max_points, round(max_points * (1 - ratio))))
+
+        bands = answer.get("bands")
+        if not isinstance(bands, list):
+            return 0
+        band_entries = [band for band in bands if isinstance(band, dict)]
+        for band in sorted(
+            band_entries,
+            key=lambda entry: self._to_float(entry.get("distance_m")) or 0.0,
+        ):
+            band_distance = self._to_float(band.get("distance_m"))
+            if band_distance is None:
+                continue
+            if distance_m <= band_distance:
+                return max(0, min(max_points, int(band.get("points") or 0)))
+        return 0
+
+    def _coerce_map_point(self, value: Any) -> dict[str, float] | None:
+        if not isinstance(value, dict):
+            return None
+        try:
+            lat = self._to_float(value.get("lat"))
+            lng = self._to_float(value.get("lng"))
+        except TypeError, ValueError:
+            return None
+        if lat is None or lng is None:
+            return None
+        if lat < -90 or lat > 90 or lng < -180 or lng > 180:
+            return None
+        return {"lat": lat, "lng": lng}
+
+    def _haversine_distance_m(
+        self,
+        left: dict[str, float],
+        right: dict[str, float],
+    ) -> float:
+        earth_radius_m = 6_371_000
+        left_lat = radians(left["lat"])
+        right_lat = radians(right["lat"])
+        delta_lat = radians(right["lat"] - left["lat"])
+        delta_lng = radians(right["lng"] - left["lng"])
+        half_chord = (
+            sin(delta_lat / 2) ** 2 + cos(left_lat) * cos(right_lat) * sin(delta_lng / 2) ** 2
+        )
+        return 2 * earth_radius_m * asin(sqrt(half_chord))
 
     def _to_float(self, value: Any) -> float | None:
         if value in (None, ""):
@@ -1529,6 +1640,8 @@ class GameRuntimeService:
             return EvaluationType.ORDERING_MATCH
         if player_input.kind == PlayerInputKind.CHECKBOX:
             return EvaluationType.NONE
+        if player_input.kind == PlayerInputKind.MAP:
+            return EvaluationType.MAP_DISTANCE
         return EvaluationType.NONE
 
     async def _all_answerable_players_submitted(
@@ -1568,6 +1681,8 @@ class GameRuntimeService:
         if evaluation_type == EvaluationType.MULTI_SELECT_WEIGHTED:
             option_scores = answer.get("option_scores") if isinstance(answer, dict) else None
             return isinstance(option_scores, list) and len(option_scores) > 0
+        if evaluation_type == EvaluationType.MAP_DISTANCE:
+            return self._map_distance_answer(step) is not None
         return False
 
     def _is_hostless_auto_progress_step(

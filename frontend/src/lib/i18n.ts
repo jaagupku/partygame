@@ -218,6 +218,10 @@ const en = defineMessages({
 		selectionSubmitted: 'Your selection is submitted. You can choose again on the next step.',
 		tapOptionsThenSubmit: 'Tap options to highlight them, then submit when you are ready.',
 		submitSelection: 'Submit Selection',
+		mapAnswer: 'Map Answer',
+		tapMapToGuess: 'Tap the map to place your guess, then submit.',
+		mapGuessSubmitted: 'Your map guess is submitted. You can guess again on the next step.',
+		submitMapGuess: 'Submit Map Guess',
 		answerMarkedCorrect: 'Correct',
 		answerMarkedWrong: 'Wrong',
 		noPhoneInput: 'No phone input is required for this step.',
@@ -453,6 +457,34 @@ const en = defineMessages({
 		minValue: 'Min value',
 		maxValue: 'Max value',
 		sliderStep: 'Slider step',
+		mapLockedArea: 'Locked map area',
+		mapLockedAreaHelp: 'Move and zoom the map to define the area players can use.',
+		mapCombinedEditorHelp:
+			'Configure the locked area, correct point, and scoring radiuses together in the scoring section.',
+		mapPlayerBaseLayer: 'Player map style',
+		mapPlayerBaseLayerHelp: 'This style is used while players answer. The reveal still uses OSM.',
+		mapBaseLayerOsm: 'OSM with labels',
+		mapBaseLayerLightNoLabels: 'Simplified without labels',
+		mapPreviewPlayerBaseLayer: 'Hold to preview player map',
+		mapApplyCurrentView: 'Use current view as locked area',
+		mapCurrentViewUnsaved: 'Current map view is not saved as the player area yet.',
+		mapCurrentViewSaved: 'Dashed rectangle shows the saved player area.',
+		mapCorrectPoint: 'Correct location',
+		mapCorrectPointHelp: 'Click the map to place the correct point.',
+		mapScoringMode: 'Map scoring mode',
+		mapScoringBands: 'Radius bands',
+		mapScoringLinear: 'Smooth decay',
+		mapMaxPoints: 'Max points',
+		mapFullCreditDistance: 'Full credit distance (m)',
+		mapZeroDistance: 'Zero points distance (m)',
+		mapBands: 'Scoring bands',
+		addMapBand: 'Add band',
+		removeMapBand: 'Remove band',
+		mapBandDistance: 'Distance (m)',
+		mapBandLabel: 'Label',
+		mapStreetPreset: 'Street scale',
+		mapCityPreset: 'City scale',
+		mapCountryPreset: 'Country scale',
 		itemsToOrder: 'Items to order',
 		answerChoices: 'Answer choices',
 		selectableAnswers: 'Selectable answers',
@@ -587,6 +619,11 @@ const en = defineMessages({
 				prompt: 'Arrange these in the correct order',
 				options: ['Item 1', 'Item 2', 'Item 3']
 			},
+			map_point: {
+				label: 'Map Point',
+				description: 'Players place one guess on a locked map.',
+				prompt: 'Place your guess on the map'
+			},
 			open_answer: {
 				label: 'Open Answer',
 				description: 'Players type a short answer that is checked exactly.',
@@ -632,6 +669,10 @@ const en = defineMessages({
 				label: 'Multiple Choice',
 				description: 'Players can select several options, with optional weighting.'
 			},
+			map: {
+				label: 'Map Point',
+				description: 'Players select one location inside a locked map area.'
+			},
 			buzzer: {
 				label: 'Buzzer',
 				description: 'Players race to buzz in before answering live.'
@@ -669,6 +710,10 @@ const en = defineMessages({
 			multi_select_weighted: {
 				label: 'Weighted Choices',
 				description: 'Each selected option adds or subtracts points.'
+			},
+			map_distance: {
+				label: 'Map Distance',
+				description: 'Closer map guesses earn more points.'
 			}
 		},
 		health: {
@@ -933,6 +978,10 @@ const et: Messages = {
 		selectionSubmitted: 'Sinu valik on saadetud. Järgmisel sammul saad uuesti valida.',
 		tapOptionsThenSubmit: 'Puuduta valikuid nende märkimiseks ja saada siis, kui oled valmis.',
 		submitSelection: 'Saada valik',
+		mapAnswer: 'Kaardivastus',
+		tapMapToGuess: 'Puuduta kaarti, et oma pakkumine asetada, ja saada seejärel vastus.',
+		mapGuessSubmitted: 'Sinu kaardipakkumine on saadetud. Järgmisel sammul saad uuesti pakkuda.',
+		submitMapGuess: 'Saada kaardipakkumine',
 		answerMarkedCorrect: 'Õige',
 		answerMarkedWrong: 'Vale',
 		noPhoneInput: 'Selles sammus ei ole telefoni sisendit vaja.',
@@ -1164,6 +1213,35 @@ const et: Messages = {
 		minValue: 'Min väärtus',
 		maxValue: 'Maks väärtus',
 		sliderStep: 'Liuguri samm',
+		mapLockedArea: 'Lukustatud kaardiala',
+		mapLockedAreaHelp: 'Liiguta ja suumi kaarti, et määrata ala, mida mängijad kasutada saavad.',
+		mapCombinedEditorHelp:
+			'Seadista lukustatud ala, õige punkt ja punktiraadiused koos punktiarvestuse jaotises.',
+		mapPlayerBaseLayer: 'Mängija kaardistiil',
+		mapPlayerBaseLayerHelp:
+			'Seda stiili kasutatakse mängijate vastamise ajal. Paljastus kasutab endiselt OSM-i.',
+		mapBaseLayerOsm: 'OSM siltidega',
+		mapBaseLayerLightNoLabels: 'Lihtsustatud ilma siltideta',
+		mapPreviewPlayerBaseLayer: 'Hoia all, et näha mängija kaarti',
+		mapApplyCurrentView: 'Kasuta praegust vaadet lukustatud alana',
+		mapCurrentViewUnsaved: 'Praegune kaardivaade pole veel mängija alana salvestatud.',
+		mapCurrentViewSaved: 'Katkendlik ristkülik näitab salvestatud mängija ala.',
+		mapCorrectPoint: 'Õige asukoht',
+		mapCorrectPointHelp: 'Klõpsa kaardil, et asetada õige punkt.',
+		mapScoringMode: 'Kaardi punktirežiim',
+		mapScoringBands: 'Raadiuse astmed',
+		mapScoringLinear: 'Sujuv vähenemine',
+		mapMaxPoints: 'Maksimum punktid',
+		mapFullCreditDistance: 'Täispunktide kaugus (m)',
+		mapZeroDistance: 'Nullpunktide kaugus (m)',
+		mapBands: 'Punktiastmed',
+		addMapBand: 'Lisa aste',
+		removeMapBand: 'Eemalda aste',
+		mapBandDistance: 'Kaugus (m)',
+		mapBandLabel: 'Silt',
+		mapStreetPreset: 'Tänava mõõtkava',
+		mapCityPreset: 'Linna mõõtkava',
+		mapCountryPreset: 'Riigi mõõtkava',
 		itemsToOrder: 'Järjestatavad elemendid',
 		answerChoices: 'Vastusvariandid',
 		selectableAnswers: 'Valitavad vastused',
@@ -1302,6 +1380,11 @@ const et: Messages = {
 				prompt: 'Sea need õigesse järjekorda',
 				options: ['Element 1', 'Element 2', 'Element 3']
 			},
+			map_point: {
+				label: 'Kaardipunkt',
+				description: 'Mängijad asetavad ühe pakkumise lukustatud kaardile.',
+				prompt: 'Aseta oma pakkumine kaardile'
+			},
 			open_answer: {
 				label: 'Avatud vastus',
 				description: 'Mängijad kirjutavad lühivastuse, mida kontrollitakse täpselt.',
@@ -1347,6 +1430,10 @@ const et: Messages = {
 				label: 'Mitmikvalik',
 				description: 'Mängijad saavad valida mitu vastust, koos punktikaaludega.'
 			},
+			map: {
+				label: 'Kaardipunkt',
+				description: 'Mängijad valivad ühe asukoha lukustatud kaardialal.'
+			},
 			buzzer: {
 				label: 'Summer',
 				description: 'Mängijad võistlevad, et esimesena vajutada ja vastata.'
@@ -1385,6 +1472,10 @@ const et: Messages = {
 			multi_select_weighted: {
 				label: 'Kaalutud valikud',
 				description: 'Iga valitud vastus lisab või lahutab punkte.'
+			},
+			map_distance: {
+				label: 'Kaardi kaugus',
+				description: 'Lähemad kaardipakkumised teenivad rohkem punkte.'
 			}
 		},
 		health: {

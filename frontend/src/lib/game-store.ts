@@ -19,6 +19,7 @@ export function createGameStore(initialState: Lobby) {
 		pendingReviewCount: 0,
 		revealedSubmission: undefined,
 		revealedAnswer: undefined,
+		submissions: [],
 		endGame: undefined,
 		lastReaction: undefined
 	};

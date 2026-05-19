@@ -757,3 +757,117 @@ def test_checkbox_weighted_evaluation_accepts_negative_points():
     )
 
     assert definition.rounds[0].steps[0].evaluation.type_ == "multi_select_weighted"
+
+
+def _map_input_payload():
+    return {
+        "kind": "map",
+        "map": {
+            "selection_mode": "point",
+            "bounds": {"north": 60.0, "south": 59.0, "east": 25.0, "west": 24.0},
+            "initial_center": {"lat": 59.5, "lng": 24.5},
+            "initial_zoom": 10,
+            "min_zoom": 8,
+            "max_zoom": 18,
+        },
+    }
+
+
+def _map_distance_answer_payload():
+    return {
+        "correct_point": {"lat": 59.45, "lng": 24.75},
+        "scoring_mode": "bands",
+        "max_points": 5,
+        "zero_distance_m": 50000,
+        "full_credit_distance_m": 500,
+        "bands": [
+            {"distance_m": 5000, "points": 3, "label": "near"},
+            {"distance_m": 500, "points": 5, "label": "exact"},
+        ],
+    }
+
+
+def test_map_distance_evaluation_accepts_map_input_and_sorts_bands():
+    definition = GameDefinition.model_validate(
+        {
+            "id": "map_question",
+            "title": "Map Question",
+            "rounds": [
+                {
+                    "id": "round1",
+                    "steps": [
+                        {
+                            "id": "step1",
+                            "title": "Place it",
+                            "player_input": _map_input_payload(),
+                            "evaluation": {
+                                "type_": "map_distance",
+                                "points": 5,
+                                "answer": _map_distance_answer_payload(),
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    answer = definition.rounds[0].steps[0].evaluation.answer
+    assert answer["bands"][0]["distance_m"] == 500
+    assert answer["bands"][1]["distance_m"] == 5000
+
+
+def test_map_distance_evaluation_requires_map_input():
+    with pytest.raises(ValueError):
+        GameDefinition.model_validate(
+            {
+                "id": "broken_map",
+                "title": "Broken Map",
+                "rounds": [
+                    {
+                        "id": "round1",
+                        "steps": [
+                            {
+                                "id": "step1",
+                                "title": "Wrong input",
+                                "player_input": {"kind": "number"},
+                                "evaluation": {
+                                    "type_": "map_distance",
+                                    "points": 5,
+                                    "answer": _map_distance_answer_payload(),
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+
+def test_map_distance_correct_point_must_be_inside_locked_bounds():
+    answer = _map_distance_answer_payload()
+    answer["correct_point"] = {"lat": 58.0, "lng": 24.75}
+    with pytest.raises(ValueError):
+        GameDefinition.model_validate(
+            {
+                "id": "bad_map_point",
+                "title": "Bad Map Point",
+                "rounds": [
+                    {
+                        "id": "round1",
+                        "steps": [
+                            {
+                                "id": "step1",
+                                "title": "Out of bounds",
+                                "player_input": _map_input_payload(),
+                                "evaluation": {
+                                    "type_": "map_distance",
+                                    "points": 5,
+                                    "answer": answer,
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        )

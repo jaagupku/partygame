@@ -1,6 +1,14 @@
 type ConnectionStatus = 'connected' | 'disconnected';
 type GameState = 'waiting_for_players' | 'running' | 'paused';
-type PlayerInputKind = 'none' | 'buzzer' | 'text' | 'number' | 'ordering' | 'radio' | 'checkbox';
+type PlayerInputKind =
+	| 'none'
+	| 'buzzer'
+	| 'text'
+	| 'number'
+	| 'ordering'
+	| 'radio'
+	| 'checkbox'
+	| 'map';
 type EvaluationType =
 	| 'none'
 	| 'host_judged'
@@ -8,7 +16,8 @@ type EvaluationType =
 	| 'exact_number'
 	| 'closest_number'
 	| 'ordering_match'
-	| 'multi_select_weighted';
+	| 'multi_select_weighted'
+	| 'map_distance';
 type UserRole = 'admin' | 'user';
 type DefinitionVisibility = 'private' | 'login_required' | 'public';
 type RevealCurve = [number, number, number, number];
@@ -27,6 +36,43 @@ type CheckboxOptionScore = {
 
 type CheckboxWeightedAnswer = {
 	option_scores: CheckboxOptionScore[];
+};
+
+type MapPoint = {
+	lat: number;
+	lng: number;
+};
+
+type MapBounds = {
+	north: number;
+	south: number;
+	east: number;
+	west: number;
+};
+
+type MapInputConfig = {
+	selection_mode: 'point';
+	base_layer?: 'osm' | 'light_nolabels';
+	bounds: MapBounds;
+	initial_center: MapPoint;
+	initial_zoom: number;
+	min_zoom?: number;
+	max_zoom?: number;
+};
+
+type MapDistanceBand = {
+	distance_m: number;
+	points: number;
+	label?: string;
+};
+
+type MapDistanceAnswer = {
+	correct_point: MapPoint;
+	scoring_mode: 'bands' | 'linear';
+	max_points: number;
+	zero_distance_m: number;
+	full_credit_distance_m?: number;
+	bands?: MapDistanceBand[];
 };
 
 type Lobby = {
@@ -141,11 +187,12 @@ type StepDefinition = {
 		min_value?: number;
 		max_value?: number;
 		step?: number;
+		map?: MapInputConfig;
 	};
 	evaluation: {
 		type_: EvaluationType;
 		points: number;
-		answer?: string | number | string[] | CheckboxWeightedAnswer | null;
+		answer?: string | number | string[] | CheckboxWeightedAnswer | MapDistanceAnswer | null;
 		max_distance?: number;
 	};
 	host_behavior: {
@@ -317,6 +364,7 @@ type RuntimeStepState = {
 	slider_min?: number;
 	slider_max?: number;
 	slider_step?: number;
+	map?: MapInputConfig;
 	media?: RuntimeMediaState;
 	timer: RuntimeTimerState;
 };
@@ -551,6 +599,7 @@ type HostGameState = Lobby & {
 	pendingReviewCount: number;
 	revealedSubmission?: RevealedSubmission;
 	revealedAnswer?: RevealedAnswer;
+	submissions?: SubmissionItem[];
 	endGame?: EndGameState;
 	lastReaction?: PlayerReactionEvent;
 };

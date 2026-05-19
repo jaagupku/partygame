@@ -9,7 +9,7 @@ from partygame import schemas
 from partygame.core.config import settings
 from partygame.schemas.events import Event
 from partygame.utils import get_unique_join_code, publish
-from partygame.service.player import remove as remove_player
+from partygame.service.player import public_runtime_snapshot, remove as remove_player
 from partygame.service.game import GameRuntimeService
 from partygame.service.definitions import (
     PostgresDefinitionProvider,
@@ -111,7 +111,7 @@ class GameController:
 
     async def send(self, payload: dict | BaseModel | str):
         if isinstance(payload, schemas.RuntimeSnapshotEvent):
-            payload = payload.model_copy(update={"host_answer": None, "submissions": []})
+            payload = public_runtime_snapshot(payload)
         if isinstance(payload, BaseModel):
             await self.websocket.send_text(payload.model_dump_json())
         elif isinstance(payload, dict):
@@ -126,7 +126,7 @@ class GameController:
         exclude: str | None = None,
     ):
         if isinstance(msg, schemas.RuntimeSnapshotEvent):
-            msg = msg.model_copy(update={"host_answer": None, "submissions": []})
+            msg = public_runtime_snapshot(msg)
         if players is None:
             players = await self.repo.get_player_ids(self.lobby.id, withscores=False)
         players = [player_id for player_id in players if player_id]

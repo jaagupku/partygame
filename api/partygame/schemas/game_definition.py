@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field, model_validator
@@ -32,6 +32,7 @@ class PlayerInputKind(StrEnum):
     ORDERING = auto()
     RADIO = auto()
     CHECKBOX = auto()
+    MAP = auto()
 
 
 class EvaluationType(StrEnum):
@@ -42,6 +43,93 @@ class EvaluationType(StrEnum):
     CLOSEST_NUMBER = auto()
     ORDERING_MATCH = auto()
     MULTI_SELECT_WEIGHTED = auto()
+    MAP_DISTANCE = auto()
+
+
+class MapPoint(BaseModel):
+    lat: float = Field(ge=-90.0, le=90.0)
+    lng: float = Field(ge=-180.0, le=180.0)
+
+
+class MapBounds(BaseModel):
+    north: float = Field(ge=-90.0, le=90.0)
+    south: float = Field(ge=-90.0, le=90.0)
+    east: float = Field(ge=-180.0, le=180.0)
+    west: float = Field(ge=-180.0, le=180.0)
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "MapBounds":
+        if self.north <= self.south:
+            raise ValueError("map bounds north must be greater than south")
+        if self.east <= self.west:
+            raise ValueError("map bounds east must be greater than west")
+        return self
+
+    def contains(self, point: MapPoint) -> bool:
+        return self.south <= point.lat <= self.north and self.west <= point.lng <= self.east
+
+
+class MapInputConfig(BaseModel):
+    selection_mode: Literal["point"] = "point"
+    base_layer: Literal["osm", "light_nolabels"] = "osm"
+    bounds: MapBounds
+    initial_center: MapPoint
+    initial_zoom: int = Field(ge=1, le=20)
+    min_zoom: int | None = Field(default=None, ge=1, le=20)
+    max_zoom: int | None = Field(default=None, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def validate_map_config(self) -> "MapInputConfig":
+        if not self.bounds.contains(self.initial_center):
+            raise ValueError("map initial_center must be inside bounds")
+        if (
+            self.min_zoom is not None
+            and self.max_zoom is not None
+            and self.min_zoom > self.max_zoom
+        ):
+            raise ValueError("map min_zoom must be less than or equal to max_zoom")
+        if self.min_zoom is not None and self.initial_zoom < self.min_zoom:
+            raise ValueError("map initial_zoom must be greater than or equal to min_zoom")
+        if self.max_zoom is not None and self.initial_zoom > self.max_zoom:
+            raise ValueError("map initial_zoom must be less than or equal to max_zoom")
+        return self
+
+
+class MapDistanceBand(BaseModel):
+    distance_m: float = Field(ge=0.0)
+    points: int
+    label: str | None = None
+
+
+class MapDistanceAnswer(BaseModel):
+    correct_point: MapPoint
+    scoring_mode: Literal["bands", "linear"] = "bands"
+    max_points: int = Field(ge=0)
+    zero_distance_m: float = Field(gt=0.0)
+    full_credit_distance_m: float | None = Field(default=None, ge=0.0)
+    bands: list[MapDistanceBand] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_scoring(self) -> "MapDistanceAnswer":
+        if (
+            self.full_credit_distance_m is not None
+            and self.full_credit_distance_m > self.zero_distance_m
+        ):
+            raise ValueError("full_credit_distance_m must be less than or equal to zero_distance_m")
+        if self.scoring_mode == "bands":
+            if not self.bands:
+                raise ValueError("map distance band scoring requires at least one band")
+            sorted_bands = sorted(self.bands, key=lambda band: band.distance_m)
+            previous_distance = -1.0
+            for band in sorted_bands:
+                if band.distance_m <= previous_distance:
+                    raise ValueError("map distance bands must use unique increasing distances")
+                previous_distance = band.distance_m
+            self.bands = [
+                band.model_copy(update={"points": min(max(band.points, 0), self.max_points)})
+                for band in sorted_bands
+            ]
+        return self
 
 
 class MediaDefinition(BaseModel):
@@ -91,6 +179,7 @@ class PlayerInputDefinition(BaseModel):
     min_value: float | None = None
     max_value: float | None = None
     step: float | None = None
+    map: MapInputConfig | None = None
 
     @property
     def is_slider(self) -> bool:
@@ -110,6 +199,13 @@ class PlayerInputDefinition(BaseModel):
             raise ValueError(f"{self.kind.value.capitalize()} inputs require at least two options")
         if self.kind == PlayerInputKind.BUZZER and self.options:
             raise ValueError("Buzzer inputs cannot define options")
+        if self.kind == PlayerInputKind.MAP:
+            if self.options:
+                raise ValueError("Map inputs cannot define options")
+            if self.map is None:
+                raise ValueError("Map inputs require map configuration")
+        elif self.map is not None:
+            raise ValueError("Only map inputs can define map configuration")
         if (
             self.min_value is not None
             and self.max_value is not None
@@ -173,6 +269,11 @@ class StepDefinition(BaseModel):
                 EvaluationType.HOST_JUDGED,
                 EvaluationType.MULTI_SELECT_WEIGHTED,
             },
+            PlayerInputKind.MAP: {
+                EvaluationType.NONE,
+                EvaluationType.HOST_JUDGED,
+                EvaluationType.MAP_DISTANCE,
+            },
         }
         allowed = allowed_evaluations[self.player_input.kind]
         if self.evaluation.type_ not in allowed:
@@ -201,6 +302,15 @@ class StepDefinition(BaseModel):
                 if not isinstance(points, int):
                     raise ValueError("option_scores points must be integers")
                 seen_options.add(option)
+        if self.evaluation.type_ == EvaluationType.MAP_DISTANCE:
+            if self.player_input.map is None:
+                raise ValueError("map_distance evaluation requires map input configuration")
+            if not isinstance(self.evaluation.answer, dict):
+                raise ValueError("map_distance evaluation requires an answer object")
+            answer = MapDistanceAnswer.model_validate(self.evaluation.answer)
+            if not self.player_input.map.bounds.contains(answer.correct_point):
+                raise ValueError("map_distance correct_point must be inside map bounds")
+            self.evaluation.answer = answer.model_dump(mode="json")
         return self
 
 
