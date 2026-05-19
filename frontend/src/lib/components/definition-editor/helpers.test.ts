@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	DEFAULT_TIMER_SECONDS,
 	buildRuntimePreviewStep,
 	createStepFromTemplate,
 	getExactTextMaxDistance,
@@ -70,6 +71,7 @@ describe('definition editor helpers', () => {
 
 		expect(step.evaluation.type_).toBe('exact_text');
 		expect(getExactTextMaxDistance(step)).toBe(2);
+		expect(step.timer.seconds).toBe(DEFAULT_TIMER_SECONDS);
 	});
 
 	it('calculates checkbox weighted maximum from positive option scores', () => {
