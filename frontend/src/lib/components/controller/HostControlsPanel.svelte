@@ -65,6 +65,14 @@
 	function hostActionLabel(action?: NextHostAction): string {
 		switch (action?.kind) {
 			case 'answer_reveal':
+				if (
+					activeStep?.input_kind === 'drawing' &&
+					activeStep.evaluation_type === 'favorite_vote'
+				) {
+					return displayPhase === 'drawing_vote'
+						? $messages.gameplay.nextStateDrawingResults
+						: $messages.gameplay.nextStateDrawingVote;
+				}
 				return $messages.gameplay.nextStateAnswerReveal;
 			case 'next_question':
 				return $messages.gameplay.nextStateQuestion;

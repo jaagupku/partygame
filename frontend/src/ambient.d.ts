@@ -8,7 +8,8 @@ type PlayerInputKind =
 	| 'ordering'
 	| 'radio'
 	| 'checkbox'
-	| 'map';
+	| 'map'
+	| 'drawing';
 type EvaluationType =
 	| 'none'
 	| 'host_judged'
@@ -17,7 +18,8 @@ type EvaluationType =
 	| 'closest_number'
 	| 'ordering_match'
 	| 'multi_select_weighted'
-	| 'map_distance';
+	| 'map_distance'
+	| 'favorite_vote';
 type UserRole = 'admin' | 'user';
 type DefinitionVisibility = 'private' | 'login_required' | 'public';
 type RevealCurve = [number, number, number, number];
@@ -79,6 +81,24 @@ type MapDistanceAnswer = {
 	zero_distance_m?: number | null;
 	full_credit_distance_m?: number | null;
 	bands?: MapDistanceBand[];
+};
+
+type DrawingPoint = {
+	x: number;
+	y: number;
+};
+
+type DrawingStroke = {
+	color: string;
+	size: number;
+	eraser: boolean;
+	points: DrawingPoint[];
+};
+
+type DrawingSubmission = {
+	width: 512;
+	height: 384;
+	strokes: DrawingStroke[];
 };
 
 type Lobby = {
@@ -490,6 +510,10 @@ type RuntimeSnapshotEvent = {
 	submitted_player_ids: string[];
 	submission_count: number;
 	pending_review_count: number;
+	drawing_items: DrawingVoteItem[];
+	own_drawing_id?: string | null;
+	drawing_voted_player_ids: string[];
+	drawing_vote_count: number;
 	revealed_submission?: RevealedSubmission;
 	revealed_answer?: RevealedAnswer;
 	host_answer?: RevealedAnswer;
@@ -521,6 +545,10 @@ type RuntimePatchEvent = {
 		submitted_player_ids?: string[];
 		submission_count?: number;
 		pending_review_count?: number;
+		drawing_items?: DrawingVoteItem[];
+		own_drawing_id?: string | null;
+		drawing_voted_player_ids?: string[];
+		drawing_vote_count?: number;
 		revealed_submission?: RevealedSubmission;
 		revealed_answer?: RevealedAnswer;
 		host_answer?: RevealedAnswer;
@@ -533,6 +561,16 @@ type SubmissionItem = {
 	player_id: string;
 	value: unknown;
 	reviewed: boolean;
+};
+
+type DrawingVoteItem = {
+	id: string;
+	label: string;
+	value: unknown;
+	player_id?: string | null;
+	player_name?: string | null;
+	vote_count: number;
+	points_awarded: number;
 };
 
 type SubmissionsUpdatedEvent = {
@@ -624,6 +662,10 @@ type HostGameState = Lobby & {
 	disabledBuzzerPlayerIds: string[];
 	submissionCount: number;
 	pendingReviewCount: number;
+	drawingItems?: DrawingVoteItem[];
+	ownDrawingId?: string;
+	drawingVotedPlayerIds?: string[];
+	drawingVoteCount?: number;
 	revealedSubmission?: RevealedSubmission;
 	revealedAnswer?: RevealedAnswer;
 	submissions?: SubmissionItem[];
@@ -660,6 +702,10 @@ type ControllerState = {
 	hasSubmitted: boolean;
 	submissionCount: number;
 	pendingReviewCount: number;
+	drawingItems: DrawingVoteItem[];
+	ownDrawingId?: string;
+	drawingVotedPlayerIds: string[];
+	drawingVoteCount: number;
 	revealedSubmission?: RevealedSubmission;
 	revealedAnswer?: RevealedAnswer;
 	hostAnswer?: RevealedAnswer;

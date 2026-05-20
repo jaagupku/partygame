@@ -49,3 +49,24 @@ def test_public_runtime_snapshot_hides_non_map_reveal_submissions():
 
     assert public_snapshot.host_answer is None
     assert public_snapshot.submissions == []
+
+
+def test_public_runtime_snapshot_sets_viewer_own_drawing_id_without_owner_order():
+    snapshot = _snapshot(
+        input_kind=schemas.PlayerInputKind.DRAWING,
+        evaluation_type=schemas.EvaluationType.FAVORITE_VOTE,
+    ).model_copy(
+        update={
+            "display_phase": "drawing_vote",
+            "drawing_owner_ids": ["player-1", "player-2"],
+            "drawing_items": [
+                schemas.DrawingVoteItem(id="drawing:0", label="Drawing A", value={}),
+                schemas.DrawingVoteItem(id="drawing:1", label="Drawing B", value={}),
+            ],
+        }
+    )
+
+    public_snapshot = public_runtime_snapshot(snapshot, viewer_player_id="player-2")
+
+    assert public_snapshot.own_drawing_id == "drawing:1"
+    assert public_snapshot.drawing_owner_ids == []

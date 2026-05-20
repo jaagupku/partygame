@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
+	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
+	import DrawingInput from '$lib/components/DrawingInput.svelte';
 	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
 	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
 	import OrderingList from '$lib/components/OrderingList.svelte';
@@ -10,10 +12,14 @@
 		buzzerActive: boolean;
 		canContinueHostlessInfoSlide: boolean;
 		disabledBuzzerPlayerIds: string[];
+		drawingItems: DrawingVoteItem[];
+		ownDrawingId?: string;
+		drawingVotedPlayerIds: string[];
 		hasSubmitted: boolean;
 		playerId: string;
 		onContinueInfoSlide: () => void;
 		onSubmitAnswer: (value: unknown) => void;
+		onSubmitDrawingVote: (drawingId: string) => void;
 	}
 
 	let {
@@ -22,10 +28,14 @@
 		buzzerActive,
 		canContinueHostlessInfoSlide,
 		disabledBuzzerPlayerIds,
+		drawingItems,
+		ownDrawingId,
+		drawingVotedPlayerIds,
 		hasSubmitted,
 		playerId,
 		onContinueInfoSlide,
-		onSubmitAnswer
+		onSubmitAnswer,
+		onSubmitDrawingVote
 	}: PlayerInputPanelProps = $props();
 
 	let answerValue = $state<string | number>('');
@@ -33,6 +43,7 @@
 	let selectedRadioOption = $state<string | null>(null);
 	let selectedCheckboxOptions = $state<string[]>([]);
 	let selectedMapPoint = $state<MapPoint | null>(null);
+	let pendingDrawingVoteId = $state<string | undefined>(undefined);
 	let orderingStepId = $state<string | undefined>(undefined);
 	let inputStepId = $state<string | undefined>(undefined);
 	let pendingSubmissionStepId = $state<string | undefined>(undefined);
@@ -40,6 +51,11 @@
 	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
 	const useNumberSlider = $derived(hasConfiguredNumberSlider(activeStep));
+	const drawingVoteSubmitted = $derived(drawingVotedPlayerIds.includes(playerId));
+	const visibleDrawingItems = $derived(drawingItems.filter((item) => item.id !== ownDrawingId));
+	const drawingVoteDisabled = $derived(
+		baseInputDisabled || drawingVoteSubmitted || Boolean(pendingDrawingVoteId)
+	);
 
 	$effect(() => {
 		const step = activeStep;
@@ -48,6 +64,7 @@
 			selectedRadioOption = null;
 			selectedCheckboxOptions = [];
 			selectedMapPoint = null;
+			pendingDrawingVoteId = undefined;
 			inputStepId = step?.id;
 			pendingSubmissionStepId = undefined;
 		}
@@ -66,6 +83,12 @@
 	$effect(() => {
 		if (hasSubmitted) {
 			pendingSubmissionStepId = undefined;
+		}
+	});
+
+	$effect(() => {
+		if (drawingVoteSubmitted) {
+			pendingDrawingVoteId = undefined;
 		}
 	});
 
@@ -129,9 +152,45 @@
 			step.slider_step !== null
 		);
 	}
+
+	function submitDrawingVote(drawingId: string) {
+		if (drawingVoteDisabled) {
+			return;
+		}
+		pendingDrawingVoteId = drawingId;
+		onSubmitDrawingVote(drawingId);
+	}
 </script>
 
-{#if activeStep?.input_kind === 'buzzer'}
+{#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && activeStep.input_enabled && drawingItems.length > 0}
+	<section class="card stack-md">
+		<h2 class="label-title text-2xl">{$messages.gameplay.voteForFavoriteDrawing}</h2>
+		<p class="text-sm text-slate-600">
+			{drawingVoteSubmitted
+				? $messages.gameplay.drawingVoteSubmitted
+				: $messages.gameplay.pickFavoriteDrawing}
+		</p>
+		{#if visibleDrawingItems.length > 0}
+			<div class="grid gap-3 sm:grid-cols-2">
+				{#each visibleDrawingItems as item}
+					<button
+						type="button"
+						class={`drawing-vote-card ${pendingDrawingVoteId === item.id ? 'drawing-vote-card-selected' : ''}`}
+						disabled={drawingVoteDisabled}
+						onclick={() => submitDrawingVote(item.id)}
+					>
+						<DrawingDisplay drawing={item.value} />
+						<span>{item.label}</span>
+					</button>
+				{/each}
+			</div>
+		{:else}
+			<p class="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+				{$messages.gameplay.noOtherDrawingsToVote}
+			</p>
+		{/if}
+	</section>
+{:else if activeStep?.input_kind === 'buzzer'}
 	<section class="card stack-md text-center">
 		<h2 class="label-title text-2xl">{$messages.gameplay.buzzer}</h2>
 		<p>
@@ -327,6 +386,18 @@
 			{$messages.gameplay.submitMapGuess}
 		</button>
 	</section>
+{:else if activeStep?.input_kind === 'drawing'}
+	<section class="card stack-md">
+		<h2 class="label-title text-2xl">{$messages.gameplay.drawingAnswer}</h2>
+		<p class="text-sm text-slate-600">
+			{inputDisabled
+				? hasSubmitted
+					? $messages.gameplay.drawingSubmitted
+					: $messages.gameplay.stepClosedAnswersDisabled
+				: $messages.gameplay.drawYourAnswer}
+		</p>
+		<DrawingInput disabled={inputDisabled} onSubmit={onSubmitAnswer} />
+	</section>
 {:else}
 	<section class="card text-center">
 		<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
@@ -340,6 +411,33 @@
 {/if}
 
 <style>
+	.drawing-vote-card {
+		display: grid;
+		gap: 0.65rem;
+		border-radius: 1rem;
+		border: 2px solid rgb(226 232 240);
+		background: rgb(255 255 255 / 0.82);
+		padding: 0.7rem;
+		text-align: left;
+		font-weight: 900;
+		color: rgb(15 23 42);
+		transition:
+			border-color 150ms ease,
+			transform 150ms ease,
+			box-shadow 150ms ease;
+	}
+
+	.drawing-vote-card:not(:disabled):hover {
+		transform: translateY(-1px);
+		border-color: rgb(59 130 246);
+		box-shadow: 0 12px 24px rgb(15 23 42 / 0.12);
+	}
+
+	.drawing-vote-card-selected {
+		border-color: rgb(37 99 235);
+		background: rgb(239 246 255);
+	}
+
 	.number-slider {
 		appearance: none;
 		width: 100%;

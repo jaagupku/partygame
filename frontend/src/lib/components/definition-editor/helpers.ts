@@ -58,7 +58,8 @@ export const INPUT_KINDS: PlayerInputKind[] = [
 	'ordering',
 	'radio',
 	'checkbox',
-	'map'
+	'map',
+	'drawing'
 ];
 
 export const EVALUATION_TYPES: EvaluationType[] = [
@@ -69,7 +70,8 @@ export const EVALUATION_TYPES: EvaluationType[] = [
 	'closest_number',
 	'ordering_match',
 	'multi_select_weighted',
-	'map_distance'
+	'map_distance',
+	'favorite_vote'
 ];
 
 export const INPUT_KIND_EVALUATIONS: Record<PlayerInputKind, EvaluationType[]> = {
@@ -80,7 +82,8 @@ export const INPUT_KIND_EVALUATIONS: Record<PlayerInputKind, EvaluationType[]> =
 	ordering: ['none', 'host_judged', 'ordering_match'],
 	radio: ['none', 'host_judged', 'exact_text'],
 	checkbox: ['none', 'host_judged', 'multi_select_weighted'],
-	map: ['none', 'host_judged', 'map_distance']
+	map: ['none', 'host_judged', 'map_distance'],
+	drawing: ['none', 'favorite_vote']
 };
 
 export const DEFAULT_EVALUATION_BY_INPUT_KIND: Record<PlayerInputKind, EvaluationType> = {
@@ -91,7 +94,8 @@ export const DEFAULT_EVALUATION_BY_INPUT_KIND: Record<PlayerInputKind, Evaluatio
 	ordering: 'ordering_match',
 	radio: 'exact_text',
 	checkbox: 'multi_select_weighted',
-	map: 'map_distance'
+	map: 'map_distance',
+	drawing: 'favorite_vote'
 };
 
 export const DEFAULT_MAP_CONFIG: MapInputConfig = {
@@ -204,6 +208,18 @@ export function getInputKindDetails(): Record<PlayerInputKind, InputKindPresenta
 			usesNumericRange: false,
 			usesMap: true
 		},
+		drawing: {
+			kind: 'drawing',
+			label: localized.drawing.label,
+			description: localized.drawing.description,
+			icon: 'fluent:draw-shape-24-filled',
+			recommendedEvaluation: 'favorite_vote',
+			usesPrompt: true,
+			usesPlaceholder: false,
+			usesOptions: false,
+			usesNumericRange: false,
+			usesMap: false
+		},
 		buzzer: {
 			kind: 'buzzer',
 			label: localized.buzzer.label,
@@ -296,6 +312,14 @@ export function getEvaluationDetails(): Record<EvaluationType, EvaluationPresent
 			description: localized.map_distance.description,
 			icon: 'fluent:map-16-filled',
 			requiresAnswer: true,
+			manualReview: false
+		},
+		favorite_vote: {
+			type: 'favorite_vote',
+			label: localized.favorite_vote.label,
+			description: localized.favorite_vote.description,
+			icon: 'fluent:heart-16-filled',
+			requiresAnswer: false,
 			manualReview: false
 		}
 	};

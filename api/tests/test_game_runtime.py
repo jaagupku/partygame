@@ -129,6 +129,46 @@ class MixedDefinitionProvider:
         return []
 
 
+class DrawingDefinitionProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Drawing Test",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="drawing_step",
+                            title="Draw a cat",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.DRAWING),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.FAVORITE_VOTE,
+                                points=2,
+                                answer=None,
+                            ),
+                        )
+                    ],
+                )
+            ],
+        )
+
+
+def valid_drawing(color: str = "#0f172a") -> dict:
+    return {
+        "width": 512,
+        "height": 384,
+        "strokes": [
+            {
+                "color": color,
+                "size": 8,
+                "eraser": False,
+                "points": [{"x": 0.1, "y": 0.2}, {"x": 0.4, "y": 0.5}],
+            }
+        ],
+    }
+
+
 class NoneEvaluationProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -1823,3 +1863,104 @@ async def test_end_game_stage_advances_through_podium_reveal_order():
     snapshot = await service.build_snapshot(lobby)
     assert snapshot.end_game is not None
     assert snapshot.end_game.sequence_stage == "scoreboard"
+
+
+@pytest.mark.asyncio
+async def test_drawing_submission_validation_and_vote_scoring():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo, DrawingDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="drawing_test", host_enabled=True)
+    lobby, _ = await service.start_game(lobby)
+
+    invalid_events, invalid_handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        {"width": 512, "height": 384, "strokes": []},
+    )
+    assert invalid_events == []
+    assert invalid_handled is False
+
+    first_events, first_handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        valid_drawing("#ef4444"),
+    )
+    duplicate_events, duplicate_handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        valid_drawing("#3b82f6"),
+    )
+    second_events, second_handled = await service.submit_player_input(
+        lobby,
+        "p2",
+        valid_drawing("#22c55e"),
+    )
+    assert first_events == []
+    assert first_handled is True
+    assert duplicate_events == []
+    assert duplicate_handled is False
+    assert second_events == []
+    assert second_handled is True
+
+    events = await service.close_step(lobby)
+    assert isinstance(events[-1], schemas.RuntimeSnapshotEvent)
+    assert repo.steps["g1"]["display_phase"] == "drawing_vote"
+    assert events[-1].drawing_items[0].player_id is None
+    assert events[-1].drawing_items[0].player_name is None
+
+    self_vote_events, self_vote_handled = await service.submit_drawing_vote(
+        lobby,
+        "p1",
+        "drawing:0",
+    )
+    assert self_vote_events == []
+    assert self_vote_handled is False
+
+    first_vote_events, first_vote_handled = await service.submit_drawing_vote(
+        lobby,
+        "p1",
+        "drawing:1",
+    )
+    duplicate_vote_events, duplicate_vote_handled = await service.submit_drawing_vote(
+        lobby,
+        "p1",
+        "drawing:1",
+    )
+    assert first_vote_events == []
+    assert first_vote_handled is True
+    assert duplicate_vote_events == []
+    assert duplicate_vote_handled is False
+
+    final_events, final_handled = await service.submit_drawing_vote(lobby, "p2", "drawing:0")
+    assert final_handled is True
+    assert any(isinstance(event, schemas.ScoresUpdatedEvent) for event in final_events)
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert repo.scores["p1"] == 2
+    assert repo.scores["p2"] == 7
+
+    final_snapshot = final_events[-1]
+    assert isinstance(final_snapshot, schemas.RuntimeSnapshotEvent)
+    assert [item.player_name for item in final_snapshot.drawing_items] == ["Alice", "Bob"]
+    assert [item.vote_count for item in final_snapshot.drawing_items] == [1, 1]
+    assert [item.points_awarded for item in final_snapshot.drawing_items] == [2, 2]
+
+
+@pytest.mark.asyncio
+async def test_single_drawing_skips_vote_phase_and_reveals_results():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo, DrawingDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="drawing_test", host_enabled=True)
+    lobby, _ = await service.start_game(lobby)
+
+    await service.submit_player_input(lobby, "p1", valid_drawing("#ef4444"))
+
+    events = await service.close_step(lobby)
+
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert repo.scores["p1"] == 0
+    assert repo.scores["p2"] == 5
+    snapshot = events[-1]
+    assert isinstance(snapshot, schemas.RuntimeSnapshotEvent)
+    assert snapshot.drawing_items[0].player_name == "Alice"
+    assert snapshot.drawing_items[0].vote_count == 0
+    assert snapshot.drawing_items[0].points_awarded == 0

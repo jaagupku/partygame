@@ -158,6 +158,9 @@ class GameRuntimeService:
                 "media_playback_revision": 0,
                 "media_volume": 1,
                 "answers": {},
+                "drawing_votes": {},
+                "drawing_vote_order": [],
+                "drawing_score_updates": {},
                 "evaluated": False,
                 "buzzer_active": lobby.host_enabled
                 and step.player_input.kind == PlayerInputKind.BUZZER,
@@ -302,11 +305,51 @@ class GameRuntimeService:
             step, value
         ):
             return [], False
+        if (
+            step.player_input.kind == PlayerInputKind.DRAWING
+            and not self._is_valid_drawing_submission(value)
+        ):
+            return [], False
         answers[player_id] = value
         await self.repo.set_step_cache(lobby.id, {"answers": answers})
         if await self._should_auto_close_on_all_submissions(
             lobby, step
         ) and await self._all_answerable_players_submitted(lobby, state | {"answers": answers}):
+            return await self.close_step(lobby), True
+        return [], True
+
+    async def submit_drawing_vote(
+        self,
+        lobby: schemas.Lobby,
+        player_id: str,
+        drawing_id: str,
+    ) -> tuple[list[schemas.BaseEvent], bool]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return [], False
+        step = await self.get_current_step(lobby)
+        if (
+            step is None
+            or player_id == lobby.host_id
+            or lobby.phase != "question_active"
+            or step.player_input.kind != PlayerInputKind.DRAWING
+            or step.evaluation.type_ != EvaluationType.FAVORITE_VOTE
+        ):
+            return [], False
+
+        state = await self.get_step_state(lobby.id)
+        if state.get("display_phase") != "drawing_vote":
+            return [], False
+        votes = dict(state.get("drawing_votes", {}))
+        if player_id in votes:
+            return [], False
+
+        target_player_id = self._drawing_player_id_for_vote_id(state, drawing_id)
+        if not target_player_id or target_player_id == player_id:
+            return [], False
+
+        votes[player_id] = target_player_id
+        await self.repo.set_step_cache(lobby.id, {"drawing_votes": votes})
+        if await self._all_drawing_voters_submitted(lobby, state | {"drawing_votes": votes}):
             return await self.close_step(lobby), True
         return [], True
 
@@ -402,6 +445,13 @@ class GameRuntimeService:
 
         if state.get("display_phase") == "answer_reveal":
             return [await self.build_snapshot(lobby)]
+
+        if (
+            step.player_input.kind == PlayerInputKind.DRAWING
+            and step.evaluation.type_ == EvaluationType.FAVORITE_VOTE
+            and state.get("display_phase") == "drawing_vote"
+        ):
+            return await self.close_step(lobby)
 
         updates["display_phase"] = "answer_reveal"
         updates.update(self._answer_reveal_updates(step))
@@ -841,6 +891,58 @@ class GameRuntimeService:
         ]
         return judged_events + [schemas.ScoresUpdatedEvent(updates=updates)]
 
+    async def evaluate_drawing_vote_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        step = await self.get_current_step(lobby)
+        if step is None or step.evaluation.type_ != EvaluationType.FAVORITE_VOTE:
+            return [schemas.ScoresUpdatedEvent()]
+        state = await self.get_step_state(lobby.id)
+        if state.get("evaluated"):
+            return [schemas.ScoresUpdatedEvent()]
+
+        answers = state.get("answers", {})
+        votes = state.get("drawing_votes", {})
+        if not isinstance(answers, dict) or not isinstance(votes, dict):
+            return [schemas.ScoresUpdatedEvent()]
+
+        points_per_vote = max(0, int(step.evaluation.points))
+        vote_counts: dict[str, int] = {player_id: 0 for player_id in answers.keys()}
+        for voter_id, target_player_id in votes.items():
+            if (
+                isinstance(voter_id, str)
+                and isinstance(target_player_id, str)
+                and voter_id != target_player_id
+                and target_player_id in answers
+            ):
+                vote_counts[target_player_id] = vote_counts.get(target_player_id, 0) + 1
+
+        updates: dict[str, int] = {}
+        score_updates_by_player: dict[str, int] = {}
+        metric_updates: dict[str, dict[str, Any]] = {}
+        for player_id, vote_count in vote_counts.items():
+            delta = vote_count * points_per_vote
+            score_updates_by_player[player_id] = delta
+            metric_updates[player_id] = {
+                "answered_count": 1,
+                "correct_count": 1 if delta > 0 else 0,
+                "wrong_count": 0 if delta > 0 else 1,
+            }
+            if delta <= 0:
+                continue
+            new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+            await self.repo.set_player_score(lobby.id, player_id, new_score)
+            updates[player_id] = new_score
+
+        await self._apply_player_metric_updates(lobby.id, metric_updates)
+        await self.repo.set_step_cache(
+            lobby.id,
+            {
+                "evaluated": True,
+                "reviewed_player_ids": list(answers.keys()),
+                "drawing_score_updates": score_updates_by_player,
+            },
+        )
+        return [schemas.ScoresUpdatedEvent(updates=updates)]
+
     async def close_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
         if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
             return []
@@ -852,6 +954,28 @@ class GameRuntimeService:
         phase = "step_complete"
         events: list[schemas.BaseEvent] = []
         evaluation_type = await self._resolve_evaluation_type(lobby, step)
+        state = await self.get_step_state(lobby.id)
+        if (
+            step.player_input.kind == PlayerInputKind.DRAWING
+            and evaluation_type == EvaluationType.FAVORITE_VOTE
+            and state.get("display_phase") != "drawing_vote"
+        ):
+            drawing_vote_order = await self._ensure_drawing_vote_order(lobby.id, state)
+            if len(drawing_vote_order) >= 2:
+                await self.repo.set_lobby_fields(lobby.id, phase="question_active")
+                lobby.phase = "question_active"
+                await self.repo.set_step_cache(
+                    lobby.id,
+                    {
+                        "display_phase": "drawing_vote",
+                        "buzzer_active": False,
+                        "buzzed_player_id": "",
+                        "timer_ends_at": None,
+                        "timer_remaining_seconds": None,
+                    },
+                )
+                return [await self.build_snapshot(lobby)]
+
         if evaluation_type in (
             EvaluationType.EXACT_TEXT,
             EvaluationType.EXACT_NUMBER,
@@ -864,6 +988,11 @@ class GameRuntimeService:
                 if isinstance(auto_event, schemas.ScoresUpdatedEvent) and not auto_event.updates:
                     continue
                 events.append(auto_event)
+        elif evaluation_type == EvaluationType.FAVORITE_VOTE:
+            for score_event in await self.evaluate_drawing_vote_step(lobby):
+                if isinstance(score_event, schemas.ScoresUpdatedEvent) and not score_event.updates:
+                    continue
+                events.append(score_event)
         elif step.player_input.kind == PlayerInputKind.BUZZER:
             phase = (
                 "host_review"
@@ -1042,6 +1171,68 @@ class GameRuntimeService:
 
     def _score_map_distance_answer(self, step: StepDefinition, value: Any) -> int:
         return self.evaluation._score_map_distance_answer(step, value)
+
+    def _is_valid_drawing_submission(self, value: Any) -> bool:
+        return self.evaluation._is_valid_drawing_submission(value)
+
+    def _drawing_label(self, index: int) -> str:
+        return self.evaluation._drawing_label(index)
+
+    async def _ensure_drawing_vote_order(
+        self,
+        lobby_id: str,
+        step_state: dict[str, Any] | None = None,
+    ) -> list[str]:
+        state = step_state if step_state is not None else await self.get_step_state(lobby_id)
+        answers = state.get("answers", {})
+        if not isinstance(answers, dict):
+            answers = {}
+        existing_order = [
+            player_id
+            for player_id in state.get("drawing_vote_order", [])
+            if isinstance(player_id, str) and player_id in answers
+        ]
+        missing_player_ids = sorted(
+            player_id for player_id in answers.keys() if player_id not in existing_order
+        )
+        order = existing_order + missing_player_ids
+        await self.repo.set_step_cache(lobby_id, {"drawing_vote_order": order})
+        return order
+
+    def _drawing_player_id_for_vote_id(
+        self,
+        step_state: dict[str, Any],
+        drawing_id: str,
+    ) -> str | None:
+        if not isinstance(drawing_id, str) or not drawing_id.startswith("drawing:"):
+            return None
+        try:
+            index = int(drawing_id.split(":", 1)[1])
+        except ValueError:
+            return None
+        order = step_state.get("drawing_vote_order", [])
+        if not isinstance(order, list) or index < 0 or index >= len(order):
+            return None
+        player_id = order[index]
+        return player_id if isinstance(player_id, str) else None
+
+    async def _all_drawing_voters_submitted(
+        self,
+        lobby: schemas.Lobby,
+        step_state: dict[str, Any],
+    ) -> bool:
+        answers = step_state.get("answers", {})
+        if not isinstance(answers, dict) or len(answers) < 2:
+            return True
+        players = await self.repo.get_players(lobby.id)
+        answer_player_ids = set(answers.keys())
+        voter_ids = {
+            player.id
+            for player in players
+            if player.id and player.id != lobby.host_id and player.id in answer_player_ids
+        }
+        submitted_voter_ids = set(step_state.get("drawing_votes", {}).keys())
+        return voter_ids <= submitted_voter_ids
 
     async def _resolve_evaluation_type(
         self,

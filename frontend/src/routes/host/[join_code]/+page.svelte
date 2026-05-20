@@ -314,6 +314,8 @@
 					layoutMode="host-stage"
 					showDisconnectedChip={true}
 					submissionCount={$game.submissionCount}
+					drawingItems={$game.drawingItems}
+					drawingVoteCount={$game.drawingVoteCount}
 					players={$game.players}
 					submissions={$game.submissions ?? []}
 					{countdown}

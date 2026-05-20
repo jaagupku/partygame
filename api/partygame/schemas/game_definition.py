@@ -33,6 +33,7 @@ class PlayerInputKind(StrEnum):
     RADIO = auto()
     CHECKBOX = auto()
     MAP = auto()
+    DRAWING = auto()
 
 
 class EvaluationType(StrEnum):
@@ -44,6 +45,7 @@ class EvaluationType(StrEnum):
     ORDERING_MATCH = auto()
     MULTI_SELECT_WEIGHTED = auto()
     MAP_DISTANCE = auto()
+    FAVORITE_VOTE = auto()
 
 
 class MapPoint(BaseModel):
@@ -285,6 +287,10 @@ class StepDefinition(BaseModel):
                 EvaluationType.NONE,
                 EvaluationType.HOST_JUDGED,
                 EvaluationType.MAP_DISTANCE,
+            },
+            PlayerInputKind.DRAWING: {
+                EvaluationType.NONE,
+                EvaluationType.FAVORITE_VOTE,
             },
         }
         allowed = allowed_evaluations[self.player_input.kind]

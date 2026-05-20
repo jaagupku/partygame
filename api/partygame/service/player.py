@@ -49,9 +49,21 @@ def key(game_id: str, player_id: str) -> str:
 
 def public_runtime_snapshot(
     snapshot: schemas.RuntimeSnapshotEvent,
+    *,
+    viewer_player_id: str | None = None,
 ) -> schemas.RuntimeSnapshotEvent:
     submissions = snapshot.submissions if _should_reveal_public_submissions(snapshot) else []
-    return snapshot.model_copy(update={"host_answer": None, "submissions": submissions})
+    own_drawing_id = None
+    if viewer_player_id and viewer_player_id in snapshot.drawing_owner_ids:
+        own_drawing_id = f"drawing:{snapshot.drawing_owner_ids.index(viewer_player_id)}"
+    return snapshot.model_copy(
+        update={
+            "host_answer": None,
+            "submissions": submissions,
+            "drawing_owner_ids": [],
+            "own_drawing_id": own_drawing_id,
+        }
+    )
 
 
 def _should_reveal_public_submissions(snapshot: schemas.RuntimeSnapshotEvent) -> bool:
@@ -158,10 +170,11 @@ class ClientController:
         snapshot: schemas.RuntimeSnapshotEvent,
         *,
         include_host_answer: bool,
+        viewer_player_id: str | None = None,
     ) -> schemas.RuntimeSnapshotEvent:
         if include_host_answer:
             return snapshot
-        return public_runtime_snapshot(snapshot)
+        return public_runtime_snapshot(snapshot, viewer_player_id=viewer_player_id)
 
     def _build_patch_changes(
         self,
@@ -192,12 +205,17 @@ class ClientController:
         after_snapshot: schemas.RuntimeSnapshotEvent,
         *,
         include_host_answer: bool,
+        viewer_player_id: str | None = None,
     ) -> schemas.RuntimePatchEvent | None:
         before_view = self._snapshot_for_viewer(
-            before_snapshot, include_host_answer=include_host_answer
+            before_snapshot,
+            include_host_answer=include_host_answer,
+            viewer_player_id=viewer_player_id,
         ).model_dump(mode="json")
         after_view = self._snapshot_for_viewer(
-            after_snapshot, include_host_answer=include_host_answer
+            after_snapshot,
+            include_host_answer=include_host_answer,
+            viewer_player_id=viewer_player_id,
         ).model_dump(mode="json")
         changes = self._build_patch_changes(before_view, after_view)
         if not changes:
@@ -223,10 +241,10 @@ class ClientController:
             await self.send(host_patch)
         if public_patch is not None:
             await self._safe_send("display patch publish", self.publish_display(public_patch))
-            await self._safe_send(
-                "player patch broadcast",
-                self.broadcast(public_patch, exclude=self.player.id),
-            )
+        await self._safe_send(
+            "player patch broadcast",
+            self._broadcast_runtime_patch(before_snapshot, after_snapshot, exclude=self.player.id),
+        )
 
     async def _emit_runtime_state(
         self,
@@ -384,7 +402,11 @@ class ClientController:
 
     async def send(self, payload: dict | BaseModel | str):
         if isinstance(payload, schemas.RuntimeSnapshotEvent):
-            payload = self._snapshot_for_viewer(payload, include_host_answer=self.is_host())
+            payload = self._snapshot_for_viewer(
+                payload,
+                include_host_answer=self.is_host(),
+                viewer_player_id=self.player.id,
+            )
         if isinstance(payload, BaseModel):
             await self.websocket.send_text(payload.model_dump_json())
         elif isinstance(payload, dict):
@@ -396,6 +418,50 @@ class ClientController:
         if isinstance(msg, schemas.RuntimeSnapshotEvent):
             msg = self._snapshot_for_viewer(msg, include_host_answer=False)
         await publish(self.redis, self.display_channel, msg)
+
+    async def _broadcast_runtime_patch(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent,
+        after_snapshot: schemas.RuntimeSnapshotEvent,
+        *,
+        players: list[str] | None = None,
+        exclude: str | list[str] | set[str] | tuple[str, ...] | None = None,
+    ):
+        if players is None:
+            players = await self.repo.get_player_ids(self.lobby.id, withscores=False)
+        players = [player_id for player_id in players if player_id]
+
+        excluded: set[str] = set()
+        if isinstance(exclude, str):
+            excluded.add(exclude)
+        elif exclude is not None:
+            excluded.update(player_id for player_id in exclude if player_id)
+
+        tasks = []
+        for player_id in players:
+            if player_id in excluded:
+                continue
+            patch = self._patch_for_viewer(
+                before_snapshot,
+                after_snapshot,
+                include_host_answer=False,
+                viewer_player_id=player_id,
+            )
+            if patch is not None:
+                tasks.append(
+                    publish(
+                        self.redis, GameKeyFactory.player_channel(self.lobby.id, player_id), patch
+                    )
+                )
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    log.exception(
+                        "Player runtime patch broadcast failed for game %s",
+                        self.lobby.id,
+                        exc_info=result,
+                    )
 
     async def _safe_send(self, label: str, operation):
         try:
@@ -409,8 +475,6 @@ class ClientController:
         players: list[str] | None = None,
         exclude: str | list[str] | set[str] | tuple[str, ...] | None = None,
     ):
-        if isinstance(msg, schemas.RuntimeSnapshotEvent):
-            msg = self._snapshot_for_viewer(msg, include_host_answer=False)
         if players is None:
             players = await self.repo.get_player_ids(self.lobby.id, withscores=False)
         players = [player_id for player_id in players if player_id]
@@ -421,11 +485,24 @@ class ClientController:
         elif exclude is not None:
             excluded.update(player_id for player_id in exclude if player_id)
 
-        tasks = [
-            publish(self.redis, GameKeyFactory.player_channel(self.lobby.id, player_id), msg)
-            for player_id in players
-            if player_id not in excluded
-        ]
+        tasks = []
+        for player_id in players:
+            if player_id in excluded:
+                continue
+            payload = (
+                self._snapshot_for_viewer(
+                    msg,
+                    include_host_answer=False,
+                    viewer_player_id=player_id,
+                )
+                if isinstance(msg, schemas.RuntimeSnapshotEvent)
+                else msg
+            )
+            tasks.append(
+                publish(
+                    self.redis, GameKeyFactory.player_channel(self.lobby.id, player_id), payload
+                )
+            )
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for result in results:
@@ -490,6 +567,8 @@ class ClientController:
         ):
             await self.process_controller(json.dumps(msg))
             return
+        if msg.get("type_") in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}:
+            msg = msg | {"player_id": self.player.id}
         await publish(self.redis, self.command_channel, msg)
 
     def _can_send_reactions(self) -> bool:
@@ -670,12 +749,28 @@ class ClientController:
                 )
 
             case Event.PLAYER_INPUT_SUBMITTED:
-                payload = schemas.PlayerInputSubmittedEvent.model_validate(data)
+                payload = schemas.PlayerInputSubmittedEvent.model_validate(
+                    data | {"player_id": data.get("player_id") or self.player.id}
+                )
                 before_snapshot = await self.runtime.build_snapshot(self.lobby)
                 events, handled = await self.runtime.submit_player_input(
                     self.lobby,
                     payload.player_id,
                     payload.value,
+                )
+                await self._relay_non_snapshot_events(events)
+                if handled:
+                    await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+
+            case Event.DRAWING_VOTE_SUBMITTED:
+                payload = schemas.DrawingVoteSubmittedEvent.model_validate(
+                    data | {"player_id": data.get("player_id") or self.player.id}
+                )
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                events, handled = await self.runtime.submit_drawing_vote(
+                    self.lobby,
+                    payload.player_id,
+                    payload.drawing_id,
                 )
                 await self._relay_non_snapshot_events(events)
                 if handled:

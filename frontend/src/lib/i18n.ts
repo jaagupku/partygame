@@ -222,11 +222,27 @@ const en = defineMessages({
 		tapMapToGuess: 'Tap the map to place your guess, then submit.',
 		mapGuessSubmitted: 'Your map guess is submitted. You can guess again on the next step.',
 		submitMapGuess: 'Submit Map Guess',
+		drawingAnswer: 'Drawing Answer',
+		drawYourAnswer: 'Draw your answer, then submit.',
+		drawingSubmitted: 'Drawing submitted. Waiting for everyone else.',
+		submitDrawing: 'Submit Drawing',
+		eraser: 'Eraser',
+		clearDrawing: 'Clear',
+		brushSize: 'Brush size',
+		drawingColor: (color: string) => `Drawing color ${color}`,
+		voteForFavoriteDrawing: 'Vote For A Favorite',
+		pickFavoriteDrawing: 'Pick the drawing you like best.',
+		drawingVoteSubmitted: 'Your vote is in.',
+		noOtherDrawingsToVote: 'No other drawings are available to vote for.',
+		voteNow: 'Vote now',
+		votesLabel: 'Votes',
 		answerMarkedCorrect: 'Correct',
 		answerMarkedWrong: 'Wrong',
 		noPhoneInput: 'No phone input is required for this step.',
 		nextStatePreview: 'Next',
 		nextStateAnswerReveal: 'Answer reveal',
+		nextStateDrawingVote: 'Start drawing vote',
+		nextStateDrawingResults: 'Reveal vote results',
 		nextStateQuestion: 'Next question',
 		nextStateRoundIntro: 'Round intro',
 		nextStateFinale: 'Final results',
@@ -687,6 +703,10 @@ const en = defineMessages({
 				label: 'Map Point',
 				description: 'Players select one location inside a locked map area.'
 			},
+			drawing: {
+				label: 'Drawing',
+				description: 'Players draw a quick doodle on their phone.'
+			},
 			buzzer: {
 				label: 'Buzzer',
 				description: 'Players race to buzz in before answering live.'
@@ -728,6 +748,10 @@ const en = defineMessages({
 			map_distance: {
 				label: 'Map Distance',
 				description: 'Closer map guesses earn more points.'
+			},
+			favorite_vote: {
+				label: 'Favorite Vote',
+				description: 'Players vote for one anonymous drawing; each vote awards points.'
 			}
 		},
 		health: {
@@ -996,11 +1020,27 @@ const et: Messages = {
 		tapMapToGuess: 'Puuduta kaarti, et oma pakkumine asetada, ja saada seejärel vastus.',
 		mapGuessSubmitted: 'Sinu kaardipakkumine on saadetud. Järgmisel sammul saad uuesti pakkuda.',
 		submitMapGuess: 'Saada kaardipakkumine',
+		drawingAnswer: 'Joonistusvastus',
+		drawYourAnswer: 'Joonista oma vastus ja saada seejärel.',
+		drawingSubmitted: 'Joonistus on saadetud. Ootame teisi mängijaid.',
+		submitDrawing: 'Saada joonistus',
+		eraser: 'Kustukumm',
+		clearDrawing: 'Puhasta',
+		brushSize: 'Pintsli suurus',
+		drawingColor: (color) => `Joonistusvärv ${color}`,
+		voteForFavoriteDrawing: 'Hääleta lemmiku poolt',
+		pickFavoriteDrawing: 'Vali joonistus, mis sulle kõige rohkem meeldib.',
+		drawingVoteSubmitted: 'Sinu hääl on kohal.',
+		noOtherDrawingsToVote: 'Teisi joonistusi pole hääletamiseks saadaval.',
+		voteNow: 'Hääletus',
+		votesLabel: 'Hääled',
 		answerMarkedCorrect: 'Õige',
 		answerMarkedWrong: 'Vale',
 		noPhoneInput: 'Selles sammus ei ole telefoni sisendit vaja.',
 		nextStatePreview: 'Järgmine',
 		nextStateAnswerReveal: 'Vastuse näitamine',
+		nextStateDrawingVote: 'Alusta joonistuste hääletust',
+		nextStateDrawingResults: 'Näita hääletuse tulemusi',
 		nextStateQuestion: 'Järgmine küsimus',
 		nextStateRoundIntro: 'Vooru sissejuhatus',
 		nextStateFinale: 'Lõpptulemused',
@@ -1462,6 +1502,10 @@ const et: Messages = {
 				label: 'Kaardipunkt',
 				description: 'Mängijad valivad ühe asukoha lukustatud kaardialal.'
 			},
+			drawing: {
+				label: 'Joonistus',
+				description: 'Mängijad joonistavad telefonis kiire kritselduse.'
+			},
 			buzzer: {
 				label: 'Summer',
 				description: 'Mängijad võistlevad, et esimesena vajutada ja vastata.'
@@ -1504,6 +1548,10 @@ const et: Messages = {
 			map_distance: {
 				label: 'Kaardi kaugus',
 				description: 'Lähemad kaardipakkumised teenivad rohkem punkte.'
+			},
+			favorite_vote: {
+				label: 'Lemmiku hääletus',
+				description: 'Mängijad hääletavad ühe anonüümse joonistuse poolt; iga hääl annab punkte.'
 			}
 		},
 		health: {
@@ -1636,6 +1684,7 @@ export function formatPhaseLabel(phase: string): string {
 		waiting_for_players: getMessages().hostView.playerStatusWaiting,
 		waiting: getMessages().hostView.playerStatusWaiting,
 		question_active: gameplay.next,
+		drawing_vote: gameplay.voteForFavoriteDrawing,
 		host_review: gameplay.reviewQueue,
 		answer_reveal: getMessages().common.answerReveal,
 		finished: gameplay.gameComplete

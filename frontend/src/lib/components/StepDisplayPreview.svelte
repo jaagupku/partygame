@@ -1,5 +1,6 @@
 <script lang="ts">
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
+	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
 	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Timer from '$lib/components/util/Timer.svelte';
@@ -23,6 +24,8 @@
 		countdown?: number;
 		connected?: boolean | null;
 		submissionCount?: number;
+		drawingItems?: DrawingVoteItem[];
+		drawingVoteCount?: number;
 		players?: Player[];
 		submissions?: SubmissionItem[];
 	}
@@ -41,6 +44,8 @@
 		countdown = 0,
 		connected = null,
 		submissionCount = 0,
+		drawingItems = [],
+		drawingVoteCount = 0,
 		players = [],
 		submissions = []
 	}: StepDisplayPreviewProps = $props();
@@ -55,6 +60,9 @@
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const mapRevealStep = $derived(
 		step?.input_kind === 'map' && step?.evaluation_type === 'map_distance'
+	);
+	const drawingStep = $derived(
+		step?.input_kind === 'drawing' && step?.evaluation_type === 'favorite_vote'
 	);
 	const showStageRevealCard = $derived(
 		stageLayout &&
@@ -183,7 +191,44 @@
 		{/key}
 	{/if}
 
-	{#if showingAnswerReveal && mapRevealStep && step?.map}
+	{#if drawingStep && (displayPhase === 'drawing_vote' || showingAnswerReveal)}
+		<section class="drawing-reveal-stage question-stage-enter">
+			<div class="question-card-title-row">
+				<h3
+					class="question-card-step-title text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight"
+				>
+					{step?.title}
+				</h3>
+				<span class="question-card-points-badge points-badge-stage">
+					{showingAnswerReveal
+						? `${$messages.gameplay.votesLabel}: ${drawingVoteCount}`
+						: $messages.gameplay.voteNow}
+				</span>
+			</div>
+			<div class="drawing-gallery">
+				{#each drawingItems as item}
+					<article class="drawing-gallery-item">
+						<DrawingDisplay
+							drawing={item.value}
+							className="drawing-gallery-canvas"
+							animate={stageLayout}
+							durationMs={1500}
+							replayKey={`${displayPhase}:${item.id}`}
+						/>
+						<div class="drawing-gallery-caption">
+							<span>{showingAnswerReveal ? (item.player_name ?? item.label) : item.label}</span>
+							{#if showingAnswerReveal}
+								<span>
+									{item.vote_count}
+									{$messages.gameplay.votesLabel.toLowerCase()} · +{item.points_awarded}
+								</span>
+							{/if}
+						</div>
+					</article>
+				{/each}
+			</div>
+		</section>
+	{:else if showingAnswerReveal && mapRevealStep && step?.map}
 		<section class="map-reveal-stage question-stage-enter">
 			<div class="question-card-title-row">
 				<h3
@@ -270,6 +315,55 @@
 		min-height: 0;
 		min-width: 0;
 		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+	}
+
+	.drawing-reveal-stage {
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr);
+		gap: clamp(0.5rem, 1.2vh, 1rem);
+		height: 100%;
+		min-height: 0;
+		min-width: 0;
+		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+	}
+
+	.drawing-gallery {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), min(24rem, 100%)));
+		align-content: center;
+		justify-content: center;
+		gap: clamp(0.65rem, 1.5vw, 1.2rem);
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.drawing-gallery-item {
+		display: grid;
+		gap: 0.5rem;
+		min-width: 0;
+		border: 1px solid rgb(203 213 225 / 0.9);
+		border-radius: 1rem;
+		background: rgb(248 250 252 / 0.9);
+		padding: clamp(0.55rem, 1vw, 0.85rem);
+		box-shadow: 0 8px 20px rgb(15 23 42 / 0.1);
+	}
+
+	:global(.drawing-gallery-canvas) {
+		border: 3px solid rgb(255 255 255);
+		outline: 1px solid rgb(148 163 184 / 0.72);
+		box-shadow:
+			inset 0 0 0 1px rgb(15 23 42 / 0.05),
+			0 1px 3px rgb(15 23 42 / 0.14);
+	}
+
+	.drawing-gallery-caption {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		font-size: clamp(0.82rem, 1.15vw, 1rem);
+		font-weight: 950;
+		color: rgb(15 23 42);
 	}
 
 	.question-card-title-row {

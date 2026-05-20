@@ -20,6 +20,25 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.MAP_DISTANCE,
 }
 
+DRAWING_CANVAS_WIDTH = 512
+DRAWING_CANVAS_HEIGHT = 384
+MAX_DRAWING_STROKES = 80
+MAX_DRAWING_POINTS = 1_600
+MAX_DRAWING_PAYLOAD_CHARS = 60_000
+DRAWING_COLORS = {
+    "#0f172a",
+    "#ef4444",
+    "#f97316",
+    "#eab308",
+    "#22c55e",
+    "#06b6d4",
+    "#3b82f6",
+    "#a855f7",
+    "#ec4899",
+    "#ffffff",
+}
+DRAWING_LABEL_PREFIX = "Drawing"
+
 
 class EvaluationRuntime:
     def __init__(self, repo, timing, get_step_state=None):
@@ -182,6 +201,8 @@ class EvaluationRuntime:
             return EvaluationType.NONE
         if player_input.kind == PlayerInputKind.MAP:
             return EvaluationType.MAP_DISTANCE
+        if player_input.kind == PlayerInputKind.DRAWING:
+            return EvaluationType.NONE
         return EvaluationType.NONE
 
     async def _all_answerable_players_submitted(
@@ -276,6 +297,8 @@ class EvaluationRuntime:
             return True
         if step.player_input.kind == PlayerInputKind.BUZZER:
             return False
+        if step.player_input.kind == PlayerInputKind.DRAWING:
+            return False
         if self._is_information_slide(step):
             return True
         return self._is_hostless_auto_progress_step(lobby, step)
@@ -310,6 +333,58 @@ class EvaluationRuntime:
             self._levenshtein_distance(submitted, answer, distance) <= distance
             for answer in accepted_answers
         )
+
+    def _is_valid_drawing_submission(self, value: Any) -> bool:
+        if not isinstance(value, dict):
+            return False
+        if len(str(value)) > MAX_DRAWING_PAYLOAD_CHARS:
+            return False
+        if (
+            value.get("width") != DRAWING_CANVAS_WIDTH
+            or value.get("height") != DRAWING_CANVAS_HEIGHT
+        ):
+            return False
+        strokes = value.get("strokes")
+        if not isinstance(strokes, list) or not strokes or len(strokes) > MAX_DRAWING_STROKES:
+            return False
+
+        total_points = 0
+        for stroke in strokes:
+            if not isinstance(stroke, dict):
+                return False
+            color = stroke.get("color")
+            size = stroke.get("size")
+            eraser = stroke.get("eraser", False)
+            points = stroke.get("points")
+            if not isinstance(color, str) or color.lower() not in DRAWING_COLORS:
+                return False
+            if not isinstance(size, int | float) or size < 2 or size > 32:
+                return False
+            if not isinstance(eraser, bool):
+                return False
+            if not isinstance(points, list) or len(points) < 1:
+                return False
+            total_points += len(points)
+            if total_points > MAX_DRAWING_POINTS:
+                return False
+            for point in points:
+                if not isinstance(point, dict):
+                    return False
+                x = self.timing._to_float(point.get("x"))
+                y = self.timing._to_float(point.get("y"))
+                if x is None or y is None or x < 0 or x > 1 or y < 0 or y > 1:
+                    return False
+        return True
+
+    def _drawing_label(self, index: int) -> str:
+        letters = ""
+        value = index
+        while True:
+            letters = chr(ord("A") + (value % 26)) + letters
+            value = value // 26 - 1
+            if value < 0:
+                break
+        return f"{DRAWING_LABEL_PREFIX} {letters}"
 
     def _levenshtein_distance(self, left: str, right: str, max_distance: int) -> int:
         if left == right:

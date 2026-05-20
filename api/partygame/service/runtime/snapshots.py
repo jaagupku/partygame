@@ -136,6 +136,9 @@ class SnapshotBuilder:
             host_answer = schemas.RevealedAnswer(value=step.evaluation.answer)
 
         submissions = self._build_submissions_event_from_state(step_state)
+        drawing_items = self._build_drawing_items(step, step_state, players)
+        drawing_owner_ids = self._drawing_owner_ids(step, step_state)
+        drawing_voted_player_ids = list(step_state.get("drawing_votes", {}).keys())
         end_game = await self.end_game._build_end_game_state(lobby, players)
 
         return schemas.RuntimeSnapshotEvent(
@@ -169,6 +172,10 @@ class SnapshotBuilder:
             submitted_player_ids=list(step_state.get("answers", {}).keys()),
             submission_count=len(step_state.get("answers", {})),
             pending_review_count=pending_review_count,
+            drawing_items=drawing_items,
+            drawing_owner_ids=drawing_owner_ids,
+            drawing_voted_player_ids=drawing_voted_player_ids,
+            drawing_vote_count=len(drawing_voted_player_ids),
             revealed_submission=revealed_submission,
             revealed_answer=revealed_answer,
             host_answer=host_answer,
@@ -258,6 +265,11 @@ class SnapshotBuilder:
             return None
 
         display_phase = str(step_state.get("display_phase") or "question_active")
+        if display_phase == "drawing_vote":
+            return schemas.NextHostActionState(
+                kind="answer_reveal",
+                title=active_step.title if active_step is not None else None,
+            )
         if (
             lobby.phase == "host_review"
             and pending_review_count > 0
@@ -332,6 +344,78 @@ class SnapshotBuilder:
             for player_id, value in state.get("answers", {}).items()
         ]
         return schemas.SubmissionsUpdatedEvent(items=items)
+
+    def _build_drawing_items(
+        self,
+        step: StepDefinition | None,
+        state: dict[str, Any],
+        players: list[schemas.Player],
+    ) -> list[schemas.DrawingVoteItem]:
+        if step is None or step.player_input.kind != PlayerInputKind.DRAWING:
+            return []
+        answers = state.get("answers", {})
+        if not isinstance(answers, dict):
+            return []
+        display_phase = str(state.get("display_phase") or "question_active")
+        if display_phase not in {"drawing_vote", "answer_reveal"}:
+            return []
+        order = [
+            player_id
+            for player_id in state.get("drawing_vote_order", [])
+            if isinstance(player_id, str) and player_id in answers
+        ]
+        order += sorted(player_id for player_id in answers.keys() if player_id not in order)
+        votes = state.get("drawing_votes", {})
+        if not isinstance(votes, dict):
+            votes = {}
+        vote_counts = {player_id: 0 for player_id in answers.keys()}
+        for voter_id, target_player_id in votes.items():
+            if (
+                isinstance(voter_id, str)
+                and isinstance(target_player_id, str)
+                and voter_id != target_player_id
+                and target_player_id in answers
+            ):
+                vote_counts[target_player_id] = vote_counts.get(target_player_id, 0) + 1
+        score_updates = state.get("drawing_score_updates", {})
+        if not isinstance(score_updates, dict):
+            score_updates = {}
+        player_names = {player.id: player.name for player in players}
+        reveal_authors = display_phase == "answer_reveal"
+
+        return [
+            schemas.DrawingVoteItem(
+                id=f"drawing:{index}",
+                label=self.evaluation._drawing_label(index),
+                value=answers[player_id],
+                player_id=player_id if reveal_authors else None,
+                player_name=player_names.get(player_id) if reveal_authors else None,
+                vote_count=vote_counts.get(player_id, 0) if reveal_authors else 0,
+                points_awarded=int(score_updates.get(player_id, 0) or 0) if reveal_authors else 0,
+            )
+            for index, player_id in enumerate(order)
+        ]
+
+    def _drawing_owner_ids(
+        self,
+        step: StepDefinition | None,
+        state: dict[str, Any],
+    ) -> list[str]:
+        if step is None or step.player_input.kind != PlayerInputKind.DRAWING:
+            return []
+        answers = state.get("answers", {})
+        if not isinstance(answers, dict):
+            return []
+        display_phase = str(state.get("display_phase") or "question_active")
+        if display_phase not in {"drawing_vote", "answer_reveal"}:
+            return []
+        order = [
+            player_id
+            for player_id in state.get("drawing_vote_order", [])
+            if isinstance(player_id, str) and player_id in answers
+        ]
+        order += sorted(player_id for player_id in answers.keys() if player_id not in order)
+        return order
 
     async def sync_lobby(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:
         return await self.runtime.build_snapshot(lobby)

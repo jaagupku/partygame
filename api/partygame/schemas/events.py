@@ -43,6 +43,7 @@ class Event(StrEnum):
     PLAYER_REACTION = auto()
     MEDIA_PLAYBACK = auto()
     ANSWER_JUDGED = auto()
+    DRAWING_VOTE_SUBMITTED = auto()
 
 
 class BaseEvent(BaseModel):
@@ -113,8 +114,14 @@ class UpdateScoreEvent(BaseEvent):
 class PlayerInputSubmittedEvent(BaseEvent):
     type_: str = Event.PLAYER_INPUT_SUBMITTED
     component_id: str | None = None
-    player_id: str
+    player_id: str = ""
     value: Any
+
+
+class DrawingVoteSubmittedEvent(BaseEvent):
+    type_: str = Event.DRAWING_VOTE_SUBMITTED
+    player_id: str = ""
+    drawing_id: str
 
 
 class StepAdvancedEvent(BaseEvent):
@@ -281,6 +288,16 @@ class SubmissionItem(BaseModel):
     reviewed: bool = False
 
 
+class DrawingVoteItem(BaseModel):
+    id: str
+    label: str
+    value: Any
+    player_id: str | None = None
+    player_name: str | None = None
+    vote_count: int = 0
+    points_awarded: int = 0
+
+
 class RuntimeSnapshotEvent(BaseEvent):
     type_: str = Event.RUNTIME_SNAPSHOT
     revision: int = 0
@@ -303,6 +320,11 @@ class RuntimeSnapshotEvent(BaseEvent):
     submitted_player_ids: list[str] = Field(default_factory=list)
     submission_count: int = 0
     pending_review_count: int = 0
+    drawing_items: list[DrawingVoteItem] = Field(default_factory=list)
+    drawing_owner_ids: list[str] = Field(default_factory=list)
+    own_drawing_id: str | None = None
+    drawing_voted_player_ids: list[str] = Field(default_factory=list)
+    drawing_vote_count: int = 0
     revealed_submission: RevealedSubmission | None = None
     revealed_answer: RevealedAnswer | None = None
     host_answer: RevealedAnswer | None = None

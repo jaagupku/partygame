@@ -55,6 +55,10 @@
 			hasSubmitted: false,
 			submissionCount: 0,
 			pendingReviewCount: 0,
+			drawingItems: [],
+			ownDrawingId: undefined,
+			drawingVotedPlayerIds: [],
+			drawingVoteCount: 0,
 			revealedSubmission: undefined,
 			revealedAnswer: undefined,
 			hostAnswer: undefined,
@@ -80,7 +84,7 @@
 		!$controller.isHost &&
 			($controller.lobbyPhase !== 'question_active' ||
 				!$controller.activeStep?.input_enabled ||
-				$controller.hasSubmitted)
+				($controller.hasSubmitted && $controller.displayPhase !== 'drawing_vote'))
 	);
 	const submittedPlayerNames = $derived(
 		$controller.submittedPlayerIds
@@ -140,7 +144,6 @@
 			$controller.lobbyPhase === 'question_active'
 	);
 	const canSendReactions = $derived($controller.gameState !== 'waiting_for_players');
-
 	$effect(() => {
 		const stepId = $controller.activeStep?.id;
 		if (stepId !== reviewStepId) {
@@ -425,6 +428,13 @@
 		});
 	}
 
+	function submitDrawingVote(drawingId: string) {
+		sendAction({
+			type_: 'drawing_vote_submitted',
+			drawing_id: drawingId
+		});
+	}
+
 	function isSubmissionReviewed(playerId: string) {
 		return (
 			pendingReviewedPlayerIds.includes(playerId) ||
@@ -569,10 +579,14 @@
 				buzzerActive={$controller.buzzerActive}
 				{canContinueHostlessInfoSlide}
 				disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+				drawingItems={$controller.drawingItems}
+				ownDrawingId={$controller.ownDrawingId}
+				drawingVotedPlayerIds={$controller.drawingVotedPlayerIds}
 				hasSubmitted={$controller.hasSubmitted}
 				playerId={$controller.id}
 				onContinueInfoSlide={nextStep}
 				onSubmitAnswer={submitAnswer}
+				onSubmitDrawingVote={submitDrawingVote}
 			/>
 		{:else if gameFinished}
 			<section class="card text-center">
@@ -635,18 +649,20 @@
 				onToggleScoreboardVisibility={toggleScoreboardVisibility}
 			/>
 
-			<HostReviewQueue
-				activeStep={$controller.activeStep}
-				buzzedPlayerId={$controller.buzzedPlayerId}
-				{customScore}
-				disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
-				hostAnswer={$controller.hostAnswer}
-				{playerMap}
-				submissions={$controller.submissions}
-				{isSubmissionReviewed}
-				onRevealSubmission={revealSubmission}
-				onReviewSubmission={reviewSubmission}
-			/>
+			{#if $controller.activeStep?.evaluation_type !== 'favorite_vote'}
+				<HostReviewQueue
+					activeStep={$controller.activeStep}
+					buzzedPlayerId={$controller.buzzedPlayerId}
+					{customScore}
+					disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+					hostAnswer={$controller.hostAnswer}
+					{playerMap}
+					submissions={$controller.submissions}
+					{isSubmissionReviewed}
+					onRevealSubmission={revealSubmission}
+					onReviewSubmission={reviewSubmission}
+				/>
+			{/if}
 
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">{$messages.gameplay.manualScore}</h2>

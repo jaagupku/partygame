@@ -746,6 +746,11 @@
 			step.evaluation.points = getMapDistanceAnswer(step)?.max_points ?? step.evaluation.points;
 			return;
 		}
+		if (evaluationType === 'favorite_vote') {
+			step.evaluation.answer = null;
+			step.evaluation.points = step.evaluation.points || 1;
+			return;
+		}
 		if (evaluationType === 'exact_text' && step.player_input.kind === 'radio') {
 			step.evaluation.answer = getRadioCorrectOption(step) || step.player_input.options[0] || '';
 			step.evaluation.max_distance = step.evaluation.max_distance ?? 2;

@@ -29,6 +29,10 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
 	state.submissionCount = event.submission_count;
 	state.pendingReviewCount = event.pending_review_count;
+	state.drawingItems = event.drawing_items;
+	state.ownDrawingId = event.own_drawing_id ?? undefined;
+	state.drawingVotedPlayerIds = event.drawing_voted_player_ids;
+	state.drawingVoteCount = event.drawing_vote_count;
 	state.revealedSubmission = event.revealed_submission;
 	state.revealedAnswer = event.revealed_answer;
 	state.submissions = event.submissions;
@@ -113,6 +117,18 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 	if (changes.pending_review_count !== undefined) {
 		state.pendingReviewCount = changes.pending_review_count;
 	}
+	if (changes.drawing_items !== undefined) {
+		state.drawingItems = changes.drawing_items;
+	}
+	if ('own_drawing_id' in changes) {
+		state.ownDrawingId = changes.own_drawing_id ?? undefined;
+	}
+	if (changes.drawing_voted_player_ids !== undefined) {
+		state.drawingVotedPlayerIds = changes.drawing_voted_player_ids;
+	}
+	if (changes.drawing_vote_count !== undefined) {
+		state.drawingVoteCount = changes.drawing_vote_count;
+	}
 	if ('revealed_submission' in changes) {
 		state.revealedSubmission = changes.revealed_submission;
 	}
@@ -156,6 +172,10 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.hasSubmitted = event.submitted_player_ids.includes(state.id);
 	state.submissionCount = event.submission_count;
 	state.pendingReviewCount = event.pending_review_count;
+	state.drawingItems = event.drawing_items;
+	state.ownDrawingId = event.own_drawing_id ?? undefined;
+	state.drawingVotedPlayerIds = event.drawing_voted_player_ids;
+	state.drawingVoteCount = event.drawing_vote_count;
 	state.revealedSubmission = event.revealed_submission;
 	state.revealedAnswer = event.revealed_answer;
 	state.hostAnswer = event.host_answer;
@@ -248,6 +268,18 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 	}
 	if (changes.pending_review_count !== undefined) {
 		state.pendingReviewCount = changes.pending_review_count;
+	}
+	if (changes.drawing_items !== undefined) {
+		state.drawingItems = changes.drawing_items;
+	}
+	if ('own_drawing_id' in changes) {
+		state.ownDrawingId = changes.own_drawing_id ?? undefined;
+	}
+	if (changes.drawing_voted_player_ids !== undefined) {
+		state.drawingVotedPlayerIds = changes.drawing_voted_player_ids;
+	}
+	if (changes.drawing_vote_count !== undefined) {
+		state.drawingVoteCount = changes.drawing_vote_count;
 	}
 	if ('revealed_submission' in changes) {
 		state.revealedSubmission = changes.revealed_submission;
