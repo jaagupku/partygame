@@ -11,6 +11,8 @@
 		nextHostAction?: NextHostAction;
 		pendingReviewCount: number;
 		pendingSubmissionPlayerNames: string[];
+		reviewingHistory: boolean;
+		canReviewPrevious: boolean;
 		scoreboardVisible: boolean;
 		submissionCount: number;
 		submittedPlayerNames: string[];
@@ -35,6 +37,8 @@
 		nextHostAction,
 		pendingReviewCount,
 		pendingSubmissionPlayerNames,
+		reviewingHistory,
+		canReviewPrevious,
 		scoreboardVisible,
 		submissionCount,
 		submittedPlayerNames,
@@ -80,6 +84,9 @@
 	}
 
 	const primaryActionLabel = $derived(hostActionLabel(nextHostAction));
+	const previousActionDisabled = $derived(
+		!canReviewPrevious || (!reviewingHistory && displayPhase !== 'answer_reveal')
+	);
 	const nextActionPreview = $derived({
 		label: primaryActionLabel,
 		title:
@@ -90,6 +97,10 @@
 	const primaryActionDisabled = $derived(Boolean(nextHostAction?.disabled));
 
 	function runPrimaryHostAction() {
+		if (reviewingHistory) {
+			onNextStep();
+			return;
+		}
 		if (nextHostAction?.kind === 'reactivate_buzzers') {
 			onToggleBuzzer();
 			return;
@@ -165,7 +176,9 @@
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<p class="text-xs font-black uppercase tracking-[0.14em] text-sky-700">
-					{$messages.gameplay.nextStatePreview}
+					{reviewingHistory
+						? $messages.gameplay.reviewingPreviousReveal
+						: $messages.gameplay.nextStatePreview}
 				</p>
 				<p class="mt-1 text-sm font-bold text-slate-950">{nextActionPreview.label}</p>
 				{#if nextActionPreview.title}
@@ -182,7 +195,7 @@
 			</button>
 		</div>
 	</div>
-	{#if isBuzzerStep}
+	{#if isBuzzerStep && !reviewingHistory}
 		<div
 			class={`rounded-2xl border px-4 py-3 ${
 				shouldPrioritizeBuzzer
@@ -229,23 +242,25 @@
 			type="button"
 			class="btn btn-ghost w-full"
 			onclick={onPreviousStep}
-			disabled={displayPhase !== 'answer_reveal'}
+			disabled={previousActionDisabled}
 		>
 			{$messages.gameplay.previous}
 		</button>
-		<button type="button" class="btn btn-ghost w-full" onclick={onResetStep}>
-			{$messages.gameplay.resetQuestion}
-		</button>
-		<button type="button" class="btn btn-ghost w-full" onclick={onToggleScoreboardVisibility}>
-			{scoreboardVisible ? $messages.gameplay.hideScoreboard : $messages.gameplay.showScoreboard}
-		</button>
-		{#if canAutoEvaluate}
-			<button type="button" class="btn btn-ghost w-full" onclick={onEvaluateStep}>
-				{$messages.gameplay.autoEvaluate}
+		{#if !reviewingHistory}
+			<button type="button" class="btn btn-ghost w-full" onclick={onResetStep}>
+				{$messages.gameplay.resetQuestion}
 			</button>
+			<button type="button" class="btn btn-ghost w-full" onclick={onToggleScoreboardVisibility}>
+				{scoreboardVisible ? $messages.gameplay.hideScoreboard : $messages.gameplay.showScoreboard}
+			</button>
+			{#if canAutoEvaluate}
+				<button type="button" class="btn btn-ghost w-full" onclick={onEvaluateStep}>
+					{$messages.gameplay.autoEvaluate}
+				</button>
+			{/if}
 		{/if}
 	</div>
-	{#if hasControllableMedia}
+	{#if hasControllableMedia && !reviewingHistory}
 		<div class="rounded-2xl border border-slate-200 bg-white/70 p-3">
 			<p class="text-sm font-black uppercase tracking-[0.14em] text-slate-500">
 				{$messages.gameplay.videoPlayback}

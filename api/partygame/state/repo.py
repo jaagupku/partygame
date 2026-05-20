@@ -174,6 +174,10 @@ class GameStateRepository:
                     decoded[key] = json.loads(value)
                 except json.JSONDecodeError:
                     decoded[key] = value
+            elif value == "True":
+                decoded[key] = True
+            elif value == "False":
+                decoded[key] = False
             else:
                 decoded[key] = value
         return decoded

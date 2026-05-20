@@ -178,6 +178,7 @@ class GameRuntimeService:
                 "timer_remaining_seconds": (
                     float(step.timer.seconds) if step.timer.seconds is not None else None
                 ),
+                "review_step_index": "",
                 **self._initial_reveal_state(step, started_at),
             },
         )
@@ -215,12 +216,52 @@ class GameRuntimeService:
     async def get_step_state(self, lobby_id: str) -> dict[str, Any]:
         return await self.repo.get_step_cache(lobby_id)
 
+    def _step_archive_component_id(self, step_index: int) -> str:
+        return f"step_archive:{step_index}"
+
+    def _review_step_index(self, step_state: dict[str, Any]) -> int | None:
+        value = step_state.get("review_step_index")
+        if value in (None, ""):
+            return None
+        try:
+            return int(value)
+        except TypeError, ValueError:
+            return None
+
+    async def get_archived_step_state(
+        self,
+        lobby_id: str,
+        step_index: int,
+    ) -> dict[str, Any]:
+        return await self.repo.get_component_state(
+            lobby_id,
+            self._step_archive_component_id(step_index),
+        )
+
+    async def _archive_current_step_reveal(self, lobby: schemas.Lobby):
+        state = await self.get_step_state(lobby.id)
+        if state.get("display_phase") != "answer_reveal":
+            return
+        archived_state = dict(state)
+        archived_state["display_phase"] = "answer_reveal"
+        archived_state["review_step_index"] = ""
+        await self.repo.set_component_state(
+            lobby.id,
+            self._step_archive_component_id(lobby.current_step),
+            archived_state,
+        )
+
+    async def _has_archived_step(self, lobby_id: str, step_index: int) -> bool:
+        return bool(await self.get_archived_step_state(lobby_id, step_index))
+
     async def submit_player_input(
         self,
         lobby: schemas.Lobby,
         player_id: str,
         value: Any,
     ) -> tuple[list[schemas.BaseEvent], bool]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return [], False
         step = await self.get_current_step(lobby)
         if step is None or player_id == lobby.host_id or lobby.phase != "question_active":
             return [], False
@@ -270,6 +311,8 @@ class GameRuntimeService:
         return [], True
 
     async def set_buzzer_state(self, lobby: schemas.Lobby, active: bool) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return []
         step = await self.get_current_step(lobby)
         if step is None or step.player_input.kind != PlayerInputKind.BUZZER:
             return []
@@ -370,7 +413,43 @@ class GameRuntimeService:
         if step is None:
             return []
 
-        await self.repo.set_step_cache(lobby.id, {"display_phase": "question_active"})
+        await self.repo.set_step_cache(
+            lobby.id,
+            {"display_phase": "question_active", "review_step_index": ""},
+        )
+        return [await self.build_snapshot(lobby)]
+
+    async def show_previous_reveal(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        live_state = await self.get_step_state(lobby.id)
+        source_index = self._review_step_index(live_state)
+        if source_index is None:
+            if live_state.get("display_phase") != "answer_reveal":
+                return [await self.build_snapshot(lobby)]
+            source_index = lobby.current_step
+
+        target_index = source_index - 1
+        if target_index < 0 or not await self._has_archived_step(lobby.id, target_index):
+            return [await self.build_snapshot(lobby)]
+
+        await self.repo.set_step_cache(lobby.id, {"review_step_index": target_index})
+        return [await self.build_snapshot(lobby)]
+
+    async def show_next_reveal(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        live_state = await self.get_step_state(lobby.id)
+        review_index = self._review_step_index(live_state)
+        if review_index is None:
+            return [await self.build_snapshot(lobby)]
+
+        target_index = review_index + 1
+        if target_index >= lobby.current_step:
+            await self.repo.set_step_cache(lobby.id, {"review_step_index": ""})
+            return [await self.build_snapshot(lobby)]
+
+        if not await self._has_archived_step(lobby.id, target_index):
+            await self.repo.set_step_cache(lobby.id, {"review_step_index": ""})
+            return [await self.build_snapshot(lobby)]
+
+        await self.repo.set_step_cache(lobby.id, {"review_step_index": target_index})
         return [await self.build_snapshot(lobby)]
 
     async def set_scoreboard_visibility(
@@ -378,6 +457,8 @@ class GameRuntimeService:
         lobby: schemas.Lobby,
         visible: bool,
     ) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []
@@ -392,6 +473,8 @@ class GameRuntimeService:
         restart: bool = False,
         volume: float | None = None,
     ) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return []
         step = await self.get_current_step(lobby)
         if (
             step is None
@@ -454,6 +537,8 @@ class GameRuntimeService:
         lobby: schemas.Lobby,
         event: schemas.ReviewSubmissionEvent,
     ) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []
@@ -591,6 +676,8 @@ class GameRuntimeService:
         return events
 
     async def evaluate_auto_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return [schemas.ScoresUpdatedEvent()]
         step = await self.get_current_step(lobby)
         if step is None:
             return [schemas.ScoresUpdatedEvent()]
@@ -755,6 +842,8 @@ class GameRuntimeService:
         return judged_events + [schemas.ScoresUpdatedEvent(updates=updates)]
 
     async def close_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []
@@ -805,10 +894,14 @@ class GameRuntimeService:
         return events
 
     async def advance_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return await self.show_next_reveal(lobby)
+        await self._archive_current_step_reveal(lobby)
         next_step = lobby.current_step + 1
         await self.repo.set_step_cache(
             lobby.id,
             {
+                "review_step_index": "",
                 "buzzer_active": False,
                 "buzzed_player_id": "",
                 "buzzer_opened_at": None,
@@ -840,6 +933,8 @@ class GameRuntimeService:
         return [schemas.StepAdvancedEvent(step_index=next_step), await self.build_snapshot(lobby)]
 
     async def reset_current_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
+            return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []

@@ -20,6 +20,8 @@ class Event(StrEnum):
     RESET_STEP = auto()
     SHOW_ANSWER_REVEAL = auto()
     SHOW_QUESTION = auto()
+    SHOW_PREVIOUS_REVEAL = auto()
+    SHOW_NEXT_REVEAL = auto()
     SCOREBOARD_VISIBILITY = auto()
     UPDATE_SCORE = auto()
     STEP_ADVANCED = auto()
@@ -86,6 +88,14 @@ class ShowAnswerRevealEvent(BaseEvent):
 
 class ShowQuestionEvent(BaseEvent):
     type_: str = Event.SHOW_QUESTION
+
+
+class ShowPreviousRevealEvent(BaseEvent):
+    type_: str = Event.SHOW_PREVIOUS_REVEAL
+
+
+class ShowNextRevealEvent(BaseEvent):
+    type_: str = Event.SHOW_NEXT_REVEAL
 
 
 class ScoreboardVisibilityEvent(BaseEvent):
@@ -281,6 +291,10 @@ class RuntimeSnapshotEvent(BaseEvent):
     next_host_action: NextHostActionState | None = None
     active_round: RuntimeRoundState | None = None
     active_step: RuntimeStepState | None = None
+    review_step_index: int | None = None
+    reviewing_history: bool = False
+    can_review_previous: bool = False
+    can_review_next: bool = False
     display_phase: str = "question_active"
     scoreboard_visible: bool = False
     buzzer_active: bool = False

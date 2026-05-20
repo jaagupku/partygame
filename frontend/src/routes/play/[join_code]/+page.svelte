@@ -43,6 +43,10 @@
 			activeRound: undefined,
 			activeStep: undefined,
 			displayPhase: 'question_active',
+			reviewStepIndex: undefined,
+			reviewingHistory: false,
+			canReviewPrevious: false,
+			canReviewNext: false,
 			scoreboardVisible: false,
 			buzzerActive: false,
 			buzzedPlayerId: undefined,
@@ -281,6 +285,10 @@
 	}
 
 	function nextStep() {
+		if ($controller.reviewingHistory) {
+			sendAction({ type_: 'show_next_reveal' });
+			return;
+		}
 		if ($controller.displayPhase === 'answer_reveal') {
 			sendAction({ type_: 'step_advanced' });
 			return;
@@ -293,10 +301,13 @@
 	}
 
 	function previousStep() {
-		if ($controller.displayPhase !== 'answer_reveal') {
+		if (
+			!$controller.canReviewPrevious ||
+			(!$controller.reviewingHistory && $controller.displayPhase !== 'answer_reveal')
+		) {
 			return;
 		}
-		sendAction({ type_: 'show_question' });
+		sendAction({ type_: 'show_previous_reveal' });
 	}
 
 	function resetStep() {
@@ -608,6 +619,8 @@
 				nextHostAction={$controller.nextHostAction}
 				pendingReviewCount={$controller.pendingReviewCount}
 				{pendingSubmissionPlayerNames}
+				reviewingHistory={$controller.reviewingHistory}
+				canReviewPrevious={$controller.canReviewPrevious}
 				scoreboardVisible={$controller.scoreboardVisible}
 				submissionCount={$controller.submissionCount}
 				{submittedPlayerNames}

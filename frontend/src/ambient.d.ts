@@ -260,6 +260,14 @@ type ShowQuestionEvent = {
 	type_: 'show_question';
 };
 
+type ShowPreviousRevealEvent = {
+	type_: 'show_previous_reveal';
+};
+
+type ShowNextRevealEvent = {
+	type_: 'show_next_reveal';
+};
+
 type ScoreboardVisibilityEvent = {
 	type_: 'scoreboard_visibility';
 	visible: boolean;
@@ -470,6 +478,10 @@ type RuntimeSnapshotEvent = {
 	next_host_action?: NextHostAction | null;
 	active_round?: RuntimeRoundState | null;
 	active_step?: RuntimeStepState;
+	review_step_index?: number | null;
+	reviewing_history: boolean;
+	can_review_previous: boolean;
+	can_review_next: boolean;
 	display_phase: string;
 	scoreboard_visible: boolean;
 	buzzer_active: boolean;
@@ -497,6 +509,10 @@ type RuntimePatchEvent = {
 		next_host_action?: NextHostAction | null;
 		active_round?: RuntimeRoundState | null;
 		active_step?: RuntimeStepState;
+		review_step_index?: number | null;
+		reviewing_history?: boolean;
+		can_review_previous?: boolean;
+		can_review_next?: boolean;
 		display_phase?: string;
 		scoreboard_visible?: boolean;
 		buzzer_active?: boolean;
@@ -598,6 +614,10 @@ type HostGameState = Lobby & {
 	activeStep?: RuntimeStepState;
 	activeRound?: RuntimeRoundState;
 	displayPhase: string;
+	reviewStepIndex?: number | null;
+	reviewingHistory: boolean;
+	canReviewPrevious: boolean;
+	canReviewNext: boolean;
 	scoreboardVisible: boolean;
 	buzzerActive: boolean;
 	buzzedPlayerId?: string;
@@ -628,6 +648,10 @@ type ControllerState = {
 	activeRound?: RuntimeRoundState;
 	activeStep?: RuntimeStepState;
 	displayPhase: string;
+	reviewStepIndex?: number | null;
+	reviewingHistory: boolean;
+	canReviewPrevious: boolean;
+	canReviewNext: boolean;
 	scoreboardVisible: boolean;
 	buzzerActive: boolean;
 	buzzedPlayerId?: string;

@@ -3,7 +3,7 @@ import json
 import logging
 from collections import deque
 from time import time
-from typing import Any
+from typing import Any, Awaitable, Callable
 from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
@@ -537,200 +537,198 @@ class ClientController:
         snapshot = snapshot or await self.runtime.build_snapshot(self.lobby)
         await self._schedule_timer_from_snapshot(snapshot)
 
+    async def _relay_non_snapshot_events(self, events: list[schemas.BaseEvent]):
+        for event in events:
+            if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                await self.relay_event(event)
+
+    async def _emit_and_sync_runtime_state(
+        self,
+        before_snapshot: schemas.RuntimeSnapshotEvent,
+        *,
+        force_snapshot: bool,
+    ):
+        snapshot = await self._emit_runtime_state(
+            before_snapshot,
+            force_snapshot=force_snapshot,
+        )
+        await self.sync_host_runtime_state(snapshot)
+
+    async def _run_runtime_events(
+        self,
+        action: Callable[[], Awaitable[list[schemas.BaseEvent]]],
+        *,
+        force_snapshot: bool = False,
+        relay_events: bool = True,
+        begin_round_intro: bool = False,
+    ):
+        before_snapshot = await self.runtime.build_snapshot(self.lobby)
+        events = await action()
+        if not events:
+            return
+        if relay_events:
+            await self._relay_non_snapshot_events(events)
+        if begin_round_intro:
+            after_snapshot = await self.runtime.build_snapshot(self.lobby)
+            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
+        await self._emit_and_sync_runtime_state(
+            before_snapshot,
+            force_snapshot=force_snapshot,
+        )
+
     async def process_controller(self, msg: str):
         data = json.loads(msg)
         event_type = data.get("type_")
         await refresh_idle_ttl(self.repo, self.lobby)
 
-        if event_type == Event.START_GAME:
-            await self.start_game()
-            return
+        match event_type:
+            case Event.START_GAME:
+                await self.start_game()
 
-        if event_type == Event.RESET_STEP:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.reset_current_step(self.lobby)
-            if not events:
-                return
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.RESET_STEP:
+                await self._run_runtime_events(
+                    lambda: self.runtime.reset_current_step(self.lobby),
+                    force_snapshot=True,
+                )
 
-        if event_type == Event.SHOW_ANSWER_REVEAL:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.show_answer_reveal(self.lobby)
-            if not events:
-                return
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.SHOW_ANSWER_REVEAL:
+                await self._run_runtime_events(
+                    lambda: self.runtime.show_answer_reveal(self.lobby),
+                )
 
-        if event_type == Event.SHOW_QUESTION:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.show_question(self.lobby)
-            if not events:
-                return
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.SHOW_QUESTION:
+                await self._run_runtime_events(
+                    lambda: self.runtime.show_question(self.lobby),
+                )
 
-        if event_type == Event.REVEAL_END_GAME:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.reveal_end_game(self.lobby)
-            if not events:
-                return
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.SHOW_PREVIOUS_REVEAL:
+                await self._run_runtime_events(
+                    lambda: self.runtime.show_previous_reveal(self.lobby),
+                    relay_events=False,
+                )
 
-        if event_type == Event.ADVANCE_END_GAME_STAGE:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.advance_end_game_stage(self.lobby)
-            if not events:
-                return
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.SHOW_NEXT_REVEAL:
+                await self._run_runtime_events(
+                    lambda: self.runtime.show_next_reveal(self.lobby),
+                    relay_events=False,
+                )
 
-        if event_type == Event.TOGGLE_END_GAME_AUTOPLAY:
-            autoplay = schemas.ToggleEndGameAutoplayEvent.model_validate(data)
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.toggle_end_game_autoplay(self.lobby, autoplay.enabled)
-            if not events:
-                return
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.REVEAL_END_GAME:
+                await self._run_runtime_events(
+                    lambda: self.runtime.reveal_end_game(self.lobby),
+                    relay_events=False,
+                )
 
-        if event_type == Event.SCOREBOARD_VISIBILITY:
-            visibility = schemas.ScoreboardVisibilityEvent.model_validate(data)
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.set_scoreboard_visibility(self.lobby, visibility.visible)
-            if not events:
-                return
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.ADVANCE_END_GAME_STAGE:
+                await self._run_runtime_events(
+                    lambda: self.runtime.advance_end_game_stage(self.lobby),
+                    relay_events=False,
+                )
 
-        if event_type == Event.MEDIA_PLAYBACK:
-            playback = schemas.MediaPlaybackEvent.model_validate(data)
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.set_media_playback(
-                self.lobby,
-                paused=playback.paused,
-                restart=playback.restart,
-                volume=playback.volume,
-            )
-            if not events:
-                return
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.TOGGLE_END_GAME_AUTOPLAY:
+                autoplay = schemas.ToggleEndGameAutoplayEvent.model_validate(data)
+                await self._run_runtime_events(
+                    lambda: self.runtime.toggle_end_game_autoplay(
+                        self.lobby,
+                        autoplay.enabled,
+                    ),
+                    relay_events=False,
+                )
 
-        if event_type == Event.STEP_ADVANCED:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.advance_step(self.lobby)
-            if not events:
-                return
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            after_snapshot = await self.runtime.build_snapshot(self.lobby)
-            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.SCOREBOARD_VISIBILITY:
+                visibility = schemas.ScoreboardVisibilityEvent.model_validate(data)
+                await self._run_runtime_events(
+                    lambda: self.runtime.set_scoreboard_visibility(
+                        self.lobby,
+                        visibility.visible,
+                    ),
+                )
 
-        if event_type == Event.CLOSE_STEP:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events = await self.runtime.close_step(self.lobby)
-            if not events:
-                return
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            after_snapshot = await self.runtime.build_snapshot(self.lobby)
-            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            await self.sync_host_runtime_state(snapshot)
-            return
+            case Event.MEDIA_PLAYBACK:
+                playback = schemas.MediaPlaybackEvent.model_validate(data)
+                await self._run_runtime_events(
+                    lambda: self.runtime.set_media_playback(
+                        self.lobby,
+                        paused=playback.paused,
+                        restart=playback.restart,
+                        volume=playback.volume,
+                    ),
+                    relay_events=False,
+                )
 
-        if event_type == Event.PLAYER_INPUT_SUBMITTED:
-            payload = schemas.PlayerInputSubmittedEvent.model_validate(data)
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            events, handled = await self.runtime.submit_player_input(
-                self.lobby,
-                payload.player_id,
-                payload.value,
-            )
-            for event in events:
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            if handled:
+            case Event.STEP_ADVANCED:
+                await self._run_runtime_events(
+                    lambda: self.runtime.advance_step(self.lobby),
+                    force_snapshot=True,
+                    begin_round_intro=True,
+                )
+
+            case Event.CLOSE_STEP:
+                await self._run_runtime_events(
+                    lambda: self.runtime.close_step(self.lobby),
+                    begin_round_intro=True,
+                )
+
+            case Event.PLAYER_INPUT_SUBMITTED:
+                payload = schemas.PlayerInputSubmittedEvent.model_validate(data)
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                events, handled = await self.runtime.submit_player_input(
+                    self.lobby,
+                    payload.player_id,
+                    payload.value,
+                )
+                await self._relay_non_snapshot_events(events)
+                if handled:
+                    await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+
+            case Event.BUZZER_STATE:
+                buzzer_state = schemas.BuzzerStateEvent.model_validate(data)
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                events = await self.runtime.set_buzzer_state(self.lobby, buzzer_state.active)
+                await self._relay_non_snapshot_events(events)
                 await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            return
 
-        if event_type == Event.BUZZER_STATE:
-            buzzer_state = schemas.BuzzerStateEvent.model_validate(data)
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            for event in await self.runtime.set_buzzer_state(self.lobby, buzzer_state.active):
-                if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                    await self.relay_event(event)
-            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            return
+            case Event.UPDATE_SCORE:
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                update_score = await self.runtime.update_score(
+                    self.lobby,
+                    schemas.UpdateScoreEvent.model_validate(data),
+                )
+                await self.relay_event(update_score, exclude=update_score.player_id)
+                await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
-        if event_type == Event.UPDATE_SCORE:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            update_score = await self.runtime.update_score(
-                self.lobby, schemas.UpdateScoreEvent.model_validate(data)
-            )
-            await self.relay_event(update_score, exclude=update_score.player_id)
-            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            return
+            case Event.REVIEW_SUBMISSION:
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                review_events = await self.runtime.review_submission(
+                    self.lobby,
+                    schemas.ReviewSubmissionEvent.model_validate(data),
+                )
+                for event in review_events:
+                    exclude = None
+                    if not isinstance(
+                        event,
+                        (schemas.AnswerJudgedEvent, schemas.BuzzerReviewedEvent),
+                    ):
+                        exclude = getattr(event, "player_id", None)
+                    await self.relay_event(event, exclude=exclude)
+                await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
-        if event_type == Event.REVIEW_SUBMISSION:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            review_events = await self.runtime.review_submission(
-                self.lobby,
-                schemas.ReviewSubmissionEvent.model_validate(data),
-            )
-            for event in review_events:
-                exclude = None
-                if not isinstance(event, (schemas.AnswerJudgedEvent, schemas.BuzzerReviewedEvent)):
-                    exclude = getattr(event, "player_id", None)
-                await self.relay_event(event, exclude=exclude)
-            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            return
+            case Event.REVEALED_SUBMISSION:
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                player_id = (
+                    data.get("submission", {}).get("player_id")
+                    if data.get("submission")
+                    else data.get("player_id")
+                )
+                reveal_event = await self.runtime.reveal_submission(self.lobby, player_id)
+                await self.relay_event(reveal_event)
+                await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
-        if event_type == Event.REVEALED_SUBMISSION:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            player_id = (
-                data.get("submission", {}).get("player_id")
-                if data.get("submission")
-                else data.get("player_id")
-            )
-            reveal_event = await self.runtime.reveal_submission(self.lobby, player_id)
-            await self.relay_event(reveal_event)
-            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            return
-
-        if event_type == Event.SCORES_UPDATED:
-            before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            for score_event in await self.runtime.evaluate_auto_step(self.lobby):
-                await self.relay_event(score_event)
-            await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-            return
+            case Event.SCORES_UPDATED:
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                for score_event in await self.runtime.evaluate_auto_step(self.lobby):
+                    await self.relay_event(score_event)
+                await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
     async def _schedule_timer_from_snapshot(
         self, snapshot: schemas.RuntimeSnapshotEvent | None = None

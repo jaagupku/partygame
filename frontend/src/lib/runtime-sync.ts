@@ -19,6 +19,10 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.activeRound = event.active_round ?? undefined;
 	state.activeStep = event.active_step;
 	state.displayPhase = event.display_phase;
+	state.reviewStepIndex = event.review_step_index;
+	state.reviewingHistory = event.reviewing_history;
+	state.canReviewPrevious = event.can_review_previous;
+	state.canReviewNext = event.can_review_next;
 	state.scoreboardVisible = event.scoreboard_visible;
 	state.buzzerActive = event.buzzer_active;
 	state.buzzedPlayerId = event.buzzed_player_id;
@@ -79,6 +83,18 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 	if (changes.display_phase !== undefined) {
 		state.displayPhase = changes.display_phase;
 	}
+	if ('review_step_index' in changes) {
+		state.reviewStepIndex = changes.review_step_index;
+	}
+	if (changes.reviewing_history !== undefined) {
+		state.reviewingHistory = changes.reviewing_history;
+	}
+	if (changes.can_review_previous !== undefined) {
+		state.canReviewPrevious = changes.can_review_previous;
+	}
+	if (changes.can_review_next !== undefined) {
+		state.canReviewNext = changes.can_review_next;
+	}
 	if (changes.scoreboard_visible !== undefined) {
 		state.scoreboardVisible = changes.scoreboard_visible;
 	}
@@ -128,6 +144,10 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.activeRound = event.active_round ?? undefined;
 	state.activeStep = event.active_step;
 	state.displayPhase = event.display_phase;
+	state.reviewStepIndex = event.review_step_index;
+	state.reviewingHistory = event.reviewing_history;
+	state.canReviewPrevious = event.can_review_previous;
+	state.canReviewNext = event.can_review_next;
 	state.scoreboardVisible = event.scoreboard_visible;
 	state.buzzerActive = event.buzzer_active;
 	state.buzzedPlayerId = event.buzzed_player_id;
@@ -194,6 +214,18 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 	}
 	if (changes.display_phase !== undefined) {
 		state.displayPhase = changes.display_phase;
+	}
+	if ('review_step_index' in changes) {
+		state.reviewStepIndex = changes.review_step_index;
+	}
+	if (changes.reviewing_history !== undefined) {
+		state.reviewingHistory = changes.reviewing_history;
+	}
+	if (changes.can_review_previous !== undefined) {
+		state.canReviewPrevious = changes.can_review_previous;
+	}
+	if (changes.can_review_next !== undefined) {
+		state.canReviewNext = changes.can_review_next;
 	}
 	if (changes.scoreboard_visible !== undefined) {
 		state.scoreboardVisible = changes.scoreboard_visible;

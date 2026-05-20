@@ -27,25 +27,51 @@ class SnapshotBuilder:
         *,
         revision: int | None = None,
     ) -> schemas.RuntimeSnapshotEvent:
-        step = await self.runtime.get_current_step(lobby)
-        active_round = await self.runtime.get_current_round(lobby)
-        step_state = await self.runtime.get_step_state(lobby.id)
+        live_step = await self.runtime.get_current_step(lobby)
+        live_round = await self.runtime.get_current_round(lobby)
+        live_step_state = await self.runtime.get_step_state(lobby.id)
+        review_step_index = self.runtime._review_step_index(live_step_state)
+        reviewing_history = review_step_index is not None
+        step = live_step
+        active_round = live_round
+        step_state = live_step_state
+        if reviewing_history:
+            steps = await self.runtime._flatten_steps_with_metadata(lobby)
+            if review_step_index is not None and 0 <= review_step_index < len(steps):
+                reviewed = steps[review_step_index]
+                archived_state = await self.runtime.get_archived_step_state(
+                    lobby.id,
+                    review_step_index,
+                )
+                if archived_state:
+                    step = reviewed.step
+                    active_round = self._runtime_round_state(reviewed)
+                    step_state = archived_state | {
+                        "display_phase": "answer_reveal",
+                        "review_step_index": review_step_index,
+                    }
+                else:
+                    reviewing_history = False
+                    review_step_index = None
+            else:
+                reviewing_history = False
+                review_step_index = None
         players = await self.repo.get_players(lobby.id)
         snapshot_revision = (
             revision if revision is not None else await self.repo.get_state_revision(lobby.id)
         )
 
         active_step = None
-        if step is not None and lobby.phase != "round_intro":
+        if step is not None and (reviewing_history or lobby.phase != "round_intro"):
             active_step = await self._runtime_step_state(
                 lobby,
                 step,
                 step_state,
-                input_enabled=lobby.phase == "question_active",
+                input_enabled=(not reviewing_history and lobby.phase == "question_active"),
             )
 
         active_item = None
-        if active_round is not None and lobby.phase == "round_intro":
+        if active_round is not None and lobby.phase == "round_intro" and not reviewing_history:
             active_item = schemas.RuntimeRoundIntroItemState(
                 round=active_round,
                 duration_seconds=ROUND_INTRO_DURATION_SECONDS,
@@ -55,17 +81,43 @@ class SnapshotBuilder:
 
         next_item = await self._build_next_item(lobby)
         pending_review_count = self._pending_review_count(step_state)
-        next_host_action = self._build_next_host_action(
-            lobby,
-            step,
-            step_state,
-            active_step,
-            next_item,
-            pending_review_count,
-            has_eligible_buzzer_players=await self._has_eligible_buzzer_players(
-                lobby, step_state, players
-            ),
+        can_review_previous = (
+            review_step_index if review_step_index is not None else lobby.current_step
+        ) > 0 and await self.runtime._has_archived_step(
+            lobby.id,
+            (review_step_index if review_step_index is not None else lobby.current_step) - 1,
         )
+        can_review_next = reviewing_history
+        if reviewing_history:
+            next_title = None
+            if review_step_index is not None and review_step_index + 1 < lobby.current_step:
+                archived_next = await self.runtime.get_archived_step_state(
+                    lobby.id,
+                    review_step_index + 1,
+                )
+                if archived_next:
+                    steps = await self.runtime._flatten_steps_with_metadata(lobby)
+                    if review_step_index + 1 < len(steps):
+                        next_title = steps[review_step_index + 1].step.title
+            elif live_step is not None:
+                next_title = live_step.title
+            next_host_action = schemas.NextHostActionState(
+                kind="next_question",
+                title=next_title,
+            )
+            pending_review_count = 0
+        else:
+            next_host_action = self._build_next_host_action(
+                lobby,
+                step,
+                step_state,
+                active_step,
+                next_item,
+                pending_review_count,
+                has_eligible_buzzer_players=await self._has_eligible_buzzer_players(
+                    lobby, step_state, players
+                ),
+            )
 
         revealed_submission = None
         player_id = step_state.get("revealed_submission_player_id")
@@ -83,7 +135,7 @@ class SnapshotBuilder:
         if step is not None and self._step_has_revealable_answer(step):
             host_answer = schemas.RevealedAnswer(value=step.evaluation.answer)
 
-        submissions = await self.build_submissions_event(lobby)
+        submissions = self._build_submissions_event_from_state(step_state)
         end_game = await self.end_game._build_end_game_state(lobby, players)
 
         return schemas.RuntimeSnapshotEvent(
@@ -105,9 +157,13 @@ class SnapshotBuilder:
             next_host_action=next_host_action,
             active_round=active_round,
             active_step=active_step,
+            review_step_index=review_step_index,
+            reviewing_history=reviewing_history,
+            can_review_previous=can_review_previous,
+            can_review_next=can_review_next,
             display_phase=str(step_state.get("display_phase") or "question_active"),
             scoreboard_visible=bool(step_state.get("scoreboard_visible")),
-            buzzer_active=bool(step_state.get("buzzer_active")),
+            buzzer_active=False if reviewing_history else bool(step_state.get("buzzer_active")),
             buzzed_player_id=step_state.get("buzzed_player_id") or None,
             disabled_buzzer_player_ids=list(step_state.get("disabled_buzzer_player_ids", [])),
             submitted_player_ids=list(step_state.get("answers", {}).keys()),
@@ -261,6 +317,12 @@ class SnapshotBuilder:
         self, lobby: schemas.Lobby
     ) -> schemas.SubmissionsUpdatedEvent:
         state = await self.runtime.get_step_state(lobby.id)
+        return self._build_submissions_event_from_state(state)
+
+    def _build_submissions_event_from_state(
+        self,
+        state: dict[str, Any],
+    ) -> schemas.SubmissionsUpdatedEvent:
         items = [
             schemas.SubmissionItem(
                 player_id=player_id,

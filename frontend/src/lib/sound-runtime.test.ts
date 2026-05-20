@@ -46,6 +46,10 @@ function hostState(overrides: Partial<HostGameState> = {}): HostGameState {
 			}
 		},
 		displayPhase: 'question_active',
+		reviewStepIndex: undefined,
+		reviewingHistory: false,
+		canReviewPrevious: false,
+		canReviewNext: false,
 		scoreboardVisible: false,
 		buzzerActive: false,
 		buzzedPlayerId: undefined,

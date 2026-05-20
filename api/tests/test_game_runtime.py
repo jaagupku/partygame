@@ -228,6 +228,44 @@ class ClosestNumberBandsProvider:
         return []
 
 
+class TwoExactNumberProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Two questions",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="first_number",
+                            title="First number",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NUMBER),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_NUMBER,
+                                points=1,
+                                answer=1,
+                            ),
+                        ),
+                        StepDefinition(
+                            id="second_number",
+                            title="Second number",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.NUMBER),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.EXACT_NUMBER,
+                                points=1,
+                                answer=2,
+                            ),
+                        ),
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 class VideoDefinitionProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -1184,6 +1222,111 @@ async def test_show_question_returns_answer_reveal_to_question_phase():
 
     assert [event.type_ for event in events] == ["runtime_snapshot"]
     assert repo.steps["g1"]["display_phase"] == "question_active"
+
+
+@pytest.mark.asyncio
+async def test_host_can_review_previous_answer_reveal_without_rewinding_live_step():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=TwoExactNumberProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 1)
+    await service.show_answer_reveal(lobby)
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p2", 2)
+    await service.show_answer_reveal(lobby)
+
+    live_snapshot = await service.build_snapshot(lobby)
+    assert live_snapshot.active_step is not None
+    assert live_snapshot.active_step.id == "second_number"
+    assert live_snapshot.can_review_previous is True
+
+    events = await service.show_previous_reveal(lobby)
+    snapshot = events[-1]
+
+    assert isinstance(snapshot, schemas.RuntimeSnapshotEvent)
+    assert lobby.current_step == 1
+    assert snapshot.lobby.current_step == 1
+    assert snapshot.reviewing_history is True
+    assert snapshot.review_step_index == 0
+    assert snapshot.display_phase == "answer_reveal"
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.id == "first_number"
+    assert snapshot.active_step.input_enabled is False
+    assert snapshot.submitted_player_ids == ["p1"]
+
+
+@pytest.mark.asyncio
+async def test_review_next_returns_to_live_answer_reveal():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=TwoExactNumberProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 1)
+    await service.show_answer_reveal(lobby)
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p2", 2)
+    await service.show_answer_reveal(lobby)
+    await service.show_previous_reveal(lobby)
+
+    events = await service.show_next_reveal(lobby)
+    snapshot = events[-1]
+
+    assert isinstance(snapshot, schemas.RuntimeSnapshotEvent)
+    assert snapshot.reviewing_history is False
+    assert snapshot.review_step_index is None
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.id == "second_number"
+    assert snapshot.display_phase == "answer_reveal"
+
+
+@pytest.mark.asyncio
+async def test_review_mode_ignores_player_input_and_reset():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=TwoExactNumberProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 1)
+    await service.show_answer_reveal(lobby)
+    await service.advance_step(lobby)
+    await service.submit_player_input(lobby, "p2", 2)
+    await service.show_answer_reveal(lobby)
+    await service.show_previous_reveal(lobby)
+
+    events, handled = await service.submit_player_input(lobby, "p1", 2)
+    reset_events = await service.reset_current_step(lobby)
+
+    assert events == []
+    assert handled is False
+    assert reset_events == []
+    snapshot = await service.build_snapshot(lobby)
+    assert snapshot.reviewing_history is True
+    assert snapshot.active_step is not None
+    assert snapshot.active_step.id == "first_number"
+
+
+@pytest.mark.asyncio
+async def test_first_answer_reveal_has_no_previous_review():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=TwoExactNumberProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    await service.submit_player_input(lobby, "p1", 1)
+    await service.show_answer_reveal(lobby)
+
+    snapshot = await service.build_snapshot(lobby)
+    events = await service.show_previous_reveal(lobby)
+    previous_snapshot = events[-1]
+
+    assert snapshot.can_review_previous is False
+    assert isinstance(previous_snapshot, schemas.RuntimeSnapshotEvent)
+    assert previous_snapshot.reviewing_history is False
+    assert previous_snapshot.active_step is not None
+    assert previous_snapshot.active_step.id == "first_number"
 
 
 @pytest.mark.asyncio
