@@ -491,7 +491,7 @@
 {/if}
 
 {#if $controller.scoreboardVisible && !$controller.endGame?.revealed && !$controller.isHost}
-	<p class="mt-3 text-center text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+	<p class="scoreboard-visible-chip" role="status">
 		{$messages.gameplay.scoreboardShowingOnMainScreen}
 	</p>
 {/if}
@@ -512,28 +512,30 @@
 		{/if}
 	</div>
 {:else}
-	<div class="mt-0 stack-lg">
+	<div
+		class={`controller-stack ${$controller.isHost ? 'controller-stack-host' : 'controller-stack-player'}`}
+	>
 		{#if !$controller.isHost && !$controller.endGame?.revealed && currentPlayerStanding}
-			<section class="card grid grid-cols-2 gap-2 p-3">
-				<div class="rounded-lg bg-white/70 px-3 py-2 text-center">
+			<section class="controller-score-card card grid grid-cols-2 gap-2 p-2">
+				<div class="rounded-lg bg-white/70 px-2 py-1.5 text-center">
 					<p class="text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
 						{$messages.common.score}
 					</p>
-					<p class="mt-0.5 text-2xl font-black leading-none text-slate-950">
+					<p class="text-2xl font-black leading-none text-slate-950">
 						{currentPlayerStanding.score}
 					</p>
-					<p class="mt-0.5 text-[0.65rem] font-bold text-slate-500">
+					<p class="text-[0.65rem] font-bold text-slate-500">
 						{$messages.common.pointsWord}
 					</p>
 				</div>
-				<div class="rounded-lg bg-white/70 px-3 py-2 text-center">
+				<div class="rounded-lg bg-white/70 px-2 py-1.5 text-center">
 					<p class="text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
 						{$messages.gameplay.currentPlace}
 					</p>
-					<p class="mt-0.5 text-2xl font-black leading-none text-sky-700">
+					<p class="text-2xl font-black leading-none text-sky-700">
 						#{currentPlayerStanding.place}
 					</p>
-					<p class="mt-0.5 text-[0.65rem] font-bold text-slate-500">
+					<p class="text-[0.65rem] font-bold text-slate-500">
 						{$messages.finale.place(currentPlayerStanding.place)}
 					</p>
 				</div>
@@ -573,21 +575,25 @@
 				</section>
 			{/if}
 		{:else if !gameFinished && !$controller.isHost}
-			<PlayerInputPanel
-				activeStep={$controller.activeStep}
-				baseInputDisabled={basePlayerInputDisabled}
-				buzzerActive={$controller.buzzerActive}
-				{canContinueHostlessInfoSlide}
-				disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
-				drawingItems={$controller.drawingItems}
-				ownDrawingId={$controller.ownDrawingId}
-				drawingVotedPlayerIds={$controller.drawingVotedPlayerIds}
-				hasSubmitted={$controller.hasSubmitted}
-				playerId={$controller.id}
-				onContinueInfoSlide={nextStep}
-				onSubmitAnswer={submitAnswer}
-				onSubmitDrawingVote={submitDrawingVote}
-			/>
+			<div
+				class={`controller-player-input controller-player-input-${$controller.activeStep?.input_kind ?? 'none'}`}
+			>
+				<PlayerInputPanel
+					activeStep={$controller.activeStep}
+					baseInputDisabled={basePlayerInputDisabled}
+					buzzerActive={$controller.buzzerActive}
+					{canContinueHostlessInfoSlide}
+					disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+					drawingItems={$controller.drawingItems}
+					ownDrawingId={$controller.ownDrawingId}
+					drawingVotedPlayerIds={$controller.drawingVotedPlayerIds}
+					hasSubmitted={$controller.hasSubmitted}
+					playerId={$controller.id}
+					onContinueInfoSlide={nextStep}
+					onSubmitAnswer={submitAnswer}
+					onSubmitDrawingVote={submitDrawingVote}
+				/>
+			</div>
 		{:else if gameFinished}
 			<section class="card text-center">
 				<p class="text-xl font-bold">{$messages.gameplay.gameComplete}</p>
@@ -664,7 +670,7 @@
 				/>
 			{/if}
 
-			<section class="card stack-md">
+			<section class="card controller-compact-card controller-manual-score stack-md">
 				<h2 class="label-title text-2xl">{$messages.gameplay.manualScore}</h2>
 				<input class="input" type="number" bind:value={customScore} min="-500" max="500" />
 				<div class="flex flex-wrap gap-2">
@@ -741,6 +747,29 @@
 		color: rgb(127, 29, 29);
 	}
 
+	.scoreboard-visible-chip {
+		position: fixed;
+		left: max(0.75rem, env(safe-area-inset-left));
+		right: 6.75rem;
+		bottom: max(0.75rem, env(safe-area-inset-bottom));
+		z-index: 69;
+		width: fit-content;
+		max-width: calc(100vw - 8rem);
+		border: 1px solid rgba(14, 165, 233, 0.24);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.92);
+		padding: 0.45rem 0.7rem;
+		color: rgb(51 65 85);
+		font-size: 0.68rem;
+		font-weight: 900;
+		letter-spacing: 0.08em;
+		line-height: 1.1;
+		text-transform: uppercase;
+		box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+		backdrop-filter: blur(10px);
+		pointer-events: none;
+	}
+
 	@keyframes answer-result-pulse {
 		0% {
 			opacity: 0;
@@ -760,6 +789,57 @@
 		100% {
 			opacity: 1;
 			transform: translate(-50%, 0);
+		}
+	}
+
+	.controller-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-top: 0;
+	}
+
+	.controller-stack-host {
+		padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+	}
+
+	.controller-score-card {
+		border-radius: 1rem;
+	}
+
+	@media (max-width: 640px) {
+		.controller-stack-player {
+			gap: 0.5rem;
+			min-height: calc(100dvh - 2rem);
+		}
+
+		.controller-player-input {
+			min-height: 0;
+		}
+
+		.controller-player-input-map {
+			flex: 1;
+			display: flex;
+			min-height: 0;
+		}
+
+		.controller-player-input-map :global(.map-answer-card) {
+			flex: 1;
+		}
+
+		.controller-score-card {
+			box-shadow: none;
+		}
+
+		.controller-manual-score {
+			gap: 0.6rem;
+		}
+	}
+
+	@media (min-width: 641px) {
+		.scoreboard-visible-chip {
+			right: auto;
+			max-width: min(28rem, calc(100vw - 2rem));
 		}
 	}
 </style>

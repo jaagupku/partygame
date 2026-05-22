@@ -45,12 +45,14 @@
 <div
 	class:app-shell-editor={definitionsEditorRoute}
 	class:app-shell-host-game={hostGameRoute}
+	class:app-shell-controller={playerControllerRoute}
 	class="app-shell"
 >
 	<div
 		class:page-panel-editor={definitionsEditorRoute}
 		class:page-panel-wide={page.url.pathname.startsWith('/definitions')}
 		class:page-panel-host-game={hostGameRoute}
+		class:page-panel-controller={playerControllerRoute}
 		class="page-panel"
 	>
 		{#if !hideAuthControls}

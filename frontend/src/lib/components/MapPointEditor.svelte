@@ -44,6 +44,8 @@
 		selectionBounds?: MapBounds;
 		baseLayer?: MapInputConfig['base_layer'];
 		heightClass?: string;
+		resetViewKey?: string | number | null;
+		lockViewToBounds?: boolean;
 		onPointChange?: (point: MapPoint) => void;
 		onMapConfigChange?: (config: MapInputConfig) => void;
 		onViewportChange?: (config: MapInputConfig) => void;
@@ -72,6 +74,8 @@
 		selectionBounds = undefined,
 		baseLayer = undefined,
 		heightClass = 'h-80',
+		resetViewKey = undefined,
+		lockViewToBounds = undefined,
 		onPointChange,
 		onMapConfigChange,
 		onViewportChange,
@@ -91,6 +95,7 @@
 	let tileLayer: import('leaflet').TileLayer | null = null;
 	let activeBaseLayer: MapInputConfig['base_layer'] | undefined = undefined;
 	let lastRevealFitKey = '';
+	let lastResetViewKey: string | number | null | undefined = undefined;
 
 	const displayedBaseLayer = $derived(baseLayer ?? mapConfig.base_layer ?? 'osm');
 	const selectionLimitBounds = $derived(selectionBounds ?? mapConfig.bounds);
@@ -106,6 +111,7 @@
 	const effectiveEditableScoring = $derived(editableScoring ?? mode === 'author');
 	const effectiveFitRevealToGuesses = $derived(fitRevealToGuesses ?? mode === 'reveal');
 	const effectiveEditingWorldView = $derived(editingWorldView ?? mode === 'author');
+	const effectiveLockViewToBounds = $derived(lockViewToBounds ?? mode === 'player');
 	const effectiveGuessLabelMode = $derived(
 		guessLabelMode ?? (mode === 'reveal' ? 'hover' : 'always')
 	);
@@ -202,12 +208,14 @@
 		effectiveEditableScoring;
 		effectiveFitRevealToGuesses;
 		effectiveEditingWorldView;
+		effectiveLockViewToBounds;
 		effectiveShowCorrect;
 		effectiveShowGuesses;
 		effectiveShowLines;
 		effectiveShowBounds;
 		effectiveEditableBounds;
 		effectiveGuessLabelMode;
+		resetViewKey;
 		syncMap();
 	});
 
@@ -232,8 +240,40 @@
 		syncScoringCircles();
 		window.setTimeout(() => {
 			map?.invalidateSize();
+			syncViewConstraints();
+			resetViewToBounds();
 			fitRevealBounds();
 		}, 0);
+	}
+
+	function syncViewConstraints() {
+		if (!map || !leaflet || effectiveEditableViewport) {
+			return;
+		}
+		map.setMaxBounds(mapBoundsTuple);
+		if (mapConfig.max_zoom !== undefined) {
+			map.setMaxZoom(mapConfig.max_zoom);
+		}
+		const nextMinZoom = effectiveMinZoom();
+		if (nextMinZoom !== undefined) {
+			map.setMinZoom(nextMinZoom);
+		}
+		map.panInsideBounds(mapBoundsTuple, { animate: false });
+	}
+
+	function effectiveMinZoom() {
+		const configuredMinZoom = mapConfig.min_zoom;
+		if (!map || !effectiveLockViewToBounds) {
+			return configuredMinZoom;
+		}
+		const lockedMinZoom = map.getBoundsZoom(mapBoundsTuple, true);
+		if (!Number.isFinite(lockedMinZoom)) {
+			return configuredMinZoom;
+		}
+		const nextMinZoom = Math.max(configuredMinZoom ?? lockedMinZoom, lockedMinZoom);
+		return mapConfig.max_zoom === undefined
+			? nextMinZoom
+			: Math.min(mapConfig.max_zoom, nextMinZoom);
 	}
 
 	function syncBaseLayer() {
@@ -434,6 +474,21 @@
 			duration: 1.15,
 			padding: target.padding,
 			maxZoom: target.maxZoom
+		});
+	}
+
+	function resetViewToBounds() {
+		if (!map || !leaflet || resetViewKey === undefined || resetViewKey === null) {
+			return;
+		}
+		if (resetViewKey === lastResetViewKey) {
+			return;
+		}
+		lastResetViewKey = resetViewKey;
+		map.fitBounds(mapBoundsTuple, {
+			animate: false,
+			padding: [12, 12],
+			maxZoom: mapConfig.max_zoom
 		});
 	}
 

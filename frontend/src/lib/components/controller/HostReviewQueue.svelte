@@ -36,10 +36,10 @@
 	}
 </script>
 
-<section class="card stack-md">
+<section class="card controller-compact-card host-review-card stack-md">
 	<h2 class="label-title text-2xl">{$messages.gameplay.reviewQueue}</h2>
 	{#if hostAnswer}
-		<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+		<div class="host-review-item rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
 			<p class="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
 				{$messages.common.correctAnswer}
 			</p>
@@ -49,7 +49,7 @@
 		</div>
 	{/if}
 	{#if activeStep?.input_kind === 'buzzer' && buzzedPlayerId}
-		<div class="rounded-2xl bg-white/70 p-3">
+		<div class="host-review-item rounded-2xl bg-white/70 p-3">
 			<p class="font-bold">{playerName(buzzedPlayerId)}</p>
 			<p class="mt-1 text-slate-600">{$messages.gameplay.buzzedInFirst}</p>
 			<div class="mt-3 flex flex-wrap gap-2">
@@ -86,7 +86,7 @@
 	{:else}
 		{#each submissions as submission}
 			<div
-				class={`rounded-2xl p-3 ${
+				class={`host-review-item rounded-2xl p-3 ${
 					isSubmissionReviewed(submission.player_id) ? 'bg-slate-100 opacity-70' : 'bg-white/70'
 				}`}
 			>
@@ -134,3 +134,23 @@
 		{/each}
 	{/if}
 </section>
+
+<style>
+	@media (max-width: 640px) {
+		.host-review-card {
+			gap: 0.6rem;
+		}
+
+		.host-review-item {
+			border-radius: 0.85rem;
+			padding: 0.65rem;
+		}
+
+		.host-review-item :global(.btn) {
+			border-radius: 0.85rem;
+			padding: 0.65rem 0.8rem;
+			font-size: 1rem;
+			line-height: 1.1;
+		}
+	}
+</style>

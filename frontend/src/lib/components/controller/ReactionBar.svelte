@@ -201,4 +201,42 @@
 			box-shadow: 0 14px 30px rgba(15, 23, 42, 0.2);
 		}
 	}
+
+	@media (max-width: 640px) {
+		.reaction-dock {
+			right: max(0.35rem, env(safe-area-inset-right));
+			bottom: max(0.35rem, env(safe-area-inset-bottom));
+			gap: 0.35rem;
+		}
+
+		.reaction-buttons {
+			gap: 0.3rem;
+		}
+
+		.reaction-primary {
+			width: 3.65rem;
+			height: 3.65rem;
+			font-size: 2.05rem;
+		}
+
+		.reaction-chooser {
+			width: 2.25rem;
+			height: 2.25rem;
+			font-size: 1.1rem;
+		}
+
+		.reaction-menu {
+			grid-template-columns: repeat(3, 2.7rem);
+			gap: 0.35rem;
+			border-radius: 0.85rem;
+			padding: 0.4rem;
+		}
+
+		.reaction-option {
+			width: 2.7rem;
+			height: 2.7rem;
+			border-radius: 0.75rem;
+			font-size: 1.45rem;
+		}
+	}
 </style>

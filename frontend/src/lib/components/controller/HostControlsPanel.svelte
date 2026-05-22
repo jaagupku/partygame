@@ -117,22 +117,22 @@
 	}
 </script>
 
-<section class="card stack-md">
+<section class="card controller-compact-card host-controls-card stack-md">
 	<h2 class="label-title text-2xl">{$messages.gameplay.hostControls}</h2>
-	<div class="grid gap-2 sm:grid-cols-4">
-		<p class="rounded-xl bg-white/70 px-3 py-2 text-sm font-semibold text-slate-700">
+	<div class="host-stats-grid grid grid-cols-2 gap-2 lg:grid-cols-4">
+		<p class="host-stat-cell">
 			<span class="block text-xs font-black uppercase text-slate-500"
 				>{$messages.gameplay.phaseLabel}</span
 			>
 			{formatPhaseLabel(lobbyPhase)}
 		</p>
-		<p class="rounded-xl bg-white/70 px-3 py-2 text-sm font-semibold text-slate-700">
+		<p class="host-stat-cell">
 			<span class="block text-xs font-black uppercase text-slate-500"
 				>{$messages.gameplay.submissionsLabel}</span
 			>
 			{submissionCount}
 		</p>
-		<p class="rounded-xl bg-white/70 px-3 py-2 text-sm font-semibold text-slate-700">
+		<p class="host-stat-cell">
 			<span class="block text-xs font-black uppercase text-slate-500"
 				>{$messages.gameplay.pendingReviewLabel}</span
 			>
@@ -141,7 +141,7 @@
 		<div class="relative">
 			<button
 				type="button"
-				class="w-full rounded-xl bg-white/70 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+				class="host-stat-cell w-full text-left transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
 				aria-expanded={pendingSubmissionsOpen}
 				onclick={() => (pendingSubmissionsOpen = !pendingSubmissionsOpen)}
 			>
@@ -180,7 +180,7 @@
 			{/each}
 		</div>
 	{/if}
-	<div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+	<div class="host-action-panel rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<p class="text-xs font-black uppercase tracking-[0.14em] text-sky-700">
@@ -205,7 +205,7 @@
 	</div>
 	{#if isBuzzerStep && !reviewingHistory}
 		<div
-			class={`rounded-2xl border px-4 py-3 ${
+			class={`host-action-panel rounded-2xl border px-4 py-3 ${
 				shouldPrioritizeBuzzer
 					? 'border-amber-200 bg-amber-50'
 					: buzzerActive
@@ -245,7 +245,7 @@
 			</div>
 		</div>
 	{/if}
-	<div class="grid gap-3 sm:grid-cols-2">
+	<div class="host-button-grid grid gap-3 sm:grid-cols-2">
 		<button
 			type="button"
 			class="btn btn-ghost w-full"
@@ -269,7 +269,7 @@
 		{/if}
 	</div>
 	{#if hasControllableMedia && !reviewingHistory}
-		<div class="rounded-2xl border border-slate-200 bg-white/70 p-3">
+		<div class="host-action-panel rounded-2xl border border-slate-200 bg-white/70 p-3">
 			<p class="text-sm font-black uppercase tracking-[0.14em] text-slate-500">
 				{$messages.gameplay.videoPlayback}
 			</p>
@@ -304,3 +304,57 @@
 		</div>
 	{/if}
 </section>
+
+<style>
+	@media (max-width: 640px) {
+		.host-controls-card {
+			gap: 0.6rem;
+		}
+
+		.host-stats-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0.45rem;
+		}
+
+		.host-stats-grid :global(.text-xs) {
+			font-size: 0.62rem;
+			line-height: 1;
+			letter-spacing: 0.08em;
+		}
+
+		.host-action-panel {
+			border-radius: 0.85rem;
+			padding: 0.65rem;
+		}
+
+		.host-action-panel :global(.btn),
+		.host-button-grid :global(.btn) {
+			border-radius: 0.85rem;
+			padding: 0.65rem 0.8rem;
+			font-size: 1rem;
+			line-height: 1.1;
+		}
+
+		.host-button-grid {
+			gap: 0.45rem;
+		}
+	}
+
+	.host-stat-cell {
+		border-radius: 0.75rem;
+		background: rgba(255, 255, 255, 0.7);
+		padding: 0.45rem 0.55rem;
+		color: rgb(51 65 85);
+		font-size: 0.82rem;
+		font-weight: 700;
+		line-height: 1.15;
+	}
+
+	@media (min-width: 641px) {
+		.host-stat-cell {
+			border-radius: 0.75rem;
+			padding: 0.5rem 0.75rem;
+			font-size: 0.875rem;
+		}
+	}
+</style>

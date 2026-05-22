@@ -163,7 +163,7 @@
 </script>
 
 {#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && activeStep.input_enabled && drawingItems.length > 0}
-	<section class="card stack-md">
+	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.voteForFavoriteDrawing}</h2>
 		<p class="text-sm text-slate-600">
 			{drawingVoteSubmitted
@@ -191,7 +191,7 @@
 		{/if}
 	</section>
 {:else if activeStep?.input_kind === 'buzzer'}
-	<section class="card stack-md text-center">
+	<section class="card controller-compact-card stack-md text-center">
 		<h2 class="label-title text-2xl">{$messages.gameplay.buzzer}</h2>
 		<p>
 			{inputDisabled
@@ -214,7 +214,7 @@
 		</button>
 	</section>
 {:else if activeStep?.input_kind === 'text'}
-	<section class="card stack-md">
+	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
 		{#if inputDisabled}
 			<p class="text-sm text-slate-600">
@@ -223,6 +223,9 @@
 					: $messages.gameplay.stepClosedAnswersDisabled}
 			</p>
 		{/if}
+		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
+			{$messages.gameplay.submitAnswer}
+		</button>
 		<input
 			class="input"
 			type="text"
@@ -230,12 +233,9 @@
 			disabled={inputDisabled}
 			placeholder={activeStep?.input_placeholder ?? $messages.gameplay.typeYourAnswer}
 		/>
-		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
-			{$messages.gameplay.submitAnswer}
-		</button>
 	</section>
 {:else if activeStep?.input_kind === 'number'}
-	<section class="card stack-md">
+	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
 		{#if inputDisabled}
 			<p class="text-sm text-slate-600">
@@ -244,6 +244,9 @@
 					: $messages.gameplay.stepClosedAnswersDisabled}
 			</p>
 		{/if}
+		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
+			{$messages.gameplay.submitAnswer}
+		</button>
 		{#if useNumberSlider}
 			<div class="stack-md">
 				<div class="flex items-center justify-between gap-4">
@@ -275,12 +278,9 @@
 				placeholder={activeStep?.input_placeholder ?? $messages.gameplay.enterNumber}
 			/>
 		{/if}
-		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
-			{$messages.gameplay.submitAnswer}
-		</button>
 	</section>
 {:else if activeStep?.input_kind === 'ordering'}
-	<section class="card stack-md">
+	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.orderingAnswer}</h2>
 		<p class="text-sm text-slate-600">
 			{inputDisabled
@@ -289,6 +289,9 @@
 					: $messages.gameplay.reorderingDisabled
 				: $messages.gameplay.dragOrTapItemsToOrder}
 		</p>
+		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
+			{$messages.gameplay.submitOrder}
+		</button>
 		<OrderingList
 			items={orderingItems}
 			disabled={inputDisabled}
@@ -297,12 +300,9 @@
 			moveDownLabel={$messages.gameplay.moveOrderItemDown}
 			onReorder={(items) => (orderingItems = items)}
 		/>
-		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
-			{$messages.gameplay.submitOrder}
-		</button>
 	</section>
 {:else if activeStep?.input_kind === 'radio'}
-	<section class="card stack-md">
+	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.chooseOne}</h2>
 		<p class="text-sm text-slate-600">
 			{inputDisabled
@@ -325,7 +325,7 @@
 		</div>
 	</section>
 {:else if activeStep?.input_kind === 'checkbox'}
-	<section class="card stack-md">
+	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.chooseOneOrMore}</h2>
 		<p class="text-sm text-slate-600">
 			{inputDisabled
@@ -334,6 +334,14 @@
 					: $messages.gameplay.newSelectionsDisabled
 				: $messages.gameplay.tapOptionsThenSubmit}
 		</p>
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={submitAnswer}
+			disabled={inputDisabled || selectedCheckboxOptions.length === 0}
+		>
+			{$messages.gameplay.submitSelection}
+		</button>
 		<div class="grid gap-3">
 			{#each activeStep.input_options as option}
 				<button
@@ -348,46 +356,43 @@
 				</button>
 			{/each}
 		</div>
-		<button
-			type="button"
-			class="btn btn-primary"
-			onclick={submitAnswer}
-			disabled={inputDisabled || selectedCheckboxOptions.length === 0}
-		>
-			{$messages.gameplay.submitSelection}
-		</button>
 	</section>
 {:else if activeStep?.input_kind === 'map'}
-	<section class="card stack-md">
-		<h2 class="label-title text-2xl">{$messages.gameplay.mapAnswer}</h2>
-		<p class="text-sm text-slate-600">
-			{inputDisabled
-				? hasSubmitted
-					? $messages.gameplay.mapGuessSubmitted
-					: $messages.gameplay.stepClosedAnswersDisabled
-				: $messages.gameplay.tapMapToGuess}
-		</p>
+	<section class="card controller-compact-card map-answer-card">
+		<div class="controller-action-row">
+			<div class="min-w-0">
+				<h2 class="label-title text-2xl">{$messages.gameplay.mapAnswer}</h2>
+				<p class="controller-input-help text-sm text-slate-600">
+					{inputDisabled
+						? hasSubmitted
+							? $messages.gameplay.mapGuessSubmitted
+							: $messages.gameplay.stepClosedAnswersDisabled
+						: $messages.gameplay.tapMapToGuess}
+				</p>
+			</div>
+			<button
+				type="button"
+				class="btn btn-primary controller-primary-action"
+				onclick={submitAnswer}
+				disabled={inputDisabled || !selectedMapPoint}
+			>
+				{$messages.gameplay.submitMapGuess}
+			</button>
+		</div>
 		{#if activeStep.map}
 			<MapPointEditor
 				mode="player"
 				mapConfig={activeStep.map}
 				selectedPoint={selectedMapPoint}
 				editablePoint={!inputDisabled}
-				heightClass="h-96"
+				heightClass="controller-map-height"
+				resetViewKey={activeStep.id}
 				onPointChange={(point) => (selectedMapPoint = point)}
 			/>
 		{/if}
-		<button
-			type="button"
-			class="btn btn-primary"
-			onclick={submitAnswer}
-			disabled={inputDisabled || !selectedMapPoint}
-		>
-			{$messages.gameplay.submitMapGuess}
-		</button>
 	</section>
 {:else if activeStep?.input_kind === 'drawing'}
-	<section class="card stack-md">
+	<section class="card controller-compact-card drawing-answer-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.drawingAnswer}</h2>
 		<p class="text-sm text-slate-600">
 			{inputDisabled
@@ -396,10 +401,12 @@
 					: $messages.gameplay.stepClosedAnswersDisabled
 				: $messages.gameplay.drawYourAnswer}
 		</p>
-		<DrawingInput disabled={inputDisabled} onSubmit={onSubmitAnswer} />
+		<div class="drawing-input-fill">
+			<DrawingInput disabled={inputDisabled} submitPosition="top" onSubmit={onSubmitAnswer} />
+		</div>
 	</section>
 {:else}
-	<section class="card text-center">
+	<section class="card controller-compact-card text-center">
 		<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
 		{#if canContinueHostlessInfoSlide}
 			<p class="mt-2 text-slate-600">{$messages.gameplay.youCanContinueInfoSlide}</p>
@@ -411,6 +418,24 @@
 {/if}
 
 <style>
+	.map-answer-card {
+		flex: 1;
+		display: flex;
+		min-height: 0;
+		flex-direction: column;
+		gap: 0.65rem;
+		padding: 0.6rem;
+	}
+
+	.drawing-answer-card {
+		min-height: 0;
+		gap: 0.55rem;
+	}
+
+	.drawing-input-fill {
+		min-height: 0;
+	}
+
 	.drawing-vote-card {
 		display: grid;
 		gap: 0.65rem;
@@ -485,5 +510,38 @@
 
 	.number-slider:disabled {
 		opacity: 0.5;
+	}
+
+	:global(.controller-map-height) {
+		height: clamp(18rem, calc(100dvh - 15rem), 44rem);
+		min-height: 18rem;
+	}
+
+	@media (max-width: 640px) {
+		.controller-input-help {
+			margin-top: 0.1rem;
+			font-size: 0.82rem;
+			line-height: 1.2;
+		}
+
+		.map-answer-card :global(.map-shell) {
+			flex: 1;
+			height: auto;
+			min-height: 18rem;
+			border-radius: 0.75rem;
+		}
+
+		.drawing-answer-card {
+			gap: 0.45rem;
+		}
+
+		.drawing-answer-card > p {
+			font-size: 0.85rem;
+			line-height: 1.2;
+		}
+
+		.drawing-input-fill {
+			min-height: 0;
+		}
 	}
 </style>
