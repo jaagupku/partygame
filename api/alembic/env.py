@@ -10,6 +10,7 @@ from partygame.core.config import settings
 from partygame.db.postgres import Base
 from partygame.state.auth_models import UserRecord, UserSessionRecord
 from partygame.state.definition_models import GameDefinitionRecord
+from partygame.state.stats_models import GameStatSummaryRecord
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.async_database_url)
@@ -65,3 +66,4 @@ else:
 assert GameDefinitionRecord.__tablename__ == "game_definitions"
 assert UserRecord.__tablename__ == "users"
 assert UserSessionRecord.__tablename__ == "user_sessions"
+assert GameStatSummaryRecord.__tablename__ == "game_stat_summaries"

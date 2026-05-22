@@ -488,6 +488,49 @@ type EndGameState = {
 	stats_cards: EndGameStatCard[];
 };
 
+type GameStatSummary = {
+	game_id: string;
+	join_code: string;
+	definition_id?: string | null;
+	definition_title?: string | null;
+	host_enabled: boolean;
+	started_at?: string | null;
+	finished_at: string;
+	player_count: number;
+	round_count: number;
+	step_count: number;
+	summary: {
+		scoreboard?: Array<{ player_id: string; name: string; score: number; place: number }>;
+		answers?: {
+			submitted_count?: number;
+			reviewed_count?: number;
+			answered_count?: number;
+			correct_count?: number;
+			wrong_count?: number;
+			average_accuracy_percent?: number | null;
+		};
+		buzzers?: {
+			buzz_count?: number;
+			fastest_reaction_seconds?: number | null;
+			median_reaction_seconds?: number | null;
+			close_call_count?: number;
+			close_call_threshold_seconds?: number;
+		};
+		reactions?: {
+			total_reactions?: number;
+			most_used_reaction?: string | null;
+			reaction_counts?: Record<string, number>;
+		};
+	};
+};
+
+type GameStatSummaryList = {
+	items: GameStatSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+};
+
 type RuntimeSnapshotEvent = {
 	type_: 'runtime_snapshot';
 	revision: number;

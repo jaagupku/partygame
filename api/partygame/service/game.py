@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from time import time
 from typing import Any
 from uuid import uuid4
@@ -31,7 +32,10 @@ from partygame.service.runtime.snapshots import (
 )
 from partygame.service.runtime.steps import FlattenedStep
 from partygame.service.runtime.timing import TimingState
+from partygame.service.stats import GameStatsArchiver
 from partygame.state import GameStateRepository
+
+log = logging.getLogger(__name__)
 
 __all__ = (
     "END_GAME_COMPONENT_ID",
@@ -49,12 +53,26 @@ class GameRuntimeService:
         self,
         repo: GameStateRepository,
         definition_provider: DefinitionProvider | None = None,
+        stats_archiver: GameStatsArchiver | None = None,
+        archive_game_stats: bool = True,
     ):
         self.repo = repo
         self.definition_provider = definition_provider or get_default_definition_provider()
         self.timing = TimingState()
         self.evaluation = EvaluationRuntime(repo, self.timing, get_step_state=self.get_step_state)
         self.end_game = EndGameRuntime(repo, self.timing)
+        self.stats_archiver = (
+            stats_archiver
+            if stats_archiver is not None
+            else (
+                GameStatsArchiver(
+                    repo,
+                    definition_provider=self.definition_provider,
+                )
+                if archive_game_stats
+                else None
+            )
+        )
         self.snapshots = SnapshotBuilder(
             runtime=self,
             repo=repo,
@@ -118,6 +136,8 @@ class GameRuntimeService:
 
     async def start_game(self, lobby: schemas.Lobby) -> tuple[schemas.Lobby, StepDefinition | None]:
         await self._initialize_end_game_state(lobby.id, auto_reveal=not lobby.host_enabled)
+        if self.stats_archiver is not None:
+            await self.stats_archiver.mark_started(lobby.id)
         await self.repo.set_lobby_fields(
             lobby.id,
             state=schemas.GameState.RUNNING,
@@ -132,6 +152,7 @@ class GameRuntimeService:
         if step is None:
             lobby.phase = "finished"
             await self.repo.set_lobby_fields(lobby.id, phase="finished")
+            await self._archive_finished_game(lobby)
             await self.repo.apply_game_ttl(lobby.id, settings.GAME_FINISHED_TTL_SECONDS)
             return lobby, None
         await self.initialize_step_state(lobby, step)
@@ -1051,6 +1072,7 @@ class GameRuntimeService:
                     "autoplay_enabled": not lobby.host_enabled,
                 },
             )
+            await self._archive_finished_game(lobby)
             await self.repo.apply_game_ttl(lobby.id, settings.GAME_FINISHED_TTL_SECONDS)
             return [
                 schemas.StepAdvancedEvent(step_index=next_step),
@@ -1126,6 +1148,14 @@ class GameRuntimeService:
 
     async def _initialize_end_game_state(self, lobby_id: str, *, auto_reveal: bool):
         await self.end_game._initialize_end_game_state(lobby_id, auto_reveal=auto_reveal)
+
+    async def _archive_finished_game(self, lobby: schemas.Lobby):
+        if self.stats_archiver is None:
+            return
+        try:
+            await self.stats_archiver.archive_finished_game(lobby)
+        except Exception:
+            log.exception("Failed to run stats archive hook for game %s", lobby.id)
 
     async def _set_end_game_state(self, lobby_id: str, updates: dict[str, Any]):
         await self.end_game._set_end_game_state(lobby_id, updates)

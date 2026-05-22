@@ -59,6 +59,15 @@
 			<div class="mb-4 flex flex-wrap items-center justify-end gap-3 text-sm">
 				{#if $currentUser}
 					<span class="font-semibold text-slate-700">{$currentUser.display_name}</span>
+					{#if $currentUser.role === 'admin'}
+						<button
+							class="btn btn-ghost px-3 py-2 text-sm"
+							type="button"
+							onclick={() => goto('/admin/stats')}
+						>
+							{$messages.common.adminStats}
+						</button>
+					{/if}
 					<button class="btn btn-ghost px-3 py-2 text-sm" type="button" onclick={handleLogout}>
 						{$messages.auth.logout}
 					</button>

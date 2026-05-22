@@ -86,6 +86,7 @@ from .game_definition import (
 )
 from .media import MediaAsset, MediaKind
 from .auth import LoginRequest, SignupRequest, UserPublic
+from .stats import GameStatSummary, GameStatSummaryList
 
 __all__ = (
     "JoinRequest",
@@ -171,4 +172,6 @@ __all__ = (
     "LoginRequest",
     "SignupRequest",
     "UserPublic",
+    "GameStatSummary",
+    "GameStatSummaryList",
 )
