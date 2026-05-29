@@ -12,6 +12,7 @@ from .lobby import (
 )
 
 from .events import (
+    BaseEvent,
     Event,
     PlayerConnectedEvent,
     PlayerDisconnectedEvent,
@@ -99,6 +100,7 @@ __all__ = (
     "ControllerComponent",
     "DisplayComponent",
     "ComponentSpec",
+    "BaseEvent",
     "Event",
     "PlayerConnectedEvent",
     "PlayerDisconnectedEvent",

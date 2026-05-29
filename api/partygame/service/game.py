@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 from time import time
 from typing import Any
@@ -123,6 +121,13 @@ class GameRuntimeService:
 
     def is_information_slide(self, step: StepDefinition) -> bool:
         return self.evaluation.is_information_slide(step)
+
+    def is_hostless_auto_progress_step(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return self.evaluation.is_hostless_auto_progress_step(lobby, step)
 
     async def get_current_round(self, lobby: schemas.Lobby) -> schemas.RuntimeRoundState | None:
         steps = await self._flatten_steps_with_metadata(lobby)

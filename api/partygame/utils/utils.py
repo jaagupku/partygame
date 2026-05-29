@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from partygame.state import GameKeyFactory
 
 
-def id_generator(size=5, chars=string.ascii_uppercase):
+def id_generator(size: int = 5, chars: str = string.ascii_uppercase) -> str:
     return "".join(random.choice(chars) for _ in range(size))
 
 
