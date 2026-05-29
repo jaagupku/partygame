@@ -14,8 +14,6 @@
 		"format": "prettier --write ."
 	},
 	"devDependencies": {
-		"@skeletonlabs/skeleton": "4.15.2",
-		"@skeletonlabs/skeleton-svelte": "4.15.2",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/kit": "^2.59.0",
@@ -46,7 +44,6 @@
 	"dependencies": {
 		"leaflet": "^1.9.4",
 		"qrcode": "^1.5.4",
-		"svelte-markdown": "^0.4.1",
-		"svelte-sound": "^0.6.0"
+		"svelte-markdown": "^0.4.1"
 	}
 }
