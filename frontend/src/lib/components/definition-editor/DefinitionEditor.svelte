@@ -3,6 +3,10 @@
 	import { onMount } from 'svelte';
 	import { tick } from 'svelte';
 	import { authLoaded, currentUser } from '$lib/auth-store';
+	import { downloadBlob } from '$lib/browser-download.js';
+	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
+	import { canEditDefinitionForUser } from '$lib/definition-permissions.js';
+	import { readErrorDetail } from '$lib/http-errors.js';
 	import DefinitionConfirmModal from './DefinitionConfirmModal.svelte';
 	import DefinitionDetailsModal from './DefinitionDetailsModal.svelte';
 	import DefinitionEditorToolbar from './DefinitionEditorToolbar.svelte';
@@ -136,7 +140,7 @@
 			? $messages.definitions.newDefinitionBreadcrumb
 			: $messages.definitions.editDefinitionBreadcrumb
 	);
-	const canEditDraft = $derived(canEditDefinition(draft));
+	const canEditDraft = $derived(canEditDefinitionForUser(draft, $currentUser));
 	const shortcutGroups = $derived($messages.editor.shortcutGroups);
 
 	onMount(async () => {
@@ -203,7 +207,7 @@
 			return;
 		}
 		const loadedDefinition = (await response.json()) as GameDefinition;
-		if (!canEditDefinition(loadedDefinition)) {
+		if (!canEditDefinitionForUser(loadedDefinition, $currentUser)) {
 			errorMessage = $messages.definitions.cannotEditDefinition;
 			return;
 		}
@@ -294,20 +298,6 @@
 			visibility: 'private',
 			rounds: [createEmptyRound(1, true)]
 		};
-	}
-
-	function canEditDefinition(definition: GameDefinition) {
-		if (definition.can_edit) {
-			return true;
-		}
-		if (!$currentUser) {
-			return false;
-		}
-		return $currentUser.role === 'admin' || definition.owner_user_id === $currentUser.id;
-	}
-
-	function encodeDefinitionIdForPath(definitionId: string) {
-		return encodeURIComponent(definitionId);
 	}
 
 	function createDefinitionId(title: string) {
@@ -1101,17 +1091,6 @@
 		}
 	}
 
-	function downloadBlob(blob: Blob, filename: string) {
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		link.remove();
-		URL.revokeObjectURL(url);
-	}
-
 	async function exportDefinition() {
 		if (isNewDefinition) {
 			errorMessage = $messages.definitions.saveBeforeExport;
@@ -1195,18 +1174,6 @@
 		const asset: MediaAsset = await response.json();
 		step.media.src = asset.public_url;
 		input.value = '';
-	}
-
-	async function readErrorDetail(response: Response): Promise<string> {
-		try {
-			const payload = await response.json();
-			if (typeof payload?.detail === 'string') {
-				return payload.detail;
-			}
-		} catch {
-			return '';
-		}
-		return '';
 	}
 
 	function onStepDragStart(event: PointerEvent, stepKey: string) {

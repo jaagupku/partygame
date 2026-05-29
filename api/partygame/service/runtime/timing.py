@@ -7,10 +7,16 @@ from partygame.schemas.game_definition import ImageRevealMode, MediaType, StepDe
 
 
 class TimingState:
+    def to_float(self, value: Any) -> float | None:
+        return self._to_float(value)
+
     def _to_float(self, value: Any) -> float | None:
         if value in (None, ""):
             return None
         return float(value)
+
+    def remaining_timer_seconds(self, step_state: dict[str, Any]) -> float | None:
+        return self._remaining_timer_seconds(step_state)
 
     def _remaining_timer_seconds(self, step_state: dict[str, Any]) -> float | None:
         ends_at = self._to_float(step_state.get("timer_ends_at"))
@@ -18,11 +24,17 @@ class TimingState:
             return max(0.0, ends_at - time())
         return self._to_float(step_state.get("timer_remaining_seconds"))
 
+    def buzzer_reaction_seconds(self, step_state: dict[str, Any]) -> float | None:
+        return self._buzzer_reaction_seconds(step_state)
+
     def _buzzer_reaction_seconds(self, step_state: dict[str, Any]) -> float | None:
         opened_at = self._to_float(step_state.get("buzzer_opened_at"))
         if opened_at is None:
             return None
         return max(0.0, time() - opened_at)
+
+    def answer_reveal_updates(self, step: StepDefinition) -> dict[str, Any]:
+        return self._answer_reveal_updates(step)
 
     def _answer_reveal_updates(self, step: StepDefinition) -> dict[str, Any]:
         updates: dict[str, Any] = {}
@@ -40,6 +52,9 @@ class TimingState:
             )
         return updates
 
+    def initial_reveal_state(self, step: StepDefinition, started_at: float) -> dict[str, Any]:
+        return self._initial_reveal_state(step, started_at)
+
     def _initial_reveal_state(self, step: StepDefinition, started_at: float) -> dict[str, Any]:
         if not self._uses_timed_image_reveal(step):
             return {
@@ -55,6 +70,9 @@ class TimingState:
             "media_reveal_elapsed_seconds": 0.0,
             "media_reveal_duration_seconds": duration,
         }
+
+    def pause_reveal_state(self, step_state: dict[str, Any]) -> dict[str, Any]:
+        return self._pause_reveal_state(step_state)
 
     def _pause_reveal_state(self, step_state: dict[str, Any]) -> dict[str, Any]:
         if step_state.get("media_reveal_state") != "running":
@@ -72,6 +90,9 @@ class TimingState:
             "media_reveal_elapsed_seconds": elapsed,
         }
 
+    def pause_timer_state(self, step_state: dict[str, Any]) -> dict[str, Any]:
+        return self._pause_timer_state(step_state)
+
     def _pause_timer_state(self, step_state: dict[str, Any]) -> dict[str, Any]:
         remaining = self._remaining_timer_seconds(step_state)
         if remaining is None:
@@ -81,6 +102,11 @@ class TimingState:
             "timer_ends_at": None,
             "timer_remaining_seconds": remaining,
         }
+
+    def resume_reveal_state(
+        self, step_state: dict[str, Any], step: StepDefinition
+    ) -> dict[str, Any]:
+        return self._resume_reveal_state(step_state, step)
 
     def _resume_reveal_state(
         self, step_state: dict[str, Any], step: StepDefinition
@@ -104,6 +130,9 @@ class TimingState:
             "media_reveal_elapsed_seconds": elapsed,
         }
 
+    def resume_timer_state(self, step_state: dict[str, Any]) -> dict[str, Any]:
+        return self._resume_timer_state(step_state)
+
     def _resume_timer_state(self, step_state: dict[str, Any]) -> dict[str, Any]:
         remaining = self._to_float(step_state.get("timer_remaining_seconds"))
         if remaining is None:
@@ -114,6 +143,9 @@ class TimingState:
             "timer_ends_at": started_at + max(remaining, 0.0),
             "timer_remaining_seconds": max(remaining, 0.0),
         }
+
+    def reveal_answer_state(self, step: StepDefinition) -> dict[str, Any]:
+        return self._reveal_answer_state(step)
 
     def _reveal_answer_state(self, step: StepDefinition) -> dict[str, Any]:
         return self._answer_reveal_updates(step)

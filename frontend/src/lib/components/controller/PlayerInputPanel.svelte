@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
 	import { messages } from '$lib/i18n';
 	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
 	import DrawingInput from '$lib/components/DrawingInput.svelte';
@@ -165,14 +166,6 @@
 		}
 		pendingDrawingVoteId = drawingId;
 		onSubmitDrawingVote(drawingId);
-	}
-
-	function getDrawingVoteRubric(step?: RuntimeStepState): string {
-		const answer = step?.evaluation_answer;
-		if (answer === undefined || answer === null) {
-			return '';
-		}
-		return String(answer).trim();
 	}
 </script>
 

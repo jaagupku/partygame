@@ -329,7 +329,7 @@ async def test_hostless_starter_processes_info_slide_controls_without_command_ro
     monkeypatch.setattr(player_service, "publish", fake_publish)
     controller.runtime = SimpleNamespace(
         get_current_step=get_current_step,
-        _is_information_slide=lambda step: True,
+        is_information_slide=lambda step: True,
     )
 
     await controller.process_input({"type_": "close_step"})

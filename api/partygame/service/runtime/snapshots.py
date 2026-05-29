@@ -21,6 +21,23 @@ class SnapshotBuilder:
         self.timing = timing
         self.end_game = end_game
 
+    def runtime_round_state(self, step: FlattenedStep) -> schemas.RuntimeRoundState:
+        return self._runtime_round_state(step)
+
+    def pending_review_count(self, step_state: dict[str, Any]) -> int:
+        return self._pending_review_count(step_state)
+
+    async def has_eligible_buzzer_players(
+        self,
+        lobby: schemas.Lobby,
+        step_state: dict[str, Any],
+        players: list[schemas.Player] | None = None,
+    ) -> bool:
+        return await self._has_eligible_buzzer_players(lobby, step_state, players)
+
+    def step_has_revealable_answer(self, step: StepDefinition) -> bool:
+        return self._step_has_revealable_answer(step)
+
     async def build_snapshot(
         self,
         lobby: schemas.Lobby,
@@ -139,7 +156,7 @@ class SnapshotBuilder:
         drawing_items = self._build_drawing_items(step, step_state, players)
         drawing_owner_ids = self._drawing_owner_ids(step, step_state)
         drawing_voted_player_ids = list(step_state.get("drawing_votes", {}).keys())
-        end_game = await self.end_game._build_end_game_state(lobby, players)
+        end_game = await self.end_game.build_end_game_state(lobby, players)
 
         return schemas.RuntimeSnapshotEvent(
             revision=snapshot_revision,
@@ -199,7 +216,7 @@ class SnapshotBuilder:
         *,
         input_enabled: bool,
     ) -> schemas.RuntimeStepState:
-        evaluation_type = await self.evaluation._resolve_evaluation_type(lobby, step)
+        evaluation_type = await self.evaluation.resolve_evaluation_type(lobby, step)
         return schemas.RuntimeStepState(
             id=step.id,
             title=step.title,
@@ -207,7 +224,7 @@ class SnapshotBuilder:
             evaluation_type=str(evaluation_type),
             evaluation_points=step.evaluation.points,
             evaluation_answer=self._public_step_evaluation_answer(step, step_state),
-            max_points=self.evaluation._max_points_for_step(step, evaluation_type),
+            max_points=self.evaluation.max_points_for_step(step, evaluation_type),
             input_enabled=input_enabled,
             input_kind=step.player_input.kind,
             input_prompt=step.player_input.prompt,
@@ -220,10 +237,10 @@ class SnapshotBuilder:
             media=self._serialize_media(step.media, step_state),
             timer=schemas.RuntimeTimerState(
                 seconds=step.timer.seconds,
-                enforced=await self.evaluation._is_timer_effectively_enforced(lobby, step),
-                started_at=self.timing._to_float(step_state.get("timer_started_at")),
-                ends_at=self.timing._to_float(step_state.get("timer_ends_at")),
-                remaining_seconds=self.timing._remaining_timer_seconds(step_state),
+                enforced=await self.evaluation.is_timer_effectively_enforced(lobby, step),
+                started_at=self.timing.to_float(step_state.get("timer_started_at")),
+                ends_at=self.timing.to_float(step_state.get("timer_ends_at")),
+                remaining_seconds=self.timing.remaining_timer_seconds(step_state),
             ),
         )
 
@@ -401,7 +418,7 @@ class SnapshotBuilder:
         return [
             schemas.DrawingVoteItem(
                 id=f"drawing:{index}",
-                label=self.evaluation._drawing_label(index),
+                label=self.evaluation.drawing_label(index),
                 value=answers[player_id],
                 player_id=player_id if reveal_authors else None,
                 player_name=player_names.get(player_id) if reveal_authors else None,
@@ -465,12 +482,12 @@ class SnapshotBuilder:
             zoom_origin_x=media.zoom_origin_x,
             zoom_origin_y=media.zoom_origin_y,
             reveal_state=str(step_state.get("media_reveal_state") or "idle"),
-            reveal_started_at=self.timing._to_float(step_state.get("media_reveal_started_at")),
-            reveal_elapsed_seconds=self.timing._to_float(
+            reveal_started_at=self.timing.to_float(step_state.get("media_reveal_started_at")),
+            reveal_elapsed_seconds=self.timing.to_float(
                 step_state.get("media_reveal_elapsed_seconds")
             )
             or 0.0,
-            reveal_duration_seconds=self.timing._to_float(
+            reveal_duration_seconds=self.timing.to_float(
                 step_state.get("media_reveal_duration_seconds")
             ),
         )

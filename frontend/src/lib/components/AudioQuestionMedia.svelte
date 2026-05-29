@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { normalizedVolume } from '$lib/media/playback.js';
+
 	interface AudioQuestionMediaProps {
 		src: string;
 		loop?: boolean;
@@ -20,10 +22,6 @@
 	let audioElement = $state<HTMLAudioElement | null>(null);
 	let shouldResumeMedia = $state(false);
 	let lastPlaybackRevision = $state(0);
-
-	function normalizedVolume(value: number) {
-		return Math.max(0, Math.min(1, value));
-	}
 
 	$effect(() => {
 		if (!audioElement) {

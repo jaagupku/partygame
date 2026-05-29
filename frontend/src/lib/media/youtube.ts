@@ -95,10 +95,6 @@ export function getYouTubeVideoId(src: string): string | null {
 	}
 }
 
-export function isYouTubeUrl(src: string): boolean {
-	return getYouTubeVideoId(src) !== null;
-}
-
 export function buildYouTubeEmbedUrl(
 	videoId: string,
 	options: {

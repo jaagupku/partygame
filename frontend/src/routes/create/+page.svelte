@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
 	import { messages } from '$lib/i18n';
 
 	let definitions = $state<DefinitionSummary[]>([]);
@@ -11,10 +12,6 @@
 	const selectedDefinitionSummary = $derived(
 		definitions.find((definition) => definition.id === definitionId) ?? null
 	);
-
-	function encodeDefinitionIdForPath(id: string) {
-		return encodeURIComponent(id);
-	}
 
 	onMount(async () => {
 		const res = await fetch('/api/v1/definitions');
