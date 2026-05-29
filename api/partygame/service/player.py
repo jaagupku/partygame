@@ -323,7 +323,7 @@ class ClientController:
         if not self.can_start_hostless_game():
             return False
         step = await self.runtime.get_current_step(self.lobby)
-        return step is not None and self.runtime._is_information_slide(step)
+        return step is not None and self.runtime.is_information_slide(step)
 
     async def refresh_lobby(self):
         lobby = await self.repo.get_lobby_meta(self.lobby.id)

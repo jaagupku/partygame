@@ -28,6 +28,26 @@ class EndGameRuntime:
         self.repo = repo
         self.timing = timing
 
+    async def initialize_end_game_state(self, lobby_id: str, *, auto_reveal: bool):
+        await self._initialize_end_game_state(lobby_id, auto_reveal=auto_reveal)
+
+    async def set_end_game_state(self, lobby_id: str, updates: dict[str, Any]):
+        await self._set_end_game_state(lobby_id, updates)
+
+    async def apply_player_metric_updates(
+        self,
+        lobby_id: str,
+        updates: dict[str, dict[str, Any]],
+    ):
+        await self._apply_player_metric_updates(lobby_id, updates)
+
+    async def build_end_game_state(
+        self,
+        lobby: schemas.Lobby,
+        players: list[schemas.Player],
+    ) -> schemas.EndGameState | None:
+        return await self._build_end_game_state(lobby, players)
+
     async def reveal_end_game(
         self, lobby: schemas.Lobby, build_snapshot
     ) -> list[schemas.BaseEvent]:
@@ -171,8 +191,8 @@ class EndGameRuntime:
                     current_reactions[str(reaction)] = int(
                         current_reactions.get(reaction, 0)
                     ) + int(count)
-            next_fastest = self.timing._to_float(changes.get("fastest_buzz_seconds"))
-            current_fastest = self.timing._to_float(current.get("fastest_buzz_seconds"))
+            next_fastest = self.timing.to_float(changes.get("fastest_buzz_seconds"))
+            current_fastest = self.timing.to_float(current.get("fastest_buzz_seconds"))
             if next_fastest is not None and (
                 current_fastest is None or next_fastest < current_fastest
             ):
@@ -303,7 +323,7 @@ class EndGameRuntime:
             values={
                 player_id: float(data["fastest_buzz_seconds"])
                 for player_id, data in filtered_metrics.items()
-                if self.timing._to_float(data.get("fastest_buzz_seconds")) is not None
+                if self.timing.to_float(data.get("fastest_buzz_seconds")) is not None
             },
             unit="seconds",
             higher_is_better=False,

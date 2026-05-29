@@ -2,6 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { currentUser } from '$lib/auth-store';
+	import { downloadBlob } from '$lib/browser-download.js';
+	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
+	import { canEditDefinitionForUser } from '$lib/definition-permissions.js';
+	import { readErrorDetail } from '$lib/http-errors.js';
 	import { messages } from '$lib/i18n';
 
 	let definitions = $state<DefinitionSummary[]>([]);
@@ -22,20 +26,6 @@
 		return $messages.definitions.visibilityPublic;
 	}
 
-	function canEditDefinition(definition: DefinitionSummary) {
-		if (definition.can_edit) {
-			return true;
-		}
-		if (!$currentUser) {
-			return false;
-		}
-		return $currentUser.role === 'admin' || definition.owner_user_id === $currentUser.id;
-	}
-
-	function encodeDefinitionIdForPath(definitionId: string) {
-		return encodeURIComponent(definitionId);
-	}
-
 	onMount(loadDefinitions);
 
 	async function loadDefinitions() {
@@ -47,29 +37,6 @@
 			return;
 		}
 		definitions = await response.json();
-	}
-
-	function downloadBlob(blob: Blob, filename: string) {
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		link.remove();
-		URL.revokeObjectURL(url);
-	}
-
-	async function readErrorDetail(response: Response): Promise<string> {
-		try {
-			const payload = await response.json();
-			if (typeof payload?.detail === 'string') {
-				return payload.detail;
-			}
-		} catch {
-			return '';
-		}
-		return '';
 	}
 
 	async function exportDefinition(definitionId: string) {
@@ -227,7 +194,7 @@
 						</p>
 
 						<div class="mt-4 flex flex-wrap gap-2">
-							{#if canEditDefinition(definition)}
+							{#if canEditDefinitionForUser(definition, $currentUser)}
 								<button
 									class="btn btn-primary flex-1 px-4 py-2 text-sm"
 									onclick={() => goto(`/definitions/${encodeDefinitionIdForPath(definition.id)}`)}

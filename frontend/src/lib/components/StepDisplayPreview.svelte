@@ -5,6 +5,7 @@
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import Timer from '$lib/components/util/Timer.svelte';
 	import { DEFAULT_AVATAR_PRESET_KEY } from '$lib/avatar-presets';
+	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
 	import { messages } from '$lib/i18n';
 	import { formatRevealValue, isOptionRevealStep, isOrderingRevealStep } from '$lib/reveal-format';
 	import { onDestroy } from 'svelte';
@@ -170,14 +171,6 @@
 			full_credit_distance_m: value.full_credit_distance_m ?? null,
 			bands: Array.isArray(value.bands) ? value.bands : []
 		};
-	}
-
-	function getDrawingVoteRubric(step?: RuntimeStepState): string {
-		const answer = step?.evaluation_answer;
-		if (answer === undefined || answer === null) {
-			return '';
-		}
-		return String(answer).trim();
 	}
 </script>
 

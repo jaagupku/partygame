@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { normalizedVolume } from '$lib/media/playback.js';
 	import { getYouTubeMedia } from '$lib/media/youtube.js';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 
@@ -27,10 +28,6 @@
 	const mediaKey = $derived(
 		step.media?.type_ === 'video' ? `${step.id}:${step.media.src}:${step.media.loop}` : ''
 	);
-
-	function normalizedVolume(value: number) {
-		return Math.max(0, Math.min(1, value));
-	}
 
 	const youtubeMedia = $derived.by(() => {
 		if (step.media?.type_ !== 'video') {

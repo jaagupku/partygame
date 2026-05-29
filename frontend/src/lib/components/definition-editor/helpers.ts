@@ -50,18 +50,6 @@ export type StepTemplateDefinition = {
 
 export const DEFAULT_TIMER_SECONDS = 60;
 
-export const INPUT_KINDS: PlayerInputKind[] = [
-	'none',
-	'buzzer',
-	'text',
-	'number',
-	'ordering',
-	'radio',
-	'checkbox',
-	'map',
-	'drawing'
-];
-
 export const EVALUATION_TYPES: EvaluationType[] = [
 	'none',
 	'host_judged',

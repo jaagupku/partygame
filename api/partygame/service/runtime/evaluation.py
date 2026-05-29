@@ -46,6 +46,9 @@ class EvaluationRuntime:
         self.timing = timing
         self.get_step_state = get_step_state
 
+    def max_points_for_step(self, step: StepDefinition, evaluation_type: EvaluationType) -> int:
+        return self._max_points_for_step(step, evaluation_type)
+
     def _max_points_for_step(self, step: StepDefinition, evaluation_type: EvaluationType) -> int:
         if evaluation_type == EvaluationType.CLOSEST_NUMBER:
             band_points = [band.points for band in step.evaluation.number_bands]
@@ -83,6 +86,9 @@ class EvaluationRuntime:
             return None
         return answer
 
+    def is_valid_map_submission(self, step: StepDefinition, value: Any) -> bool:
+        return self._is_valid_map_submission(step, value)
+
     def _is_valid_map_submission(self, step: StepDefinition, value: Any) -> bool:
         point = self._coerce_map_point(value)
         if point is None or step.player_input.map is None:
@@ -92,6 +98,9 @@ class EvaluationRuntime:
             bounds.south <= point["lat"] <= bounds.north
             and bounds.west <= point["lng"] <= bounds.east
         )
+
+    def score_map_distance_answer(self, step: StepDefinition, value: Any) -> int:
+        return self._score_map_distance_answer(step, value)
 
     def _score_map_distance_answer(self, step: StepDefinition, value: Any) -> int:
         answer = self._map_distance_answer(step)
@@ -105,10 +114,8 @@ class EvaluationRuntime:
         distance_m = self._haversine_distance_m(submitted, correct)
         max_points = max(0, int(answer.get("max_points", step.evaluation.points) or 0))
         if answer.get("scoring_mode") == "linear":
-            zero_distance = self.timing._to_float(answer.get("zero_distance_m")) or 0.0
-            full_credit_distance = (
-                self.timing._to_float(answer.get("full_credit_distance_m")) or 0.0
-            )
+            zero_distance = self.timing.to_float(answer.get("zero_distance_m")) or 0.0
+            full_credit_distance = self.timing.to_float(answer.get("full_credit_distance_m")) or 0.0
             if zero_distance <= 0:
                 return 0
             if distance_m <= full_credit_distance:
@@ -124,9 +131,9 @@ class EvaluationRuntime:
         band_entries = [band for band in bands if isinstance(band, dict)]
         for band in sorted(
             band_entries,
-            key=lambda entry: self.timing._to_float(entry.get("distance_m")) or 0.0,
+            key=lambda entry: self.timing.to_float(entry.get("distance_m")) or 0.0,
         ):
-            band_distance = self.timing._to_float(band.get("distance_m"))
+            band_distance = self.timing.to_float(band.get("distance_m"))
             if band_distance is None:
                 continue
             if distance_m <= band_distance:
@@ -137,8 +144,8 @@ class EvaluationRuntime:
         if not isinstance(value, dict):
             return None
         try:
-            lat = self.timing._to_float(value.get("lat"))
-            lng = self.timing._to_float(value.get("lng"))
+            lat = self.timing.to_float(value.get("lat"))
+            lng = self.timing.to_float(value.get("lng"))
         except TypeError, ValueError:
             return None
         if lat is None or lng is None:
@@ -185,6 +192,13 @@ class EvaluationRuntime:
             return evaluation_type
         return self._fallback_evaluation_type(step.player_input)
 
+    async def resolve_evaluation_type(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> EvaluationType:
+        return await self._resolve_evaluation_type(lobby, step)
+
     def _fallback_evaluation_type(
         self,
         player_input: PlayerInputDefinition,
@@ -222,6 +236,16 @@ class EvaluationRuntime:
             state = {}
         submitted_player_ids = set(state.get("answers", {}).keys())
         return answerable_player_ids <= submitted_player_ids
+
+    async def all_answerable_players_submitted(
+        self,
+        lobby: schemas.Lobby,
+        step_state: dict[str, Any] | None = None,
+    ) -> bool:
+        return await self._all_answerable_players_submitted(lobby, step_state)
+
+    def is_information_slide(self, step: StepDefinition) -> bool:
+        return self._is_information_slide(step)
 
     def _is_information_slide(self, step: StepDefinition) -> bool:
         return (
@@ -281,6 +305,20 @@ class EvaluationRuntime:
             and self._has_usable_answer_for_evaluation(step, evaluation_type)
         )
 
+    async def should_auto_close_on_all_submissions(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return await self._should_auto_close_on_all_submissions(lobby, step)
+
+    async def is_timer_effectively_enforced(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return await self._is_timer_effectively_enforced(lobby, step)
+
     async def _is_timer_effectively_enforced(
         self,
         lobby: schemas.Lobby,
@@ -303,6 +341,20 @@ class EvaluationRuntime:
             return True
         return self._is_hostless_auto_progress_step(lobby, step)
 
+    def is_hostless_compatible_step(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return self._is_hostless_compatible_step(lobby, step)
+
+    async def should_skip_answer_reveal(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return await self._should_skip_answer_reveal(lobby, step)
+
     async def _should_skip_answer_reveal(
         self,
         lobby: schemas.Lobby,
@@ -319,6 +371,9 @@ class EvaluationRuntime:
             return [normalized] if normalized else []
         return []
 
+    def exact_text_answers(self, step: StepDefinition) -> list[str]:
+        return self._exact_text_answers(step)
+
     def _matches_exact_text_answer(
         self,
         value: Any,
@@ -333,6 +388,17 @@ class EvaluationRuntime:
             self._levenshtein_distance(submitted, answer, distance) <= distance
             for answer in accepted_answers
         )
+
+    def matches_exact_text_answer(
+        self,
+        value: Any,
+        accepted_answers: list[str],
+        max_distance: int,
+    ) -> bool:
+        return self._matches_exact_text_answer(value, accepted_answers, max_distance)
+
+    def is_valid_drawing_submission(self, value: Any) -> bool:
+        return self._is_valid_drawing_submission(value)
 
     def _is_valid_drawing_submission(self, value: Any) -> bool:
         if not isinstance(value, dict):
@@ -370,8 +436,8 @@ class EvaluationRuntime:
             for point in points:
                 if not isinstance(point, dict):
                     return False
-                x = self.timing._to_float(point.get("x"))
-                y = self.timing._to_float(point.get("y"))
+                x = self.timing.to_float(point.get("x"))
+                y = self.timing.to_float(point.get("y"))
                 if x is None or y is None or x < 0 or x > 1 or y < 0 or y > 1:
                     return False
         return True
@@ -385,6 +451,9 @@ class EvaluationRuntime:
             if value < 0:
                 break
         return f"{DRAWING_LABEL_PREFIX} {letters}"
+
+    def drawing_label(self, index: int) -> str:
+        return self._drawing_label(index)
 
     def _levenshtein_distance(self, left: str, right: str, max_distance: int) -> int:
         if left == right:

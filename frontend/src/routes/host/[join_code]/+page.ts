@@ -1,11 +1,8 @@
 import { redirect } from '@sveltejs/kit';
+import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
 
 export const ssr = false;
 export const csr = true;
-
-function encodeDefinitionIdForPath(definitionId: string) {
-	return encodeURIComponent(definitionId);
-}
 
 export async function load({ fetch, params }) {
 	const routeJoinCode = params.join_code;

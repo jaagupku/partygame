@@ -1745,17 +1745,6 @@ export function onOffLabel(value: boolean): string {
 	return value ? common.on : common.off;
 }
 
-export function formatPlayerStatus(status: string): string {
-	const common = getMessages().common;
-	if (status === 'connected') {
-		return common.live;
-	}
-	if (status === 'disconnected') {
-		return common.disconnected;
-	}
-	return status;
-}
-
 export function formatPhaseLabel(phase: string): string {
 	const gameplay = getMessages().gameplay;
 	const labels: Record<string, string> = {
@@ -1772,8 +1761,4 @@ export function formatPhaseLabel(phase: string): string {
 
 export function formatSeconds(value: number): string {
 	return `${value}s`;
-}
-
-export function formatScoreDelta(points: number): string {
-	return `${points > 0 ? '+' : ''}${points}`;
 }

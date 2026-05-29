@@ -82,6 +82,25 @@ class FakeRepo:
         self.applied_ttls.append((game_id, ttl_seconds))
 
 
+class NoopStatsArchiver:
+    def __init__(self, repo, *, definition_provider=None):
+        pass
+
+    async def mark_started(self, lobby_id: str):
+        pass
+
+    async def archive_finished_game(self, lobby: schemas.Lobby):
+        pass
+
+
+@pytest.fixture(autouse=True)
+def disable_default_stats_archiver(monkeypatch):
+    monkeypatch.setattr(
+        "partygame.service.game.GameStatsArchiver",
+        NoopStatsArchiver,
+    )
+
+
 class MixedDefinitionProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
