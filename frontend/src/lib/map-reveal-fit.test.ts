@@ -31,6 +31,31 @@ describe('map reveal fit helpers', () => {
 		});
 	});
 
+	it('includes extra fit points such as scoring circle edges', () => {
+		const target = buildMapRevealFitTarget(
+			[{ point: { lat: 48.86, lng: 2.33 } }],
+			{ lat: 48.8606, lng: 2.3376 },
+			{
+				extraPoints: [
+					{ lat: 48.9, lng: 2.3376 },
+					{ lat: 48.82, lng: 2.3376 }
+				]
+			}
+		);
+
+		expect(target).toEqual({
+			kind: 'bounds',
+			points: [
+				{ lat: 48.86, lng: 2.33 },
+				{ lat: 48.8606, lng: 2.3376 },
+				{ lat: 48.9, lng: 2.3376 },
+				{ lat: 48.82, lng: 2.3376 }
+			],
+			padding: [72, 72],
+			maxZoom: 17
+		});
+	});
+
 	it('uses a stable fit key regardless of point order', () => {
 		const first = revealFitKey([
 			{ lat: 48.87, lng: 2.35 },

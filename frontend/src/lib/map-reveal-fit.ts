@@ -29,11 +29,13 @@ export function buildMapRevealFitTarget(
 		includeCorrect?: boolean;
 		maxZoom?: number;
 		padding?: [number, number];
+		extraPoints?: MapPoint[];
 	} = {}
 ): MapRevealFitTarget | null {
 	const points = [
 		...guessMarkers.map((marker) => marker.point),
-		...(correctPoint && options.includeCorrect !== false ? [correctPoint] : [])
+		...(correctPoint && options.includeCorrect !== false ? [correctPoint] : []),
+		...(options.extraPoints ?? [])
 	];
 	if (points.length === 0) {
 		return null;

@@ -70,3 +70,28 @@ def test_public_runtime_snapshot_sets_viewer_own_drawing_id_without_owner_order(
 
     assert public_snapshot.own_drawing_id == "drawing:1"
     assert public_snapshot.drawing_owner_ids == []
+
+
+def test_public_runtime_snapshot_keeps_drawing_vote_rubric():
+    snapshot = _snapshot(
+        input_kind=schemas.PlayerInputKind.DRAWING,
+        evaluation_type=schemas.EvaluationType.FAVORITE_VOTE,
+    ).model_copy(
+        update={
+            "display_phase": "drawing_vote",
+            "active_step": schemas.RuntimeStepState(
+                id="drawing-step",
+                title="Draw a cat",
+                input_kind=schemas.PlayerInputKind.DRAWING,
+                evaluation_type=schemas.EvaluationType.FAVORITE_VOTE,
+                evaluation_points=2,
+                evaluation_answer="Cats should have visible whiskers.",
+            ),
+        }
+    )
+
+    public_snapshot = public_runtime_snapshot(snapshot)
+
+    assert public_snapshot.host_answer is None
+    assert public_snapshot.active_step is not None
+    assert public_snapshot.active_step.evaluation_answer == "Cats should have visible whiskers."

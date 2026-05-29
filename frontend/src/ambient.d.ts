@@ -390,6 +390,7 @@ type RuntimeStepState = {
 	body?: string;
 	evaluation_type: string;
 	evaluation_points: number;
+	evaluation_answer?: unknown;
 	max_points?: number;
 	input_enabled: boolean;
 	input_kind: PlayerInputKind;

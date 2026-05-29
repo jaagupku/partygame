@@ -206,6 +206,7 @@ class SnapshotBuilder:
             body=step.body,
             evaluation_type=str(evaluation_type),
             evaluation_points=step.evaluation.points,
+            evaluation_answer=self._public_step_evaluation_answer(step, step_state),
             max_points=self.evaluation._max_points_for_step(step, evaluation_type),
             input_enabled=input_enabled,
             input_kind=step.player_input.kind,
@@ -225,6 +226,20 @@ class SnapshotBuilder:
                 remaining_seconds=self.timing._remaining_timer_seconds(step_state),
             ),
         )
+
+    def _public_step_evaluation_answer(
+        self,
+        step: StepDefinition,
+        step_state: dict[str, Any],
+    ) -> Any:
+        display_phase = str(step_state.get("display_phase") or "question_active")
+        if (
+            display_phase == "drawing_vote"
+            and step.player_input.kind == PlayerInputKind.DRAWING
+            and str(step.evaluation.type_) == "favorite_vote"
+        ):
+            return step.evaluation.answer
+        return None
 
     async def _build_next_item(self, lobby: schemas.Lobby) -> schemas.RuntimeItemState | None:
         steps = await self.runtime._flatten_steps_with_metadata(lobby)

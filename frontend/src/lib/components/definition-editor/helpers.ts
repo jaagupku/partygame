@@ -966,6 +966,7 @@ export function buildRuntimePreviewStep(step: StepDefinition): RuntimeStepState 
 		body: step.body,
 		evaluation_type: step.evaluation.type_,
 		evaluation_points: step.evaluation.points,
+		evaluation_answer: step.evaluation.answer,
 		max_points: getMaximumStepPoints(step),
 		input_enabled: true,
 		input_kind: step.player_input.kind,

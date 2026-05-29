@@ -421,6 +421,15 @@
 				})
 				.addTo(scoringLayer)
 				.bindTooltip(radius.label, { sticky: true });
+			for (const labelPoint of pointsAroundDistance(center, radius.distance_m)) {
+				leaflet
+					.marker([labelPoint.lat, labelPoint.lng], {
+						interactive: false,
+						keyboard: false,
+						icon: radiusLabelIcon(radius.scoreLabel, radius.color)
+					})
+					.addTo(scoringLayer);
+			}
 			if (effectiveEditableScoring) {
 				const handlePoint = pointAtDistanceEast(center, radius.distance_m);
 				const handle = leaflet
@@ -449,7 +458,8 @@
 		const target = buildMapRevealFitTarget(guessMarkers, correctPoint, {
 			includeCorrect: effectiveShowCorrect,
 			maxZoom: mapConfig.max_zoom,
-			padding: [72, 72]
+			padding: [72, 72],
+			extraPoints: scoringRevealFitPoints()
 		});
 		if (!target) {
 			lastRevealFitKey = '';
@@ -498,6 +508,7 @@
 			index: number;
 			distance_m: number;
 			label: string;
+			scoreLabel: string;
 			color: string;
 		}> = [];
 		if (answer.scoring_mode === 'linear' && answer.full_credit_distance_m != null) {
@@ -506,6 +517,7 @@
 				index: -1,
 				distance_m: answer.full_credit_distance_m,
 				label: `Full credit: ${formatDistanceMeters(answer.full_credit_distance_m)}`,
+				scoreLabel: `${answer.max_points} pts`,
 				color: '#10b981'
 			});
 		}
@@ -516,6 +528,7 @@
 					index,
 					distance_m: band.distance_m,
 					label: `${band.label || `Band ${index + 1}`}: ${formatDistanceMeters(band.distance_m)} / ${band.points} pts`,
+					scoreLabel: `${band.points} pts`,
 					color: '#f59e0b'
 				});
 			}
@@ -526,10 +539,20 @@
 				index: -1,
 				distance_m: answer.zero_distance_m,
 				label: `Zero points: ${formatDistanceMeters(answer.zero_distance_m)}`,
+				scoreLabel: '0 pts',
 				color: '#ef4444'
 			});
 		}
 		return radii.filter((radius) => radius.distance_m > 0);
+	}
+
+	function scoringRevealFitPoints(): MapPoint[] {
+		if (!scoringAnswer?.correct_point || !effectiveShowCorrect) {
+			return [];
+		}
+		return scoringRadii(scoringAnswer).flatMap((radius) =>
+			pointsAroundDistance(scoringAnswer.correct_point, radius.distance_m)
+		);
 	}
 
 	function updateScoringRadius(kind: 'full' | 'zero' | 'band', index: number, distance: number) {
@@ -703,6 +726,15 @@
 		});
 	}
 
+	function radiusLabelIcon(label: string, color: string) {
+		return leaflet?.divIcon({
+			className: '',
+			html: `<span class="map-radius-label" style="--label-color: ${color}">${escapeHtml(label)}</span>`,
+			iconSize: [52, 22],
+			iconAnchor: [26, 11]
+		});
+	}
+
 	function boundsHandleIcon(cursor: string) {
 		return leaflet?.divIcon({
 			className: '',
@@ -761,6 +793,19 @@
 			lat: point.lat,
 			lng: point.lng + distanceM / Math.max(1, metersPerLng)
 		};
+	}
+
+	function pointsAroundDistance(point: MapPoint, distanceM: number): MapPoint[] {
+		const metersPerLat = 111320;
+		const metersPerLng = 111320 * Math.cos(toRadians(point.lat));
+		const latOffset = distanceM / metersPerLat;
+		const lngOffset = distanceM / Math.max(1, metersPerLng);
+		return [
+			{ lat: clamp(point.lat + latOffset, -85, 85), lng: point.lng },
+			{ lat: clamp(point.lat - latOffset, -85, 85), lng: point.lng },
+			{ lat: point.lat, lng: clamp(point.lng + lngOffset, -180, 180) },
+			{ lat: point.lat, lng: clamp(point.lng - lngOffset, -180, 180) }
+		];
 	}
 
 	function toRadians(value: number) {
@@ -837,6 +882,25 @@
 		background: var(--handle-color);
 		box-shadow: 0 8px 18px rgb(15 23 42 / 0.24);
 		cursor: grab;
+	}
+
+	:global(.map-radius-label) {
+		display: inline-grid;
+		min-width: 3.25rem;
+		height: 1.35rem;
+		place-items: center;
+		border: 2px solid white;
+		border-radius: 999px;
+		background: var(--label-color);
+		color: white;
+		font-size: 0.7rem;
+		font-weight: 950;
+		line-height: 1;
+		text-shadow: 0 1px 2px rgb(15 23 42 / 0.45);
+		box-shadow:
+			0 0 0 1px rgb(15 23 42 / 0.1),
+			0 8px 16px rgb(15 23 42 / 0.22);
+		white-space: nowrap;
 	}
 
 	:global(.map-bounds-handle) {

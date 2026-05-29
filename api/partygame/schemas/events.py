@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum, auto
-from typing import Literal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -213,6 +212,7 @@ class RuntimeStepState(BaseModel):
     body: str | None = None
     evaluation_type: str = ""
     evaluation_points: int = 0
+    evaluation_answer: Any = None
     max_points: int = 0
     input_enabled: bool = False
     input_kind: PlayerInputKind = PlayerInputKind.NONE

@@ -145,7 +145,7 @@ class DrawingDefinitionProvider:
                             evaluation=EvaluationRule(
                                 type_=EvaluationType.FAVORITE_VOTE,
                                 points=2,
-                                answer=None,
+                                answer="Cats should have visible whiskers.",
                             ),
                         )
                     ],
@@ -1905,6 +1905,8 @@ async def test_drawing_submission_validation_and_vote_scoring():
     events = await service.close_step(lobby)
     assert isinstance(events[-1], schemas.RuntimeSnapshotEvent)
     assert repo.steps["g1"]["display_phase"] == "drawing_vote"
+    assert events[-1].active_step is not None
+    assert events[-1].active_step.evaluation_answer == "Cats should have visible whiskers."
     assert events[-1].drawing_items[0].player_id is None
     assert events[-1].drawing_items[0].player_name is None
 

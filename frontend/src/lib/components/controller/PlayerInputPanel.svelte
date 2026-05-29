@@ -53,6 +53,7 @@
 	const useNumberSlider = $derived(hasConfiguredNumberSlider(activeStep));
 	const drawingVoteSubmitted = $derived(drawingVotedPlayerIds.includes(playerId));
 	const visibleDrawingItems = $derived(drawingItems.filter((item) => item.id !== ownDrawingId));
+	const drawingVoteRubric = $derived(getDrawingVoteRubric(activeStep));
 	const drawingVoteDisabled = $derived(
 		baseInputDisabled || drawingVoteSubmitted || Boolean(pendingDrawingVoteId)
 	);
@@ -160,6 +161,14 @@
 		pendingDrawingVoteId = drawingId;
 		onSubmitDrawingVote(drawingId);
 	}
+
+	function getDrawingVoteRubric(step?: RuntimeStepState): string {
+		const answer = step?.evaluation_answer;
+		if (answer === undefined || answer === null) {
+			return '';
+		}
+		return String(answer).trim();
+	}
 </script>
 
 {#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && activeStep.input_enabled && drawingItems.length > 0}
@@ -170,6 +179,14 @@
 				? $messages.gameplay.drawingVoteSubmitted
 				: $messages.gameplay.pickFavoriteDrawing}
 		</p>
+		{#if drawingVoteRubric}
+			<div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
+				<p class="text-xs font-black uppercase tracking-wide text-sky-700">
+					{$messages.gameplay.drawingVoteRubric}
+				</p>
+				<p class="mt-1 text-sm font-bold leading-snug text-slate-900">{drawingVoteRubric}</p>
+			</div>
+		{/if}
 		{#if visibleDrawingItems.length > 0}
 			<div class="grid gap-3 sm:grid-cols-2">
 				{#each visibleDrawingItems as item}

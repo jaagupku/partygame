@@ -64,6 +64,7 @@
 	const drawingStep = $derived(
 		step?.input_kind === 'drawing' && step?.evaluation_type === 'favorite_vote'
 	);
+	const drawingVoteRubric = $derived(getDrawingVoteRubric(step));
 	const showStageRevealCard = $derived(
 		stageLayout &&
 			showingAnswerReveal &&
@@ -78,6 +79,7 @@
 	const showBuzzerWinner = $derived(stageLayout && Boolean(buzzedPlayerName));
 	const playerMap = $derived(new Map(players.map((player) => [player.id, player])));
 	const correctMapPoint = $derived(getCorrectMapPoint(revealedAnswer));
+	const mapScoringAnswer = $derived(getMapScoringAnswer(revealedAnswer));
 	const mapGuessMarkers = $derived(
 		submissions
 			.map((submission) => {
@@ -148,11 +150,34 @@
 	}
 
 	function getCorrectMapPoint(answer?: RevealedAnswer): MapPoint | null {
+		return getMapScoringAnswer(answer)?.correct_point ?? null;
+	}
+
+	function getMapScoringAnswer(answer?: RevealedAnswer): MapDistanceAnswer | null {
 		if (!answer?.value || typeof answer.value !== 'object') {
 			return null;
 		}
 		const value = answer.value as Partial<MapDistanceAnswer>;
-		return getMapPoint(value.correct_point);
+		const correctPoint = getMapPoint(value.correct_point);
+		if (!correctPoint) {
+			return null;
+		}
+		return {
+			correct_point: correctPoint,
+			scoring_mode: value.scoring_mode ?? 'bands',
+			max_points: Number(value.max_points ?? 0),
+			zero_distance_m: value.zero_distance_m ?? null,
+			full_credit_distance_m: value.full_credit_distance_m ?? null,
+			bands: Array.isArray(value.bands) ? value.bands : []
+		};
+	}
+
+	function getDrawingVoteRubric(step?: RuntimeStepState): string {
+		const answer = step?.evaluation_answer;
+		if (answer === undefined || answer === null) {
+			return '';
+		}
+		return String(answer).trim();
 	}
 </script>
 
@@ -205,6 +230,12 @@
 						: $messages.gameplay.voteNow}
 				</span>
 			</div>
+			{#if displayPhase === 'drawing_vote' && drawingVoteRubric}
+				<div class="drawing-vote-rubric">
+					<p>{$messages.gameplay.drawingVoteRubric}</p>
+					<strong>{drawingVoteRubric}</strong>
+				</div>
+			{/if}
 			<div class="drawing-gallery">
 				{#each drawingItems as item}
 					<article class="drawing-gallery-item">
@@ -246,6 +277,7 @@
 				mapConfig={step.map}
 				baseLayer="osm"
 				correctPoint={correctMapPoint}
+				scoringAnswer={mapRevealMarkersVisible ? mapScoringAnswer : null}
 				guessMarkers={mapGuessMarkers}
 				showCorrect={mapRevealMarkersVisible}
 				showGuesses={mapRevealMarkersVisible}
@@ -319,7 +351,7 @@
 
 	.drawing-reveal-stage {
 		display: grid;
-		grid-template-rows: auto minmax(0, 1fr);
+		grid-template-rows: auto auto minmax(0, 1fr);
 		gap: clamp(0.5rem, 1.2vh, 1rem);
 		height: 100%;
 		min-height: 0;
@@ -335,6 +367,30 @@
 		gap: clamp(0.65rem, 1.5vw, 1.2rem);
 		min-height: 0;
 		overflow: hidden;
+	}
+
+	.drawing-vote-rubric {
+		display: grid;
+		gap: 0.25rem;
+		border: 1px solid rgb(191 219 254 / 0.85);
+		border-radius: 0.75rem;
+		background: rgb(239 246 255 / 0.9);
+		padding: clamp(0.65rem, 1.1vw, 0.95rem);
+		color: rgb(15 23 42);
+	}
+
+	.drawing-vote-rubric p {
+		font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+		font-weight: 950;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: rgb(30 64 175);
+	}
+
+	.drawing-vote-rubric strong {
+		font-size: clamp(1rem, 1.45vw, 1.35rem);
+		line-height: 1.2;
+		overflow-wrap: anywhere;
 	}
 
 	.drawing-gallery-item {
