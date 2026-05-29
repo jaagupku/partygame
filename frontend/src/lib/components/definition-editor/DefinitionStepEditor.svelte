@@ -8,6 +8,7 @@
 		getOrderingAnswer,
 		getStepHealthIssues
 	} from './helpers';
+	import EditorPreviewPane from './EditorPreviewPane.svelte';
 	import MainScreenSection from './MainScreenSection.svelte';
 	import PlayerAnswerSection from './PlayerAnswerSection.svelte';
 	import ScoringSection from './ScoringSection.svelte';
@@ -21,6 +22,8 @@
 		selectedFlatStep: FlatStepItem;
 		selectedStepPosition: number;
 		totalSteps: number;
+		previewStep?: RuntimeStepState;
+		previewCountdown: number;
 		showAdvancedFields: boolean;
 		uploadKey: string | null;
 		onToggleAdvancedFields: () => void;
@@ -49,6 +52,8 @@
 		selectedFlatStep,
 		selectedStepPosition,
 		totalSteps,
+		previewStep,
+		previewCountdown,
 		showAdvancedFields,
 		uploadKey,
 		onToggleAdvancedFields,
@@ -137,43 +142,73 @@
 	/>
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pr-3">
-		<SectionNav sections={sectionNav} />
+		<div class="definition-step-editor-layout">
+			<div class="min-w-0">
+				<SectionNav sections={sectionNav} />
 
-		<div class="grid gap-5">
-			<MainScreenSection
-				step={selectedStep}
-				{showAdvancedFields}
-				{uploadKey}
-				{onAddMedia}
-				{onRemoveMedia}
-				{onUpdateMediaType}
-				{onUploadMedia}
-			/>
+				<div class="grid gap-5">
+					<MainScreenSection
+						step={selectedStep}
+						{showAdvancedFields}
+						{uploadKey}
+						{onAddMedia}
+						{onRemoveMedia}
+						{onUpdateMediaType}
+						{onUploadMedia}
+					/>
 
-			<PlayerAnswerSection
-				step={selectedStep}
-				{inputKindDetails}
-				{inputDetails}
-				{evaluationDetailsMap}
-				{checkboxOptionScores}
-				{onSetPlayerInputKind}
-				{onAddInputOption}
-				{onRemoveInputOption}
-				{onSetInputOptionValue}
-				{onSetRadioCorrectOption}
-				{onSetCheckboxOptionPoints}
-			/>
+					<PlayerAnswerSection
+						step={selectedStep}
+						{inputKindDetails}
+						{inputDetails}
+						{evaluationDetailsMap}
+						{checkboxOptionScores}
+						{onSetPlayerInputKind}
+						{onAddInputOption}
+						{onRemoveInputOption}
+						{onSetInputOptionValue}
+						{onSetRadioCorrectOption}
+						{onSetCheckboxOptionPoints}
+					/>
 
-			<ScoringSection
-				step={selectedStep}
-				{availableEvaluationDetails}
-				{evaluationDetails}
-				{orderedAnswer}
-				{onSetEvaluationType}
-				{onSetOrderingAnswerOrder}
-			/>
+					<ScoringSection
+						step={selectedStep}
+						{availableEvaluationDetails}
+						{evaluationDetails}
+						{orderedAnswer}
+						{onSetEvaluationType}
+						{onSetOrderingAnswerOrder}
+					/>
 
-			<SettingsSection step={selectedStep} />
+					<SettingsSection step={selectedStep} />
+				</div>
+			</div>
+
+			<aside class="definition-step-editor-preview" aria-label={$messages.editor.displayPreview}>
+				<EditorPreviewPane step={previewStep} countdown={previewCountdown} />
+			</aside>
 		</div>
 	</div>
 </section>
+
+<style lang="postcss">
+	.definition-step-editor-preview {
+		display: none;
+	}
+
+	@media (min-width: 1800px) {
+		.definition-step-editor-layout {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(30rem, 38vw);
+			gap: 1.25rem;
+			align-items: start;
+		}
+
+		.definition-step-editor-preview {
+			position: sticky;
+			top: 1rem;
+			display: block;
+			min-width: 0;
+		}
+	}
+</style>

@@ -17,6 +17,7 @@
 		drawingVotedPlayerIds: string[];
 		hasSubmitted: boolean;
 		playerId: string;
+		mode?: 'live' | 'preview';
 		onContinueInfoSlide: () => void;
 		onSubmitAnswer: (value: unknown) => void;
 		onSubmitDrawingVote: (drawingId: string) => void;
@@ -33,6 +34,7 @@
 		drawingVotedPlayerIds,
 		hasSubmitted,
 		playerId,
+		mode = 'live',
 		onContinueInfoSlide,
 		onSubmitAnswer,
 		onSubmitDrawingVote
@@ -54,8 +56,9 @@
 	const drawingVoteSubmitted = $derived(drawingVotedPlayerIds.includes(playerId));
 	const visibleDrawingItems = $derived(drawingItems.filter((item) => item.id !== ownDrawingId));
 	const drawingVoteRubric = $derived(getDrawingVoteRubric(activeStep));
+	const previewMode = $derived(mode === 'preview');
 	const drawingVoteDisabled = $derived(
-		baseInputDisabled || drawingVoteSubmitted || Boolean(pendingDrawingVoteId)
+		baseInputDisabled || previewMode || drawingVoteSubmitted || Boolean(pendingDrawingVoteId)
 	);
 
 	$effect(() => {
@@ -95,7 +98,7 @@
 
 	function submitAnswer() {
 		const step = activeStep;
-		if (!step || inputDisabled) {
+		if (!step || inputDisabled || previewMode) {
 			return;
 		}
 		let value: unknown = answerValue;
@@ -118,7 +121,7 @@
 	}
 
 	function buzz() {
-		if (inputDisabled || buzzerLockedOut || !buzzerActive) {
+		if (inputDisabled || previewMode || buzzerLockedOut || !buzzerActive) {
 			return;
 		}
 		triggerBuzzerHapticPulse();
@@ -129,7 +132,9 @@
 	function submitRadioOption(option: string) {
 		selectedRadioOption = option;
 		answerValue = option;
-		submitAnswer();
+		if (!previewMode) {
+			submitAnswer();
+		}
 	}
 
 	function toggleCheckboxOption(option: string) {
@@ -223,7 +228,7 @@
 		</p>
 		<button
 			type="button"
-			disabled={inputDisabled || !buzzerActive || buzzerLockedOut}
+			disabled={inputDisabled || previewMode || !buzzerActive || buzzerLockedOut}
 			class="btn btn-accent text-4xl"
 			onclick={buzz}
 		>
@@ -240,7 +245,12 @@
 					: $messages.gameplay.stepClosedAnswersDisabled}
 			</p>
 		{/if}
-		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={submitAnswer}
+			disabled={inputDisabled || previewMode}
+		>
 			{$messages.gameplay.submitAnswer}
 		</button>
 		<input
@@ -261,7 +271,12 @@
 					: $messages.gameplay.stepClosedAnswersDisabled}
 			</p>
 		{/if}
-		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={submitAnswer}
+			disabled={inputDisabled || previewMode}
+		>
 			{$messages.gameplay.submitAnswer}
 		</button>
 		{#if useNumberSlider}
@@ -306,7 +321,12 @@
 					: $messages.gameplay.reorderingDisabled
 				: $messages.gameplay.dragOrTapItemsToOrder}
 		</p>
-		<button type="button" class="btn btn-primary" onclick={submitAnswer} disabled={inputDisabled}>
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={submitAnswer}
+			disabled={inputDisabled || previewMode}
+		>
 			{$messages.gameplay.submitOrder}
 		</button>
 		<OrderingList
@@ -332,7 +352,9 @@
 			{#each activeStep.input_options as option}
 				<button
 					type="button"
-					class="btn btn-ghost justify-start text-left text-xl"
+					class={`btn justify-start text-left text-xl ${
+						selectedRadioOption === option ? 'btn-primary text-white' : 'btn-ghost'
+					}`}
 					disabled={inputDisabled}
 					onclick={() => submitRadioOption(option)}
 				>
@@ -355,7 +377,7 @@
 			type="button"
 			class="btn btn-primary"
 			onclick={submitAnswer}
-			disabled={inputDisabled || selectedCheckboxOptions.length === 0}
+			disabled={inputDisabled || previewMode || selectedCheckboxOptions.length === 0}
 		>
 			{$messages.gameplay.submitSelection}
 		</button>
@@ -391,7 +413,7 @@
 				type="button"
 				class="btn btn-primary controller-primary-action"
 				onclick={submitAnswer}
-				disabled={inputDisabled || !selectedMapPoint}
+				disabled={inputDisabled || previewMode || !selectedMapPoint}
 			>
 				{$messages.gameplay.submitMapGuess}
 			</button>
@@ -419,7 +441,12 @@
 				: $messages.gameplay.drawYourAnswer}
 		</p>
 		<div class="drawing-input-fill">
-			<DrawingInput disabled={inputDisabled} submitPosition="top" onSubmit={onSubmitAnswer} />
+			<DrawingInput
+				disabled={inputDisabled}
+				{mode}
+				submitPosition="top"
+				onSubmit={onSubmitAnswer}
+			/>
 		</div>
 	</section>
 {:else}
@@ -427,7 +454,12 @@
 		<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
 		{#if canContinueHostlessInfoSlide}
 			<p class="mt-2 text-slate-600">{$messages.gameplay.youCanContinueInfoSlide}</p>
-			<button type="button" class="btn btn-primary mt-4" onclick={onContinueInfoSlide}>
+			<button
+				type="button"
+				class="btn btn-primary mt-4"
+				onclick={onContinueInfoSlide}
+				disabled={previewMode}
+			>
 				{$messages.gameplay.advanceStep}
 			</button>
 		{/if}

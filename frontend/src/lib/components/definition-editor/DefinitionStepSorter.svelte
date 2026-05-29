@@ -163,7 +163,7 @@
 
 <svelte:window onpointermove={handleWindowPointerMove} onpointerup={handleWindowPointerUp} />
 
-<section class="flex h-full min-h-0 flex-col border-slate-200 bg-white/65">
+<section class="flex h-full min-h-0 min-w-0 flex-col border-slate-200 bg-white/65">
 	<div class="pb-2">
 		<h3 class="label-title text-xl">Step Sorter</h3>
 		<p class="text-sm text-slate-600">
@@ -171,20 +171,23 @@
 		</p>
 	</div>
 
-	<div bind:this={sorterScroller} class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-4">
+	<div
+		bind:this={sorterScroller}
+		class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-4 pr-0.5"
+	>
 		{#each rounds as round, roundIndex}
 			<div class="mb-5">
 				<div class="sticky top-0 z-10 mb-2 rounded-2xl bg-sky-50 px-3 py-2 shadow-sm">
-					<div class="flex items-center justify-between gap-2">
-						<div>
-							<p class="text-sm font-bold uppercase tracking-wide text-sky-800">
+					<div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-sm font-bold uppercase tracking-wide text-sky-800">
 								{round.title || `Round ${roundIndex + 1}`}
 							</p>
 						</div>
-						<div class="flex items-center gap-2">
+						<div class="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
 							<span class="text-xs font-semibold text-sky-700">{round.steps.length} steps</span>
 							<button
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
+								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
 								type="button"
 								title={`Move ${round.title || `round ${roundIndex + 1}`} up`}
 								aria-label={`Move ${round.title || `round ${roundIndex + 1}`} up`}
@@ -194,7 +197,7 @@
 								<iconify-icon icon="fluent:arrow-up-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100 disabled:border-sky-100 disabled:bg-slate-50 disabled:text-slate-300"
+								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100 disabled:border-sky-100 disabled:bg-slate-50 disabled:text-slate-300"
 								type="button"
 								title={`Move ${round.title || `round ${roundIndex + 1}`} down`}
 								aria-label={`Move ${round.title || `round ${roundIndex + 1}`} down`}
@@ -204,7 +207,7 @@
 								<iconify-icon icon="fluent:arrow-down-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
+								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
 								type="button"
 								aria-label={`Edit ${round.title || `round ${roundIndex + 1}`}`}
 								title={`Edit ${round.title || `round ${roundIndex + 1}`}`}
@@ -213,7 +216,7 @@
 								<iconify-icon icon="fluent:edit-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
+								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
 								type="button"
 								title={`Delete ${round.title || `round ${roundIndex + 1}`}`}
 								aria-label={`Delete ${round.title || `round ${roundIndex + 1}`}`}

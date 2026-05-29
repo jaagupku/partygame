@@ -130,6 +130,11 @@ Configured hooks include:
 - backend Black formatting
 - backend Ruff linting
 
+## Commit Messages
+
+- Prefer an imperative, sentence-case summary line, optionally with a short conventional prefix such as `feat(editor):`.
+- For multi-area changes, include a short bullet list after a blank line that explains the main user-visible or architectural changes.
+
 ## Architecture Notes
 
 ### Frontend

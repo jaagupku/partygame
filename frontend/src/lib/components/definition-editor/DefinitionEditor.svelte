@@ -1468,9 +1468,11 @@
 				onTitleChange={(value) => (draft.title = value)}
 			/>
 
-			<div class="grid min-h-0 flex-1 gap-0 xl:grid-cols-[22rem_minmax(0,1fr)]">
+			<div
+				class="definition-editor-workspace grid min-h-0 flex-1 gap-0 xl:grid-cols-[22rem_minmax(0,1fr)]"
+			>
 				<div
-					class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 pl-3 pt-2 xl:border-b-0 xl:border-r"
+					class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 px-3 pt-2 xl:border-b-0 xl:border-r"
 				>
 					<DefinitionStepSorter
 						rounds={displayDefinition.rounds}
@@ -1525,6 +1527,8 @@
 							{selectedFlatStep}
 							{selectedStepPosition}
 							totalSteps={flatSteps.length}
+							{previewStep}
+							{previewCountdown}
 							{showAdvancedFields}
 							{uploadKey}
 							onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
@@ -1631,3 +1635,11 @@
 		onConfirm={confirmUndo}
 	/>
 {/if}
+
+<style lang="postcss">
+	@media (min-width: 2200px) {
+		.definition-editor-workspace {
+			grid-template-columns: 24rem minmax(0, 1fr);
+		}
+	}
+</style>

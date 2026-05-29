@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { messages } from '$lib/i18n';
+	import EditorPreviewPane from './EditorPreviewPane.svelte';
 	import { modalPortal } from './modalPortal';
 
 	type Props = {
@@ -40,15 +40,12 @@
 			</button>
 		</div>
 
-		<div
-			class="rounded-4xl bg-[radial-gradient(circle_at_10%_15%,#c7f1ff_0,transparent_30%),radial-gradient(circle_at_85%_10%,#fff0c9_0,transparent_32%),radial-gradient(circle_at_78%_84%,#d7ffda_0,transparent_30%),linear-gradient(135deg,#f8fff1,#ddf2ff_42%,#fff4db)] p-4 md:p-8"
-		>
-			<StepDisplayPreview
-				{step}
-				phaseLabel="question_active"
-				connectionLabel={$messages.common.preview}
-				{countdown}
-			/>
-		</div>
+		<EditorPreviewPane
+			{step}
+			{countdown}
+			title={$messages.common.preview}
+			height="min(68vh, 50rem)"
+			minHeight="32rem"
+		/>
 	</div>
 </div>

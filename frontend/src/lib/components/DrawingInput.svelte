@@ -6,6 +6,7 @@
 
 	interface DrawingInputProps {
 		disabled: boolean;
+		mode?: 'live' | 'preview';
 		showSubmit?: boolean;
 		submitPosition?: 'top' | 'bottom';
 		onSubmit: (drawing: DrawingSubmission) => void;
@@ -13,6 +14,7 @@
 
 	let {
 		disabled,
+		mode = 'live',
 		showSubmit = true,
 		submitPosition = 'bottom',
 		onSubmit
@@ -48,6 +50,7 @@
 		height: CANVAS_HEIGHT,
 		strokes
 	});
+	const submitDisabled = $derived(mode === 'preview');
 
 	onDestroy(() => {
 		resetClearConfirmation();
@@ -122,7 +125,7 @@
 	}
 
 	function submitDrawing() {
-		if (disabled || !hasDrawing) {
+		if (disabled || submitDisabled || !hasDrawing) {
 			return;
 		}
 		onSubmit(submission);
@@ -135,7 +138,7 @@
 			type="button"
 			class="btn btn-primary controller-primary-action drawing-submit-button"
 			onclick={submitDrawing}
-			disabled={disabled || !hasDrawing}
+			disabled={disabled || submitDisabled || !hasDrawing}
 		>
 			{$messages.gameplay.submitDrawing}
 		</button>
@@ -236,7 +239,7 @@
 			type="button"
 			class="btn btn-primary controller-primary-action drawing-submit-button"
 			onclick={submitDrawing}
-			disabled={disabled || !hasDrawing}
+			disabled={disabled || submitDisabled || !hasDrawing}
 		>
 			{$messages.gameplay.submitDrawing}
 		</button>
