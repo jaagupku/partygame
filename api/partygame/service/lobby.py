@@ -22,7 +22,7 @@ from partygame.state.auth_models import UserRecord
 log = logging.getLogger(__name__)
 
 
-async def get_player_ids(redis: Redis, game_id: str, withscores=True) -> list[str]:
+async def get_player_ids(redis: Redis, game_id: str, withscores: bool = True) -> list[str]:
     repo = GameStateRepository(redis)
     return await repo.get_player_ids(game_id, withscores=withscores)
 

@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from partygame import schemas
 from partygame.schemas.game_definition import (
@@ -10,11 +8,25 @@ from partygame.schemas.game_definition import (
 )
 from partygame.service.runtime.steps import FlattenedStep
 
+if TYPE_CHECKING:
+    from partygame.service.game import GameRuntimeService
+    from partygame.service.runtime.end_game import EndGameRuntime
+    from partygame.service.runtime.evaluation import EvaluationRuntime
+    from partygame.service.runtime.timing import TimingState
+    from partygame.state.repo import GameStateRepository
+
 ROUND_INTRO_DURATION_SECONDS = 5.0
 
 
 class SnapshotBuilder:
-    def __init__(self, runtime, repo, evaluation, timing, end_game):
+    def __init__(
+        self,
+        runtime: "GameRuntimeService",
+        repo: "GameStateRepository",
+        evaluation: "EvaluationRuntime",
+        timing: "TimingState",
+        end_game: "EndGameRuntime",
+    ) -> None:
         self.runtime = runtime
         self.repo = repo
         self.evaluation = evaluation

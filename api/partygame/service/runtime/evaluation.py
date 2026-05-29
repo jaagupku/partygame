@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 from math import asin, cos, radians, sin, sqrt
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, TYPE_CHECKING
 
 from partygame import schemas
 from partygame.schemas.game_definition import (
@@ -10,6 +9,10 @@ from partygame.schemas.game_definition import (
     PlayerInputKind,
     StepDefinition,
 )
+
+if TYPE_CHECKING:
+    from partygame.state.repo import GameStateRepository
+    from partygame.service.runtime.timing import TimingState
 
 HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.EXACT_TEXT,
@@ -41,7 +44,12 @@ DRAWING_LABEL_PREFIX = "Drawing"
 
 
 class EvaluationRuntime:
-    def __init__(self, repo, timing, get_step_state=None):
+    def __init__(
+        self,
+        repo: "GameStateRepository",
+        timing: "TimingState",
+        get_step_state: Callable[[str], Awaitable[dict[str, Any]]] | None = None,
+    ) -> None:
         self.repo = repo
         self.timing = timing
         self.get_step_state = get_step_state
@@ -347,6 +355,13 @@ class EvaluationRuntime:
         step: StepDefinition,
     ) -> bool:
         return self._is_hostless_compatible_step(lobby, step)
+
+    def is_hostless_auto_progress_step(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+    ) -> bool:
+        return self._is_hostless_auto_progress_step(lobby, step)
 
     async def should_skip_answer_reveal(
         self,

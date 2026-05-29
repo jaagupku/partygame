@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 from redis.asyncio import Redis
 from fastapi import APIRouter, Depends, HTTPException
 
 from partygame import schemas, service
 from partygame.api import deps
+
+if TYPE_CHECKING:
+    from partygame.state.auth_models import UserRecord
 
 router = APIRouter()
 
@@ -52,7 +57,7 @@ async def join_lobby(*, redis: Redis = Depends(deps.get_redis), join_request: sc
 async def create_lobby(
     *,
     redis: Redis = Depends(deps.get_redis),
-    current_user=Depends(deps.get_current_user_optional),
+    current_user: "UserRecord | None" = Depends(deps.get_current_user_optional),
     create_game: schemas.CreateGame = schemas.CreateGame(),
 ):
     return await service.lobby.create(redis, create_game, current_user)

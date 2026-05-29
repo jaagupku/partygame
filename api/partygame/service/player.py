@@ -463,7 +463,7 @@ class ClientController:
                         exc_info=result,
                     )
 
-    async def _safe_send(self, label: str, operation):
+    async def _safe_send(self, label: str, operation: Awaitable[Any]) -> None:
         try:
             await operation
         except Exception:
@@ -883,7 +883,7 @@ class ClientController:
         if self.lobby.phase != "step_complete":
             return
         current_step = await self.runtime.get_current_step(self.lobby)
-        if current_step is None or not self.runtime._is_hostless_auto_progress_step(
+        if current_step is None or not self.runtime.is_hostless_auto_progress_step(
             self.lobby, current_step
         ):
             return

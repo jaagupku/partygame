@@ -1,8 +1,13 @@
-from __future__ import annotations
-
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, TYPE_CHECKING
 
 from partygame import schemas
+
+if TYPE_CHECKING:
+    from partygame.service.runtime.timing import TimingState
+    from partygame.state.repo import GameStateRepository
+
+BuildSnapshot = Callable[[schemas.Lobby], Awaitable[schemas.RuntimeSnapshotEvent]]
 
 END_GAME_COMPONENT_ID = "end_game"
 PLAYER_METRICS_COMPONENT_ID = "player_metrics"
@@ -24,21 +29,21 @@ END_GAME_SEQUENCE_STAGES = (
 
 
 class EndGameRuntime:
-    def __init__(self, repo, timing):
+    def __init__(self, repo: "GameStateRepository", timing: "TimingState") -> None:
         self.repo = repo
         self.timing = timing
 
-    async def initialize_end_game_state(self, lobby_id: str, *, auto_reveal: bool):
+    async def initialize_end_game_state(self, lobby_id: str, *, auto_reveal: bool) -> None:
         await self._initialize_end_game_state(lobby_id, auto_reveal=auto_reveal)
 
-    async def set_end_game_state(self, lobby_id: str, updates: dict[str, Any]):
+    async def set_end_game_state(self, lobby_id: str, updates: dict[str, Any]) -> None:
         await self._set_end_game_state(lobby_id, updates)
 
     async def apply_player_metric_updates(
         self,
         lobby_id: str,
         updates: dict[str, dict[str, Any]],
-    ):
+    ) -> None:
         await self._apply_player_metric_updates(lobby_id, updates)
 
     async def build_end_game_state(
@@ -49,7 +54,7 @@ class EndGameRuntime:
         return await self._build_end_game_state(lobby, players)
 
     async def reveal_end_game(
-        self, lobby: schemas.Lobby, build_snapshot
+        self, lobby: schemas.Lobby, build_snapshot: BuildSnapshot
     ) -> list[schemas.BaseEvent]:
         if lobby.phase != "finished":
             return []
@@ -63,7 +68,7 @@ class EndGameRuntime:
         return [await build_snapshot(lobby)]
 
     async def advance_end_game_stage(
-        self, lobby: schemas.Lobby, build_snapshot
+        self, lobby: schemas.Lobby, build_snapshot: BuildSnapshot
     ) -> list[schemas.BaseEvent]:
         if lobby.phase != "finished":
             return []
@@ -85,7 +90,10 @@ class EndGameRuntime:
         return [await build_snapshot(lobby)]
 
     async def toggle_end_game_autoplay(
-        self, lobby: schemas.Lobby, enabled: bool, build_snapshot
+        self,
+        lobby: schemas.Lobby,
+        enabled: bool,
+        build_snapshot: BuildSnapshot,
     ) -> list[schemas.BaseEvent]:
         if lobby.phase != "finished":
             return []
@@ -97,7 +105,7 @@ class EndGameRuntime:
         lobby: schemas.Lobby,
         player_id: str,
         reaction: str,
-    ):
+    ) -> None:
         if lobby.phase == "finished":
             return
         await self._apply_player_metric_updates(

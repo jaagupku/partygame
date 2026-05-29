@@ -1,11 +1,12 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from time import time
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from partygame import schemas
 from partygame.service.runtime.snapshots import ROUND_INTRO_DURATION_SECONDS
+
+if TYPE_CHECKING:
+    from partygame.service.game import GameRuntimeService
 
 HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS = 4.0
 HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS = 4.5
@@ -30,7 +31,7 @@ class RuntimeTransitionScheduler:
         *,
         lobby: schemas.Lobby,
         snapshot: schemas.RuntimeSnapshotEvent,
-        runtime,
+        runtime: "GameRuntimeService",
     ) -> ScheduledTransition | None:
         if snapshot.active_item and snapshot.active_item.type_ == "round_intro":
             return ScheduledTransition("round_intro", ROUND_INTRO_DURATION_SECONDS)
@@ -54,7 +55,7 @@ class RuntimeTransitionScheduler:
             and snapshot.display_phase == "answer_reveal"
         ):
             current_step = await runtime.get_current_step(lobby)
-            if current_step is None or not runtime._is_hostless_auto_progress_step(
+            if current_step is None or not runtime.is_hostless_auto_progress_step(
                 lobby, current_step
             ):
                 return None
@@ -74,7 +75,7 @@ class RuntimeTransitionScheduler:
         if current_step is None:
             return None
         if not snapshot.active_step.timer.enforced and not (
-            not lobby.host_enabled and runtime._is_hostless_auto_progress_step(lobby, current_step)
+            not lobby.host_enabled and runtime.is_hostless_auto_progress_step(lobby, current_step)
         ):
             return None
 

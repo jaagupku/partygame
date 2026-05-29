@@ -648,7 +648,7 @@ async def test_hostless_advisory_timer_is_scheduled(monkeypatch):
     monkeypatch.setattr(player_service.asyncio, "create_task", fake_create_task)
     controller.runtime = SimpleNamespace(
         get_current_step=get_current_step,
-        _is_hostless_auto_progress_step=lambda _lobby, _step: True,
+        is_hostless_auto_progress_step=lambda _lobby, _step: True,
     )
 
     await controller._schedule_timer_from_snapshot(snapshot)
