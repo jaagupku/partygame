@@ -25,6 +25,7 @@
 	let brushControlsOpen = $state(false);
 	let brushSize = $state(8);
 	let strokes = $state<DrawingStroke[]>([]);
+	let redoStrokes = $state<DrawingStroke[]>([]);
 	let activeStroke = $state<DrawingStroke | null>(null);
 	let clearConfirming = $state(false);
 	let clearConfirmTimeout: number | null = null;
@@ -45,6 +46,8 @@
 	];
 
 	const hasDrawing = $derived(strokes.length > 0);
+	const canUndo = $derived(strokes.length > 0);
+	const canRedo = $derived(redoStrokes.length > 0);
 	const submission = $derived<DrawingSubmission>({
 		width: CANVAS_WIDTH,
 		height: CANVAS_HEIGHT,
@@ -69,6 +72,9 @@
 			return;
 		}
 		canvas.setPointerCapture(event.pointerId);
+		if (redoStrokes.length > 0) {
+			redoStrokes = [];
+		}
 		const stroke: DrawingStroke = {
 			color: eraserEnabled ? '#ffffff' : selectedColor,
 			size: eraserEnabled ? Math.max(Number(brushSize) * 2, 16) : Number(brushSize),
@@ -96,6 +102,34 @@
 		activeStroke = null;
 	}
 
+	function undoStroke() {
+		if (disabled || !canUndo) {
+			return;
+		}
+		const undoneStroke = strokes.at(-1);
+		if (!undoneStroke) {
+			return;
+		}
+		resetClearConfirmation();
+		activeStroke = null;
+		strokes = strokes.slice(0, -1);
+		redoStrokes = [...redoStrokes, undoneStroke];
+	}
+
+	function redoStroke() {
+		if (disabled || !canRedo) {
+			return;
+		}
+		const redoneStroke = redoStrokes.at(-1);
+		if (!redoneStroke) {
+			return;
+		}
+		resetClearConfirmation();
+		activeStroke = null;
+		redoStrokes = redoStrokes.slice(0, -1);
+		strokes = [...strokes, redoneStroke];
+	}
+
 	function clearDrawing() {
 		if (disabled) {
 			return;
@@ -113,6 +147,7 @@
 		}
 		resetClearConfirmation();
 		strokes = [];
+		redoStrokes = [];
 		activeStroke = null;
 	}
 
@@ -188,50 +223,72 @@
 				></button>
 			{/each}
 		</div>
-		<button
-			type="button"
-			class={`controller-icon-button ${eraserEnabled ? 'controller-icon-button-active' : ''}`}
-			{disabled}
-			onclick={() => {
-				eraserEnabled = !eraserEnabled;
-				brushControlsOpen = false;
-				resetClearConfirmation();
-			}}
-			aria-label={$messages.gameplay.eraser}
-			title={$messages.gameplay.eraser}
-		>
-			<iconify-icon icon="fluent:eraser-20-regular"></iconify-icon>
-		</button>
-		<button
-			type="button"
-			class={`controller-icon-button ${brushControlsOpen ? 'controller-icon-button-active' : ''}`}
-			{disabled}
-			onclick={() => {
-				brushControlsOpen = !brushControlsOpen;
-				resetClearConfirmation();
-			}}
-			aria-label={$messages.gameplay.brushSize}
-			aria-expanded={brushControlsOpen}
-			title={$messages.gameplay.brushSize}
-		>
-			<iconify-icon icon="fluent:paint-brush-20-filled"></iconify-icon>
-		</button>
-		<button
-			type="button"
-			class={`controller-icon-button drawing-clear-button ${clearConfirming ? 'drawing-clear-button-confirm' : ''}`}
-			disabled={disabled || !hasDrawing}
-			onclick={clearDrawing}
-			aria-label={clearConfirming
-				? `${$messages.gameplay.clearDrawing}?`
-				: $messages.gameplay.clearDrawing}
-			title={clearConfirming
-				? `${$messages.gameplay.clearDrawing}?`
-				: $messages.gameplay.clearDrawing}
-		>
-			<iconify-icon
-				icon={clearConfirming ? 'fluent:checkmark-20-filled' : 'fluent:delete-20-filled'}
-			></iconify-icon>
-		</button>
+		<div class="drawing-tool-actions">
+			<button
+				type="button"
+				class="controller-icon-button"
+				disabled={disabled || !canUndo}
+				onclick={undoStroke}
+				aria-label={$messages.gameplay.undoDrawingStroke}
+				title={$messages.gameplay.undoDrawingStroke}
+			>
+				<iconify-icon icon="fluent:arrow-undo-20-filled"></iconify-icon>
+			</button>
+			<button
+				type="button"
+				class="controller-icon-button"
+				disabled={disabled || !canRedo}
+				onclick={redoStroke}
+				aria-label={$messages.gameplay.redoDrawingStroke}
+				title={$messages.gameplay.redoDrawingStroke}
+			>
+				<iconify-icon icon="fluent:arrow-redo-20-filled"></iconify-icon>
+			</button>
+			<button
+				type="button"
+				class={`controller-icon-button ${eraserEnabled ? 'controller-icon-button-active' : ''}`}
+				{disabled}
+				onclick={() => {
+					eraserEnabled = !eraserEnabled;
+					brushControlsOpen = false;
+					resetClearConfirmation();
+				}}
+				aria-label={$messages.gameplay.eraser}
+				title={$messages.gameplay.eraser}
+			>
+				<iconify-icon icon="fluent:eraser-20-regular"></iconify-icon>
+			</button>
+			<button
+				type="button"
+				class={`controller-icon-button ${brushControlsOpen ? 'controller-icon-button-active' : ''}`}
+				{disabled}
+				onclick={() => {
+					brushControlsOpen = !brushControlsOpen;
+					resetClearConfirmation();
+				}}
+				aria-label={$messages.gameplay.brushSize}
+				aria-expanded={brushControlsOpen}
+				title={$messages.gameplay.brushSize}
+			>
+				<iconify-icon icon="fluent:paint-brush-20-filled"></iconify-icon>
+			</button>
+			<button
+				type="button"
+				class={`controller-icon-button drawing-clear-button ${clearConfirming ? 'drawing-clear-button-confirm' : ''}`}
+				disabled={disabled || !hasDrawing}
+				onclick={clearDrawing}
+				aria-label={clearConfirming
+					? `${$messages.gameplay.clearDrawing}?`
+					: $messages.gameplay.clearDrawing}
+				title={clearConfirming
+					? `${$messages.gameplay.clearDrawing}?`
+					: $messages.gameplay.clearDrawing}
+			>
+				<iconify-icon
+					icon={clearConfirming ? 'fluent:checkmark-20-filled' : 'fluent:delete-20-filled'}
+				></iconify-icon>
+			</button>
+		</div>
 	</div>
 	{#if brushControlsOpen}
 		<label class="drawing-brush-control">
@@ -306,14 +363,14 @@
 
 	.drawing-tools {
 		display: flex;
-		align-items: center;
-		gap: 0.45rem;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
 	.drawing-colors {
 		display: flex;
 		min-width: 0;
-		flex: 1;
+		width: 100%;
 		gap: 0.4rem;
 		overflow-x: auto;
 		padding-block: 0.15rem;
@@ -324,8 +381,15 @@
 		display: none;
 	}
 
+	.drawing-tool-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		width: 100%;
+	}
+
 	.drawing-clear-button {
-		margin-left: 0.25rem;
+		margin-left: auto;
 	}
 
 	.drawing-clear-button-confirm {
