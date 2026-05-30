@@ -347,7 +347,7 @@ class GameRuntimeService:
         ) and await self.evaluation.all_answerable_players_submitted(
             lobby, state | {"answers": answers}
         ):
-            return await self.close_step(lobby), True
+            return await self.show_answer_reveal(lobby), True
         return [], True
 
     async def submit_drawing_vote(

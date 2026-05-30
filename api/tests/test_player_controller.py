@@ -60,6 +60,7 @@ class FakeRepo:
         self.status_updates: list[tuple[str, str, schemas.ConnectionStatus]] = []
         self.applied_ttls: list[tuple[str, int]] = []
         self.connected_players = 0
+        self.players: list[schemas.Player] = []
 
     async def create_player(self, player: schemas.Player):
         self.created_player = player
@@ -80,6 +81,9 @@ class FakeRepo:
 
     async def count_connected_players(self, game_id: str) -> int:
         return self.connected_players
+
+    async def get_players(self, game_id: str) -> list[schemas.Player]:
+        return [player for player in self.players if player.game_id == game_id]
 
     async def get_player(self, game_id: str, player_id: str):
         if self.created_player is not None and self.created_player.id == player_id:
@@ -752,6 +756,121 @@ async def test_hostless_end_game_autoplay_is_scheduled(monkeypatch):
     await controller._schedule_timer_from_snapshot(snapshot)
 
     assert created["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_collect_player_drafts_broadcasts_to_unsubmitted_players(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_id="host",
+        phase="question_active",
+    )
+    player = schemas.Player(id="host", game_id="g1", name="Host")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=player
+    )
+    repo = FakeRepo(lobby)
+    repo.players = [
+        player,
+        schemas.Player(id="p1", game_id="g1", name="Alice"),
+        schemas.Player(id="p2", game_id="g1", name="Bob"),
+    ]
+    controller.repo = repo
+    published: list[tuple[str, object]] = []
+
+    async def fake_publish(redis, channel, payload):
+        published.append((channel, payload))
+
+    async def fake_sleep(delay):
+        assert delay == player_service.DRAFT_COLLECTION_GRACE_SECONDS
+
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+    monkeypatch.setattr(player_service.asyncio, "sleep", fake_sleep)
+
+    async def get_current_step(_lobby):
+        return SimpleNamespace(
+            id="step1",
+            player_input=SimpleNamespace(kind=schemas.PlayerInputKind.TEXT),
+        )
+
+    async def get_step_state(_game_id):
+        return {"answers": {"p2": "done"}}
+
+    controller.runtime = SimpleNamespace(
+        get_current_step=get_current_step,
+        get_step_state=get_step_state,
+    )
+
+    collected = await controller._collect_player_drafts_before_close(reason="host_reveal")
+
+    assert collected is True
+    assert len(published) == 1
+    channel, event = published[0]
+    assert channel == GameKeyFactory.player_channel("g1", "p1")
+    assert isinstance(event, schemas.CollectPlayerDraftsEvent)
+    assert event.step_id == "step1"
+    assert event.reason == "host_reveal"
+
+
+@pytest.mark.asyncio
+async def test_collect_player_drafts_sends_to_local_hostless_player(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_enabled=False,
+        starter_id="p1",
+        phase="question_active",
+    )
+    player = schemas.Player(id="p1", game_id="g1", name="Starter")
+    websocket = FakeWebSocket()
+    controller = player_service.ClientController(
+        websocket, redis=object(), lobby=lobby, player=player
+    )
+    repo = FakeRepo(lobby)
+    repo.players = [
+        player,
+        schemas.Player(id="p2", game_id="g1", name="Bob"),
+    ]
+    controller.repo = repo
+    published: list[tuple[str, object]] = []
+
+    async def fake_publish(redis, channel, payload):
+        published.append((channel, payload))
+
+    async def fake_sleep(delay):
+        assert delay == player_service.DRAFT_COLLECTION_GRACE_SECONDS
+
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+    monkeypatch.setattr(player_service.asyncio, "sleep", fake_sleep)
+
+    async def get_current_step(_lobby):
+        return SimpleNamespace(
+            id="step1",
+            player_input=SimpleNamespace(kind=schemas.PlayerInputKind.TEXT),
+        )
+
+    async def get_step_state(_game_id):
+        return {"answers": {}}
+
+    controller.runtime = SimpleNamespace(
+        get_current_step=get_current_step,
+        get_step_state=get_step_state,
+    )
+
+    collected = await controller._collect_player_drafts_before_close(reason="timer_expired")
+
+    assert collected is True
+    assert len(websocket.messages) == 1
+    local_event = schemas.CollectPlayerDraftsEvent.model_validate_json(websocket.messages[0])
+    assert local_event.step_id == "step1"
+    assert local_event.reason == "timer_expired"
+    assert published == [
+        (
+            GameKeyFactory.player_channel("g1", "p2"),
+            schemas.CollectPlayerDraftsEvent(step_id="step1", reason="timer_expired"),
+        )
+    ]
 
 
 @pytest.mark.asyncio

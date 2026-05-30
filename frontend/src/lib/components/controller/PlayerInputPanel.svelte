@@ -50,6 +50,9 @@
 	let orderingStepId = $state<string | undefined>(undefined);
 	let inputStepId = $state<string | undefined>(undefined);
 	let pendingSubmissionStepId = $state<string | undefined>(undefined);
+	let drawingInput = $state<{ getDraftSubmission: () => DrawingSubmission | undefined } | null>(
+		null
+	);
 
 	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
@@ -102,23 +105,68 @@
 		if (!step || inputDisabled || previewMode) {
 			return;
 		}
-		let value: unknown = answerValue;
-		if (step.input_kind === 'number') {
-			value = Number(answerValue);
-		} else if (step.input_kind === 'ordering') {
-			value = orderingItems;
-		} else if (step.input_kind === 'radio') {
-			value = selectedRadioOption;
-		} else if (step.input_kind === 'checkbox') {
-			value = selectedCheckboxOptions;
-		} else if (step.input_kind === 'map') {
-			value = selectedMapPoint;
-		} else if (step.input_kind === 'text') {
-			value = String(answerValue);
+		const value = buildDraftSubmission({ requireMeaningful: false });
+		if (value === undefined) {
+			return;
 		}
 
 		pendingSubmissionStepId = step.id;
 		onSubmitAnswer(value);
+	}
+
+	function buildDraftSubmission({
+		requireMeaningful
+	}: {
+		requireMeaningful: boolean;
+	}): unknown | undefined {
+		const step = activeStep;
+		if (!step) {
+			return undefined;
+		}
+		if (step.input_kind === 'number') {
+			return Number(answerValue);
+		}
+		if (step.input_kind === 'ordering') {
+			return orderingItems;
+		}
+		if (step.input_kind === 'radio') {
+			return selectedRadioOption ?? undefined;
+		}
+		if (step.input_kind === 'checkbox') {
+			return selectedCheckboxOptions.length > 0 ? selectedCheckboxOptions : undefined;
+		}
+		if (step.input_kind === 'map') {
+			return selectedMapPoint ?? undefined;
+		}
+		if (step.input_kind === 'drawing') {
+			return drawingInput?.getDraftSubmission();
+		}
+		if (step.input_kind === 'text') {
+			const value = String(answerValue);
+			return requireMeaningful && value.length === 0 ? '' : value;
+		}
+		return undefined;
+	}
+
+	export function autosubmitDraft(stepId: string): boolean {
+		const step = activeStep;
+		if (
+			!step ||
+			step.id !== stepId ||
+			inputDisabled ||
+			previewMode ||
+			hasSubmitted ||
+			pendingSubmissionStepId === step.id
+		) {
+			return false;
+		}
+		const value = buildDraftSubmission({ requireMeaningful: true });
+		if (value === undefined) {
+			return false;
+		}
+		pendingSubmissionStepId = step.id;
+		onSubmitAnswer(value);
+		return true;
 	}
 
 	function buzz() {
@@ -443,7 +491,13 @@
 				: $messages.gameplay.drawYourAnswer}
 		</p>
 		<div class="drawing-input-fill">
-			<DrawingInput disabled={inputDisabled} {mode} submitPosition="top" onSubmit={submitDrawing} />
+			<DrawingInput
+				bind:this={drawingInput}
+				disabled={inputDisabled}
+				{mode}
+				submitPosition="top"
+				onSubmit={submitDrawing}
+			/>
 		</div>
 	</section>
 {:else}

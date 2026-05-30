@@ -488,6 +488,35 @@ class InactiveHostFallbackProvider:
         return []
 
 
+class HostedTimedHostJudgedProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Hosted Timed",
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="hosted_timed",
+                            title="Hosted timed",
+                            player_input=PlayerInputDefinition(kind=PlayerInputKind.TEXT),
+                            evaluation=EvaluationRule(
+                                type_=EvaluationType.HOST_JUDGED,
+                                points=3,
+                                answer="hello",
+                            ),
+                            timer=TimerDefinition(seconds=30, enforced=False),
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
 class TwoRoundHostlessProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(
@@ -1211,6 +1240,38 @@ async def test_inactive_host_advisory_timer_is_effectively_enforced_in_snapshot(
     assert snapshot.active_step is not None
     assert snapshot.active_step.evaluation_type == "exact_text"
     assert snapshot.active_step.timer.enforced is True
+
+
+@pytest.mark.asyncio
+async def test_hosted_timed_question_reveals_when_all_players_submit():
+    repo = FakeRepo()
+    repo.players.append(
+        schemas.Player(
+            id="host",
+            game_id="g1",
+            name="Host",
+            status=schemas.ConnectionStatus.CONNECTED,
+        )
+    )
+    service = GameRuntimeService(repo=repo, definition_provider=HostedTimedHostJudgedProvider())
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        definition_id="quiz_demo",
+        host_enabled=True,
+        host_id="host",
+    )
+
+    await service.start_game(lobby)
+    first_events, first_handled = await service.submit_player_input(lobby, "p1", "hello")
+    second_events, second_handled = await service.submit_player_input(lobby, "p2", "hello")
+
+    assert first_handled is True
+    assert first_events == []
+    assert second_handled is True
+    assert [event.type_ for event in second_events] == ["runtime_snapshot"]
+    assert lobby.phase == "host_review"
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
 
 
 @pytest.mark.asyncio

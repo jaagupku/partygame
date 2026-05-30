@@ -24,6 +24,7 @@ from partygame.state import GameStateRepository, GameKeyFactory
 log = logging.getLogger(__name__)
 PLAYER_REACTION_WINDOW_SECONDS = 2.0
 PLAYER_REACTION_BURST_LIMIT = 8
+DRAFT_COLLECTION_GRACE_SECONDS = 1.0
 
 
 async def refresh_idle_ttl(
@@ -655,6 +656,44 @@ class ClientController:
             force_snapshot=force_snapshot,
         )
 
+    async def _collect_player_drafts_before_close(
+        self,
+        *,
+        reason: str,
+    ) -> bool:
+        await self.refresh_lobby()
+        if self.lobby.phase != "question_active":
+            return False
+        step = await self.runtime.get_current_step(self.lobby)
+        if step is None or step.player_input.kind in {
+            schemas.PlayerInputKind.NONE,
+            schemas.PlayerInputKind.BUZZER,
+        }:
+            return False
+
+        state = await self.runtime.get_step_state(self.lobby.id)
+        submitted_player_ids = set(state.get("answers", {}).keys())
+        player_ids = [
+            player.id
+            for player in await self.repo.get_players(self.lobby.id)
+            if player.id
+            and player.id != self.lobby.host_id
+            and player.id not in submitted_player_ids
+        ]
+        if not player_ids:
+            return False
+
+        event = schemas.CollectPlayerDraftsEvent(step_id=step.id, reason=reason)
+        if self.player.id in player_ids:
+            await self.send(event)
+            player_ids = [player_id for player_id in player_ids if player_id != self.player.id]
+        await self._safe_send(
+            "draft collection broadcast", self.broadcast(event, players=player_ids)
+        )
+        await asyncio.sleep(DRAFT_COLLECTION_GRACE_SECONDS)
+        await self.refresh_lobby()
+        return True
+
     async def process_controller(self, msg: str):
         data = json.loads(msg)
         event_type = data.get("type_")
@@ -671,6 +710,7 @@ class ClientController:
                 )
 
             case Event.SHOW_ANSWER_REVEAL:
+                await self._collect_player_drafts_before_close(reason="host_reveal")
                 await self._run_runtime_events(
                     lambda: self.runtime.show_answer_reveal(self.lobby),
                 )
@@ -743,6 +783,7 @@ class ClientController:
                 )
 
             case Event.CLOSE_STEP:
+                await self._collect_player_drafts_before_close(reason="host_reveal")
                 await self._run_runtime_events(
                     lambda: self.runtime.close_step(self.lobby),
                     begin_round_intro=True,
@@ -928,6 +969,9 @@ class ClientController:
         if lobby is None:
             return
         self.lobby = lobby
+        if self.lobby.phase != "question_active":
+            return
+        await self._collect_player_drafts_before_close(reason="timer_expired")
         if self.lobby.phase != "question_active":
             return
         before_snapshot = await self.runtime.build_snapshot(self.lobby)

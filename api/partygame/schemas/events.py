@@ -41,6 +41,7 @@ class Event(StrEnum):
     MEDIA_PLAYBACK = auto()
     ANSWER_JUDGED = auto()
     DRAWING_VOTE_SUBMITTED = auto()
+    COLLECT_PLAYER_DRAFTS = auto()
 
 
 class BaseEvent(BaseModel):
@@ -119,6 +120,12 @@ class DrawingVoteSubmittedEvent(BaseEvent):
     type_: str = Event.DRAWING_VOTE_SUBMITTED
     player_id: str = ""
     drawing_id: str
+
+
+class CollectPlayerDraftsEvent(BaseEvent):
+    type_: str = Event.COLLECT_PLAYER_DRAFTS
+    step_id: str
+    reason: Literal["timer_expired", "host_reveal"]
 
 
 class StepAdvancedEvent(BaseEvent):
