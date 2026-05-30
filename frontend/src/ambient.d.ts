@@ -321,6 +321,12 @@ type AnswerJudgedEvent = {
 	batch_size: number;
 };
 
+type CollectPlayerDraftsEvent = {
+	type_: 'collect_player_drafts';
+	step_id: string;
+	reason: 'timer_expired' | 'host_reveal';
+};
+
 type RuntimeTimerState = {
 	seconds?: number;
 	enforced: boolean;

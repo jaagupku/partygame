@@ -172,6 +172,13 @@
 		};
 	}
 
+	export function getDraftSubmission(): DrawingSubmission | undefined {
+		if (!hasDrawing) {
+			return undefined;
+		}
+		return buildSubmission();
+	}
+
 	function submitDrawing() {
 		if (disabled || submitDisabled || !hasDrawing) {
 			return;

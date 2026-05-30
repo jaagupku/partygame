@@ -305,8 +305,10 @@ class EvaluationRuntime:
         lobby: schemas.Lobby,
         step: StepDefinition,
     ) -> bool:
-        if await self._has_active_host_player(lobby) or self._is_information_slide(step):
+        if self._is_information_slide(step):
             return False
+        if await self._has_active_host_player(lobby):
+            return step.timer.seconds is not None
         evaluation_type = await self._resolve_evaluation_type(lobby, step)
         return (
             evaluation_type in HOSTLESS_AUTO_EVALUATION_TYPES

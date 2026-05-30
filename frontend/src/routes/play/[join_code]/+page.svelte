@@ -78,6 +78,7 @@
 	let finaleAutoplayIntervalId: number | null = null;
 	let reviewStepId = $state<string | undefined>(undefined);
 	let pendingReviewedPlayerIds = $state<string[]>([]);
+	let playerInputPanel = $state<{ autosubmitDraft: (stepId: string) => boolean } | null>(null);
 
 	const playerMap = $derived(new Map($controller.players.map((entry) => [entry.id, entry])));
 	const basePlayerInputDisabled = $derived(
@@ -203,6 +204,10 @@
 			{
 				onMessage: (data) => {
 					const message = JSON.parse(data) as { type_: string };
+					if (message.type_ === 'collect_player_drafts') {
+						autosubmitPlayerDraft(message as CollectPlayerDraftsEvent);
+						return;
+					}
 					const resyncSnapshot = message.type_ === 'runtime_snapshot' && resyncPending;
 					const result = controller.onMessage(data);
 					soundSystem.handleEvent(message, get(controller));
@@ -435,6 +440,16 @@
 		});
 	}
 
+	function autosubmitPlayerDraft(event: CollectPlayerDraftsEvent) {
+		if ($controller.isHost || $controller.hasSubmitted || !$controller.activeStep?.input_enabled) {
+			return;
+		}
+		if ($controller.activeStep.id !== event.step_id) {
+			return;
+		}
+		playerInputPanel?.autosubmitDraft(event.step_id);
+	}
+
 	function isSubmissionReviewed(playerId: string) {
 		return (
 			pendingReviewedPlayerIds.includes(playerId) ||
@@ -579,6 +594,7 @@
 				class={`controller-player-input controller-player-input-${$controller.activeStep?.input_kind ?? 'none'}`}
 			>
 				<PlayerInputPanel
+					bind:this={playerInputPanel}
 					activeStep={$controller.activeStep}
 					baseInputDisabled={basePlayerInputDisabled}
 					buzzerActive={$controller.buzzerActive}
