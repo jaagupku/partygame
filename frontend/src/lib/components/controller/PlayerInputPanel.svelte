@@ -130,6 +130,15 @@
 		onSubmitAnswer('buzz');
 	}
 
+	function submitDrawing(drawing: DrawingSubmission) {
+		const step = activeStep;
+		if (!step || inputDisabled || previewMode) {
+			return;
+		}
+		pendingSubmissionStepId = step.id;
+		onSubmitAnswer(drawing);
+	}
+
 	function submitRadioOption(option: string) {
 		selectedRadioOption = option;
 		answerValue = option;
@@ -434,12 +443,7 @@
 				: $messages.gameplay.drawYourAnswer}
 		</p>
 		<div class="drawing-input-fill">
-			<DrawingInput
-				disabled={inputDisabled}
-				{mode}
-				submitPosition="top"
-				onSubmit={onSubmitAnswer}
-			/>
+			<DrawingInput disabled={inputDisabled} {mode} submitPosition="top" onSubmit={submitDrawing} />
 		</div>
 	</section>
 {:else}
