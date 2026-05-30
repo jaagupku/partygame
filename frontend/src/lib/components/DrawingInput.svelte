@@ -124,11 +124,24 @@
 		clearConfirming = false;
 	}
 
+	function buildSubmission(): DrawingSubmission {
+		return {
+			width: CANVAS_WIDTH,
+			height: CANVAS_HEIGHT,
+			strokes: strokes.map((stroke) => ({
+				color: stroke.color,
+				size: stroke.size,
+				eraser: stroke.eraser,
+				points: stroke.points.map((point) => ({ x: point.x, y: point.y }))
+			}))
+		};
+	}
+
 	function submitDrawing() {
 		if (disabled || submitDisabled || !hasDrawing) {
 			return;
 		}
-		onSubmit(submission);
+		onSubmit(buildSubmission());
 	}
 </script>
 
