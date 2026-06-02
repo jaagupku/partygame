@@ -13,6 +13,13 @@
 	type LeafletModule = typeof import('leaflet');
 	type MapEditorMode = 'author' | 'player' | 'reveal' | 'custom';
 	type GuessLabelMode = 'hover' | 'always' | 'none';
+	type RadiusLabelPosition = 'north' | 'south' | 'east' | 'west';
+
+	const RADIUS_LABEL_THRESHOLDS = {
+		largePx: 80,
+		mediumPx: 40,
+		smallPx: 15
+	} as const;
 
 	export type MapGuessMarker = {
 		id: string;
@@ -185,6 +192,9 @@
 			};
 			onViewportChange?.(nextConfig);
 			onMapConfigChange?.(nextConfig);
+		});
+		map.on('zoomend resize', () => {
+			syncScoringCircles();
 		});
 		syncMap();
 	});
@@ -421,7 +431,7 @@
 				})
 				.addTo(scoringLayer)
 				.bindTooltip(radius.label, { sticky: true });
-			for (const labelPoint of pointsAroundDistance(center, radius.distance_m)) {
+			for (const labelPoint of labelPointsAroundDistance(center, radius.distance_m)) {
 				leaflet
 					.marker([labelPoint.lat, labelPoint.lng], {
 						interactive: false,
@@ -551,7 +561,7 @@
 			return [];
 		}
 		return scoringRadii(scoringAnswer).flatMap((radius) =>
-			pointsAroundDistance(scoringAnswer.correct_point, radius.distance_m)
+			allPointsAroundDistance(scoringAnswer.correct_point, radius.distance_m)
 		);
 	}
 
@@ -795,17 +805,60 @@
 		};
 	}
 
-	function pointsAroundDistance(point: MapPoint, distanceM: number): MapPoint[] {
+	function labelPointsAroundDistance(point: MapPoint, distanceM: number): MapPoint[] {
+		return labelPositionsForRadius(point, distanceM).map((position) =>
+			pointAroundDistance(point, distanceM, position)
+		);
+	}
+
+	function labelPositionsForRadius(point: MapPoint, distanceM: number): RadiusLabelPosition[] {
+		const radiusPixels = scoringRadiusPixels(point, distanceM);
+		if (radiusPixels >= RADIUS_LABEL_THRESHOLDS.largePx) {
+			return ['north', 'east', 'south', 'west'];
+		}
+		if (radiusPixels >= RADIUS_LABEL_THRESHOLDS.mediumPx) {
+			return ['east', 'west'];
+		}
+		if (radiusPixels >= RADIUS_LABEL_THRESHOLDS.smallPx) {
+			return ['north'];
+		}
+		return [];
+	}
+
+	function scoringRadiusPixels(point: MapPoint, distanceM: number) {
+		if (!map) {
+			return 0;
+		}
+		const center = map.latLngToLayerPoint([point.lat, point.lng]);
+		const edgePoint = pointAroundDistance(point, distanceM, 'east');
+		const edge = map.latLngToLayerPoint([edgePoint.lat, edgePoint.lng]);
+		return Math.hypot(edge.x - center.x, edge.y - center.y);
+	}
+
+	function allPointsAroundDistance(point: MapPoint, distanceM: number): MapPoint[] {
+		const positions: RadiusLabelPosition[] = ['north', 'south', 'east', 'west'];
+		return positions.map((position) => pointAroundDistance(point, distanceM, position));
+	}
+
+	function pointAroundDistance(
+		point: MapPoint,
+		distanceM: number,
+		position: RadiusLabelPosition
+	): MapPoint {
 		const metersPerLat = 111320;
 		const metersPerLng = 111320 * Math.cos(toRadians(point.lat));
 		const latOffset = distanceM / metersPerLat;
 		const lngOffset = distanceM / Math.max(1, metersPerLng);
-		return [
-			{ lat: clamp(point.lat + latOffset, -85, 85), lng: point.lng },
-			{ lat: clamp(point.lat - latOffset, -85, 85), lng: point.lng },
-			{ lat: point.lat, lng: clamp(point.lng + lngOffset, -180, 180) },
-			{ lat: point.lat, lng: clamp(point.lng - lngOffset, -180, 180) }
-		];
+		if (position === 'north') {
+			return { lat: clamp(point.lat + latOffset, -85, 85), lng: point.lng };
+		}
+		if (position === 'south') {
+			return { lat: clamp(point.lat - latOffset, -85, 85), lng: point.lng };
+		}
+		if (position === 'east') {
+			return { lat: point.lat, lng: clamp(point.lng + lngOffset, -180, 180) };
+		}
+		return { lat: point.lat, lng: clamp(point.lng - lngOffset, -180, 180) };
 	}
 
 	function toRadians(value: number) {
