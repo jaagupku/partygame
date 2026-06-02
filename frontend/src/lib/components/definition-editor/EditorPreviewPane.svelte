@@ -98,10 +98,12 @@
 					buzzerActive={true}
 					canContinueHostlessInfoSlide={step?.input_kind === 'none'}
 					disabledBuzzerPlayerIds={[]}
+					displayPhase="question_active"
 					drawingItems={[]}
 					drawingVotedPlayerIds={[]}
 					hasSubmitted={false}
 					playerId="preview-player"
+					submissionError={undefined}
 					mode="preview"
 					onContinueInfoSlide={noop}
 					onSubmitAnswer={noop}

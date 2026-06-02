@@ -2,11 +2,20 @@
 	import 'iconify-icon';
 	import { onDestroy } from 'svelte';
 	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
+	import {
+		DRAWING_CANVAS_HEIGHT,
+		DRAWING_CANVAS_WIDTH,
+		DRAWING_COLORS,
+		encodeDrawingSubmission,
+		simplifyDrawingPoints
+	} from '$lib/drawing-codec.js';
+	import { DRAWING_LIMITS, getDrawingLimitUsage } from '$lib/drawing-limits.js';
 	import { messages } from '$lib/i18n';
 
 	interface DrawingInputProps {
 		disabled: boolean;
 		mode?: 'live' | 'preview';
+		resetKey?: string;
 		showSubmit?: boolean;
 		submitPosition?: 'top' | 'bottom';
 		onSubmit: (drawing: DrawingSubmission) => void;
@@ -15,6 +24,7 @@
 	let {
 		disabled,
 		mode = 'live',
+		resetKey = '',
 		showSubmit = true,
 		submitPosition = 'bottom',
 		onSubmit
@@ -29,34 +39,29 @@
 	let activeStroke = $state<DrawingStroke | null>(null);
 	let clearConfirming = $state(false);
 	let clearConfirmTimeout: number | null = null;
-
-	const CANVAS_WIDTH = 512;
-	const CANVAS_HEIGHT = 384;
-	const COLORS = [
-		'#0f172a',
-		'#ef4444',
-		'#f97316',
-		'#eab308',
-		'#22c55e',
-		'#06b6d4',
-		'#3b82f6',
-		'#a855f7',
-		'#ec4899',
-		'#ffffff'
-	];
+	let lastResetKey = $state<string | undefined>(undefined);
 
 	const hasDrawing = $derived(strokes.length > 0);
 	const canUndo = $derived(strokes.length > 0);
 	const canRedo = $derived(redoStrokes.length > 0);
-	const submission = $derived<DrawingSubmission>({
-		width: CANVAS_WIDTH,
-		height: CANVAS_HEIGHT,
-		strokes
-	});
-	const submitDisabled = $derived(mode === 'preview');
+	const submission = $derived<DrawingSubmission>(buildPreviewSubmission());
+	const limitUsage = $derived(getDrawingLimitUsage(submission));
+	const submitDisabled = $derived(mode === 'preview' || limitUsage.overLimit);
 
 	onDestroy(() => {
 		resetClearConfirmation();
+	});
+
+	$effect(() => {
+		if (lastResetKey === undefined) {
+			lastResetKey = resetKey;
+			return;
+		}
+		if (resetKey === lastResetKey) {
+			return;
+		}
+		lastResetKey = resetKey;
+		resetDrawing();
 	});
 
 	function pointFromEvent(event: PointerEvent): DrawingPoint {
@@ -99,6 +104,13 @@
 	}
 
 	function endStroke() {
+		if (activeStroke) {
+			const simplifiedStroke = {
+				...activeStroke,
+				points: simplifyDrawingPoints(activeStroke.points)
+			};
+			strokes = [...strokes.slice(0, -1), simplifiedStroke];
+		}
 		activeStroke = null;
 	}
 
@@ -146,9 +158,14 @@
 			return;
 		}
 		resetClearConfirmation();
+		resetDrawing();
+	}
+
+	function resetDrawing() {
 		strokes = [];
 		redoStrokes = [];
 		activeStroke = null;
+		resetClearConfirmation();
 	}
 
 	function resetClearConfirmation() {
@@ -160,16 +177,11 @@
 	}
 
 	function buildSubmission(): DrawingSubmission {
-		return {
-			width: CANVAS_WIDTH,
-			height: CANVAS_HEIGHT,
-			strokes: strokes.map((stroke) => ({
-				color: stroke.color,
-				size: stroke.size,
-				eraser: stroke.eraser,
-				points: stroke.points.map((point) => ({ x: point.x, y: point.y }))
-			}))
-		};
+		return encodeDrawingSubmission(strokes);
+	}
+
+	function buildPreviewSubmission(): DrawingSubmission {
+		return encodeDrawingSubmission(strokes, { simplify: false });
 	}
 
 	export function getDraftSubmission(): DrawingSubmission | undefined {
@@ -203,8 +215,8 @@
 		<canvas
 			bind:this={canvas}
 			class="drawing-input-canvas"
-			width={CANVAS_WIDTH}
-			height={CANVAS_HEIGHT}
+			width={DRAWING_CANVAS_WIDTH}
+			height={DRAWING_CANVAS_HEIGHT}
 			onpointerdown={beginStroke}
 			onpointermove={continueStroke}
 			onpointerup={endStroke}
@@ -214,7 +226,7 @@
 	</div>
 	<div class="drawing-tools">
 		<div class="drawing-colors" aria-label={$messages.gameplay.drawingAnswer}>
-			{#each COLORS as color}
+			{#each DRAWING_COLORS as color}
 				<button
 					type="button"
 					class={`drawing-color ${selectedColor === color && !eraserEnabled ? 'drawing-color-active' : ''}`}
@@ -310,6 +322,41 @@
 				{disabled}
 			/>
 		</label>
+	{/if}
+	{#if hasDrawing}
+		<p
+			class={`drawing-limit-status ${
+				limitUsage.overLimit
+					? 'drawing-limit-status-error'
+					: limitUsage.nearLimit
+						? 'drawing-limit-status-warning'
+						: ''
+			}`}
+			role={limitUsage.overLimit ? 'alert' : 'status'}
+		>
+			{#if limitUsage.overLimit}
+				{$messages.gameplay.drawingLimitExceeded(
+					limitUsage.strokes,
+					DRAWING_LIMITS.maxStrokes,
+					limitUsage.points,
+					DRAWING_LIMITS.maxPoints
+				)}
+			{:else if limitUsage.nearLimit}
+				{$messages.gameplay.drawingLimitWarning(
+					limitUsage.strokes,
+					DRAWING_LIMITS.maxStrokes,
+					limitUsage.points,
+					DRAWING_LIMITS.maxPoints
+				)}
+			{:else}
+				{$messages.gameplay.drawingLimitUsage(
+					limitUsage.strokes,
+					DRAWING_LIMITS.maxStrokes,
+					limitUsage.points,
+					DRAWING_LIMITS.maxPoints
+				)}
+			{/if}
+		</p>
 	{/if}
 	{#if showSubmit && submitPosition === 'bottom'}
 		<button
@@ -417,6 +464,20 @@
 
 	.drawing-brush-control :global(.number-slider) {
 		min-height: 1.75rem;
+	}
+
+	.drawing-limit-status {
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: rgb(71 85 105);
+	}
+
+	.drawing-limit-status-warning {
+		color: rgb(180 83 9);
+	}
+
+	.drawing-limit-status-error {
+		color: rgb(185 28 28);
 	}
 
 	@media (max-width: 640px) {

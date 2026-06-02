@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import {
+		decodeDrawingSubmission,
+		DRAWING_CANVAS_HEIGHT,
+		DRAWING_CANVAS_WIDTH
+	} from '$lib/drawing-codec.js';
 
 	interface DrawingDisplayProps {
 		drawing: unknown;
@@ -18,9 +23,6 @@
 	}: DrawingDisplayProps = $props();
 	let canvas: HTMLCanvasElement;
 	let animationFrame: number | null = null;
-
-	const CANVAS_WIDTH = 512;
-	const CANVAS_HEIGHT = 384;
 
 	$effect(() => {
 		if (canvas) {
@@ -41,10 +43,10 @@
 			return null;
 		}
 		const candidate = value as Partial<DrawingSubmission>;
-		if (candidate.width !== CANVAS_WIDTH || candidate.height !== CANVAS_HEIGHT) {
+		if (candidate.w !== DRAWING_CANVAS_WIDTH || candidate.h !== DRAWING_CANVAS_HEIGHT) {
 			return null;
 		}
-		if (!Array.isArray(candidate.strokes)) {
+		if (!Array.isArray(candidate.s)) {
 			return null;
 		}
 		return candidate as DrawingSubmission;
@@ -91,23 +93,25 @@
 		if (!context) {
 			return;
 		}
-		context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+		context.clearRect(0, 0, DRAWING_CANVAS_WIDTH, DRAWING_CANVAS_HEIGHT);
 		context.fillStyle = '#ffffff';
-		context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+		context.fillRect(0, 0, DRAWING_CANVAS_WIDTH, DRAWING_CANVAS_HEIGHT);
 		const submission = getSubmission(drawing);
 		if (!submission) {
 			return;
 		}
+		const strokes = decodeDrawingSubmission(submission);
 		const totalUnits = Math.max(
 			1,
-			submission.strokes.reduce((total, stroke) => total + Math.max(1, stroke.points.length), 0)
+			strokes.reduce((total, stroke) => total + Math.max(1, stroke.points.length), 0)
 		);
 		let remainingUnits = totalUnits * Math.min(1, Math.max(0, progress));
-		for (const stroke of submission.strokes) {
-			if (!stroke.points.length) {
+		for (const stroke of strokes) {
+			const pointCount = stroke.points.length;
+			if (pointCount < 1) {
 				continue;
 			}
-			const strokeUnits = Math.max(1, stroke.points.length);
+			const strokeUnits = Math.max(1, pointCount);
 			if (remainingUnits <= 0) {
 				break;
 			}
@@ -121,34 +125,37 @@
 			context.lineCap = 'round';
 			context.lineJoin = 'round';
 			context.beginPath();
-			const [firstPoint, ...points] = stroke.points;
-			context.moveTo(firstPoint.x * CANVAS_WIDTH, firstPoint.y * CANVAS_HEIGHT);
-			if (points.length === 0 || visibleUnits <= 1) {
+			const firstPoint = stroke.points[0];
+			context.moveTo(firstPoint.x * DRAWING_CANVAS_WIDTH, firstPoint.y * DRAWING_CANVAS_HEIGHT);
+			if (pointCount === 1 || visibleUnits <= 1) {
 				if (visibleUnits < 1) {
 					context.restore();
 					continue;
 				}
 				context.arc(
-					firstPoint.x * CANVAS_WIDTH,
-					firstPoint.y * CANVAS_HEIGHT,
+					firstPoint.x * DRAWING_CANVAS_WIDTH,
+					firstPoint.y * DRAWING_CANVAS_HEIGHT,
 					stroke.size / 2,
 					0,
 					Math.PI * 2
 				);
 				context.fill();
 			} else {
-				const fullPointCount = Math.min(points.length, Math.max(0, Math.floor(visibleUnits) - 1));
-				for (const point of points.slice(0, fullPointCount)) {
-					context.lineTo(point.x * CANVAS_WIDTH, point.y * CANVAS_HEIGHT);
+				const fullPointCount = Math.min(pointCount - 1, Math.max(0, Math.floor(visibleUnits) - 1));
+				for (let index = 1; index <= fullPointCount; index += 1) {
+					const point = stroke.points[index];
+					context.lineTo(point.x * DRAWING_CANVAS_WIDTH, point.y * DRAWING_CANVAS_HEIGHT);
 				}
-				const partialIndex = fullPointCount;
+				const partialIndex = fullPointCount + 1;
 				const partialProgress = visibleUnits - Math.floor(visibleUnits);
-				if (partialProgress > 0 && partialIndex < points.length) {
-					const previousPoint = partialIndex === 0 ? firstPoint : points[partialIndex - 1];
-					const nextPoint = points[partialIndex];
+				if (partialProgress > 0 && partialIndex < pointCount) {
+					const previousPoint = stroke.points[partialIndex - 1];
+					const nextPoint = stroke.points[partialIndex];
 					context.lineTo(
-						(previousPoint.x + (nextPoint.x - previousPoint.x) * partialProgress) * CANVAS_WIDTH,
-						(previousPoint.y + (nextPoint.y - previousPoint.y) * partialProgress) * CANVAS_HEIGHT
+						(previousPoint.x + (nextPoint.x - previousPoint.x) * partialProgress) *
+							DRAWING_CANVAS_WIDTH,
+						(previousPoint.y + (nextPoint.y - previousPoint.y) * partialProgress) *
+							DRAWING_CANVAS_HEIGHT
 					);
 				}
 				context.stroke();
@@ -161,8 +168,8 @@
 <canvas
 	bind:this={canvas}
 	class={`drawing-display ${className}`}
-	width={CANVAS_WIDTH}
-	height={CANVAS_HEIGHT}
+	width={DRAWING_CANVAS_WIDTH}
+	height={DRAWING_CANVAS_HEIGHT}
 	aria-hidden="true"
 ></canvas>
 

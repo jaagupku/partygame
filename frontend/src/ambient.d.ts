@@ -95,10 +95,12 @@ type DrawingStroke = {
 	points: DrawingPoint[];
 };
 
+type CompactDrawingStroke = [number, number, 0 | 1, number[]];
+
 type DrawingSubmission = {
-	width: 512;
-	height: 384;
-	strokes: DrawingStroke[];
+	w: 512;
+	h: 384;
+	s: CompactDrawingStroke[];
 };
 
 type Lobby = {
@@ -325,6 +327,19 @@ type CollectPlayerDraftsEvent = {
 	type_: 'collect_player_drafts';
 	step_id: string;
 	reason: 'timer_expired' | 'host_reveal';
+};
+
+type SubmissionRejectedReason =
+	| 'invalid_drawing'
+	| 'invalid_submission'
+	| 'duplicate_submission'
+	| 'step_closed';
+
+type SubmissionRejectedEvent = {
+	type_: 'submission_rejected';
+	player_id: string;
+	reason: SubmissionRejectedReason;
+	details?: string | null;
 };
 
 type RuntimeTimerState = {
@@ -729,6 +744,7 @@ type ControllerState = {
 	lastRevision: number;
 	isHost: boolean;
 	answerResult: 'correct' | 'wrong' | 'none';
+	submissionError?: SubmissionRejectedReason;
 	gameState: GameState;
 	lobbyPhase: string;
 	currentStep: number;

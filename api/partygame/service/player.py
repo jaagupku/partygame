@@ -3,7 +3,7 @@ import json
 import logging
 from collections import deque
 from time import time
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
@@ -786,6 +786,7 @@ class ClientController:
                 await self._collect_player_drafts_before_close(reason="host_reveal")
                 await self._run_runtime_events(
                     lambda: self.runtime.close_step(self.lobby),
+                    force_snapshot=True,
                     begin_round_intro=True,
                 )
 
@@ -802,6 +803,8 @@ class ClientController:
                 await self._relay_non_snapshot_events(events)
                 if handled:
                     await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+                else:
+                    await self._send_submission_rejected(payload, before_snapshot)
 
             case Event.DRAWING_VOTE_SUBMITTED:
                 payload = schemas.DrawingVoteSubmittedEvent.model_validate(
@@ -865,6 +868,42 @@ class ClientController:
                 for score_event in await self.runtime.evaluate_auto_step(self.lobby):
                     await self.relay_event(score_event)
                 await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+
+    async def _send_submission_rejected(
+        self,
+        payload: schemas.PlayerInputSubmittedEvent,
+        snapshot: schemas.RuntimeSnapshotEvent,
+    ):
+        event = schemas.SubmissionRejectedEvent(
+            player_id=payload.player_id,
+            reason=self._submission_rejection_reason(payload, snapshot),
+        )
+        if payload.player_id == self.player.id:
+            await self.send(event)
+            return
+        await self.broadcast(event, players=[payload.player_id])
+
+    def _submission_rejection_reason(
+        self,
+        payload: schemas.PlayerInputSubmittedEvent,
+        snapshot: schemas.RuntimeSnapshotEvent,
+    ) -> Literal[
+        "invalid_drawing",
+        "invalid_submission",
+        "duplicate_submission",
+        "step_closed",
+    ]:
+        if payload.player_id in snapshot.submitted_player_ids:
+            return "duplicate_submission"
+        if (
+            snapshot.lobby.phase != "question_active"
+            or snapshot.active_step is None
+            or not snapshot.active_step.input_enabled
+        ):
+            return "step_closed"
+        if snapshot.active_step.input_kind == schemas.PlayerInputKind.DRAWING:
+            return "invalid_drawing"
+        return "invalid_submission"
 
     async def _schedule_timer_from_snapshot(
         self, snapshot: schemas.RuntimeSnapshotEvent | None = None
@@ -981,5 +1020,5 @@ class ClientController:
                 await self.relay_event(event)
         after_snapshot = await self.runtime.build_snapshot(self.lobby)
         await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
         await self.sync_host_runtime_state(snapshot)

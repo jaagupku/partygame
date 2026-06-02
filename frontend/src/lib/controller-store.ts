@@ -28,6 +28,10 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				(previousDisplayPhase === 'answer_reveal' && state.displayPhase !== 'answer_reveal')
 			) {
 				state.answerResult = 'none';
+				state.submissionError = undefined;
+			}
+			if (state.hasSubmitted) {
+				state.submissionError = undefined;
 			}
 			return state;
 		});
@@ -61,6 +65,10 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 							(previousDisplayPhase === 'answer_reveal' && state.displayPhase !== 'answer_reveal'))
 					) {
 						state.answerResult = 'none';
+						state.submissionError = undefined;
+					}
+					if (applied && state.hasSubmitted) {
+						state.submissionError = undefined;
 					}
 					return state;
 				});
@@ -71,6 +79,16 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 				controller.update((state) => {
 					if (event.player_id === state.id) {
 						state.answerResult = event.accepted ? 'correct' : 'wrong';
+					}
+					return state;
+				});
+				break;
+			}
+			case 'submission_rejected': {
+				const event: SubmissionRejectedEvent = messageData;
+				controller.update((state) => {
+					if (event.player_id === state.id) {
+						state.submissionError = event.reason;
 					}
 					return state;
 				});

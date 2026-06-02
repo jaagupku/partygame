@@ -347,6 +347,11 @@ class GameRuntimeService:
         ) and await self.evaluation.all_answerable_players_submitted(
             lobby, state | {"answers": answers}
         ):
+            if (
+                step.player_input.kind == PlayerInputKind.DRAWING
+                and step.evaluation.type_ == EvaluationType.FAVORITE_VOTE
+            ):
+                return await self.close_step(lobby), True
             return await self.show_answer_reveal(lobby), True
         return [], True
 
@@ -461,6 +466,8 @@ class GameRuntimeService:
         if lobby.phase == "question_active":
             events = await self.close_step(lobby)
             state = await self.get_step_state(lobby.id)
+            if state.get("display_phase") == "drawing_vote":
+                return events
             if (
                 lobby.phase == "host_review"
                 and step.evaluation.type_ == EvaluationType.HOST_JUDGED

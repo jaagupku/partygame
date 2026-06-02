@@ -42,6 +42,7 @@ class Event(StrEnum):
     ANSWER_JUDGED = auto()
     DRAWING_VOTE_SUBMITTED = auto()
     COLLECT_PLAYER_DRAFTS = auto()
+    SUBMISSION_REJECTED = auto()
 
 
 class BaseEvent(BaseModel):
@@ -126,6 +127,18 @@ class CollectPlayerDraftsEvent(BaseEvent):
     type_: str = Event.COLLECT_PLAYER_DRAFTS
     step_id: str
     reason: Literal["timer_expired", "host_reveal"]
+
+
+class SubmissionRejectedEvent(BaseEvent):
+    type_: str = Event.SUBMISSION_REJECTED
+    player_id: str
+    reason: Literal[
+        "invalid_drawing",
+        "invalid_submission",
+        "duplicate_submission",
+        "step_closed",
+    ]
+    details: str | None = None
 
 
 class StepAdvancedEvent(BaseEvent):

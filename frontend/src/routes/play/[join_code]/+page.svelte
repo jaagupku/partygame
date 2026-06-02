@@ -19,6 +19,7 @@
 	const { data } = $props();
 	const lobby = () => data.lobby;
 	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
+	const RESYNC_RETRY_MS = 3_000;
 
 	const player: Writable<Player | null> = createLocalStorageStore('playerData', null);
 	if ($player === null) {
@@ -32,6 +33,7 @@
 			lastRevision: 0,
 			isHost: lobby().host_id === $player?.id,
 			answerResult: 'none',
+			submissionError: undefined,
 			gameState: lobby().state,
 			lobbyPhase: lobby().phase ?? 'waiting',
 			currentStep: lobby().current_step ?? 0,
@@ -75,6 +77,7 @@
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
 	let resyncIntervalId: number | null = null;
+	let resyncRetryTimeoutId: number | null = null;
 	let finaleAutoplayIntervalId: number | null = null;
 	let reviewStepId = $state<string | undefined>(undefined);
 	let pendingReviewedPlayerIds = $state<string[]>([]);
@@ -215,13 +218,13 @@
 					if (result === 'resync_required') {
 						requestResync();
 					} else if (result === 'snapshot_applied') {
-						resyncPending = false;
+						clearResyncPending();
 					}
 				},
 				onStatusChange: (connected) => {
 					isConnected = connected;
 					if (!connected) {
-						resyncPending = false;
+						clearResyncPending();
 					}
 				}
 			}
@@ -235,6 +238,10 @@
 			if (resyncIntervalId !== null) {
 				clearInterval(resyncIntervalId);
 				resyncIntervalId = null;
+			}
+			if (resyncRetryTimeoutId !== null) {
+				clearTimeout(resyncRetryTimeoutId);
+				resyncRetryTimeoutId = null;
 			}
 			if (finaleAutoplayIntervalId !== null) {
 				clearInterval(finaleAutoplayIntervalId);
@@ -250,6 +257,10 @@
 		if (resyncIntervalId !== null) {
 			clearInterval(resyncIntervalId);
 			resyncIntervalId = null;
+		}
+		if (resyncRetryTimeoutId !== null) {
+			clearTimeout(resyncRetryTimeoutId);
+			resyncRetryTimeoutId = null;
 		}
 		if (finaleAutoplayIntervalId !== null) {
 			clearInterval(finaleAutoplayIntervalId);
@@ -281,6 +292,24 @@
 		);
 		if (sent) {
 			resyncPending = true;
+			if (resyncRetryTimeoutId !== null) {
+				clearTimeout(resyncRetryTimeoutId);
+			}
+			resyncRetryTimeoutId = window.setTimeout(() => {
+				resyncPending = false;
+				resyncRetryTimeoutId = null;
+				if (isConnected) {
+					requestResync();
+				}
+			}, RESYNC_RETRY_MS);
+		}
+	}
+
+	function clearResyncPending() {
+		resyncPending = false;
+		if (resyncRetryTimeoutId !== null) {
+			clearTimeout(resyncRetryTimeoutId);
+			resyncRetryTimeoutId = null;
 		}
 	}
 
@@ -600,11 +629,13 @@
 					buzzerActive={$controller.buzzerActive}
 					{canContinueHostlessInfoSlide}
 					disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+					displayPhase={$controller.displayPhase}
 					drawingItems={$controller.drawingItems}
 					ownDrawingId={$controller.ownDrawingId}
 					drawingVotedPlayerIds={$controller.drawingVotedPlayerIds}
 					hasSubmitted={$controller.hasSubmitted}
 					playerId={$controller.id}
+					submissionError={$controller.submissionError}
 					onContinueInfoSlide={nextStep}
 					onSubmitAnswer={submitAnswer}
 					onSubmitDrawingVote={submitDrawingVote}

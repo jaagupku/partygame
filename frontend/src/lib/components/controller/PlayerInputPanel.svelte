@@ -13,11 +13,13 @@
 		buzzerActive: boolean;
 		canContinueHostlessInfoSlide: boolean;
 		disabledBuzzerPlayerIds: string[];
+		displayPhase: string;
 		drawingItems: DrawingVoteItem[];
 		ownDrawingId?: string;
 		drawingVotedPlayerIds: string[];
 		hasSubmitted: boolean;
 		playerId: string;
+		submissionError?: SubmissionRejectedReason;
 		mode?: 'live' | 'preview';
 		onContinueInfoSlide: () => void;
 		onSubmitAnswer: (value: unknown) => void;
@@ -30,11 +32,13 @@
 		buzzerActive,
 		canContinueHostlessInfoSlide,
 		disabledBuzzerPlayerIds,
+		displayPhase,
 		drawingItems,
 		ownDrawingId,
 		drawingVotedPlayerIds,
 		hasSubmitted,
 		playerId,
+		submissionError,
 		mode = 'live',
 		onContinueInfoSlide,
 		onSubmitAnswer,
@@ -60,6 +64,9 @@
 	const drawingVoteSubmitted = $derived(drawingVotedPlayerIds.includes(playerId));
 	const visibleDrawingItems = $derived(drawingItems.filter((item) => item.id !== ownDrawingId));
 	const drawingVoteRubric = $derived(getDrawingVoteRubric(activeStep));
+	const drawingResetKey = $derived(
+		activeStep ? `${activeStep.id}:${activeStep.timer.started_at ?? 'not-started'}` : ''
+	);
 	const previewMode = $derived(mode === 'preview');
 	const drawingVoteDisabled = $derived(
 		baseInputDisabled || previewMode || drawingVoteSubmitted || Boolean(pendingDrawingVoteId)
@@ -90,6 +97,12 @@
 
 	$effect(() => {
 		if (hasSubmitted) {
+			pendingSubmissionStepId = undefined;
+		}
+	});
+
+	$effect(() => {
+		if (submissionError) {
 			pendingSubmissionStepId = undefined;
 		}
 	});
@@ -226,7 +239,7 @@
 	}
 </script>
 
-{#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && activeStep.input_enabled && drawingItems.length > 0}
+{#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && displayPhase === 'drawing_vote' && drawingItems.length > 0}
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.voteForFavoriteDrawing}</h2>
 		<p class="text-sm text-slate-600">
@@ -261,6 +274,11 @@
 				{$messages.gameplay.noOtherDrawingsToVote}
 			</p>
 		{/if}
+	</section>
+{:else if activeStep?.input_kind === 'drawing' && displayPhase === 'answer_reveal'}
+	<section class="card controller-compact-card drawing-answer-card stack-md text-center">
+		<h2 class="label-title text-2xl">{$messages.gameplay.drawingResults}</h2>
+		<p class="text-sm text-slate-600">{$messages.gameplay.drawingResultsOnMainScreen}</p>
 	</section>
 {:else if activeStep?.input_kind === 'buzzer'}
 	<section class="card controller-compact-card stack-md text-center">
@@ -490,11 +508,17 @@
 					: $messages.gameplay.stepClosedAnswersDisabled
 				: $messages.gameplay.drawYourAnswer}
 		</p>
+		{#if submissionError}
+			<p class="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700" role="alert">
+				{$messages.gameplay.submissionRejected[submissionError]}
+			</p>
+		{/if}
 		<div class="drawing-input-fill">
 			<DrawingInput
 				bind:this={drawingInput}
 				disabled={inputDisabled}
 				{mode}
+				resetKey={drawingResetKey}
 				submitPosition="top"
 				onSubmit={submitDrawing}
 			/>

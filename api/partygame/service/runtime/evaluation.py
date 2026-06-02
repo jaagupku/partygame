@@ -25,20 +25,20 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
 
 DRAWING_CANVAS_WIDTH = 512
 DRAWING_CANVAS_HEIGHT = 384
-MAX_DRAWING_STROKES = 80
-MAX_DRAWING_POINTS = 1_600
-MAX_DRAWING_PAYLOAD_CHARS = 60_000
+MAX_DRAWING_STROKES = 320
+MAX_DRAWING_POINTS = 6_400
+MAX_DRAWING_PAYLOAD_CHARS = 240_000
 DRAWING_COLORS = {
-    "#0f172a",
-    "#ef4444",
-    "#f97316",
-    "#eab308",
-    "#22c55e",
-    "#06b6d4",
-    "#3b82f6",
-    "#a855f7",
-    "#ec4899",
-    "#ffffff",
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
 }
 DRAWING_LABEL_PREFIX = "Drawing"
 
@@ -422,40 +422,34 @@ class EvaluationRuntime:
             return False
         if len(str(value)) > MAX_DRAWING_PAYLOAD_CHARS:
             return False
-        if (
-            value.get("width") != DRAWING_CANVAS_WIDTH
-            or value.get("height") != DRAWING_CANVAS_HEIGHT
-        ):
+        if value.get("w") != DRAWING_CANVAS_WIDTH or value.get("h") != DRAWING_CANVAS_HEIGHT:
             return False
-        strokes = value.get("strokes")
+        strokes = value.get("s")
         if not isinstance(strokes, list) or not strokes or len(strokes) > MAX_DRAWING_STROKES:
             return False
 
         total_points = 0
         for stroke in strokes:
-            if not isinstance(stroke, dict):
+            if not isinstance(stroke, list | tuple) or len(stroke) != 4:
                 return False
-            color = stroke.get("color")
-            size = stroke.get("size")
-            eraser = stroke.get("eraser", False)
-            points = stroke.get("points")
-            if not isinstance(color, str) or color.lower() not in DRAWING_COLORS:
+            color, size, eraser, points = stroke
+            if not isinstance(color, int) or color not in DRAWING_COLORS:
                 return False
             if not isinstance(size, int | float) or size < 2 or size > 32:
                 return False
-            if not isinstance(eraser, bool):
+            if eraser not in {0, 1}:
                 return False
-            if not isinstance(points, list) or len(points) < 1:
+            if not isinstance(points, list) or len(points) < 2 or len(points) % 2 != 0:
                 return False
-            total_points += len(points)
+            point_count = len(points) // 2
+            total_points += point_count
             if total_points > MAX_DRAWING_POINTS:
                 return False
-            for point in points:
-                if not isinstance(point, dict):
+            for index, coordinate in enumerate(points):
+                if not isinstance(coordinate, int | float):
                     return False
-                x = self.timing.to_float(point.get("x"))
-                y = self.timing.to_float(point.get("y"))
-                if x is None or y is None or x < 0 or x > 1 or y < 0 or y > 1:
+                maximum = DRAWING_CANVAS_WIDTH if index % 2 == 0 else DRAWING_CANVAS_HEIGHT
+                if coordinate < 0 or coordinate > maximum:
                     return False
         return True
 

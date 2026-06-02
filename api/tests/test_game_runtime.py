@@ -174,16 +174,38 @@ class DrawingDefinitionProvider:
 
 
 def valid_drawing(color: str = "#0f172a") -> dict:
+    color_index = {
+        "#0f172a": 0,
+        "#ef4444": 1,
+        "#3b82f6": 6,
+        "#22c55e": 4,
+    }.get(color, 0)
     return {
-        "width": 512,
-        "height": 384,
-        "strokes": [
-            {
-                "color": color,
-                "size": 8,
-                "eraser": False,
-                "points": [{"x": 0.1, "y": 0.2}, {"x": 0.4, "y": 0.5}],
-            }
+        "w": 512,
+        "h": 384,
+        "s": [[color_index, 8, 0, [51, 77, 205, 192]]],
+    }
+
+
+def drawing_with_counts(stroke_count: int, points_per_stroke: int) -> dict:
+    return {
+        "w": 512,
+        "h": 384,
+        "s": [
+            [
+                0,
+                8,
+                0,
+                [
+                    coordinate
+                    for point_index in range(points_per_stroke)
+                    for coordinate in [
+                        round(((point_index % 20) / 20) * 512),
+                        round((point_index / max(points_per_stroke, 1)) * 384),
+                    ]
+                ],
+            ]
+            for _ in range(stroke_count)
         ],
     }
 
@@ -1955,7 +1977,7 @@ async def test_drawing_submission_validation_and_vote_scoring():
     invalid_events, invalid_handled = await service.submit_player_input(
         lobby,
         "p1",
-        {"width": 512, "height": 384, "strokes": []},
+        {"w": 512, "h": 384, "s": []},
     )
     assert invalid_events == []
     assert invalid_handled is False
@@ -2025,6 +2047,74 @@ async def test_drawing_submission_validation_and_vote_scoring():
     assert [item.player_name for item in final_snapshot.drawing_items] == ["Alice", "Bob"]
     assert [item.vote_count for item in final_snapshot.drawing_items] == [1, 1]
     assert [item.points_awarded for item in final_snapshot.drawing_items] == [2, 2]
+
+
+@pytest.mark.asyncio
+async def test_show_answer_reveal_opens_drawing_vote_before_results():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo, DrawingDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="drawing_test", host_enabled=True)
+    lobby, _ = await service.start_game(lobby)
+
+    await service.submit_player_input(lobby, "p1", valid_drawing("#ef4444"))
+    await service.submit_player_input(lobby, "p2", valid_drawing("#22c55e"))
+
+    events = await service.show_answer_reveal(lobby)
+
+    assert isinstance(events[-1], schemas.RuntimeSnapshotEvent)
+    assert repo.steps["g1"]["display_phase"] == "drawing_vote"
+    assert events[-1].lobby.phase == "question_active"
+    assert events[-1].drawing_items[0].player_id is None
+    assert events[-1].drawing_items[0].player_name is None
+
+
+@pytest.mark.asyncio
+async def test_drawing_submission_accepts_expanded_limits():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo, DrawingDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="drawing_test", host_enabled=True)
+    lobby, _ = await service.start_game(lobby)
+
+    events, handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        drawing_with_counts(stroke_count=320, points_per_stroke=20),
+    )
+
+    assert events == []
+    assert handled is True
+
+
+@pytest.mark.asyncio
+async def test_drawing_submission_rejects_expanded_limit_overages():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo, DrawingDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="drawing_test", host_enabled=True)
+    lobby, _ = await service.start_game(lobby)
+
+    too_many_strokes_events, too_many_strokes_handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        drawing_with_counts(stroke_count=321, points_per_stroke=1),
+    )
+    too_many_points_events, too_many_points_handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        drawing_with_counts(stroke_count=320, points_per_stroke=21),
+    )
+    too_large_payload = valid_drawing() | {"padding": "x" * 240_000}
+    too_large_payload_events, too_large_payload_handled = await service.submit_player_input(
+        lobby,
+        "p1",
+        too_large_payload,
+    )
+
+    assert too_many_strokes_events == []
+    assert too_many_strokes_handled is False
+    assert too_many_points_events == []
+    assert too_many_points_handled is False
+    assert too_large_payload_events == []
+    assert too_large_payload_handled is False
 
 
 @pytest.mark.asyncio

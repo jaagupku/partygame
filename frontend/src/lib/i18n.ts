@@ -263,6 +263,24 @@ const en = defineMessages({
 		submitDrawing: 'Submit Drawing',
 		undoDrawingStroke: 'Undo stroke',
 		redoDrawingStroke: 'Redo stroke',
+		drawingLimitUsage: (strokes: number, maxStrokes: number, points: number, maxPoints: number) =>
+			`${strokes}/${maxStrokes} strokes · ${points}/${maxPoints} points`,
+		drawingLimitWarning: (strokes: number, maxStrokes: number, points: number, maxPoints: number) =>
+			`Large drawing: ${strokes}/${maxStrokes} strokes · ${points}/${maxPoints} points`,
+		drawingLimitExceeded: (
+			strokes: number,
+			maxStrokes: number,
+			points: number,
+			maxPoints: number
+		) =>
+			`Drawing is too large: ${strokes}/${maxStrokes} strokes · ${points}/${maxPoints} points. Clear or simplify it before submitting.`,
+		submissionRejected: {
+			invalid_drawing:
+				'That drawing was too large or invalid. Please simplify it and submit again.',
+			invalid_submission: 'That answer could not be submitted. Please try again.',
+			duplicate_submission: 'Your answer is already submitted.',
+			step_closed: 'This question has closed. New answers are disabled.'
+		},
 		eraser: 'Eraser',
 		clearDrawing: 'Clear',
 		brushSize: 'Brush size',
@@ -272,6 +290,8 @@ const en = defineMessages({
 		drawingVoteRubric: 'Rubric',
 		drawingVoteSubmitted: 'Your vote is in.',
 		noOtherDrawingsToVote: 'No other drawings are available to vote for.',
+		drawingResults: 'Drawing Results',
+		drawingResultsOnMainScreen: 'Results are showing on the main screen.',
 		voteNow: 'Vote now',
 		votesLabel: 'Votes',
 		answerMarkedCorrect: 'Correct',
@@ -1102,6 +1122,18 @@ const et: Messages = {
 		submitDrawing: 'Saada joonistus',
 		undoDrawingStroke: 'Võta joon tagasi',
 		redoDrawingStroke: 'Tee joon uuesti',
+		drawingLimitUsage: (strokes, maxStrokes, points, maxPoints) =>
+			`${strokes}/${maxStrokes} joont · ${points}/${maxPoints} punkti`,
+		drawingLimitWarning: (strokes, maxStrokes, points, maxPoints) =>
+			`Suur joonistus: ${strokes}/${maxStrokes} joont · ${points}/${maxPoints} punkti`,
+		drawingLimitExceeded: (strokes, maxStrokes, points, maxPoints) =>
+			`Joonistus on liiga suur: ${strokes}/${maxStrokes} joont · ${points}/${maxPoints} punkti. Puhasta või lihtsusta seda enne saatmist.`,
+		submissionRejected: {
+			invalid_drawing: 'See joonistus oli liiga suur või vigane. Lihtsusta seda ja saada uuesti.',
+			invalid_submission: 'Seda vastust ei saanud saata. Proovi uuesti.',
+			duplicate_submission: 'Sinu vastus on juba saadetud.',
+			step_closed: 'See küsimus on suletud. Uusi vastuseid ei saa sisestada.'
+		},
 		eraser: 'Kustukumm',
 		clearDrawing: 'Puhasta',
 		brushSize: 'Pintsli suurus',
@@ -1111,6 +1143,8 @@ const et: Messages = {
 		drawingVoteRubric: 'Hindamisreegel',
 		drawingVoteSubmitted: 'Sinu hääl on kohal.',
 		noOtherDrawingsToVote: 'Teisi joonistusi pole hääletamiseks saadaval.',
+		drawingResults: 'Joonistuste tulemused',
+		drawingResultsOnMainScreen: 'Tulemused on põhiekraanil nähtaval.',
 		voteNow: 'Hääletus',
 		votesLabel: 'Hääled',
 		answerMarkedCorrect: 'Õige',

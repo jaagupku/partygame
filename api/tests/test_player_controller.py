@@ -373,6 +373,72 @@ async def test_hostless_player_submission_processes_without_command_roundtrip(mo
 
 
 @pytest.mark.asyncio
+async def test_rejected_player_submission_sends_targeted_feedback(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_id="host",
+        phase="question_active",
+    )
+    host = schemas.Player(id="host", game_id="g1", name="Host")
+    controller = player_service.ClientController(
+        FakeWebSocket(), redis=object(), lobby=lobby, player=host
+    )
+    controller.repo = FakeRepo(lobby)
+    snapshot = schemas.RuntimeSnapshotEvent(
+        lobby=schemas.RuntimeLobbyState(
+            id=lobby.id,
+            join_code=lobby.join_code,
+            host_enabled=lobby.host_enabled,
+            host_id=lobby.host_id,
+            state=lobby.state,
+            phase=lobby.phase,
+            current_step=lobby.current_step,
+        ),
+        active_step=schemas.RuntimeStepState(
+            id="drawing",
+            title="Draw",
+            input_enabled=True,
+            input_kind=schemas.PlayerInputKind.DRAWING,
+        ),
+    )
+    called = {"broadcasts": []}
+
+    async def build_snapshot(_lobby):
+        return snapshot
+
+    async def submit_player_input(_lobby, _player_id, _value):
+        return [], False
+
+    async def broadcast(event, players=None, exclude=None):
+        called["broadcasts"].append((event, players, exclude))
+
+    async def relay_event(_event, players=None, exclude=None):
+        raise AssertionError("rejected submissions should not be relayed broadly")
+
+    async def emit_runtime_state(_before_snapshot, force_snapshot=False):
+        raise AssertionError("rejected submissions should not emit runtime state")
+
+    controller.runtime = SimpleNamespace(
+        build_snapshot=build_snapshot,
+        submit_player_input=submit_player_input,
+    )
+    monkeypatch.setattr(controller, "broadcast", broadcast)
+    monkeypatch.setattr(controller, "relay_event", relay_event)
+    monkeypatch.setattr(controller, "_emit_runtime_state", emit_runtime_state)
+
+    await controller.process_controller(
+        '{"type_": "player_input_submitted", "player_id": "p2", "value": {}}'
+    )
+
+    assert len(called["broadcasts"]) == 1
+    event, players, exclude = called["broadcasts"][0]
+    assert event == schemas.SubmissionRejectedEvent(player_id="p2", reason="invalid_drawing")
+    assert players == ["p2"]
+    assert exclude is None
+
+
+@pytest.mark.asyncio
 async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
     lobby = schemas.Lobby(
         id="g1",
