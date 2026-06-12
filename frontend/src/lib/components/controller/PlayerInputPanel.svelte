@@ -6,6 +6,7 @@
 	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
 	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
 	import OrderingList from '$lib/components/OrderingList.svelte';
+	import { showErrorToast } from '$lib/toast-store';
 
 	interface PlayerInputPanelProps {
 		activeStep?: RuntimeStepState;
@@ -57,6 +58,7 @@
 	let drawingInput = $state<{ getDraftSubmission: () => DrawingSubmission | undefined } | null>(
 		null
 	);
+	let lastSubmissionToastKey = $state('');
 
 	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
@@ -104,6 +106,11 @@
 	$effect(() => {
 		if (submissionError) {
 			pendingSubmissionStepId = undefined;
+			const toastKey = `${activeStep?.id ?? 'unknown'}:${submissionError}`;
+			if (toastKey !== lastSubmissionToastKey) {
+				lastSubmissionToastKey = toastKey;
+				showErrorToast($messages.gameplay.submissionRejected[submissionError]);
+			}
 		}
 	});
 
@@ -508,11 +515,6 @@
 					: $messages.gameplay.stepClosedAnswersDisabled
 				: $messages.gameplay.drawYourAnswer}
 		</p>
-		{#if submissionError}
-			<p class="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700" role="alert">
-				{$messages.gameplay.submissionRejected[submissionError]}
-			</p>
-		{/if}
 		<div class="drawing-input-fill">
 			<DrawingInput
 				bind:this={drawingInput}

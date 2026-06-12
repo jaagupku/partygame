@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 
 	import { currentUser, loadCurrentUser, logout } from '$lib/auth-store';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
 	import { locale, messages, pageTitle } from '$lib/i18n';
 	import '../app.css';
 
@@ -92,3 +93,5 @@
 		{@render children()}
 	</div>
 </div>
+
+<ToastContainer />

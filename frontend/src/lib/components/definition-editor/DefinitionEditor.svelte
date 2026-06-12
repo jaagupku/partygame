@@ -17,6 +17,7 @@
 	import DefinitionStepSorter from './DefinitionStepSorter.svelte';
 	import DefinitionStepTemplateModal from './DefinitionStepTemplateModal.svelte';
 	import { messages } from '$lib/i18n';
+	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
 	import {
 		createDefinitionHistoryState,
 		getUndoEntry,
@@ -65,10 +66,8 @@
 	let saving = $state(false);
 	let exportingDefinition = $state(false);
 	let importingDefinition = $state(false);
-	let statusMessage = $state('');
-	let errorMessage = $state('');
 	let uploadKey = $state<string | null>(null);
-	let uploadError = $state('');
+	let editorUnavailable = $state(false);
 	let isNewDefinition = $state(true);
 	let pendingDragKey = $state<string | null>(null);
 	let draggedStepKey = $state<string | null>(null);
@@ -191,6 +190,7 @@
 			isNewDefinition = true;
 			persistedDefinitionId = '';
 			draft = createEmptyDefinition();
+			editorUnavailable = false;
 			selectedStepKey = buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null;
 			resetHistoryBaseline();
 			return;
@@ -198,17 +198,18 @@
 		isNewDefinition = false;
 		persistedDefinitionId = definitionId;
 		loadingEditor = true;
-		errorMessage = '';
-		statusMessage = '';
+		editorUnavailable = false;
 		const response = await fetch(`/api/v1/definitions/${encodeDefinitionIdForPath(definitionId)}`);
 		loadingEditor = false;
 		if (!response.ok) {
-			errorMessage = $messages.definitions.couldNotLoadDefinition(definitionId);
+			editorUnavailable = true;
+			showErrorToast($messages.definitions.couldNotLoadDefinition(definitionId));
 			return;
 		}
 		const loadedDefinition = (await response.json()) as GameDefinition;
 		if (!canEditDefinitionForUser(loadedDefinition, $currentUser)) {
-			errorMessage = $messages.definitions.cannotEditDefinition;
+			editorUnavailable = true;
+			showErrorToast($messages.definitions.cannotEditDefinition);
 			return;
 		}
 		draft = structuredClone(loadedDefinition);
@@ -504,7 +505,7 @@
 				}
 			);
 			if (!response.ok) {
-				errorMessage = $messages.definitions.couldNotDeleteDefinition;
+				showErrorToast($messages.definitions.couldNotDeleteDefinition);
 				closeDeleteModal();
 				return;
 			}
@@ -1051,8 +1052,6 @@
 	async function saveDefinition() {
 		finishTitleEdit();
 		saving = true;
-		errorMessage = '';
-		statusMessage = '';
 		const selectionBeforeSave = selectedFlatStep
 			? {
 					stepId: selectedFlatStep.step.id,
@@ -1074,7 +1073,7 @@
 		saving = false;
 		if (!response.ok) {
 			const detail = await readErrorDetail(response);
-			errorMessage = detail || $messages.definitions.couldNotSaveDefinition;
+			showErrorToast(detail || $messages.definitions.couldNotSaveDefinition);
 			return;
 		}
 		const wasNewDefinition = isNewDefinition;
@@ -1085,7 +1084,7 @@
 			? getStepKeyByIdentity(draft, selectionBeforeSave)
 			: (buildFlatSteps(draft, getStepKey)[0]?.stepKey ?? null);
 		resetHistoryBaseline();
-		statusMessage = $messages.definitions.definitionSaved;
+		showSuccessToast($messages.definitions.definitionSaved);
 		if (wasNewDefinition) {
 			goto(`/definitions/${encodeDefinitionIdForPath(draft.id)}`, { replaceState: true });
 		}
@@ -1093,24 +1092,23 @@
 
 	async function exportDefinition() {
 		if (isNewDefinition) {
-			errorMessage = $messages.definitions.saveBeforeExport;
+			showErrorToast($messages.definitions.saveBeforeExport);
 			return;
 		}
 		exportingDefinition = true;
-		errorMessage = '';
-		statusMessage = '';
 		const response = await fetch(
 			`/api/v1/definitions/${encodeDefinitionIdForPath(persistedDefinitionId)}/export`
 		);
 		exportingDefinition = false;
 		if (!response.ok) {
-			errorMessage =
-				(await readErrorDetail(response)) || $messages.definitions.couldNotExportDefinition;
+			showErrorToast(
+				(await readErrorDetail(response)) || $messages.definitions.couldNotExportDefinition
+			);
 			return;
 		}
 		const archive = await response.blob();
 		downloadBlob(archive, `${persistedDefinitionId || 'definition'}.zip`);
-		statusMessage = $messages.definitions.definitionExported;
+		showSuccessToast($messages.definitions.definitionExported);
 	}
 
 	async function importDefinition(event: Event) {
@@ -1120,8 +1118,6 @@
 			return;
 		}
 		importingDefinition = true;
-		errorMessage = '';
-		statusMessage = '';
 		const response = await fetch('/api/v1/definitions/import', {
 			method: 'POST',
 			headers: {
@@ -1132,12 +1128,13 @@
 		importingDefinition = false;
 		input.value = '';
 		if (!response.ok) {
-			errorMessage =
-				(await readErrorDetail(response)) || $messages.definitions.couldNotImportDefinition;
+			showErrorToast(
+				(await readErrorDetail(response)) || $messages.definitions.couldNotImportDefinition
+			);
 			return;
 		}
 		const importedDefinition = (await response.json()) as GameDefinition;
-		statusMessage = $messages.definitions.definitionImported;
+		showSuccessToast($messages.definitions.definitionImported);
 		goto(`/definitions/${encodeDefinitionIdForPath(importedDefinition.id)}`);
 	}
 
@@ -1154,7 +1151,6 @@
 			return;
 		}
 		uploadKey = stepId;
-		uploadError = '';
 		const response = await fetch(
 			`/api/v1/media?kind=${step.media.type_}&filename=${encodeURIComponent(file.name)}`,
 			{
@@ -1167,7 +1163,7 @@
 		);
 		uploadKey = null;
 		if (!response.ok) {
-			uploadError = (await readErrorDetail(response)) || 'Could not upload media.';
+			showErrorToast((await readErrorDetail(response)) || 'Could not upload media.');
 			input.value = '';
 			return;
 		}
@@ -1465,62 +1461,57 @@
 					/>
 				</div>
 
-				<div class="min-h-0 overflow-hidden bg-white/40 pt-2">
-					{#if errorMessage}
-						<div class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-							{errorMessage}
-						</div>
-					{/if}
-					{#if statusMessage}
-						<div
-							class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700"
-						>
-							{statusMessage}
-						</div>
-					{/if}
-					{#if uploadError}
-						<div
-							class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700"
-						>
-							{uploadError}
-						</div>
-					{/if}
-
+				<div class="flex min-h-0 flex-col overflow-hidden bg-white/40 pt-2">
 					{#if loadingEditor}
-						<p class="text-slate-500">Loading definition...</p>
+						<p class="px-4 text-slate-500">Loading definition...</p>
+					{:else if editorUnavailable}
+						<div
+							class="mx-4 flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
+						>
+							<div class="flex flex-wrap justify-center gap-3">
+								<button class="btn btn-primary" type="button" onclick={() => goto('/definitions')}>
+									{$messages.common.manageDefinitions}
+								</button>
+								<button class="btn btn-ghost" type="button" onclick={() => goto('/')}>
+									{$messages.common.home}
+								</button>
+							</div>
+						</div>
 					{:else if selectedStep && selectedFlatStep}
-						<DefinitionStepEditor
-							{selectedStep}
-							{selectedFlatStep}
-							{selectedStepPosition}
-							totalSteps={flatSteps.length}
-							{previewStep}
-							{previewCountdown}
-							{showAdvancedFields}
-							{uploadKey}
-							onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
-							onSelectStep={selectStep}
-							onAddStepAfter={openStepTemplatePicker}
-							onRemoveSelectedStep={requestRemoveSelectedStep}
-							onPreview={openPreview}
-							onOpenShortcutHelp={openShortcutHelp}
-							onSetPlayerInputKind={setPlayerInputKind}
-							onSetEvaluationType={setEvaluationType}
-							onAddInputOption={addInputOption}
-							onRemoveInputOption={removeInputOption}
-							onSetInputOptionValue={setInputOptionValue}
-							onSetOrderingAnswerOrder={setOrderingAnswerOrder}
-							onSetRadioCorrectOption={setRadioCorrectOption}
-							onSetCheckboxOptionPoints={setCheckboxOptionPoints}
-							onAddMedia={addMedia}
-							onRemoveMedia={removeMedia}
-							onUpdateMediaType={updateMediaType}
-							onUploadMedia={uploadMedia}
-							{flatSteps}
-						/>
+						<div class="min-h-0 flex-1">
+							<DefinitionStepEditor
+								{selectedStep}
+								{selectedFlatStep}
+								{selectedStepPosition}
+								totalSteps={flatSteps.length}
+								{previewStep}
+								{previewCountdown}
+								{showAdvancedFields}
+								{uploadKey}
+								onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
+								onSelectStep={selectStep}
+								onAddStepAfter={openStepTemplatePicker}
+								onRemoveSelectedStep={requestRemoveSelectedStep}
+								onPreview={openPreview}
+								onOpenShortcutHelp={openShortcutHelp}
+								onSetPlayerInputKind={setPlayerInputKind}
+								onSetEvaluationType={setEvaluationType}
+								onAddInputOption={addInputOption}
+								onRemoveInputOption={removeInputOption}
+								onSetInputOptionValue={setInputOptionValue}
+								onSetOrderingAnswerOrder={setOrderingAnswerOrder}
+								onSetRadioCorrectOption={setRadioCorrectOption}
+								onSetCheckboxOptionPoints={setCheckboxOptionPoints}
+								onAddMedia={addMedia}
+								onRemoveMedia={removeMedia}
+								onUpdateMediaType={updateMediaType}
+								onUploadMedia={uploadMedia}
+								{flatSteps}
+							/>
+						</div>
 					{:else}
 						<div
-							class="flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
+							class="mx-4 flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
 						>
 							<h3 class="label-title text-2xl">No Step Selected</h3>
 							<p class="mt-2 max-w-lg text-slate-600">

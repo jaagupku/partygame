@@ -14,6 +14,7 @@
 	import AvatarCropEditor from '$lib/components/AvatarCropEditor.svelte';
 	import { createLocalStorageStore } from '$lib/local-storage-store.js';
 	import { messages } from '$lib/i18n';
+	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
 	import { onDestroy, onMount } from 'svelte';
 
 	function randomPresetKey() {
@@ -43,7 +44,6 @@
 	let submitEnabled = $state(false);
 	let uploadingAvatar = $state(false);
 	let validatingProfile = $state(false);
-	let uploadError = $state('');
 	let pendingImageUrl = $state<string | null>(null);
 	let pendingFileName = $state('avatar.png');
 	let cropEditor = $state<AvatarCropEditor | null>(null);
@@ -70,7 +70,6 @@
 		avatarPresetKey = getAvatarPreset(key)?.key ?? DEFAULT_AVATAR_PRESET_KEY;
 		avatarUrl = null;
 		avatarAssetId = null;
-		uploadError = '';
 		clearPendingImage();
 	}
 
@@ -129,10 +128,11 @@
 		});
 		const body: ConnectedToLobby = await res.json();
 		if (!res.ok) {
-			uploadError =
+			showErrorToast(
 				typeof body === 'object' && body !== null && 'detail' in body
 					? String(body.detail)
-					: $messages.join.couldNotJoinGame;
+					: $messages.join.couldNotJoinGame
+			);
 			return;
 		}
 
@@ -156,7 +156,6 @@
 		clearPendingImage();
 		pendingImageUrl = URL.createObjectURL(file);
 		pendingFileName = file.name || 'avatar.png';
-		uploadError = '';
 		input.value = '';
 	}
 
@@ -165,11 +164,10 @@
 			return;
 		}
 		uploadingAvatar = true;
-		uploadError = '';
 		try {
 			const blob = await cropEditor.exportBlob();
 			if (!blob) {
-				uploadError = $messages.join.couldNotPrepareAvatar;
+				showErrorToast($messages.join.couldNotPrepareAvatar);
 				return;
 			}
 			const response = await fetch(
@@ -184,9 +182,10 @@
 			);
 			const asset: MediaAsset | { detail?: string } = await response.json();
 			if (!response.ok || !('id' in asset)) {
-				uploadError =
+				showErrorToast(
 					(typeof asset === 'object' && asset !== null && 'detail' in asset && asset.detail) ||
-					$messages.join.couldNotUploadAvatar;
+						$messages.join.couldNotUploadAvatar
+				);
 				return;
 			}
 			avatarKind = 'custom';
@@ -195,8 +194,9 @@
 			avatarAssetId = asset.id;
 			avatarPickerOpen = false;
 			clearPendingImage();
+			showSuccessToast($messages.join.customAvatarReady);
 		} catch {
-			uploadError = $messages.join.couldNotUploadAvatar;
+			showErrorToast($messages.join.couldNotUploadAvatar);
 		} finally {
 			uploadingAvatar = false;
 		}
@@ -362,12 +362,6 @@
 							</div>
 						</div>
 					{/if}
-
-					{#if avatarKind === 'custom' && avatarUrl}
-						<p class="mt-4 text-sm font-semibold text-emerald-700">
-							{$messages.join.customAvatarReady}
-						</p>
-					{/if}
 				</div>
 			</div>
 		{/if}
@@ -385,10 +379,6 @@
 				placeholder={$messages.join.joinCodePlaceholder}
 			/>
 		</label>
-
-		{#if uploadError}
-			<p class="mt-4 text-sm font-semibold text-rose-600">{uploadError}</p>
-		{/if}
 
 		{#if validatingProfile}
 			<p class="mt-4 text-sm text-slate-600">{$messages.join.checkingSavedAvatar}</p>

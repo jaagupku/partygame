@@ -2,10 +2,11 @@
 	import { goto } from '$app/navigation';
 	import { authLoaded, currentUser } from '$lib/auth-store';
 	import { messages } from '$lib/i18n';
+	import { showErrorToast } from '$lib/toast-store';
 	import { onMount } from 'svelte';
 
 	let loading = $state(false);
-	let errorMessage = $state('');
+	let loadFailed = $state(false);
 	let stats = $state<GameStatSummary[]>([]);
 	let selectedGameId = $state<string | null>(null);
 	let definitionFilter = $state('');
@@ -19,7 +20,7 @@
 
 	async function loadStats() {
 		loading = true;
-		errorMessage = '';
+		loadFailed = false;
 		const params = new URLSearchParams({ limit: '100' });
 		if (definitionFilter.trim()) {
 			params.set('definition_id', definitionFilter.trim());
@@ -36,11 +37,17 @@
 		const response = await fetch(`/api/v1/admin/game-stats?${params.toString()}`);
 		loading = false;
 		if (response.status === 401 || response.status === 403) {
-			errorMessage = $messages.admin.accessDenied;
+			loadFailed = true;
+			stats = [];
+			selectedGameId = null;
+			showErrorToast($messages.admin.accessDenied);
 			return;
 		}
 		if (!response.ok) {
-			errorMessage = $messages.admin.couldNotLoadStats;
+			loadFailed = true;
+			stats = [];
+			selectedGameId = null;
+			showErrorToast($messages.admin.couldNotLoadStats);
 			return;
 		}
 		const payload = (await response.json()) as GameStatSummaryList;
@@ -148,17 +155,13 @@
 				{/if}
 			</div>
 
-			{#if errorMessage}
-				<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-					{errorMessage}
-				</div>
-			{:else if stats.length === 0 && !loading}
+			{#if stats.length === 0 && !loading && !loadFailed}
 				<div
 					class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center font-semibold text-slate-600"
 				>
 					{$messages.admin.noStatsYet}
 				</div>
-			{:else}
+			{:else if !loadFailed}
 				<div class="overflow-x-auto">
 					<table class="w-full min-w-[760px] border-separate border-spacing-y-2 text-left text-sm">
 						<thead class="text-xs uppercase tracking-wide text-slate-500">

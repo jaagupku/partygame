@@ -7,13 +7,13 @@
 	import { canEditDefinitionForUser } from '$lib/definition-permissions.js';
 	import { readErrorDetail } from '$lib/http-errors.js';
 	import { messages } from '$lib/i18n';
+	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
 
 	let definitions = $state<DefinitionSummary[]>([]);
 	let loading = $state(false);
 	let exportingDefinitionId = $state<string | null>(null);
 	let importing = $state(false);
-	let errorMessage = $state('');
-	let statusMessage = $state('');
+	let loadFailed = $state(false);
 	let importInput = $state<HTMLInputElement | null>(null);
 
 	function visibilityLabel(visibility: DefinitionVisibility) {
@@ -30,10 +30,12 @@
 
 	async function loadDefinitions() {
 		loading = true;
+		loadFailed = false;
 		const response = await fetch('/api/v1/definitions');
 		loading = false;
 		if (!response.ok) {
-			errorMessage = $messages.definitions.couldNotLoadDefinitions;
+			loadFailed = true;
+			showErrorToast($messages.definitions.couldNotLoadDefinitions);
 			return;
 		}
 		definitions = await response.json();
@@ -41,19 +43,18 @@
 
 	async function exportDefinition(definitionId: string) {
 		exportingDefinitionId = definitionId;
-		errorMessage = '';
-		statusMessage = '';
 		const response = await fetch(
 			`/api/v1/definitions/${encodeDefinitionIdForPath(definitionId)}/export`
 		);
 		exportingDefinitionId = null;
 		if (!response.ok) {
-			errorMessage =
-				(await readErrorDetail(response)) || $messages.definitions.couldNotExportDefinition;
+			showErrorToast(
+				(await readErrorDetail(response)) || $messages.definitions.couldNotExportDefinition
+			);
 			return;
 		}
 		downloadBlob(await response.blob(), `${definitionId}.zip`);
-		statusMessage = $messages.definitions.definitionExported;
+		showSuccessToast($messages.definitions.definitionExported);
 	}
 
 	async function importDefinition(event: Event) {
@@ -63,8 +64,6 @@
 			return;
 		}
 		importing = true;
-		errorMessage = '';
-		statusMessage = '';
 		const response = await fetch('/api/v1/definitions/import', {
 			method: 'POST',
 			headers: {
@@ -75,11 +74,13 @@
 		importing = false;
 		input.value = '';
 		if (!response.ok) {
-			errorMessage =
-				(await readErrorDetail(response)) || $messages.definitions.couldNotImportDefinition;
+			showErrorToast(
+				(await readErrorDetail(response)) || $messages.definitions.couldNotImportDefinition
+			);
 			return;
 		}
 		const importedDefinition = (await response.json()) as GameDefinition;
+		showSuccessToast($messages.definitions.definitionImported);
 		goto(`/definitions/${encodeDefinitionIdForPath(importedDefinition.id)}`);
 	}
 </script>
@@ -146,17 +147,7 @@
 			{/if}
 		</div>
 
-		{#if errorMessage}
-			<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-				{errorMessage}
-			</div>
-		{:else if statusMessage}
-			<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700">
-				{statusMessage}
-			</div>
-		{/if}
-
-		{#if !errorMessage && definitions.length === 0}
+		{#if !loadFailed && definitions.length === 0}
 			<div class="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
 				<h3 class="text-2xl font-bold text-slate-800">{$messages.definitions.noDefinitionsYet}</h3>
 				<p class="mt-2 text-slate-600">{$messages.definitions.noDefinitionsHelp}</p>
@@ -170,7 +161,7 @@
 					</p>
 				{/if}
 			</div>
-		{:else if !errorMessage}
+		{:else if !loadFailed}
 			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each definitions as definition}
 					<div class="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm">

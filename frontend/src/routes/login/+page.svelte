@@ -2,15 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { currentUser } from '$lib/auth-store';
 	import { messages } from '$lib/i18n';
+	import { showErrorToast } from '$lib/toast-store';
 
 	let email = $state('');
 	let password = $state('');
 	let loading = $state(false);
-	let errorMessage = $state('');
 
 	async function submit() {
 		loading = true;
-		errorMessage = '';
 		const response = await fetch('/api/v1/auth/login', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -18,7 +17,7 @@
 		});
 		loading = false;
 		if (!response.ok) {
-			errorMessage = $messages.auth.loginFailed;
+			showErrorToast($messages.auth.loginFailed);
 			return;
 		}
 		currentUser.set(await response.json());
@@ -35,11 +34,6 @@
 		<h1 class="page-title text-left">{$messages.auth.login}</h1>
 		<p class="page-subtitle text-left">{$messages.auth.loginSubtitle}</p>
 	</div>
-	{#if errorMessage}
-		<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-			{errorMessage}
-		</div>
-	{/if}
 	<form class="stack-md" onsubmit={(event) => (event.preventDefault(), submit())}>
 		<label class="input-wrap">
 			<span class="label-title">{$messages.auth.email}</span>
