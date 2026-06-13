@@ -3,12 +3,14 @@
 	import PlayerInputPanel from '$lib/components/controller/PlayerInputPanel.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { messages } from '$lib/i18n';
+	import { definitionThemeStyle, type DefinitionTheme } from '$lib/theme';
 
 	type PreviewMode = 'display' | 'controller';
 
 	type Props = {
 		step?: RuntimeStepState;
 		countdown: number;
+		theme?: DefinitionTheme | null;
 		title?: string;
 		height?: string;
 		minHeight?: string;
@@ -17,6 +19,7 @@
 	let {
 		step,
 		countdown,
+		theme,
 		title,
 		height = 'min(44rem, calc(100vh - 13rem))',
 		minHeight = '28rem'
@@ -34,11 +37,11 @@
 
 <div
 	class="editor-preview-pane"
-	style={`--editor-preview-height: ${height}; --editor-preview-min-height: ${minHeight};`}
+	style={`--editor-preview-height: ${height}; --editor-preview-min-height: ${minHeight}; ${definitionThemeStyle(theme)}`}
 >
 	<div class="editor-preview-toolbar">
 		<div class="min-w-0">
-			<p class="text-sm font-bold text-slate-700">
+			<p class="theme-text text-sm font-bold">
 				{title ??
 					(previewMode === 'display'
 						? $messages.editor.displayPreview
@@ -68,7 +71,7 @@
 		{#if previewMode === 'display'}
 			<button
 				type="button"
-				class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+				class="theme-surface inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold shadow-sm transition hover:border-sky-300 hover:opacity-85"
 				onclick={resetPreviewTimer}
 			>
 				<iconify-icon icon="fluent:arrow-clockwise-16-filled"></iconify-icon>
@@ -169,10 +172,22 @@
 		border: 1px solid rgb(203 213 225 / 0.75);
 		border-radius: 1.5rem;
 		background:
-			radial-gradient(circle at 10% 15%, #c7f1ff 0, transparent 30%),
-			radial-gradient(circle at 85% 10%, #fff0c9 0, transparent 32%),
-			radial-gradient(circle at 78% 84%, #d7ffda 0, transparent 30%),
-			linear-gradient(135deg, #f8fff1, #ddf2ff 42%, #fff4db);
+			radial-gradient(
+				circle at 10% 15%,
+				color-mix(in srgb, var(--party-primary), white 65%) 0,
+				transparent 30%
+			),
+			radial-gradient(
+				circle at 85% 10%,
+				color-mix(in srgb, var(--party-accent), white 65%) 0,
+				transparent 32%
+			),
+			radial-gradient(
+				circle at 78% 84%,
+				color-mix(in srgb, var(--party-bg-a), white 35%) 0,
+				transparent 30%
+			),
+			linear-gradient(135deg, var(--party-bg-a), var(--party-bg-b) 42%, var(--party-bg-c));
 		padding: 1rem;
 		box-shadow: 0 14px 34px rgb(15 23 42 / 0.12);
 	}
@@ -182,8 +197,12 @@
 		place-items: start center;
 		overflow-y: auto;
 		background:
-			radial-gradient(circle at 15% 10%, rgb(219 234 254) 0, transparent 32%),
-			linear-gradient(135deg, rgb(248 250 252), rgb(224 242 254));
+			radial-gradient(
+				circle at 15% 10%,
+				color-mix(in srgb, var(--party-primary), white 72%) 0,
+				transparent 32%
+			),
+			linear-gradient(135deg, var(--party-bg-a), var(--party-bg-b));
 	}
 
 	.editor-preview-controller-frame {

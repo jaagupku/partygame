@@ -23,6 +23,18 @@ type EvaluationType =
 type UserRole = 'admin' | 'user';
 type DefinitionVisibility = 'private' | 'login_required' | 'public';
 type RevealCurve = [number, number, number, number];
+type DefinitionThemeMode = 'light' | 'dark' | 'system';
+type DefinitionThemePalette = 'party' | 'midnight' | 'candy' | 'forest';
+
+type DefinitionTheme = {
+	mode?: DefinitionThemeMode;
+	palette?: DefinitionThemePalette;
+	background?: string | null;
+	surface?: string | null;
+	ink?: string | null;
+	primary?: string | null;
+	accent?: string | null;
+};
 
 type User = {
 	id: string;
@@ -150,6 +162,7 @@ type GameDefinition = {
 	id: string;
 	title: string;
 	description?: string;
+	theme?: DefinitionTheme | null;
 	visibility?: DefinitionVisibility;
 	owner_user_id?: string;
 	owner_display_name?: string;
@@ -557,6 +570,7 @@ type RuntimeSnapshotEvent = {
 	type_: 'runtime_snapshot';
 	revision: number;
 	lobby: RuntimeLobbyState;
+	theme?: DefinitionTheme | null;
 	players: Player[];
 	active_item?: RuntimeItemState | null;
 	next_item?: RuntimeItemState | null;
@@ -592,6 +606,7 @@ type RuntimePatchEvent = {
 	revision: number;
 	changes: {
 		lobby?: Partial<RuntimeLobbyState>;
+		theme?: DefinitionTheme | null;
 		players?: Player[];
 		active_item?: RuntimeItemState | null;
 		next_item?: RuntimeItemState | null;
@@ -711,6 +726,7 @@ type PlayerReactionEvent = {
 
 type HostGameState = Lobby & {
 	lastRevision: number;
+	theme?: DefinitionTheme | null;
 	activeItem?: RuntimeItemState;
 	nextItem?: RuntimeItemState;
 	nextHostAction?: NextHostAction;
@@ -742,6 +758,7 @@ type ControllerState = {
 	id: string;
 	players: Player[];
 	lastRevision: number;
+	theme?: DefinitionTheme | null;
 	isHost: boolean;
 	answerResult: 'correct' | 'wrong' | 'none';
 	submissionError?: SubmissionRejectedReason;

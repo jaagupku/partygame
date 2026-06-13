@@ -72,9 +72,6 @@
 		<h1 class="page-title text-left">{$messages.create.title}</h1>
 		<p class="page-subtitle text-left">{$messages.create.subtitle}</p>
 	</div>
-	<button class="btn btn-ghost text-lg" onclick={() => goto('/definitions')}
-		>{$messages.common.manageDefinitions}</button
-	>
 </div>
 
 <div class="stack-lg">
@@ -90,16 +87,18 @@
 				<span class="select-chevron" aria-hidden="true">▾</span>
 			</div>
 			{#if selectedDefinitionSummary}
-				<p class="text-sm font-semibold text-slate-700">
+				<p class="theme-text-muted text-sm font-semibold">
 					{$messages.common.selected}: {selectedDefinitionSummary.title}
 				</p>
 			{/if}
 		</label>
 
-		<label class="flex items-center justify-between gap-4 rounded-2xl bg-white/60 px-4 py-3">
+		<label
+			class="theme-surface-muted flex items-center justify-between gap-4 rounded-2xl border px-4 py-3"
+		>
 			<div>
-				<p class="label-title text-xl">{$messages.create.hostEnabledMode}</p>
-				<p class="text-sm text-slate-600">{$messages.create.hostEnabledHelp}</p>
+				<p class="theme-text label-title text-xl">{$messages.create.hostEnabledMode}</p>
+				<p class="theme-text-muted text-sm">{$messages.create.hostEnabledHelp}</p>
 			</div>
 			<input bind:checked={hostEnabled} type="checkbox" class="h-6 w-6" />
 		</label>
@@ -110,19 +109,19 @@
 			<div>
 				<h2 class="label-title text-2xl">{$messages.create.definitionPreview}</h2>
 				{#if loadingDefinition}
-					<p class="text-slate-500">{$messages.create.loadingDefinitionDetails}</p>
+					<p class="theme-text-muted">{$messages.create.loadingDefinitionDetails}</p>
 				{:else if selectedDefinition}
-					<p class="text-slate-700">
+					<p class="theme-text-muted">
 						{selectedDefinition.description ?? $messages.create.noDescriptionProvided}
 					</p>
 				{:else}
-					<p class="text-slate-500">{$messages.create.noDefinitionSelected}</p>
+					<p class="theme-text-muted">{$messages.create.noDefinitionSelected}</p>
 				{/if}
 			</div>
 			{#if selectedDefinition}
-				<div class="rounded-2xl bg-sky-50 px-4 py-3 text-right">
-					<p class="text-sm uppercase tracking-wide text-sky-700">{$messages.common.rounds}</p>
-					<p class="text-3xl font-extrabold text-sky-900">{selectedDefinition.rounds.length}</p>
+				<div class="theme-soft-primary rounded-2xl border px-4 py-3 text-right">
+					<p class="text-sm uppercase tracking-wide">{$messages.common.rounds}</p>
+					<p class="text-3xl font-extrabold">{selectedDefinition.rounds.length}</p>
 				</div>
 			{/if}
 		</div>
@@ -130,17 +129,17 @@
 		{#if selectedDefinition}
 			<div class="grid gap-3 md:grid-cols-2">
 				{#each selectedDefinition.rounds as round}
-					<div class="rounded-2xl bg-white/70 p-4">
-						<h3 class="text-xl font-bold">{round.title ?? round.id}</h3>
-						<p class="mt-1 text-sm text-slate-600">
+					<div class="theme-surface-muted rounded-2xl border p-4">
+						<h3 class="theme-text text-xl font-bold">{round.title ?? round.id}</h3>
+						<p class="theme-text-muted mt-1 text-sm">
 							{round.steps.length}
 							{$messages.common.steps}
 						</p>
 						<ul class="mt-3 space-y-2">
 							{#each round.steps.slice(0, 3) as step}
-								<li class="rounded-xl bg-slate-50 px-3 py-2">
-									<div class="font-semibold">{step.title}</div>
-									<div class="text-sm text-slate-600">
+								<li class="theme-surface rounded-xl border px-3 py-2">
+									<div class="theme-text font-semibold">{step.title}</div>
+									<div class="theme-text-muted text-sm">
 										{step.player_input.kind} · {step.evaluation.type_} ·
 										{step.timer.seconds ?? 0}s
 									</div>

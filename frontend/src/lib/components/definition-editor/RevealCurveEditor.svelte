@@ -99,11 +99,11 @@
 	}
 </script>
 
-<div class="grid gap-3 rounded-2xl bg-white p-4">
+<div class="editor-nested-panel grid gap-3 rounded-2xl p-4">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
-			<p class="text-sm font-bold uppercase tracking-wide text-slate-500">{label}</p>
-			<p class="mt-1 text-sm text-slate-500">{help}</p>
+			<p class="editor-text-muted text-sm font-bold uppercase tracking-wide">{label}</p>
+			<p class="editor-text-muted mt-1 text-sm">{help}</p>
 		</div>
 		<button class="btn btn-ghost text-sm" type="button" onclick={resetCurve}>
 			{$messages.editor.resetRevealCurve}
@@ -112,7 +112,7 @@
 
 	<div class="grid gap-4 md:grid-cols-[minmax(0,14rem)_1fr]">
 		<svg
-			class="h-56 w-full touch-none rounded-2xl border border-slate-200 bg-slate-50 p-3"
+			class="theme-surface-muted h-56 w-full touch-none rounded-2xl border p-3"
 			viewBox="-6 -6 112 112"
 			role="img"
 			aria-label={label}
@@ -179,7 +179,7 @@
 		<div class="grid grid-cols-2 gap-3">
 			{#each DEFAULT_REVEAL_CURVE as _, index}
 				<label class="grid gap-1">
-					<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
+					<span class="editor-text-muted text-xs font-bold uppercase tracking-wide">
 						{['X1', 'Y1', 'X2', 'Y2'][index]}
 					</span>
 					<input

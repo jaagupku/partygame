@@ -194,7 +194,7 @@
 
 {#if step.evaluation.type_ === 'ordering_match'}
 	<div class="grid gap-3">
-		<p class="text-sm font-semibold text-slate-700">{$messages.editor.correctOrderHelp}</p>
+		<p class="editor-text-muted text-sm font-semibold">{$messages.editor.correctOrderHelp}</p>
 		<OrderingList
 			items={orderedAnswer}
 			variant="editor"
@@ -208,7 +208,7 @@
 	<div class="grid gap-4">
 		<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.correctNumber}
 				</span>
 				<input
@@ -219,8 +219,8 @@
 						(step.evaluation.answer = (event.currentTarget as HTMLInputElement).value)}
 				/>
 			</label>
-			<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-				<p class="font-bold text-slate-900">{$messages.editor.scoringSummary}</p>
+			<div class="editor-nested-panel editor-text-muted rounded-2xl border p-4 text-sm">
+				<p class="editor-text font-bold">{$messages.editor.scoringSummary}</p>
 				<p class="mt-2">
 					{step.evaluation.type_ === 'exact_number'
 						? $messages.editor.exactNumberSummary
@@ -229,11 +229,11 @@
 			</div>
 		</div>
 		{#if step.evaluation.type_ === 'closest_number'}
-			<div class="rounded-2xl border border-slate-200 bg-white p-4">
+			<div class="editor-nested-panel rounded-2xl border p-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
-						<p class="font-bold text-slate-900">{$messages.editor.numberBands}</p>
-						<p class="mt-1 text-sm text-slate-600">{$messages.editor.numberBandsHelp}</p>
+						<p class="editor-text font-bold">{$messages.editor.numberBands}</p>
+						<p class="editor-text-muted mt-1 text-sm">{$messages.editor.numberBandsHelp}</p>
 					</div>
 					<button type="button" class="btn btn-ghost text-sm" onclick={addNumberBand}>
 						{$messages.editor.addNumberBand}
@@ -243,10 +243,10 @@
 					<div class="mt-3 grid gap-3">
 						{#each numberBands as band, index}
 							<div
-								class="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_minmax(0,1.4fr)_auto] md:items-end"
+								class="editor-muted-panel grid gap-2 rounded-xl border p-3 md:grid-cols-[1fr_1fr_minmax(0,1.4fr)_auto] md:items-end"
 							>
 								<label class="input-wrap">
-									<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
+									<span class="editor-text-muted text-xs font-bold uppercase tracking-wide">
 										{$messages.editor.numberBandDistance}
 									</span>
 									<input
@@ -261,7 +261,7 @@
 									/>
 								</label>
 								<label class="input-wrap">
-									<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
+									<span class="editor-text-muted text-xs font-bold uppercase tracking-wide">
 										{$messages.editor.points}
 									</span>
 									<input
@@ -277,7 +277,7 @@
 									/>
 								</label>
 								<label class="input-wrap">
-									<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
+									<span class="editor-text-muted text-xs font-bold uppercase tracking-wide">
 										{$messages.editor.numberBandLabel}
 									</span>
 									<input
@@ -305,24 +305,24 @@
 		{/if}
 	</div>
 {:else if step.evaluation.type_ === 'multi_select_weighted'}
-	<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-		<p class="font-bold text-slate-900">{$messages.editor.configureScoresAbove}</p>
+	<div class="editor-nested-panel editor-text-muted rounded-2xl border p-4 text-sm">
+		<p class="editor-text font-bold">{$messages.editor.configureScoresAbove}</p>
 		<p class="mt-2">{$messages.editor.configurePointsAboveHelp}</p>
 	</div>
 {:else if step.evaluation.type_ === 'map_distance'}
 	<div class="grid gap-4">
 		<div class="grid gap-3">
 			<div>
-				<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<p class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.mapLockedArea} / {$messages.editor.mapCorrectPoint}
 				</p>
-				<p class="mt-1 text-sm text-slate-600">
+				<p class="editor-text-muted mt-1 text-sm">
 					{$messages.editor.mapLockedAreaHelp}
 					{$messages.editor.mapCorrectPointHelp}
 				</p>
 			</div>
 			<label class="input-wrap md:max-w-xs">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.mapPlayerBaseLayer}
 				</span>
 				<select
@@ -337,7 +337,7 @@
 					<option value="osm">{$messages.editor.mapBaseLayerOsm}</option>
 					<option value="light_nolabels">{$messages.editor.mapBaseLayerLightNoLabels}</option>
 				</select>
-				<span class="text-sm text-slate-600">{$messages.editor.mapPlayerBaseLayerHelp}</span>
+				<span class="editor-text-muted text-sm">{$messages.editor.mapPlayerBaseLayerHelp}</span>
 			</label>
 			<button
 				type="button"
@@ -361,7 +361,7 @@
 				{#if draftMapConfig}
 					<p class="text-sm font-semibold text-sky-700">{$messages.editor.mapCurrentViewUnsaved}</p>
 				{:else}
-					<p class="text-sm text-slate-600">{$messages.editor.mapCurrentViewSaved}</p>
+					<p class="editor-text-muted text-sm">{$messages.editor.mapCurrentViewSaved}</p>
 				{/if}
 			</div>
 			<MapPointEditor
@@ -386,7 +386,7 @@
 			class={`grid gap-3 ${mapAnswer.scoring_mode === 'linear' ? 'md:grid-cols-4' : 'md:grid-cols-2'}`}
 		>
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.mapScoringMode}
 				</span>
 				<select
@@ -402,7 +402,7 @@
 				</select>
 			</label>
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.mapMaxPoints}
 				</span>
 				<input
@@ -421,7 +421,7 @@
 			</label>
 			{#if mapAnswer.scoring_mode === 'linear'}
 				<label class="input-wrap">
-					<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+					<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 						{$messages.editor.mapFullCreditDistance}
 					</span>
 					<input
@@ -439,7 +439,7 @@
 					/>
 				</label>
 				<label class="input-wrap">
-					<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+					<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 						{$messages.editor.mapZeroDistance}
 					</span>
 					<input
@@ -486,7 +486,7 @@
 		{#if mapAnswer.scoring_mode === 'bands'}
 			<div class="grid gap-3">
 				<div class="flex items-center justify-between gap-3">
-					<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
+					<p class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 						{$messages.editor.mapBands}
 					</p>
 					<button type="button" class="btn btn-ghost text-sm" onclick={addMapBand}>
@@ -546,15 +546,15 @@
 		{/if}
 	</div>
 {:else if step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'radio'}
-	<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-		<p class="font-bold text-slate-900">{$messages.editor.markCorrectOption}</p>
+	<div class="editor-nested-panel editor-text-muted rounded-2xl border p-4 text-sm">
+		<p class="editor-text font-bold">{$messages.editor.markCorrectOption}</p>
 		<p class="mt-2">{$messages.editor.markCorrectOptionHelp}</p>
 	</div>
 {:else if step.evaluation.type_ === 'exact_text' && step.player_input.kind === 'text'}
 	<div class="grid gap-3">
 		<div class="grid gap-3">
 			<div class="flex items-center justify-between gap-3">
-				<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<p class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.acceptedAnswers}
 				</p>
 				<button type="button" class="btn btn-ghost text-sm" onclick={addTextAnswer}>
@@ -582,7 +582,7 @@
 			{/each}
 		</div>
 		<label class="input-wrap md:max-w-xs">
-			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+			<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 				{$messages.editor.typoTolerance}
 			</span>
 			<input
@@ -597,17 +597,17 @@
 						Math.trunc(Number((event.currentTarget as HTMLInputElement).value) || 0)
 					))}
 			/>
-			<span class="text-sm text-slate-600">{$messages.editor.typoToleranceHelp}</span>
+			<span class="editor-text-muted text-sm">{$messages.editor.typoToleranceHelp}</span>
 		</label>
 	</div>
 {:else if step.evaluation.type_ === 'host_judged'}
 	<div class="grid gap-3">
-		<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-			<p class="font-bold text-slate-900">{$messages.editor.hostDecidesCorrectness}</p>
+		<div class="editor-nested-panel editor-text-muted rounded-2xl border p-4 text-sm">
+			<p class="editor-text font-bold">{$messages.editor.hostDecidesCorrectness}</p>
 			<p class="mt-2">{$messages.editor.hostReviewedHelp}</p>
 		</div>
 		<label class="input-wrap">
-			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+			<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 				{$messages.editor.correctAnswerRubric}
 			</span>
 			<input
@@ -621,7 +621,7 @@
 	</div>
 {:else if step.evaluation.type_ !== 'none'}
 	<label class="input-wrap">
-		<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+		<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 			{$messages.editor.correctAnswerRubric}
 		</span>
 		<input
@@ -633,8 +633,8 @@
 		/>
 	</label>
 {:else}
-	<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-		<p class="font-bold text-slate-900">{$messages.editor.noAnswerRequired}</p>
+	<div class="editor-nested-panel editor-text-muted rounded-2xl border p-4 text-sm">
+		<p class="editor-text font-bold">{$messages.editor.noAnswerRequired}</p>
 		<p class="mt-2">{$messages.editor.displayOnlyHelp}</p>
 	</div>
 {/if}

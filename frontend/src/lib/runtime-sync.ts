@@ -11,6 +11,7 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.state = event.lobby.state;
 	state.phase = event.lobby.phase;
 	state.current_step = event.lobby.current_step;
+	state.theme = event.theme;
 	state.host_enabled = event.lobby.host_enabled;
 	state.host_id = event.lobby.host_id;
 	state.activeItem = event.active_item ?? undefined;
@@ -50,6 +51,9 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 			changes.lobby && 'host_id' in changes.lobby
 				? withHostFlags(changes.players, changes.lobby.host_id)
 				: withHostFlags(changes.players, state.host_id);
+	}
+	if ('theme' in changes) {
+		state.theme = changes.theme;
 	}
 	if (changes.lobby) {
 		if (changes.lobby.state !== undefined) {
@@ -151,6 +155,7 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.gameState = event.lobby.state;
 	state.lobbyPhase = event.lobby.phase;
 	state.currentStep = event.lobby.current_step;
+	state.theme = event.theme;
 	state.hostEnabled = event.lobby.host_enabled;
 	state.starterPlayerId = event.lobby.starter_id;
 	state.isHost = event.lobby.host_id === state.id;
@@ -195,6 +200,9 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 			changes.lobby && 'host_id' in changes.lobby
 				? withHostFlags(changes.players, changes.lobby.host_id)
 				: withHostFlags(changes.players, currentHostId);
+	}
+	if ('theme' in changes) {
+		state.theme = changes.theme;
 	}
 	if (changes.lobby) {
 		if (changes.lobby.state !== undefined) {

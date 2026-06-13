@@ -54,7 +54,7 @@
 		margin: 0.35em 0;
 		font-weight: 900;
 		line-height: 1.05;
-		color: rgb(15 23 42);
+		color: var(--party-ink);
 	}
 
 	.step-body-markdown :global(h1) {
@@ -91,7 +91,7 @@
 		margin: 0.6em 0;
 		border-left: 0.25em solid rgb(14 165 233 / 0.5);
 		padding-left: 0.8em;
-		color: rgb(51 65 85);
+		color: var(--party-subtle);
 		font-style: italic;
 	}
 
@@ -105,13 +105,13 @@
 
 	.step-body-markdown :global(code) {
 		border-radius: 0.35rem;
-		background: rgb(226 232 240 / 0.8);
+		background: color-mix(in srgb, var(--party-surface-strong), var(--party-ink) 10%);
 		padding: 0.08em 0.3em;
 		font-size: 0.9em;
 	}
 
 	.step-body-markdown :global(a) {
-		color: rgb(2 132 199);
+		color: var(--party-primary);
 		font-weight: 800;
 		text-decoration: underline;
 		text-decoration-thickness: 0.08em;

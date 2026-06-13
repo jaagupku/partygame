@@ -22,7 +22,7 @@
 
 <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
 	<div>
-		<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
+		<p class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 			{selectedFlatStep.roundTitle} · {$messages.editor.slide}
 			{selectedFlatStep.globalIndex + 1}
 		</p>
@@ -33,8 +33,8 @@
 			<button
 				class={`inline-flex h-11 w-11 items-center justify-center rounded-full border text-lg transition ${
 					action.variant === 'danger'
-						? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:border-red-100 disabled:bg-red-50/60 disabled:text-red-300'
-						: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300'
+						? 'editor-danger-icon-button disabled:opacity-45'
+						: 'theme-surface-muted hover:opacity-85 disabled:opacity-45'
 				}`}
 				type="button"
 				aria-label={getTooltipText(action)}
@@ -61,7 +61,7 @@
 	<div class="flex flex-wrap gap-2 px-4 pb-2">
 		{#each healthIssues as issue}
 			<span
-				class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-800"
+				class="editor-health-warning inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold uppercase tracking-[0.16em]"
 			>
 				<iconify-icon icon={issue.icon}></iconify-icon>
 				{issue.label}

@@ -38,15 +38,15 @@
 	use:modalPortal
 	class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4"
 >
-	<div class="w-full max-w-xl rounded-4xl border border-slate-200 bg-white p-6 shadow-2xl">
+	<div class="theme-surface w-full max-w-xl rounded-4xl border p-6 shadow-2xl">
 		<div class="flex items-start justify-between gap-4">
 			<div>
 				<h3 class="label-title text-2xl">{$messages.common.edit} {$messages.editor.roundName}</h3>
-				<p class="text-sm text-slate-600">{$messages.editor.roundName}</p>
+				<p class="theme-text-muted text-sm">{$messages.editor.roundName}</p>
 			</div>
 			<button
 				type="button"
-				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
+				class="theme-surface-muted inline-flex h-10 w-10 items-center justify-center rounded-full border"
 				aria-label={$messages.editor.closeRoundEditor}
 				onclick={onClose}
 			>
@@ -56,7 +56,7 @@
 
 		<div class="mt-5 grid gap-4">
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+				<span class="theme-text-muted text-sm font-bold uppercase tracking-wide"
 					>{$messages.editor.roundName}</span
 				>
 				<input
@@ -78,7 +78,7 @@
 			</div>
 			{#if showRoundAdvancedFields}
 				<label class="input-wrap">
-					<span class="text-sm font-bold uppercase tracking-wide text-slate-500"
+					<span class="theme-text-muted text-sm font-bold uppercase tracking-wide"
 						>{$messages.editor.roundId}</span
 					>
 					<input

@@ -23,17 +23,17 @@
 	}: Props = $props();
 </script>
 
-<div class="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+<div class="editor-nested-panel rounded-[1.5rem] border p-4">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<p class="text-lg font-bold text-slate-900">
+			<p class="editor-text text-lg font-bold">
 				{step.player_input.kind === 'ordering'
 					? $messages.editor.itemsToOrder
 					: step.player_input.kind === 'radio'
 						? $messages.editor.answerChoices
 						: $messages.editor.selectableAnswers}
 			</p>
-			<p class="text-sm text-slate-600">
+			<p class="editor-text-muted text-sm">
 				{step.player_input.kind === 'ordering'
 					? $messages.editor.itemsToOrderHelp
 					: $messages.editor.selectableAnswersHelp}
@@ -47,10 +47,10 @@
 	<div class="mt-4 grid gap-3">
 		{#each step.player_input.options as option, optionIndex}
 			<div
-				class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[auto_1fr_auto_auto]"
+				class="editor-muted-panel grid gap-3 rounded-2xl border p-3 md:grid-cols-[auto_1fr_auto_auto]"
 			>
 				<div
-					class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sm font-bold text-slate-500"
+					class="theme-surface inline-flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-bold"
 				>
 					{optionIndex + 1}
 				</div>
@@ -66,7 +66,7 @@
 				/>
 				{#if step.player_input.kind === 'radio' && step.evaluation.type_ === 'exact_text'}
 					<label
-						class="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+						class="theme-surface flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
 					>
 						<input
 							type="radio"
@@ -79,7 +79,7 @@
 					</label>
 				{:else if step.player_input.kind === 'checkbox' && step.evaluation.type_ === 'multi_select_weighted'}
 					<label class="input-wrap">
-						<span class="text-xs font-bold uppercase tracking-wide text-slate-500">
+						<span class="editor-text-muted text-xs font-bold uppercase tracking-wide">
 							{$messages.editor.points}
 						</span>
 						<input

@@ -52,14 +52,14 @@
 		onSelect={(kind) => onSetPlayerInputKind(step, kind)}
 	/>
 
-	<div class="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+	<div class="editor-nested-panel mt-5 rounded-[1.5rem] border p-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div>
-				<p class="text-lg font-bold text-slate-900">{inputDetails.label}</p>
-				<p class="text-sm text-slate-600">{inputDetails.description}</p>
+				<p class="editor-text text-lg font-bold">{inputDetails.label}</p>
+				<p class="editor-text-muted text-sm">{inputDetails.description}</p>
 			</div>
 			<span
-				class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500"
+				class="theme-surface-muted editor-text-muted inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold uppercase tracking-[0.16em]"
 			>
 				<iconify-icon icon={inputDetails.icon}></iconify-icon>
 				{$messages.editor.recommendedScoring}:
@@ -72,7 +72,7 @@
 				<div class="grid gap-4 md:grid-cols-2">
 					{#if inputDetails.usesPrompt}
 						<label class="input-wrap">
-							<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+							<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 								{$messages.editor.inputPrompt}
 							</span>
 							<input
@@ -84,7 +84,7 @@
 					{/if}
 					{#if inputDetails.usesPlaceholder}
 						<label class="input-wrap">
-							<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+							<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 								{$messages.editor.placeholder}
 							</span>
 							<input
@@ -100,19 +100,19 @@
 			{#if inputDetails.usesNumericRange}
 				<div class="grid gap-3 md:grid-cols-3">
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+						<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 							{$messages.editor.minValue}
 						</span>
 						<input bind:value={step.player_input.min_value} type="number" class="input text-lg" />
 					</label>
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+						<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 							{$messages.editor.maxValue}
 						</span>
 						<input bind:value={step.player_input.max_value} type="number" class="input text-lg" />
 					</label>
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+						<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 							{$messages.editor.sliderStep}
 						</span>
 						<input
@@ -126,8 +126,8 @@
 			{/if}
 
 			{#if inputDetails.usesMap}
-				<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-					<p class="font-bold text-slate-900">{$messages.editor.mapLockedArea}</p>
+				<div class="editor-nested-panel editor-text-muted rounded-2xl border p-4 text-sm">
+					<p class="editor-text font-bold">{$messages.editor.mapLockedArea}</p>
 					<p class="mt-2">{$messages.editor.mapCombinedEditorHelp}</p>
 				</div>
 			{/if}

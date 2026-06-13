@@ -169,6 +169,7 @@ class SnapshotBuilder:
         drawing_owner_ids = self._drawing_owner_ids(step, step_state)
         drawing_voted_player_ids = list(step_state.get("drawing_votes", {}).keys())
         end_game = await self.end_game.build_end_game_state(lobby, players)
+        theme = await self.runtime.get_definition_theme(lobby)
 
         return schemas.RuntimeSnapshotEvent(
             revision=snapshot_revision,
@@ -183,6 +184,7 @@ class SnapshotBuilder:
                 phase=lobby.phase,
                 current_step=lobby.current_step,
             ),
+            theme=theme,
             players=players,
             active_item=active_item,
             next_item=next_item,

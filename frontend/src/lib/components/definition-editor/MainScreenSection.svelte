@@ -34,7 +34,7 @@
 >
 	<div class="grid gap-4">
 		<label class="input-wrap">
-			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+			<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 				{$messages.editor.stepTitle}
 			</span>
 			<input
@@ -46,7 +46,7 @@
 		<MarkdownBodyEditor {step} />
 		{#if showAdvancedFields}
 			<label class="input-wrap">
-				<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+				<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 					{$messages.editor.stepId}
 				</span>
 				<input bind:value={step.id} class="input text-lg" />

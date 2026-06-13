@@ -32,34 +32,30 @@
 
 	const rowLayoutClass = $derived(
 		variant === 'editor'
-			? 'grid gap-3 rounded-2xl border bg-white p-3 transition md:grid-cols-[auto_auto_1fr_auto]'
+			? 'grid gap-3 rounded-2xl border p-3 transition md:grid-cols-[auto_auto_1fr_auto]'
 			: 'flex items-center gap-3 rounded-2xl border p-3 transition'
 	);
 	const idleRowClass = $derived(
-		variant === 'editor' ? 'border-slate-200' : 'border-white/70 bg-white/70'
+		variant === 'editor' ? 'editor-muted-panel' : 'theme-surface-muted'
 	);
 	const draggedRowClass = $derived(
-		variant === 'editor'
-			? 'border-amber-300 bg-amber-50 opacity-80'
-			: 'border-sky-300 bg-sky-50 opacity-80'
+		variant === 'editor' ? 'editor-soft-accent opacity-80' : 'theme-soft-primary opacity-80'
 	);
-	const dropRowClass = $derived(
-		variant === 'editor' ? 'border-amber-200 bg-amber-50/70' : 'border-sky-200 bg-sky-50/70'
-	);
+	const dropRowClass = $derived(variant === 'editor' ? 'editor-soft-accent' : 'theme-soft-primary');
 	const badgeClass = $derived(
 		variant === 'editor'
-			? 'inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-sm font-bold text-amber-700'
-			: 'badge bg-slate-100 text-slate-700'
+			? 'editor-soft-accent inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-bold'
+			: 'theme-surface badge border'
 	);
 	const handleClass = $derived(
 		variant === 'editor'
-			? 'inline-flex h-11 w-11 cursor-grab touch-none select-none items-center justify-center rounded-2xl bg-slate-100 text-slate-500 active:cursor-grabbing disabled:cursor-default disabled:opacity-40'
-			: 'inline-flex h-10 w-10 cursor-grab touch-none select-none items-center justify-center rounded-xl bg-slate-100 text-slate-500 active:cursor-grabbing disabled:cursor-default disabled:opacity-40'
+			? 'theme-surface inline-flex h-11 w-11 cursor-grab touch-none select-none items-center justify-center rounded-2xl border active:cursor-grabbing disabled:cursor-default disabled:opacity-40'
+			: 'theme-surface inline-flex h-10 w-10 cursor-grab touch-none select-none items-center justify-center rounded-xl border active:cursor-grabbing disabled:cursor-default disabled:opacity-40'
 	);
 	const itemClass = $derived(
 		variant === 'editor'
-			? 'min-w-0 rounded-2xl bg-slate-50 px-4 py-3 text-lg font-semibold text-slate-900'
-			: 'flex-1 font-semibold'
+			? 'editor-muted-panel editor-text min-w-0 rounded-2xl border px-4 py-3 text-lg font-semibold'
+			: 'theme-text flex-1 font-semibold'
 	);
 	const moveButtonClass = $derived(
 		variant === 'editor' ? 'btn btn-ghost h-11 w-11 p-0' : 'btn btn-ghost h-10 w-10 p-0'

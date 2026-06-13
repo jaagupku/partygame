@@ -21,10 +21,12 @@
 	/>
 	<span class="text-xl font-bold">{player.name}</span>
 	{#if player.isHost}
-		<span class="badge bg-sky-100 text-sky-700">{$messages.common.host}</span>
+		<span class="theme-soft-primary badge border">{$messages.common.host}</span>
 	{/if}
 	{#if player.status !== 'connected'}
-		<iconify-icon class="ml-auto text-2xl text-gray-500" icon="fluent:plug-disconnected-16-filled"
+		<iconify-icon
+			class="theme-text-muted ml-auto text-2xl"
+			icon="fluent:plug-disconnected-16-filled"
 		></iconify-icon>
 	{/if}
 </button>

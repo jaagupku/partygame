@@ -63,26 +63,26 @@
 	const toneClasses = $derived(
 		statusTone === 'danger'
 			? {
-					panel: 'border-red-200 bg-red-50/90 text-red-950 shadow-red-100/70',
-					label: 'text-red-700',
-					time: 'text-red-950',
+					panel: 'timer-panel-danger',
+					label: 'timer-label-danger',
+					time: 'timer-time',
 					bar: 'bg-gradient-to-r from-red-500 to-orange-400',
 					pulse: 'bg-red-500'
 				}
 			: statusTone === 'warning'
 				? {
-						panel: 'border-amber-200 bg-amber-50/90 text-amber-950 shadow-amber-100/70',
-						label: 'text-amber-700',
-						time: 'text-amber-950',
+						panel: 'timer-panel-warning',
+						label: 'timer-label-warning',
+						time: 'timer-time',
 						bar: 'bg-gradient-to-r from-amber-500 to-orange-400',
 						pulse: 'bg-amber-500'
 					}
 				: {
-						panel: 'border-sky-200 bg-white/90 text-slate-900 shadow-sky-100/80',
-						label: 'text-sky-700',
-						time: 'text-slate-950',
-						bar: 'bg-gradient-to-r from-sky-500 to-cyan-400',
-						pulse: 'bg-sky-500'
+						panel: 'theme-soft-warm',
+						label: 'theme-soft-warm-label',
+						time: 'timer-time',
+						bar: 'bg-gradient-to-r from-orange-500 to-amber-400',
+						pulse: 'bg-orange-500'
 					}
 	);
 </script>
@@ -104,13 +104,13 @@
 				{formattedTime}
 			</p>
 		</div>
-		<div class="flex items-center gap-2 text-sm font-semibold text-slate-500">
+		<div class="timer-count flex items-center gap-2 text-sm font-semibold">
 			<span class={`timer-dot h-2.5 w-2.5 rounded-full ${toneClasses.pulse}`}></span>
 			<span>{count}s</span>
 		</div>
 	</div>
 
-	<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
+	<div class="timer-track mt-2 h-1.5 overflow-hidden rounded-full">
 		<div
 			class={`timer-bar h-full rounded-full ${toneClasses.bar}`}
 			style={`width: ${progressPercent}%`}
@@ -122,6 +122,40 @@
 <style>
 	.timer-panel {
 		backdrop-filter: blur(12px);
+	}
+
+	.timer-panel-warning {
+		border-color: var(--party-soft-warning-border);
+		background: var(--party-soft-warning-bg);
+		color: var(--party-soft-warning-text);
+		box-shadow: 0 10px 24px color-mix(in srgb, var(--party-warning), transparent 76%);
+	}
+
+	.timer-panel-danger {
+		border-color: var(--party-soft-critical-border);
+		background: var(--party-soft-critical-bg);
+		color: var(--party-soft-critical-text);
+		box-shadow: 0 10px 24px color-mix(in srgb, var(--party-critical), transparent 76%);
+	}
+
+	.timer-label-warning {
+		color: var(--party-soft-warning-label);
+	}
+
+	.timer-label-danger {
+		color: var(--party-soft-critical-label);
+	}
+
+	.timer-time {
+		color: var(--party-ink);
+	}
+
+	.timer-count {
+		color: var(--party-subtle);
+	}
+
+	.timer-track {
+		background: color-mix(in srgb, var(--party-surface-strong), black 18%);
 	}
 
 	.timer-panel p:last-child {

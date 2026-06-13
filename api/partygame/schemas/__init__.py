@@ -68,6 +68,9 @@ from .events import (
 )
 
 from .game_definition import (
+    DefinitionTheme,
+    DefinitionThemeMode,
+    DefinitionThemePalette,
     GameDefinition,
     MapBounds,
     MapDistanceAnswer,
@@ -156,6 +159,9 @@ __all__ = (
     "EndGameStatCard",
     "EndGameState",
     "GameDefinition",
+    "DefinitionTheme",
+    "DefinitionThemeMode",
+    "DefinitionThemePalette",
     "MapBounds",
     "MapDistanceAnswer",
     "MapDistanceBand",

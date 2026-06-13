@@ -54,24 +54,26 @@
 		{$messages.finale.fullScoreboard}
 	</h2>
 	{#if onSelectPlayer}
-		<p class="mb-4 text-sm text-slate-600">Click a player name to make them the host controller.</p>
+		<p class="theme-text-muted mb-4 text-sm">
+			Click a player name to make them the host controller.
+		</p>
 	{/if}
 	<ol class={`stack-md ${overlayVariant ? 'min-h-0 flex-1 overflow-y-auto pr-1' : ''}`}>
 		{#each ordered as playerId, i (i)}
 			<li
-				class={`grid items-center gap-2 rounded-xl bg-white/70 ${
+				class={`theme-surface-muted grid items-center gap-2 rounded-xl border ${
 					railVariant
 						? 'grid-cols-[auto_minmax(0,1fr)_auto] p-3.5'
 						: 'grid-cols-[auto_1fr_auto] p-3'
 				}`}
 			>
-				<div class="badge bg-slate-100 text-slate-700">
+				<div class="theme-surface badge border">
 					#{placeByPlayerId.get(playerId) ?? i + 1}
 				</div>
 				{#if onSelectPlayer}
 					<button
 						type="button"
-						class={`flex min-w-0 items-center gap-3 text-left font-bold text-slate-800 transition-opacity hover:opacity-75 ${
+						class={`theme-text flex min-w-0 items-center gap-3 text-left font-bold transition-opacity hover:opacity-75 ${
 							railVariant ? 'text-base md:text-lg' : 'text-lg'
 						}`}
 						onclick={() => onSelectPlayer(playerId)}
@@ -108,7 +110,8 @@
 					</div>
 				{/if}
 				<div
-					class={`font-extrabold text-sky-700 ${railVariant ? 'text-xl md:text-2xl' : 'text-2xl'}`}
+					class={`font-extrabold ${railVariant ? 'text-xl md:text-2xl' : 'text-2xl'}`}
+					style="color: var(--party-primary)"
 				>
 					{playerMap.get(playerId)?.score}
 				</div>

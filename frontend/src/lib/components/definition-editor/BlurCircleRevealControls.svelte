@@ -24,13 +24,13 @@
 	}
 </script>
 
-<div class="grid gap-3 rounded-2xl bg-white p-4">
+<div class="editor-nested-panel grid gap-3 rounded-2xl p-4">
 	<label class="grid gap-2">
 		<div class="flex items-center justify-between gap-3">
-			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+			<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 				{$messages.editor.blurCircleStartSize}
 			</span>
-			<span class="text-sm font-semibold text-slate-700">
+			<span class="editor-text text-sm font-semibold">
 				{getStartSizePercent().toFixed(0)}%
 			</span>
 		</div>
@@ -46,10 +46,10 @@
 					Number((event.currentTarget as HTMLInputElement).value) / 100;
 			}}
 		/>
-		<p class="text-sm text-slate-500">{$messages.editor.blurCircleStartSizeHelp}</p>
+		<p class="editor-text-muted text-sm">{$messages.editor.blurCircleStartSizeHelp}</p>
 	</label>
 
-	<p class="text-sm font-bold uppercase tracking-wide text-slate-500">
+	<p class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 		{$messages.editor.blurCircleBackground}
 	</p>
 	<div class="grid gap-3 md:grid-cols-2">
@@ -57,12 +57,12 @@
 			type="button"
 			class={`rounded-[1.25rem] border px-4 py-3 text-left transition ${
 				(media.blur_circle_background ?? 'blur') === 'blur'
-					? 'border-sky-300 bg-sky-50'
-					: 'border-slate-200 bg-white hover:border-sky-200'
+					? 'editor-soft-primary'
+					: 'editor-choice-card-muted'
 			}`}
 			onclick={() => setBackgroundMode('blur')}
 		>
-			<p class="text-sm font-bold text-slate-800">
+			<p class="editor-text text-sm font-bold">
 				{$messages.editor.blurCircleBackgroundBlur}
 			</p>
 		</button>
@@ -70,25 +70,25 @@
 			type="button"
 			class={`rounded-[1.25rem] border px-4 py-3 text-left transition ${
 				media.blur_circle_background === 'solid'
-					? 'border-sky-300 bg-sky-50'
-					: 'border-slate-200 bg-white hover:border-sky-200'
+					? 'editor-soft-primary'
+					: 'editor-choice-card-muted'
 			}`}
 			onclick={() => setBackgroundMode('solid')}
 		>
-			<p class="text-sm font-bold text-slate-800">
+			<p class="editor-text text-sm font-bold">
 				{$messages.editor.blurCircleBackgroundSolid}
 			</p>
 		</button>
 	</div>
 	{#if media.blur_circle_background === 'solid'}
 		<label class="grid gap-2">
-			<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+			<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 				{$messages.editor.blurCircleBackgroundColor}
 			</span>
 			<input
 				type="color"
 				value={media.blur_circle_background_color ?? '#0f172a'}
-				class="h-12 w-24 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
+				class="theme-surface h-12 w-24 cursor-pointer rounded-xl border p-1"
 				oninput={(event) => {
 					media.blur_circle_background_color = (event.currentTarget as HTMLInputElement).value;
 				}}

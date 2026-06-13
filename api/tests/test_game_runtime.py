@@ -148,6 +148,58 @@ class MixedDefinitionProvider:
         return []
 
 
+class ThemedDefinitionProvider:
+    async def load(self, definition_id: str) -> GameDefinition:
+        return GameDefinition(
+            id=definition_id,
+            title="Themed Test",
+            theme=schemas.DefinitionTheme(
+                mode=schemas.DefinitionThemeMode.DARK,
+                palette=schemas.DefinitionThemePalette.FOREST,
+                primary="#4ade80",
+            ),
+            rounds=[
+                RoundDefinition(
+                    id="round1",
+                    steps=[
+                        StepDefinition(
+                            id="info",
+                            title="Info",
+                        )
+                    ],
+                )
+            ],
+        )
+
+    async def list_definitions(self):
+        return []
+
+
+@pytest.mark.asyncio
+async def test_runtime_snapshot_includes_definition_theme():
+    repo = FakeRepo()
+    lobby = Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_enabled=True,
+        players=[],
+        connection="connected",
+        state=schemas.GameState.RUNNING,
+        definition_id="themed_test",
+        current_step=0,
+        phase="question_active",
+    )
+    service = GameRuntimeService(repo, definition_provider=ThemedDefinitionProvider())
+
+    await service.initialize_step_state(lobby, (await service._flatten_steps(lobby))[0])
+    snapshot = await service.build_snapshot(lobby)
+
+    assert snapshot.theme is not None
+    assert snapshot.theme.mode == schemas.DefinitionThemeMode.DARK
+    assert snapshot.theme.palette == schemas.DefinitionThemePalette.FOREST
+    assert snapshot.theme.primary == "#4ade80"
+
+
 class DrawingDefinitionProvider:
     async def load(self, definition_id: str) -> GameDefinition:
         return GameDefinition(

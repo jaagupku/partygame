@@ -17,20 +17,20 @@
 			type="button"
 			class={`rounded-[1.5rem] border p-4 text-left transition ${
 				selectedKind === details.kind
-					? 'border-sky-300 bg-sky-50 shadow-sm'
-					: 'border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/50'
+					? 'editor-choice-card-active shadow-sm'
+					: 'editor-choice-card-muted hover:border-sky-200'
 			}`}
 			onclick={() => onSelect(details.kind)}
 		>
 			<div class="flex items-start gap-3">
 				<div
-					class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-2xl text-sky-700 shadow-sm"
+					class="editor-icon-tile inline-flex h-11 w-11 items-center justify-center rounded-2xl text-2xl shadow-sm"
 				>
 					<iconify-icon icon={details.icon}></iconify-icon>
 				</div>
 				<div>
-					<p class="text-base font-bold text-slate-900">{details.label}</p>
-					<p class="mt-1 text-sm leading-6 text-slate-600">{details.description}</p>
+					<p class="editor-text text-base font-bold">{details.label}</p>
+					<p class="editor-text-muted mt-1 text-sm leading-6">{details.description}</p>
 				</div>
 			</div>
 		</button>

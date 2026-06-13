@@ -144,6 +144,30 @@ def _media_definition(definition_id: str = "media_night", media_src: str = "/api
     )
 
 
+def test_game_definition_theme_is_optional_and_validated():
+    legacy_definition = _music_definition()
+    assert legacy_definition.theme is None
+
+    themed_definition = GameDefinition.model_validate(
+        _music_definition().model_dump(mode="json")
+        | {
+            "theme": {
+                "mode": "dark",
+                "palette": "midnight",
+                "background": "#020617",
+                "surface": "#111827",
+                "ink": "#f8fafc",
+                "primary": "#38bdf8",
+                "accent": "#f97316",
+            }
+        }
+    )
+
+    assert themed_definition.theme is not None
+    assert themed_definition.theme.mode == "dark"
+    assert themed_definition.theme.palette == "midnight"
+
+
 @pytest.mark.asyncio
 async def test_file_definition_provider_caches_unchanged_definitions(tmp_path):
     definition_path = tmp_path / "quiz_demo.json"

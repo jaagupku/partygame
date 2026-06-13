@@ -163,10 +163,10 @@
 
 <svelte:window onpointermove={handleWindowPointerMove} onpointerup={handleWindowPointerUp} />
 
-<section class="flex h-full min-h-0 min-w-0 flex-col border-slate-200 bg-white/65">
+<section class="editor-sorter-panel flex h-full min-h-0 min-w-0 flex-col">
 	<div class="pb-2">
 		<h3 class="label-title text-xl">Step Sorter</h3>
-		<p class="text-sm text-slate-600">
+		<p class="editor-text-muted text-sm">
 			Drag slides to change the order or move them between rounds.
 		</p>
 	</div>
@@ -177,17 +177,18 @@
 	>
 		{#each rounds as round, roundIndex}
 			<div class="mb-5">
-				<div class="sticky top-0 z-10 mb-2 rounded-2xl bg-sky-50 px-3 py-2 shadow-sm">
+				<div class="editor-round-header sticky top-0 z-10 mb-2 rounded-2xl px-3 py-2 shadow-sm">
 					<div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
 						<div class="min-w-0 flex-1">
-							<p class="truncate text-sm font-bold uppercase tracking-wide text-sky-800">
+							<p class="editor-text truncate text-sm font-bold uppercase tracking-wide">
 								{round.title || `Round ${roundIndex + 1}`}
 							</p>
 						</div>
 						<div class="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-							<span class="text-xs font-semibold text-sky-700">{round.steps.length} steps</span>
+							<span class="editor-text-muted text-xs font-semibold">{round.steps.length} steps</span
+							>
 							<button
-								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
+								class="theme-surface-muted inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:opacity-85"
 								type="button"
 								title={`Move ${round.title || `round ${roundIndex + 1}`} up`}
 								aria-label={`Move ${round.title || `round ${roundIndex + 1}`} up`}
@@ -197,7 +198,7 @@
 								<iconify-icon icon="fluent:arrow-up-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100 disabled:border-sky-100 disabled:bg-slate-50 disabled:text-slate-300"
+								class="theme-surface-muted inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:opacity-85 disabled:opacity-45"
 								type="button"
 								title={`Move ${round.title || `round ${roundIndex + 1}`} down`}
 								aria-label={`Move ${round.title || `round ${roundIndex + 1}`} down`}
@@ -207,7 +208,7 @@
 								<iconify-icon icon="fluent:arrow-down-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700 transition hover:bg-sky-100"
+								class="theme-surface-muted inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:opacity-85"
 								type="button"
 								aria-label={`Edit ${round.title || `round ${roundIndex + 1}`}`}
 								title={`Edit ${round.title || `round ${roundIndex + 1}`}`}
@@ -216,7 +217,7 @@
 								<iconify-icon icon="fluent:edit-16-filled"></iconify-icon>
 							</button>
 							<button
-								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
+								class="editor-danger-icon-button inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition hover:opacity-85"
 								type="button"
 								title={`Delete ${round.title || `round ${roundIndex + 1}`}`}
 								aria-label={`Delete ${round.title || `round ${roundIndex + 1}`}`}
@@ -232,10 +233,10 @@
 					<div
 						class={`rounded-2xl border border-dashed p-4 text-sm transition ${
 							isDropTargetActive(roundIndex, 0)
-								? 'border-sky-400 bg-sky-100 text-sky-800'
+								? 'editor-soft-primary'
 								: draggedStepKey
-									? 'border-sky-200 bg-sky-50/80 text-slate-500'
-									: 'border-slate-300 bg-slate-50/80 text-slate-500'
+									? 'editor-muted-panel'
+									: 'editor-muted-panel'
 						}`}
 						data-empty-round-target
 						data-round-index={roundIndex}
@@ -254,10 +255,10 @@
 							<button
 								class={`w-full min-w-0 rounded-3xl border p-4 text-left shadow-sm transition ${
 									selectedStepKey === item.stepKey
-										? 'border-sky-400 bg-sky-50 shadow-md'
+										? 'editor-current-step-card shadow-md'
 										: draggedStepKey === item.stepKey
-											? 'pointer-events-none border-orange-300 bg-orange-50 opacity-0'
-											: 'border-slate-200 bg-white/90 hover:border-sky-200'
+											? 'pointer-events-none editor-soft-accent opacity-0'
+											: 'editor-muted-step-card hover:border-sky-200'
 								}`}
 								data-step-card
 								data-step-key={item.stepKey}
@@ -268,19 +269,19 @@
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div>
-										<p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+										<p class="editor-text-muted text-xs font-bold uppercase tracking-[0.2em]">
 											Slide {item.globalIndex + 1}
 										</p>
-										<h4 class="mt-1 text-lg font-bold text-slate-900">
+										<h4 class="editor-text mt-1 text-lg font-bold">
 											{step.title || 'Untitled step'}
 										</h4>
 									</div>
-									<span class="badge bg-slate-100 text-slate-700">{step.player_input.kind}</span>
+									<span class="theme-surface-muted badge">{step.player_input.kind}</span>
 								</div>
-								<p class="mt-2 line-clamp-2 text-sm text-slate-600">{stepPreview(step)}</p>
+								<p class="editor-text-muted mt-2 line-clamp-2 text-sm">{stepPreview(step)}</p>
 								<div class="mt-3 flex flex-wrap gap-2">
 									{#each stepBadges(step) as badge}
-										<span class="badge bg-white text-slate-700">{badge}</span>
+										<span class="theme-surface-muted badge">{badge}</span>
 									{/each}
 								</div>
 							</button>
@@ -305,25 +306,22 @@
 				dragPointerY - dragOffsetY
 			)}px; width: ${Math.max(220, dragCardWidth)}px;`}
 		>
-			<div
-				class="rounded-3xl border border-orange-300 bg-white/95 p-4 text-left shadow-2xl ring-2 ring-orange-200 backdrop-blur"
-			>
+			<div class="editor-soft-accent rounded-3xl border p-4 text-left shadow-2xl backdrop-blur">
 				<div class="flex items-start justify-between gap-3">
 					<div>
-						<p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+						<p class="editor-text-muted text-xs font-bold uppercase tracking-[0.2em]">
 							Slide {draggedItem.globalIndex + 1}
 						</p>
-						<h4 class="mt-1 text-lg font-bold text-slate-900">
+						<h4 class="editor-text mt-1 text-lg font-bold">
 							{draggedItem.step.title || 'Untitled step'}
 						</h4>
 					</div>
-					<span class="badge bg-slate-100 text-slate-700">{draggedItem.step.player_input.kind}</span
-					>
+					<span class="theme-surface-muted badge">{draggedItem.step.player_input.kind}</span>
 				</div>
-				<p class="mt-2 line-clamp-2 text-sm text-slate-600">{stepPreview(draggedItem.step)}</p>
+				<p class="editor-text-muted mt-2 line-clamp-2 text-sm">{stepPreview(draggedItem.step)}</p>
 				<div class="mt-3 flex flex-wrap gap-2">
 					{#each stepBadges(draggedItem.step) as badge}
-						<span class="badge bg-white text-slate-700">{badge}</span>
+						<span class="theme-surface-muted badge">{badge}</span>
 					{/each}
 				</div>
 			</div>

@@ -195,13 +195,11 @@
 	{#if showBuzzerWinner}
 		{#key buzzedPlayerName}
 			<div class="floating-stage-chip-wrap floating-stage-chip-right">
-				<div
-					class="buzzer-winner-impact card rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-				>
-					<p class="text-xs font-black uppercase tracking-[0.22em] text-amber-700">
+				<div class="buzzer-winner-impact theme-soft-warm card rounded-2xl border px-4 py-3">
+					<p class="theme-soft-warm-label text-xs font-black uppercase tracking-[0.22em]">
 						{$messages.gameplay.buzzedInFirst}
 					</p>
-					<p class="mt-1 max-w-72 truncate text-2xl font-extrabold leading-tight text-slate-950">
+					<p class="theme-text mt-1 max-w-72 truncate text-2xl font-extrabold leading-tight">
 						{buzzedPlayerName}
 					</p>
 				</div>
@@ -297,13 +295,13 @@
 	{/if}
 
 	{#if showStageRevealCard}
-		<div class="reveal-answer-card card w-full border-emerald-200 bg-emerald-50 p-4 md:p-5">
-			<p class="text-center text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+		<div class="reveal-answer-card theme-soft-correct card w-full p-4 md:p-5">
+			<p
+				class="theme-soft-correct-label text-center text-sm font-black uppercase tracking-[0.22em]"
+			>
 				{$messages.common.correctAnswer}
 			</p>
-			<p
-				class="mt-3 text-center text-[clamp(1.4rem,3vw,2.6rem)] font-extrabold leading-tight text-slate-950"
-			>
+			<p class="mt-3 text-center text-[clamp(1.4rem,3vw,2.6rem)] font-extrabold leading-tight">
 				{formatRevealValue(revealedAnswer?.value)}
 			</p>
 		</div>
@@ -315,7 +313,7 @@
 					totalDuration={step?.timer.seconds ?? countdown}
 					paused={phaseLabel !== 'question_active'}
 				/>
-				<p class="mt-3 text-center text-sm text-slate-600">
+				<p class="theme-text-muted mt-3 text-center text-sm">
 					{step?.timer.enforced ? $messages.timer.timerEnforced : $messages.timer.timerAdvisory}
 				</p>
 			</div>
@@ -365,11 +363,11 @@
 	.drawing-vote-rubric {
 		display: grid;
 		gap: 0.25rem;
-		border: 1px solid rgb(191 219 254 / 0.85);
+		border: 1px solid var(--party-soft-primary-border);
 		border-radius: 0.75rem;
-		background: rgb(239 246 255 / 0.9);
+		background: var(--party-soft-primary-bg);
 		padding: clamp(0.65rem, 1.1vw, 0.95rem);
-		color: rgb(15 23 42);
+		color: var(--party-ink);
 	}
 
 	.drawing-vote-rubric p {
@@ -377,7 +375,7 @@
 		font-weight: 950;
 		text-transform: uppercase;
 		letter-spacing: 0.12em;
-		color: rgb(30 64 175);
+		color: var(--party-soft-primary-text);
 	}
 
 	.drawing-vote-rubric strong {
@@ -390,9 +388,9 @@
 		display: grid;
 		gap: 0.5rem;
 		min-width: 0;
-		border: 1px solid rgb(203 213 225 / 0.9);
+		border: 1px solid var(--party-border);
 		border-radius: 1rem;
-		background: rgb(248 250 252 / 0.9);
+		background: color-mix(in srgb, var(--party-surface-strong), transparent 8%);
 		padding: clamp(0.55rem, 1vw, 0.85rem);
 		box-shadow: 0 8px 20px rgb(15 23 42 / 0.1);
 	}
@@ -412,7 +410,7 @@
 		gap: 0.75rem;
 		font-size: clamp(0.82rem, 1.15vw, 1rem);
 		font-weight: 950;
-		color: rgb(15 23 42);
+		color: var(--party-ink);
 	}
 
 	.question-card-title-row {
@@ -432,12 +430,13 @@
 		flex: 0 0 auto;
 		margin-top: 0.15rem;
 		border-radius: 999px;
-		background: rgb(255 255 255 / 0.88);
+		border: 1px solid var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
 		padding: 0.45rem 0.8rem;
 		font-size: 0.78rem;
 		font-weight: 900;
 		text-transform: uppercase;
-		color: rgb(15 23 42);
+		color: var(--party-ink);
 	}
 
 	.reveal-answer-card {
@@ -467,9 +466,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.55rem;
-		border-color: rgb(191 219 254);
-		background: rgb(239 246 255 / 0.94);
-		color: rgb(30 64 175);
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
+		color: var(--party-soft-primary-text);
 		font-size: 0.82rem;
 		font-weight: 900;
 		text-transform: uppercase;
@@ -481,15 +480,15 @@
 		width: 0.55rem;
 		height: 0.55rem;
 		border-radius: 999px;
-		background: rgb(37 99 235);
-		box-shadow: 0 0 0 0 rgb(37 99 235 / 0.34);
+		background: var(--party-primary-strong);
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--party-primary-strong), transparent 66%);
 		animation: submission-dot-ping 900ms ease-out both;
 	}
 
 	.buzzer-winner-impact {
 		position: relative;
 		min-width: min(18rem, 38vw);
-		box-shadow: 0 18px 36px rgb(146 64 14 / 0.14);
+		box-shadow: 0 18px 36px color-mix(in srgb, var(--party-warm), transparent 86%);
 		animation: buzzer-winner-impact 520ms cubic-bezier(0.2, 0.95, 0.25, 1.25) both;
 	}
 
@@ -497,7 +496,7 @@
 		content: '';
 		position: absolute;
 		inset: -0.3rem;
-		border: 2px solid rgb(245 158 11 / 0.55);
+		border: 2px solid color-mix(in srgb, var(--party-accent), transparent 45%);
 		border-radius: 1.15rem;
 		pointer-events: none;
 		animation: buzzer-winner-ring 680ms ease-out both;
@@ -553,11 +552,11 @@
 
 	@keyframes submission-dot-ping {
 		0% {
-			box-shadow: 0 0 0 0 rgb(37 99 235 / 0.38);
+			box-shadow: 0 0 0 0 color-mix(in srgb, var(--party-primary-strong), transparent 62%);
 		}
 
 		100% {
-			box-shadow: 0 0 0 0.55rem rgb(37 99 235 / 0);
+			box-shadow: 0 0 0 0.55rem color-mix(in srgb, var(--party-primary-strong), transparent 100%);
 		}
 	}
 

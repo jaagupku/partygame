@@ -17,6 +17,7 @@
 	import DefinitionStepSorter from './DefinitionStepSorter.svelte';
 	import DefinitionStepTemplateModal from './DefinitionStepTemplateModal.svelte';
 	import { messages } from '$lib/i18n';
+	import { normalizeDefinitionTheme } from '$lib/theme';
 	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
 	import {
 		createDefinitionHistoryState,
@@ -89,6 +90,7 @@
 	let definitionDescriptionDraft = $state('');
 	let definitionIdDraft = $state('');
 	let definitionVisibilityDraft = $state<DefinitionVisibility>('private');
+	let definitionThemeDraft = $state<DefinitionTheme>(normalizeDefinitionTheme());
 	let showDefinitionAdvancedFields = $state(false);
 	let editingTitle = $state(false);
 	let pendingStepInsert = $state<{ roundIndex: number; stepIndex: number } | null>(null);
@@ -297,6 +299,7 @@
 			title: $messages.definitions.untitledDefinition,
 			description: '',
 			visibility: 'private',
+			theme: normalizeDefinitionTheme(),
 			rounds: [createEmptyRound(1, true)]
 		};
 	}
@@ -352,6 +355,7 @@
 		definitionDescriptionDraft = draft.description ?? '';
 		definitionIdDraft = draft.id;
 		definitionVisibilityDraft = draft.visibility ?? 'private';
+		definitionThemeDraft = normalizeDefinitionTheme(draft.theme);
 		showDefinitionAdvancedFields = false;
 		showDefinitionDetailsModal = true;
 	}
@@ -362,11 +366,13 @@
 		definitionDescriptionDraft = '';
 		definitionIdDraft = '';
 		definitionVisibilityDraft = 'private';
+		definitionThemeDraft = normalizeDefinitionTheme();
 	}
 
 	function saveDefinitionDetailsModal() {
 		draft.description = definitionDescriptionDraft;
 		draft.visibility = definitionVisibilityDraft;
+		draft.theme = normalizeDefinitionTheme(definitionThemeDraft);
 		if (showDefinitionAdvancedFields) {
 			draft.id = definitionIdDraft;
 		}
@@ -942,6 +948,7 @@
 			id: definitionId,
 			title: draft.title.trim(),
 			description: draft.description?.trim() || undefined,
+			theme: normalizeDefinitionTheme(draft.theme),
 			visibility: draft.visibility ?? 'private',
 			rounds: draft.rounds.map((round) => ({
 				id: round.id.trim(),
@@ -1398,7 +1405,7 @@
 
 <svelte:window onkeydown={handleEditorShortcuts} />
 
-<div class="flex h-full min-h-0 flex-col">
+<div class="definition-editor-theme-shell flex h-full min-h-0 flex-col">
 	{#if $authLoaded && !$currentUser}
 		<section class="card stack-md">
 			<h1 class="page-title text-left">{$messages.auth.login}</h1>
@@ -1435,7 +1442,7 @@
 				class="definition-editor-workspace grid min-h-0 flex-1 gap-0 xl:grid-cols-[22rem_minmax(0,1fr)]"
 			>
 				<div
-					class="min-h-0 overflow-hidden border-b border-slate-200 bg-white/55 px-3 pt-2 xl:border-b-0 xl:border-r"
+					class="editor-sidebar-frame min-h-0 overflow-hidden border-b px-3 pt-2 xl:border-b-0 xl:border-r"
 				>
 					<DefinitionStepSorter
 						rounds={displayDefinition.rounds}
@@ -1461,12 +1468,12 @@
 					/>
 				</div>
 
-				<div class="flex min-h-0 flex-col overflow-hidden bg-white/40 pt-2">
+				<div class="editor-main-frame flex min-h-0 flex-1 flex-col overflow-hidden pt-2">
 					{#if loadingEditor}
-						<p class="px-4 text-slate-500">Loading definition...</p>
+						<p class="editor-text-muted px-4">Loading definition...</p>
 					{:else if editorUnavailable}
 						<div
-							class="mx-4 flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
+							class="theme-surface-muted mx-4 flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed p-8 text-center"
 						>
 							<div class="flex flex-wrap justify-center gap-3">
 								<button class="btn btn-primary" type="button" onclick={() => goto('/definitions')}>
@@ -1486,6 +1493,7 @@
 								totalSteps={flatSteps.length}
 								{previewStep}
 								{previewCountdown}
+								theme={draft.theme}
 								{showAdvancedFields}
 								{uploadKey}
 								onToggleAdvancedFields={() => (showAdvancedFields = !showAdvancedFields)}
@@ -1511,10 +1519,10 @@
 						</div>
 					{:else}
 						<div
-							class="mx-4 flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center"
+							class="theme-surface-muted mx-4 flex min-h-[28rem] flex-col items-center justify-center rounded-3xl border border-dashed p-8 text-center"
 						>
 							<h3 class="label-title text-2xl">No Step Selected</h3>
-							<p class="mt-2 max-w-lg text-slate-600">
+							<p class="editor-text-muted mt-2 max-w-lg">
 								Create a new step from the sorter or add one to a round to start authoring slides.
 							</p>
 							<button class="btn btn-primary mt-4" type="button" onclick={openStepTemplatePicker}>
@@ -1546,12 +1554,14 @@
 		description={definitionDescriptionDraft}
 		definitionId={definitionIdDraft}
 		visibility={definitionVisibilityDraft}
+		theme={definitionThemeDraft}
 		showAdvancedFields={showDefinitionAdvancedFields}
 		{isNewDefinition}
 		currentDefinitionId={draft.id}
 		onDescriptionChange={(value) => (definitionDescriptionDraft = value)}
 		onDefinitionIdChange={(value) => (definitionIdDraft = value)}
 		onVisibilityChange={(value) => (definitionVisibilityDraft = value)}
+		onThemeChange={(value) => (definitionThemeDraft = value)}
 		onToggleAdvancedFields={() => (showDefinitionAdvancedFields = !showDefinitionAdvancedFields)}
 		onClose={closeDefinitionDetailsModal}
 		onSave={saveDefinitionDetailsModal}
@@ -1559,7 +1569,12 @@
 {/if}
 
 {#if showPreviewModal}
-	<DefinitionPreviewModal step={previewStep} countdown={previewCountdown} onClose={closePreview} />
+	<DefinitionPreviewModal
+		step={previewStep}
+		countdown={previewCountdown}
+		theme={draft.theme}
+		onClose={closePreview}
+	/>
 {/if}
 
 {#if showShortcutHelpModal}
@@ -1599,5 +1614,187 @@
 		.definition-editor-workspace {
 			grid-template-columns: 24rem minmax(0, 1fr);
 		}
+	}
+
+	.definition-editor-theme-shell {
+		--editor-frame: color-mix(in srgb, var(--party-bg-b), white 42%);
+		--editor-side: color-mix(in srgb, var(--party-surface-strong), var(--party-bg-b) 10%);
+		--editor-panel: var(--party-surface-strong);
+		--editor-panel-strong: color-mix(in srgb, var(--party-surface-strong), white 16%);
+		--editor-current: color-mix(in srgb, var(--party-primary), var(--party-surface-strong) 76%);
+		--editor-warning-border: color-mix(in srgb, #facc15, var(--party-border) 18%);
+		--editor-warning-bg: color-mix(in srgb, #facc15, var(--editor-panel) 78%);
+		--editor-warning-text: #92400e;
+		--editor-danger-border: color-mix(in srgb, var(--party-danger), var(--party-border) 35%);
+		--editor-danger-bg: color-mix(in srgb, var(--party-danger), var(--editor-panel) 78%);
+		--editor-danger-text: #991b1b;
+		--editor-danger-hover-bg: color-mix(in srgb, var(--party-danger), var(--editor-panel) 68%);
+		--editor-danger-hover-text: #7f1d1d;
+		background: var(--editor-frame);
+		color: var(--party-ink);
+	}
+
+	:global(:root[data-color-mode='dark']) .definition-editor-theme-shell {
+		--editor-frame: color-mix(in srgb, var(--party-bg-b), black 16%);
+		--editor-side: color-mix(in srgb, var(--party-surface-strong), white 4%);
+		--editor-panel: color-mix(in srgb, var(--party-surface-strong), white 3%);
+		--editor-panel-strong: color-mix(in srgb, var(--party-surface-strong), white 10%);
+		--editor-warning-border: color-mix(in srgb, #facc15, white 12%);
+		--editor-warning-bg: color-mix(in srgb, #facc15, var(--editor-panel) 84%);
+		--editor-warning-text: #fed7aa;
+		--editor-danger-border: color-mix(in srgb, var(--party-danger), white 28%);
+		--editor-danger-bg: color-mix(in srgb, var(--party-danger), var(--editor-panel) 68%);
+		--editor-danger-text: #fecaca;
+		--editor-danger-hover-bg: color-mix(in srgb, var(--party-danger), var(--editor-panel) 55%);
+		--editor-danger-hover-text: white;
+	}
+
+	.definition-editor-theme-shell :global(.definition-editor-workspace),
+	.definition-editor-theme-shell :global(.definition-step-editor-layout) {
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-sidebar-frame) {
+		border-color: var(--party-border);
+		background: color-mix(in srgb, var(--editor-frame), var(--party-bg-b) 8%);
+	}
+
+	.definition-editor-theme-shell :global(.editor-main-frame) {
+		background: var(--editor-frame);
+	}
+
+	.definition-editor-theme-shell :global(.editor-sorter-panel) {
+		margin: 0.75rem;
+		border: 1px solid var(--party-border);
+		border-radius: 1.5rem;
+		background-color: color-mix(in srgb, var(--editor-side), var(--editor-frame) 30%) !important;
+		padding: 0.85rem;
+	}
+
+	.definition-editor-theme-shell :global(.definition-editor-workspace > div:first-child) {
+		padding: 0;
+		background-color: color-mix(in srgb, var(--editor-frame), var(--party-bg-b) 8%) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-round-header) {
+		background-color: color-mix(in srgb, var(--party-primary), var(--editor-frame) 78%) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-muted-step-card) {
+		background-color: var(--editor-side) !important;
+		border-color: color-mix(in srgb, var(--party-border), transparent 15%) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-current-step-card) {
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--party-primary), var(--editor-panel-strong) 76%),
+			var(--editor-panel-strong)
+		) !important;
+		border-color: var(--party-primary) !important;
+		box-shadow: 0 18px 36px rgb(0 0 0 / 0.22);
+	}
+
+	.definition-editor-theme-shell :global(.definition-step-editor-root),
+	.definition-editor-theme-shell :global(.definition-step-editor-preview),
+	.definition-editor-theme-shell :global(.definition-step-editor-layout > div:first-child),
+	.definition-editor-theme-shell :global(.definition-step-editor-layout aside) {
+		background-color: transparent;
+	}
+
+	.definition-editor-theme-shell :global(.editor-section-card),
+	.definition-editor-theme-shell :global(.editor-nested-panel),
+	.definition-editor-theme-shell :global(.editor-choice-card),
+	.definition-editor-theme-shell :global(.editor-template-shell) {
+		border-color: var(--party-border) !important;
+		background: var(--editor-panel-strong) !important;
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-muted-panel),
+	.definition-editor-theme-shell :global(.editor-choice-card-muted) {
+		border-color: var(--party-border) !important;
+		background: var(--editor-panel) !important;
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-choice-card-active),
+	.definition-editor-theme-shell :global(.editor-soft-primary) {
+		border-color: var(--party-primary) !important;
+		background: color-mix(in srgb, var(--party-primary), var(--editor-panel-strong) 78%) !important;
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-soft-accent) {
+		border-color: var(--party-accent) !important;
+		background: color-mix(in srgb, var(--party-accent), var(--editor-panel-strong) 82%) !important;
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-text) {
+		color: var(--party-ink) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-text-muted) {
+		color: var(--party-subtle) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-icon-tile) {
+		background: color-mix(in srgb, var(--party-primary), var(--editor-panel-strong) 82%) !important;
+		color: var(--party-primary) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-health-warning) {
+		border-color: var(--editor-warning-border) !important;
+		background-color: var(--editor-warning-bg) !important;
+		color: var(--editor-warning-text) !important;
+		text-shadow: none;
+	}
+
+	.definition-editor-theme-shell :global(.btn-danger-soft),
+	.definition-editor-theme-shell :global(.editor-danger-icon-button) {
+		border-color: var(--editor-danger-border) !important;
+		background-color: var(--editor-danger-bg) !important;
+		color: var(--editor-danger-text) !important;
+	}
+
+	.definition-editor-theme-shell :global(.btn-danger-soft:hover),
+	.definition-editor-theme-shell :global(.editor-danger-icon-button:hover) {
+		background-color: var(--editor-danger-hover-bg) !important;
+		color: var(--editor-danger-hover-text) !important;
+	}
+
+	.definition-editor-theme-shell :global(.editor-template-shell) {
+		border-color: var(--party-border) !important;
+		background-color: var(--editor-panel) !important;
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-template-card) {
+		border-color: var(--party-border) !important;
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--editor-panel-strong), white 4%),
+			color-mix(in srgb, var(--editor-panel), black 2%)
+		) !important;
+		color: var(--party-ink);
+	}
+
+	.definition-editor-theme-shell :global(.editor-template-card:hover) {
+		border-color: var(--party-primary) !important;
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--party-primary), var(--editor-panel-strong) 82%),
+			var(--editor-panel-strong)
+		) !important;
+	}
+
+	.definition-editor-theme-shell :global(.input),
+	.definition-editor-theme-shell :global(textarea),
+	.definition-editor-theme-shell :global(input),
+	.definition-editor-theme-shell :global(select) {
+		border-color: var(--party-border);
+		background-color: var(--party-surface-strong);
+		color: var(--party-ink);
 	}
 </style>

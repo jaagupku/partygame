@@ -16,21 +16,19 @@
 		<button
 			type="button"
 			class={`rounded-[1.4rem] border p-4 text-left transition ${
-				selectedType === details.type
-					? 'border-amber-300 bg-amber-50 shadow-sm'
-					: 'border-slate-200 bg-white hover:border-amber-200 hover:bg-amber-50/50'
+				selectedType === details.type ? 'editor-soft-accent shadow-sm' : 'editor-choice-card-muted'
 			}`}
 			onclick={() => onSelect(details.type)}
 		>
 			<div class="flex items-start gap-3">
 				<div
-					class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-2xl text-amber-700 shadow-sm"
+					class="editor-icon-tile inline-flex h-11 w-11 items-center justify-center rounded-2xl text-2xl shadow-sm"
 				>
 					<iconify-icon icon={details.icon}></iconify-icon>
 				</div>
 				<div>
-					<p class="text-base font-bold text-slate-900">{details.label}</p>
-					<p class="mt-1 text-sm leading-6 text-slate-600">{details.description}</p>
+					<p class="editor-text text-base font-bold">{details.label}</p>
+					<p class="editor-text-muted mt-1 text-sm leading-6">{details.description}</p>
 				</div>
 			</div>
 		</button>

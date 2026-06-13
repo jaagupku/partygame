@@ -16,6 +16,83 @@
 	--party-accent-strong: #ea580c;
 	--party-danger: #ef4444;
 	--party-danger-strong: #dc2626;
+	--party-success: #16a34a;
+	--party-success-strong: #047857;
+	--party-warm: #7c2d12;
+	--party-warm-strong: #9a3412;
+	--party-warning: #92400e;
+	--party-warning-strong: #b45309;
+	--party-critical: #7f1d1d;
+	--party-critical-strong: #991b1b;
+	--party-soft-surface: color-mix(in srgb, var(--party-surface-strong), var(--party-bg-b) 18%);
+	--party-raised-surface: color-mix(in srgb, var(--party-surface-strong), white 5%);
+	--party-muted-control: color-mix(in srgb, var(--party-surface-strong), var(--party-ink) 10%);
+	--party-soft-primary-border: color-mix(in srgb, var(--party-primary), var(--party-border) 55%);
+	--party-soft-primary-bg: color-mix(
+		in srgb,
+		var(--party-primary),
+		var(--party-surface-strong) 84%
+	);
+	--party-soft-primary-text: color-mix(in srgb, var(--party-primary-strong), var(--party-ink) 22%);
+	--party-soft-accent-border: color-mix(in srgb, var(--party-accent), var(--party-border) 55%);
+	--party-soft-accent-bg: color-mix(in srgb, var(--party-accent), var(--party-surface-strong) 84%);
+	--party-soft-accent-text: color-mix(in srgb, var(--party-accent-strong), var(--party-ink) 22%);
+	--party-soft-danger-border: color-mix(in srgb, var(--party-danger), var(--party-border) 55%);
+	--party-soft-danger-bg: color-mix(in srgb, var(--party-danger), var(--party-surface-strong) 84%);
+	--party-soft-danger-text: color-mix(in srgb, var(--party-danger-strong), var(--party-ink) 22%);
+	--party-soft-success-border: color-mix(in srgb, var(--party-success), var(--party-border) 38%);
+	--party-soft-success-bg: color-mix(
+		in srgb,
+		var(--party-success),
+		var(--party-surface-strong) 78%
+	);
+	--party-soft-success-text: var(--party-ink);
+	--party-soft-success-label: color-mix(in srgb, var(--party-success-strong), var(--party-ink) 24%);
+	--party-soft-correct-border: color-mix(in srgb, #22c55e, var(--party-border) 32%);
+	--party-soft-correct-bg: color-mix(in srgb, #22c55e, var(--party-surface-strong) 64%);
+	--party-soft-correct-text: #052e16;
+	--party-soft-correct-label: #047857;
+	--party-soft-warm-border: color-mix(in srgb, var(--party-accent), var(--party-border) 35%);
+	--party-soft-warm-bg: color-mix(in srgb, var(--party-accent), var(--party-surface-strong) 64%);
+	--party-soft-warm-text: #431407;
+	--party-soft-warm-label: #c2410c;
+	--party-soft-warning-border: color-mix(in srgb, #f59e0b, var(--party-border) 28%);
+	--party-soft-warning-bg: color-mix(in srgb, #f59e0b, var(--party-surface-strong) 62%);
+	--party-soft-warning-text: #451a03;
+	--party-soft-warning-label: #b45309;
+	--party-soft-critical-border: color-mix(in srgb, var(--party-danger), var(--party-border) 25%);
+	--party-soft-critical-bg: color-mix(
+		in srgb,
+		var(--party-danger),
+		var(--party-surface-strong) 64%
+	);
+	--party-soft-critical-text: #450a0a;
+	--party-soft-critical-label: #b91c1c;
+	color-scheme: light;
+}
+
+:root[data-color-mode='dark'] {
+	--party-soft-correct-bg: color-mix(in srgb, #14532d, var(--party-surface-strong) 34%);
+	--party-soft-correct-text: #f0fdf4;
+	--party-soft-correct-label: #bbf7d0;
+	--party-soft-warm-bg: color-mix(in srgb, var(--party-warm), var(--party-surface-strong) 34%);
+	--party-soft-warm-text: var(--party-ink);
+	--party-soft-warm-label: #fed7aa;
+	--party-soft-warning-bg: color-mix(
+		in srgb,
+		var(--party-warning),
+		var(--party-surface-strong) 32%
+	);
+	--party-soft-warning-text: var(--party-ink);
+	--party-soft-warning-label: #fed7aa;
+	--party-soft-critical-bg: color-mix(
+		in srgb,
+		var(--party-critical),
+		var(--party-surface-strong) 30%
+	);
+	--party-soft-critical-text: var(--party-ink);
+	--party-soft-critical-label: #fecaca;
+	color-scheme: dark;
 }
 
 @layer base {
@@ -36,9 +113,21 @@
 		color: var(--party-ink);
 		font-family: 'Nunito', system-ui, sans-serif;
 		background:
-			radial-gradient(circle at 10% 15%, #c7f1ff 0, transparent 30%),
-			radial-gradient(circle at 85% 10%, #fff0c9 0, transparent 32%),
-			radial-gradient(circle at 78% 84%, #d7ffda 0, transparent 30%),
+			radial-gradient(
+				circle at 10% 15%,
+				color-mix(in srgb, var(--party-primary), transparent 68%) 0,
+				transparent 30%
+			),
+			radial-gradient(
+				circle at 85% 10%,
+				color-mix(in srgb, var(--party-accent), transparent 72%) 0,
+				transparent 32%
+			),
+			radial-gradient(
+				circle at 78% 84%,
+				color-mix(in srgb, var(--party-bg-a), transparent 45%) 0,
+				transparent 30%
+			),
 			linear-gradient(135deg, var(--party-bg-a), var(--party-bg-b) 42%, var(--party-bg-c));
 		background-attachment: fixed;
 	}
@@ -66,6 +155,10 @@
 @layer components {
 	.app-shell {
 		@apply min-h-screen p-4 md:p-8;
+	}
+
+	.app-header-shell {
+		@apply mb-4 w-full md:mb-5;
 	}
 
 	.app-shell-editor {
@@ -124,18 +217,18 @@
 		height: 2.25rem;
 		flex: 0 0 auto;
 		place-items: center;
-		border: 1px solid rgb(203 213 225);
+		border: 1px solid var(--party-border);
 		border-radius: 0.75rem;
-		background: rgba(255, 255, 255, 0.92);
-		color: rgb(15 23 42);
+		background: var(--party-surface-strong);
+		color: var(--party-ink);
 		font-size: 1.2rem;
 		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 	}
 
 	.controller-icon-button-active {
-		border-color: rgba(14, 165, 233, 0.42);
-		background: rgb(224 242 254);
-		color: rgb(2 132 199);
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
+		color: var(--party-soft-primary-text);
 	}
 
 	.controller-icon-button:disabled {
@@ -237,6 +330,12 @@
 		background: linear-gradient(140deg, var(--party-danger), var(--party-danger-strong));
 	}
 
+	.btn-danger-soft {
+		border-color: var(--party-soft-danger-border);
+		background: var(--party-soft-danger-bg);
+		color: var(--party-soft-danger-text);
+	}
+
 	.btn-ghost {
 		background: var(--party-surface-strong);
 	}
@@ -266,7 +365,7 @@
 
 	.select-input option {
 		color: var(--party-ink);
-		background: white;
+		background: var(--party-surface-strong);
 	}
 
 	.select-chevron {
@@ -283,32 +382,83 @@
 		@apply rounded-2xl border p-4 shadow-sm;
 	}
 
+	.theme-surface {
+		border-color: var(--party-border);
+		background: var(--party-surface-strong);
+		color: var(--party-ink);
+	}
+
+	.theme-surface-muted {
+		border-color: var(--party-border);
+		background: var(--party-soft-surface);
+		color: var(--party-ink);
+	}
+
+	.theme-surface-raised {
+		border-color: var(--party-border);
+		background: var(--party-raised-surface);
+		color: var(--party-ink);
+		box-shadow: 0 14px 34px rgb(15 23 42 / 0.12);
+	}
+
+	.theme-text {
+		color: var(--party-ink);
+	}
+
+	.theme-text-muted {
+		color: var(--party-subtle);
+	}
+
+	.theme-soft-primary {
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
+		color: var(--party-soft-primary-text);
+	}
+
+	.theme-soft-accent {
+		border-color: var(--party-soft-accent-border);
+		background: var(--party-soft-accent-bg);
+		color: var(--party-soft-accent-text);
+	}
+
+	.theme-soft-warm {
+		border-color: var(--party-soft-warm-border);
+		background: var(--party-soft-warm-bg);
+		color: var(--party-soft-warm-text);
+		box-shadow: 0 10px 24px color-mix(in srgb, var(--party-warm), transparent 78%);
+	}
+
+	.theme-soft-warm-label {
+		color: var(--party-soft-warm-label);
+	}
+
+	.theme-soft-danger {
+		border-color: var(--party-soft-danger-border);
+		background: var(--party-soft-danger-bg);
+		color: var(--party-soft-danger-text);
+	}
+
+	.theme-soft-success {
+		border-color: var(--party-soft-success-border);
+		background: var(--party-soft-success-bg);
+		color: var(--party-soft-success-text);
+	}
+
+	.theme-soft-success-label {
+		color: var(--party-soft-success-label);
+	}
+
+	.theme-soft-correct {
+		border-color: var(--party-soft-correct-border);
+		background: var(--party-soft-correct-bg);
+		color: var(--party-soft-correct-text);
+	}
+
+	.theme-soft-correct-label {
+		color: var(--party-soft-correct-label);
+	}
+
 	.badge {
 		@apply rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide;
-	}
-
-	.page-top-chips {
-		@apply mb-4 flex flex-wrap items-center justify-end gap-2 md:absolute md:left-6 md:top-6 md:mb-0 md:justify-start;
-	}
-
-	.chip-button,
-	.chip-select {
-		background: rgba(255, 255, 255, 0.9);
-		box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-		@apply inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-bold tracking-wide text-slate-700;
-	}
-
-	.chip-button:hover,
-	.chip-select:hover {
-		transform: translateY(-1px);
-	}
-
-	.chip-select {
-		@apply pr-3;
-	}
-
-	.chip-select select {
-		background: transparent;
-		@apply border-0 pr-2 outline-none;
 	}
 }

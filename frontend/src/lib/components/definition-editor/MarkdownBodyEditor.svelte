@@ -104,14 +104,14 @@
 </script>
 
 <div class="input-wrap">
-	<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+	<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 		{$messages.editor.body}
 	</span>
-	<div class="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
+	<div class="editor-muted-panel flex flex-wrap gap-2 rounded-2xl border p-2">
 		{#each actions as action}
 			<button
 				type="button"
-				class="inline-flex h-8 min-w-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-sky-400 hover:bg-sky-50 hover:text-sky-800 active:border-sky-500 active:bg-sky-100 active:text-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+				class="theme-surface inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-sm font-black shadow-sm transition hover:border-sky-400 hover:opacity-85 active:opacity-75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
 				title={action.title}
 				aria-label={action.title}
 				onclick={action.run}

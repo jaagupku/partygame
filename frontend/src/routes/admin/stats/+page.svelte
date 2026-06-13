@@ -95,32 +95,20 @@
 {:else}
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div>
-			<nav class="mb-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-				<button class="transition hover:text-slate-700" onclick={() => goto('/')}>
-					{$messages.common.home}
-				</button>
-				<span aria-hidden="true">/</span>
-				<span aria-current="page" class="font-semibold text-slate-700">
-					{$messages.admin.title}
-				</span>
-			</nav>
 			<h1 class="page-title text-left">{$messages.admin.title}</h1>
 			<p class="page-subtitle text-left">{$messages.admin.subtitle}</p>
 		</div>
-		<button class="btn btn-ghost text-lg" type="button" onclick={() => goto('/')}>
-			{$messages.common.home}
-		</button>
 	</div>
 
 	<div class="stack-lg">
 		<section class="card stack-md">
 			<div class="flex flex-wrap items-end gap-3">
 				<label class="input-wrap min-w-56 flex-1">
-					<span class="text-sm font-bold text-slate-600">{$messages.admin.definition}</span>
+					<span class="theme-text-muted text-sm font-bold">{$messages.admin.definition}</span>
 					<input class="input text-base" bind:value={definitionFilter} placeholder="quiz_demo" />
 				</label>
 				<label class="input-wrap min-w-52">
-					<span class="text-sm font-bold text-slate-600">{$messages.admin.hostMode}</span>
+					<span class="theme-text-muted text-sm font-bold">{$messages.admin.hostMode}</span>
 					<div class="select-shell">
 						<select class="input select-input text-base" bind:value={hostModeFilter}>
 							<option value="">{$messages.admin.allHostModes}</option>
@@ -131,11 +119,11 @@
 					</div>
 				</label>
 				<label class="input-wrap min-w-44">
-					<span class="text-sm font-bold text-slate-600">{$messages.admin.finishedFrom}</span>
+					<span class="theme-text-muted text-sm font-bold">{$messages.admin.finishedFrom}</span>
 					<input class="input text-base" type="date" bind:value={finishedFromFilter} />
 				</label>
 				<label class="input-wrap min-w-44">
-					<span class="text-sm font-bold text-slate-600">{$messages.admin.finishedTo}</span>
+					<span class="theme-text-muted text-sm font-bold">{$messages.admin.finishedTo}</span>
 					<input class="input text-base" type="date" bind:value={finishedToFilter} />
 				</label>
 				<button class="btn btn-primary" type="button" onclick={loadStats}>
@@ -151,20 +139,20 @@
 			<div class="flex items-center justify-between gap-3">
 				<h2 class="label-title text-2xl">{$messages.admin.completedGames}</h2>
 				{#if loading}
-					<span class="text-sm text-slate-500">{$messages.common.loading}</span>
+					<span class="theme-text-muted text-sm">{$messages.common.loading}</span>
 				{/if}
 			</div>
 
 			{#if stats.length === 0 && !loading && !loadFailed}
 				<div
-					class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center font-semibold text-slate-600"
+					class="theme-surface-muted rounded-2xl border border-dashed px-4 py-6 text-center font-semibold"
 				>
 					{$messages.admin.noStatsYet}
 				</div>
 			{:else if !loadFailed}
 				<div class="overflow-x-auto">
 					<table class="w-full min-w-[760px] border-separate border-spacing-y-2 text-left text-sm">
-						<thead class="text-xs uppercase tracking-wide text-slate-500">
+						<thead class="theme-text-muted text-xs uppercase tracking-wide">
 							<tr>
 								<th class="px-3 py-2">{$messages.admin.game}</th>
 								<th class="px-3 py-2">{$messages.admin.definition}</th>
@@ -177,7 +165,7 @@
 						<tbody>
 							{#each stats as item}
 								<tr
-									class={`cursor-pointer rounded-2xl bg-white/80 shadow-sm ${selectedStats?.game_id === item.game_id ? 'outline outline-2 outline-sky-300' : ''}`}
+									class={`admin-stats-row cursor-pointer rounded-2xl shadow-sm ${selectedStats?.game_id === item.game_id ? 'admin-stats-row-selected' : ''}`}
 									onclick={() => (selectedGameId = item.game_id)}
 								>
 									<td class="rounded-l-2xl px-3 py-3 font-bold">{item.join_code}</td>
@@ -203,7 +191,9 @@
 				<div class="card stack-md">
 					<h2 class="label-title text-2xl">{$messages.admin.scoreboard}</h2>
 					{#each selectedStats.summary.scoreboard ?? [] as player}
-						<div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+						<div
+							class="theme-surface-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+						>
 							<span class="font-bold">{player.place}. {player.name}</span>
 							<span>{player.score}</span>
 						</div>
@@ -265,7 +255,7 @@
 					</div>
 					<div class="flex flex-wrap gap-2">
 						{#each Object.entries(selectedStats.summary.reactions?.reaction_counts ?? {}) as [reaction, count]}
-							<span class="badge bg-slate-100 text-slate-700">{reaction} {count}</span>
+							<span class="theme-surface-muted badge border">{reaction} {count}</span>
 						{/each}
 					</div>
 				</div>
@@ -273,3 +263,15 @@
 		{/if}
 	</div>
 {/if}
+
+<style>
+	.admin-stats-row {
+		background: var(--party-soft-surface);
+		color: var(--party-ink);
+	}
+
+	.admin-stats-row-selected {
+		outline: 2px solid var(--party-primary);
+		background: var(--party-soft-primary-bg);
+	}
+</style>

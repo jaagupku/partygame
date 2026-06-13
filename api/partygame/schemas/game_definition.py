@@ -48,6 +48,29 @@ class EvaluationType(StrEnum):
     FAVORITE_VOTE = auto()
 
 
+class DefinitionThemeMode(StrEnum):
+    LIGHT = auto()
+    DARK = auto()
+    SYSTEM = auto()
+
+
+class DefinitionThemePalette(StrEnum):
+    PARTY = auto()
+    MIDNIGHT = auto()
+    CANDY = auto()
+    FOREST = auto()
+
+
+class DefinitionTheme(BaseModel):
+    mode: DefinitionThemeMode = DefinitionThemeMode.SYSTEM
+    palette: DefinitionThemePalette = DefinitionThemePalette.PARTY
+    background: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    surface: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    ink: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    primary: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    accent: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+
+
 class MapPoint(BaseModel):
     lat: float = Field(ge=-90.0, le=90.0)
     lng: float = Field(ge=-180.0, le=180.0)
@@ -342,4 +365,5 @@ class GameDefinition(BaseModel):
     id: str = Field(pattern=DEFINITION_ID_PATTERN)
     title: str
     description: str | None = None
+    theme: DefinitionTheme | None = None
     rounds: list[RoundDefinition] = Field(default_factory=list)

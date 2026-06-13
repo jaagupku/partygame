@@ -123,9 +123,9 @@
 		display: grid;
 		grid-template-columns: repeat(3, 3.25rem);
 		gap: 0.45rem;
-		border: 1px solid rgba(148, 163, 184, 0.28);
+		border: 1px solid var(--party-border);
 		border-radius: 1rem;
-		background: rgba(255, 255, 255, 0.95);
+		background: color-mix(in srgb, var(--party-surface-strong), var(--party-bg-b) 12%);
 		padding: 0.55rem;
 		box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
 		backdrop-filter: blur(12px);
@@ -142,8 +142,9 @@
 	.reaction-option {
 		display: grid;
 		place-items: center;
-		border: 1px solid rgba(15, 23, 42, 0.1);
-		background: rgb(255, 255, 255);
+		border: 1px solid var(--party-border);
+		background: color-mix(in srgb, var(--party-surface-strong), var(--party-bg-b) 10%);
+		color: var(--party-ink);
 		box-shadow: 0 10px 26px rgba(15, 23, 42, 0.16);
 		transition:
 			transform 120ms ease,
@@ -162,7 +163,6 @@
 		width: 2.75rem;
 		height: 2.75rem;
 		border-radius: 999px;
-		color: rgb(15, 23, 42);
 		font-size: 1.35rem;
 	}
 
@@ -188,8 +188,9 @@
 
 	.reaction-chooser.active,
 	.reaction-option.selected {
-		border-color: rgba(14, 165, 233, 0.42);
-		background: rgb(224, 242, 254);
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
+		color: var(--party-soft-primary-text);
 		box-shadow: 0 10px 26px rgba(14, 165, 233, 0.18);
 	}
 

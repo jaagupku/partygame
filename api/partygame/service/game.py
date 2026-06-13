@@ -113,6 +113,11 @@ class GameRuntimeService:
     async def _flatten_steps(self, lobby: schemas.Lobby) -> list[StepDefinition]:
         return [item.step for item in await self._flatten_steps_with_metadata(lobby)]
 
+    async def get_definition_theme(self, lobby: schemas.Lobby) -> schemas.DefinitionTheme | None:
+        definition_id = lobby.definition_id or "quiz_demo"
+        definition = await self.definition_provider.load(definition_id)
+        return definition.theme
+
     async def get_current_step(self, lobby: schemas.Lobby) -> StepDefinition | None:
         steps = await self._flatten_steps_with_metadata(lobby)
         if lobby.current_step >= len(steps):

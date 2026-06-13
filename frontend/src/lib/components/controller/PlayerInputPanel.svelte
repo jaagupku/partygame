@@ -249,17 +249,17 @@
 {#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && displayPhase === 'drawing_vote' && drawingItems.length > 0}
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.voteForFavoriteDrawing}</h2>
-		<p class="text-sm text-slate-600">
+		<p class="theme-text-muted text-sm">
 			{drawingVoteSubmitted
 				? $messages.gameplay.drawingVoteSubmitted
 				: $messages.gameplay.pickFavoriteDrawing}
 		</p>
 		{#if drawingVoteRubric}
-			<div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
-				<p class="text-xs font-black uppercase tracking-wide text-sky-700">
+			<div class="theme-soft-primary rounded-xl border px-4 py-3">
+				<p class="text-xs font-black uppercase tracking-wide">
 					{$messages.gameplay.drawingVoteRubric}
 				</p>
-				<p class="mt-1 text-sm font-bold leading-snug text-slate-900">{drawingVoteRubric}</p>
+				<p class="theme-text mt-1 text-sm font-bold leading-snug">{drawingVoteRubric}</p>
 			</div>
 		{/if}
 		{#if visibleDrawingItems.length > 0}
@@ -277,7 +277,7 @@
 				{/each}
 			</div>
 		{:else}
-			<p class="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+			<p class="theme-surface-muted rounded-2xl border px-4 py-3 text-sm font-semibold">
 				{$messages.gameplay.noOtherDrawingsToVote}
 			</p>
 		{/if}
@@ -285,7 +285,7 @@
 {:else if activeStep?.input_kind === 'drawing' && displayPhase === 'answer_reveal'}
 	<section class="card controller-compact-card drawing-answer-card stack-md text-center">
 		<h2 class="label-title text-2xl">{$messages.gameplay.drawingResults}</h2>
-		<p class="text-sm text-slate-600">{$messages.gameplay.drawingResultsOnMainScreen}</p>
+		<p class="theme-text-muted text-sm">{$messages.gameplay.drawingResultsOnMainScreen}</p>
 	</section>
 {:else if activeStep?.input_kind === 'buzzer'}
 	<section class="card controller-compact-card stack-md text-center">
@@ -314,7 +314,7 @@
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
 		{#if inputDisabled}
-			<p class="text-sm text-slate-600">
+			<p class="theme-text-muted text-sm">
 				{hasSubmitted
 					? $messages.gameplay.answerSubmitted
 					: $messages.gameplay.stepClosedAnswersDisabled}
@@ -340,7 +340,7 @@
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.yourAnswer}</h2>
 		{#if inputDisabled}
-			<p class="text-sm text-slate-600">
+			<p class="theme-text-muted text-sm">
 				{hasSubmitted
 					? $messages.gameplay.answerSubmitted
 					: $messages.gameplay.stepClosedAnswersDisabled}
@@ -357,11 +357,13 @@
 		{#if useNumberSlider}
 			<div class="stack-md">
 				<div class="flex items-center justify-between gap-4">
-					<span class="text-sm font-bold text-slate-600">{activeStep?.slider_min}</span>
-					<output class="rounded-2xl border bg-white px-5 py-2 text-center text-3xl font-extrabold">
+					<span class="theme-text-muted text-sm font-bold">{activeStep?.slider_min}</span>
+					<output
+						class="theme-surface rounded-2xl border px-5 py-2 text-center text-3xl font-extrabold"
+					>
 						{answerValue}
 					</output>
-					<span class="text-sm font-bold text-slate-600">{activeStep?.slider_max}</span>
+					<span class="theme-text-muted text-sm font-bold">{activeStep?.slider_max}</span>
 				</div>
 				<input
 					class="number-slider"
@@ -389,7 +391,7 @@
 {:else if activeStep?.input_kind === 'ordering'}
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.orderingAnswer}</h2>
-		<p class="text-sm text-slate-600">
+		<p class="theme-text-muted text-sm">
 			{inputDisabled
 				? hasSubmitted
 					? $messages.gameplay.orderSubmitted
@@ -416,7 +418,7 @@
 {:else if activeStep?.input_kind === 'radio'}
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.chooseOne}</h2>
-		<p class="text-sm text-slate-600">
+		<p class="theme-text-muted text-sm">
 			{inputDisabled
 				? hasSubmitted
 					? $messages.gameplay.choiceLocked
@@ -441,7 +443,7 @@
 {:else if activeStep?.input_kind === 'checkbox'}
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.chooseOneOrMore}</h2>
-		<p class="text-sm text-slate-600">
+		<p class="theme-text-muted text-sm">
 			{inputDisabled
 				? hasSubmitted
 					? $messages.gameplay.selectionSubmitted
@@ -476,7 +478,7 @@
 		<div class="controller-action-row">
 			<div class="min-w-0">
 				<h2 class="label-title text-2xl">{$messages.gameplay.mapAnswer}</h2>
-				<p class="controller-input-help text-sm text-slate-600">
+				<p class="controller-input-help theme-text-muted text-sm">
 					{inputDisabled
 						? hasSubmitted
 							? $messages.gameplay.mapGuessSubmitted
@@ -508,7 +510,7 @@
 {:else if activeStep?.input_kind === 'drawing'}
 	<section class="card controller-compact-card drawing-answer-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.drawingAnswer}</h2>
-		<p class="text-sm text-slate-600">
+		<p class="theme-text-muted text-sm">
 			{inputDisabled
 				? hasSubmitted
 					? $messages.gameplay.drawingSubmitted
@@ -530,7 +532,7 @@
 	<section class="card controller-compact-card text-center">
 		<p class="text-lg">{$messages.gameplay.noPhoneInput}</p>
 		{#if canContinueHostlessInfoSlide}
-			<p class="mt-2 text-slate-600">{$messages.gameplay.youCanContinueInfoSlide}</p>
+			<p class="theme-text-muted mt-2">{$messages.gameplay.youCanContinueInfoSlide}</p>
 			<button
 				type="button"
 				class="btn btn-primary mt-4"
@@ -566,12 +568,12 @@
 		display: grid;
 		gap: 0.65rem;
 		border-radius: 1rem;
-		border: 2px solid rgb(226 232 240);
-		background: rgb(255 255 255 / 0.82);
+		border: 2px solid var(--party-border);
+		background: var(--party-soft-surface);
 		padding: 0.7rem;
 		text-align: left;
 		font-weight: 900;
-		color: rgb(15 23 42);
+		color: var(--party-ink);
 		transition:
 			border-color 150ms ease,
 			transform 150ms ease,
@@ -580,13 +582,13 @@
 
 	.drawing-vote-card:not(:disabled):hover {
 		transform: translateY(-1px);
-		border-color: rgb(59 130 246);
+		border-color: var(--party-primary);
 		box-shadow: 0 12px 24px rgb(15 23 42 / 0.12);
 	}
 
 	.drawing-vote-card-selected {
-		border-color: rgb(37 99 235);
-		background: rgb(239 246 255);
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
 	}
 
 	.number-slider {
@@ -613,7 +615,7 @@
 		width: 2.75rem;
 		height: 2.75rem;
 		margin-top: -0.95rem;
-		border: 4px solid white;
+		border: 4px solid var(--party-surface-strong);
 		border-radius: 999px;
 		background: var(--party-accent);
 		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
@@ -622,7 +624,7 @@
 	.number-slider::-moz-range-thumb {
 		width: 2.35rem;
 		height: 2.35rem;
-		border: 4px solid white;
+		border: 4px solid var(--party-surface-strong);
 		border-radius: 999px;
 		background: var(--party-accent);
 		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);

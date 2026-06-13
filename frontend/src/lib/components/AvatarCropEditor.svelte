@@ -195,17 +195,34 @@
 		overflow: hidden;
 		border-radius: 1.5rem;
 		background:
-			linear-gradient(45deg, rgb(226 232 240 / 0.95) 25%, transparent 25%),
-			linear-gradient(-45deg, rgb(226 232 240 / 0.95) 25%, transparent 25%),
-			linear-gradient(45deg, transparent 75%, rgb(226 232 240 / 0.95) 75%),
-			linear-gradient(-45deg, transparent 75%, rgb(226 232 240 / 0.95) 75%);
+			linear-gradient(
+				45deg,
+				color-mix(in srgb, var(--party-surface-strong), var(--party-ink) 12%) 25%,
+				transparent 25%
+			),
+			linear-gradient(
+				-45deg,
+				color-mix(in srgb, var(--party-surface-strong), var(--party-ink) 12%) 25%,
+				transparent 25%
+			),
+			linear-gradient(
+				45deg,
+				transparent 75%,
+				color-mix(in srgb, var(--party-surface-strong), var(--party-ink) 12%) 75%
+			),
+			linear-gradient(
+				-45deg,
+				transparent 75%,
+				color-mix(in srgb, var(--party-surface-strong), var(--party-ink) 12%) 75%
+			),
+			var(--party-surface-strong);
 		background-size: 24px 24px;
 		background-position:
 			0 0,
 			0 12px,
 			12px -12px,
 			-12px 0;
-		border: 1px solid rgb(148 163 184 / 0.4);
+		border: 1px solid var(--party-border);
 		touch-action: none;
 	}
 
@@ -224,7 +241,7 @@
 	.crop-mask {
 		position: absolute;
 		inset: 0;
-		box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.95);
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--party-ink), white 35%);
 		pointer-events: none;
 	}
 

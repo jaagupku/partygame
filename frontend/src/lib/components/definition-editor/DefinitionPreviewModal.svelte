@@ -7,10 +7,11 @@
 	type Props = {
 		step?: RuntimeStepState;
 		countdown: number;
+		theme?: DefinitionTheme | null;
 		onClose: () => void;
 	};
 
-	let { step, countdown, onClose }: Props = $props();
+	let { step, countdown, theme, onClose }: Props = $props();
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') {
@@ -23,16 +24,16 @@
 
 <div use:modalPortal class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/55 p-4 md:p-8">
 	<div
-		class="mx-auto w-full max-w-[90rem] rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl md:p-8"
+		class="theme-surface mx-auto w-full max-w-[90rem] rounded-[2rem] border p-6 shadow-2xl md:p-8"
 	>
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 			<div>
 				<h3 class="label-title text-2xl">{$messages.editor.displayPreview}</h3>
-				<p class="text-sm text-slate-600">{$messages.editor.displayPreviewHelp}</p>
+				<p class="theme-text-muted text-sm">{$messages.editor.displayPreviewHelp}</p>
 			</div>
 			<button
 				type="button"
-				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600"
+				class="theme-surface-muted inline-flex h-10 w-10 items-center justify-center rounded-full border"
 				aria-label={$messages.editor.closeDisplayPreview}
 				onclick={onClose}
 			>
@@ -43,6 +44,7 @@
 		<EditorPreviewPane
 			{step}
 			{countdown}
+			{theme}
 			title={$messages.common.preview}
 			height="min(68vh, 50rem)"
 			minHeight="32rem"

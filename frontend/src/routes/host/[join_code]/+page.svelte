@@ -15,6 +15,7 @@
 	import { createQrCodeDataUrl } from '$lib/qr-code.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { createSoundSystem } from '$lib/sound-system.js';
+	import { definitionThemeStyle } from '$lib/theme';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
@@ -200,22 +201,22 @@
 	<h1 class="page-title">{definitionTitle()}</h1>
 	<p class="page-subtitle">
 		{$messages.hostView.joinCode}:
-		<span class="mt-2 block text-5xl font-black tracking-[0.28em] text-slate-950 sm:text-6xl">
+		<span class="theme-text mt-2 block text-5xl font-black tracking-[0.28em] sm:text-6xl">
 			{$game.join_code}
 		</span>
 	</p>
 	{#if joinQrDataUrl}
 		<div
-			class="mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200"
+			class="theme-surface mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg border p-4 shadow-sm"
 		>
 			<img
-				class="h-52 w-52"
+				class="h-52 w-52 rounded-md bg-white p-2"
 				src={joinQrDataUrl}
 				alt={$messages.hostView.joinQrAlt}
 				width="208"
 				height="208"
 			/>
-			<p class="max-w-64 text-center text-sm font-semibold text-slate-600">
+			<p class="theme-text-muted max-w-64 text-center text-sm font-semibold">
 				{$messages.hostView.scanToJoin}
 			</p>
 		</div>
@@ -249,11 +250,11 @@
 							sizeClass="h-16 w-16"
 						/>
 						<span
-							class="flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight text-slate-800"
+							class="theme-text flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight"
 						>
 							{#if player.status === 'disconnected'}
 								<iconify-icon
-									class="shrink-0 text-base text-slate-500"
+									class="theme-text-muted shrink-0 text-base"
 									icon="fluent:plug-disconnected-16-filled"
 									title={$messages.common.disconnected}
 								></iconify-icon>
@@ -261,7 +262,9 @@
 							<span class="truncate">{player.name}</span>
 						</span>
 						{#if player.isHost}
-							<span class="-mt-1 text-xs font-extrabold uppercase text-sky-700">
+							<span
+								class="theme-soft-primary -mt-1 rounded-full border px-2 py-0.5 text-xs font-extrabold uppercase"
+							>
 								{$messages.common.host}
 							</span>
 						{/if}
@@ -271,7 +274,7 @@
 		</ul>
 	{/if}
 {:else}
-	<div class="relative h-full min-h-0 overflow-hidden">
+	<div class="relative h-full min-h-0 overflow-hidden" style={definitionThemeStyle($game.theme)}>
 		<section class="relative h-full min-w-0 min-h-0 mt0">
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
@@ -285,7 +288,7 @@
 				/>
 			{:else if $game.phase === 'finished' && $game.endGame}
 				<section
-					class="card grid h-full min-h-0 place-items-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(219,234,254,0.88)_45%,_rgba(240,253,244,0.92))] text-center"
+					class="final-ready-panel card grid h-full min-h-0 place-items-center overflow-hidden text-center"
 				>
 					<div class="max-w-2xl">
 						<h1 class="page-title text-4xl md:text-5xl">{definitionTitle()}</h1>
@@ -342,3 +345,17 @@
 		</aside>
 	</div>
 {/if}
+
+<style>
+	.final-ready-panel {
+		background:
+			radial-gradient(
+				circle at top,
+				color-mix(in srgb, var(--party-surface-strong), transparent 8%),
+				var(--party-soft-primary-bg) 45%,
+				var(--party-soft-correct-bg)
+			),
+			var(--party-surface-strong);
+		color: var(--party-ink);
+	}
+</style>

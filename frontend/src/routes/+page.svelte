@@ -1,15 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 
-	import PageTopChips from '$lib/components/PageTopChips.svelte';
 	import { messages } from '$lib/i18n';
 </script>
 
 <svelte:head>
 	<title>{$messages.home.title} | {$messages.common.appName}</title>
 </svelte:head>
-
-<PageTopChips />
 
 <div class="md:pt-8">
 	<h1 class="page-title">{$messages.home.title}</h1>

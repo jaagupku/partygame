@@ -61,22 +61,22 @@
 </script>
 
 <div
-	class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white/80 px-5 py-4"
+	class="theme-surface-raised flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4"
 >
 	<div class="min-w-0 flex-1">
 		<nav
-			class="mb-2 flex flex-wrap items-center gap-2 text-sm text-slate-500"
+			class="editor-text-muted mb-2 flex flex-wrap items-center gap-2 text-sm"
 			aria-label={$messages.common.breadcrumb}
 		>
-			<button class="transition hover:text-slate-700" type="button" onclick={onGoHome}
+			<button class="transition hover:opacity-80" type="button" onclick={onGoHome}
 				>{$messages.common.home}</button
 			>
 			<span aria-hidden="true">/</span>
-			<button class="transition hover:text-slate-700" type="button" onclick={onManageDefinitions}>
+			<button class="transition hover:opacity-80" type="button" onclick={onManageDefinitions}>
 				{$messages.common.manageDefinitions}
 			</button>
 			<span aria-hidden="true">/</span>
-			<span aria-current="page" class="font-semibold text-slate-700">{breadcrumbCurrentLabel}</span>
+			<span aria-current="page" class="editor-text font-semibold">{breadcrumbCurrentLabel}</span>
 		</nav>
 		<div class="flex flex-wrap items-center gap-3">
 			{#if editingTitle}
@@ -94,7 +94,7 @@
 				/>
 			{:else}
 				<button class="min-w-0 text-left" type="button" onclick={onStartTitleEdit}>
-					<h1 class="truncate text-3xl font-extrabold text-slate-900">
+					<h1 class="editor-text truncate text-3xl font-extrabold">
 						{title || $messages.definitions.untitledDefinition}
 					</h1>
 				</button>
@@ -113,7 +113,7 @@
 			{$messages.editor.definitionDetails}
 		</button>
 		{#if onDelete}
-			<button class="btn btn-ghost px-4 py-2 text-sm text-red-700" type="button" onclick={onDelete}>
+			<button class="btn btn-danger-soft px-4 py-2 text-sm" type="button" onclick={onDelete}>
 				{$messages.common.remove}
 			</button>
 		{/if}

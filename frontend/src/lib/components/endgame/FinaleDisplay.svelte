@@ -118,7 +118,7 @@
 			<CelebrationBackground {stage} />
 			<div class="podium-stack">
 				{#if visiblePodiumGroups.length === 0}
-					<p class="text-lg text-slate-600">{$messages.finale.noFinalStandingsYet}</p>
+					<p class="theme-text-muted text-lg">{$messages.finale.noFinalStandingsYet}</p>
 				{:else}
 					{#each visiblePodiumGroups as group (group.place)}
 						<section class={`podium-row place-${Math.min(group.place, 3)}`}>
@@ -198,10 +198,22 @@
 		min-height: 100%;
 		overflow: hidden;
 		background:
-			radial-gradient(circle at 50% 8%, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.48) 32%),
-			radial-gradient(circle at 18% 24%, rgb(253 186 116 / 0.42), transparent 34%),
-			radial-gradient(circle at 82% 18%, rgb(125 211 252 / 0.44), transparent 32%),
-			linear-gradient(145deg, #fef3c7, #dbeafe 52%, #dcfce7);
+			radial-gradient(
+				circle at 50% 8%,
+				color-mix(in srgb, var(--party-surface-strong), transparent 12%),
+				transparent 32%
+			),
+			radial-gradient(
+				circle at 18% 24%,
+				color-mix(in srgb, var(--party-accent), transparent 64%),
+				transparent 34%
+			),
+			radial-gradient(
+				circle at 82% 18%,
+				color-mix(in srgb, var(--party-primary), transparent 62%),
+				transparent 32%
+			),
+			linear-gradient(145deg, var(--party-bg-c), var(--party-bg-b) 52%, var(--party-bg-a));
 	}
 
 	.podium-stack {
@@ -231,25 +243,38 @@
 		width: min(100%, 16rem);
 		border-radius: 1.5rem;
 		padding: 1.5rem;
-		background: rgb(255 255 255 / 0.88);
+		background: color-mix(in srgb, var(--party-surface-strong), transparent 8%);
 		box-shadow: 0 22px 45px rgb(15 23 42 / 0.14);
-		border: 1px solid rgb(255 255 255 / 0.8);
+		border: 1px solid var(--party-border);
+		color: var(--party-ink);
 		text-align: center;
 		animation: lift-in 500ms ease-out both;
 	}
 
 	.place-1 {
-		background: linear-gradient(180deg, #fff7cc, #fff);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, #fbbf24, var(--party-surface-strong) 62%),
+			var(--party-surface-strong)
+		);
 		box-shadow: 0 24px 50px rgb(202 138 4 / 0.2);
 	}
 
 	.place-2 {
-		background: linear-gradient(180deg, #eff6ff, #fff);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--party-primary), var(--party-surface-strong) 78%),
+			var(--party-surface-strong)
+		);
 		box-shadow: 0 22px 45px rgb(37 99 235 / 0.12);
 	}
 
 	.place-3 {
-		background: linear-gradient(180deg, #fef2f2, #fff);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--party-accent), var(--party-surface-strong) 78%),
+			var(--party-surface-strong)
+		);
 		box-shadow: 0 22px 45px rgb(190 24 93 / 0.12);
 	}
 
@@ -259,7 +284,7 @@
 		font-weight: 900;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: #9a3412;
+		color: color-mix(in srgb, var(--party-accent-strong), var(--party-ink) 28%);
 	}
 
 	.podium-name,
@@ -268,7 +293,7 @@
 		font-size: clamp(1.8rem, 4vw, 3rem);
 		font-weight: 900;
 		line-height: 1;
-		color: #0f172a;
+		color: var(--party-ink);
 	}
 
 	.stat-emoji {
@@ -288,7 +313,7 @@
 	.stat-description {
 		margin-top: 0.75rem;
 		font-size: 1rem;
-		color: #475569;
+		color: var(--party-subtle);
 	}
 
 	.stats-grid {
@@ -301,8 +326,13 @@
 	.stat-card {
 		min-height: 14rem;
 		background:
-			linear-gradient(135deg, rgb(254 242 242 / 0.9), rgb(255 255 255 / 0.96)),
-			linear-gradient(180deg, #fff, #fff);
+			linear-gradient(
+				135deg,
+				color-mix(in srgb, var(--party-accent), var(--party-surface-strong) 88%),
+				color-mix(in srgb, var(--party-primary), var(--party-surface-strong) 90%)
+			),
+			var(--party-surface-strong);
+		color: var(--party-ink);
 	}
 
 	.stat-value {
@@ -311,7 +341,7 @@
 		font-size: clamp(2rem, 5vw, 3.25rem);
 		font-weight: 900;
 		line-height: 1;
-		color: #0369a1;
+		color: color-mix(in srgb, var(--party-primary-strong), var(--party-ink) 18%);
 	}
 
 	.empty-card {

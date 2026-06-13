@@ -30,20 +30,20 @@
 </script>
 
 <section class="card stack-md text-center">
-	<p class="text-sm font-black uppercase tracking-[0.18em] text-sky-700">
+	<p class="theme-text-muted text-sm font-black uppercase tracking-[0.18em]">
 		{$messages.common.finalResult}
 	</p>
 	<h2 class="label-title text-3xl">{headline}</h2>
-	<p class="text-lg text-slate-600">{placeLabel}</p>
+	<p class="theme-text-muted text-lg">{placeLabel}</p>
 	{#if result}
-		<div class="rounded-3xl bg-slate-950 px-5 py-6 text-white">
-			<p class="text-sm font-black uppercase tracking-[0.18em] text-sky-200">
+		<div class="theme-soft-primary rounded-3xl border px-5 py-6">
+			<p class="text-sm font-black uppercase tracking-[0.18em]">
 				{$messages.common.score}
 			</p>
 			<p class="mt-3 text-5xl font-black leading-none">{result.score}</p>
-			<p class="mt-2 text-sky-100">{$messages.common.pointsWord}</p>
+			<p class="theme-text-muted mt-2">{$messages.common.pointsWord}</p>
 		</div>
 	{:else}
-		<p class="text-slate-500">{$messages.finale.notIncludedInStandings}</p>
+		<p class="theme-text-muted">{$messages.finale.notIncludedInStandings}</p>
 	{/if}
 </section>

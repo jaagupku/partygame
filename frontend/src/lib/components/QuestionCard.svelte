@@ -182,20 +182,20 @@
 		{/if}
 		{#if showInlineRevealedAnswer}
 			<div
-				class={`reveal-inline-pop question-card-status rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 ${
+				class={`reveal-inline-pop question-card-status theme-soft-correct rounded-2xl border px-4 py-4 ${
 					stageVariant ? 'text-xl md:text-3xl' : 'text-lg'
 				}`}
 			>
-				<p class="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+				<p class="theme-soft-correct-label text-sm font-black uppercase tracking-[0.22em]">
 					{$messages.common.correctAnswer}
 				</p>
-				<p class="mt-2 font-extrabold leading-tight text-slate-950">
+				<p class="mt-2 font-extrabold leading-tight">
 					{formatRevealValue(revealedAnswer?.value)}
 				</p>
 			</div>
 		{:else if !showingAnswerReveal && revealedSubmission}
 			<div
-				class={`question-card-status rounded-2xl bg-sky-50 px-4 py-3 ${
+				class={`question-card-status theme-soft-primary rounded-2xl border px-4 py-3 ${
 					stageVariant ? 'text-xl md:text-2xl' : 'text-lg'
 				}`}
 			>
@@ -204,7 +204,7 @@
 			</div>
 		{/if}
 	{:else}
-		<p class="text-lg text-slate-500">{$messages.common.waitingForNextQuestion}</p>
+		<p class="theme-text-muted text-lg">{$messages.common.waitingForNextQuestion}</p>
 	{/if}
 </section>
 
@@ -223,7 +223,7 @@
 		position: relative;
 		border-radius: 1.5rem;
 		border: 0;
-		background: rgb(255 255 255 / 0.38);
+		background: color-mix(in srgb, var(--party-surface), transparent 52%);
 		box-shadow: none;
 	}
 
@@ -258,9 +258,9 @@
 		flex: 0 0 auto;
 		margin-top: 0.15rem;
 		border-radius: 999px;
-		border: 1px solid rgb(191 219 254);
-		background: rgb(239 246 255 / 0.92);
-		color: rgb(30 64 175);
+		border: 1px solid var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
+		color: var(--party-soft-primary-text);
 		font-size: 0.82rem;
 		font-weight: 950;
 		line-height: 1;
@@ -290,15 +290,15 @@
 		gap: 0.8rem;
 		min-width: 0;
 		border-radius: 1rem;
-		border: 1px solid rgb(203 213 225);
-		background: rgb(255 255 255 / 0.78);
+		border: 1px solid var(--party-border);
+		background: color-mix(in srgb, var(--party-surface-strong), transparent 18%);
 		box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
 		padding: 0.72rem 0.9rem;
 	}
 
 	.ordering-display-row-revealed {
-		border-color: rgb(37 99 235 / 0.48);
-		background: rgb(239 246 255 / 0.94);
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
 		animation: ordering-reveal-land 520ms ease-out both;
 		animation-delay: var(--ordering-delay);
 	}
@@ -309,8 +309,8 @@
 		justify-content: center;
 		min-width: 3rem;
 		border-radius: 999px;
-		background: rgb(226 232 240 / 0.82);
-		color: rgb(51 65 85);
+		background: var(--party-muted-control);
+		color: var(--party-ink);
 		font-size: 0.8em;
 		font-weight: 950;
 		line-height: 1;
@@ -318,7 +318,7 @@
 	}
 
 	.ordering-display-row-revealed .ordering-rank {
-		background: rgb(37 99 235);
+		background: var(--party-primary-strong);
 		color: white;
 	}
 
@@ -327,7 +327,7 @@
 		overflow-wrap: anywhere;
 		font-weight: 900;
 		line-height: 1.15;
-		color: rgb(15 23 42);
+		color: var(--party-ink);
 	}
 
 	.question-card-status {
@@ -364,8 +364,9 @@
 		gap: 0.75rem;
 		min-width: 0;
 		border-radius: 1rem;
-		border: 1px solid rgb(203 213 225);
-		background: rgb(255 255 255 / 0.78);
+		border: 1px solid var(--party-border);
+		background: color-mix(in srgb, var(--party-surface-strong), transparent 18%);
+		color: var(--party-ink);
 		box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
 		backface-visibility: hidden;
 	}
@@ -375,17 +376,17 @@
 	}
 
 	.option-face-correct {
-		border-color: rgb(4 120 87);
-		background: rgb(5 150 105);
+		border-color: var(--party-success-strong);
+		background: var(--party-success);
 		color: white;
-		box-shadow: 0 10px 24px rgb(6 78 59 / 0.22);
+		box-shadow: 0 10px 24px color-mix(in srgb, var(--party-success-strong), transparent 78%);
 	}
 
 	.option-face-wrong {
-		border-color: rgb(190 18 60);
-		background: rgb(225 29 72);
+		border-color: var(--party-danger-strong);
+		background: var(--party-danger);
 		color: white;
-		box-shadow: 0 10px 24px rgb(136 19 55 / 0.22);
+		box-shadow: 0 10px 24px color-mix(in srgb, var(--party-danger-strong), transparent 78%);
 	}
 
 	.option-text {
@@ -411,12 +412,12 @@
 	}
 
 	.option-points-correct {
-		background: rgb(6 95 70);
+		background: var(--party-success-strong);
 		color: white;
 	}
 
 	.option-points-wrong {
-		background: rgb(159 18 57);
+		background: var(--party-danger-strong);
 		color: white;
 	}
 
@@ -466,7 +467,7 @@
 
 		48% {
 			filter: brightness(1.06);
-			box-shadow: 0 0 24px rgb(37 99 235 / 0.2);
+			box-shadow: 0 0 24px color-mix(in srgb, var(--party-primary-strong), transparent 80%);
 		}
 
 		100% {

@@ -24,6 +24,7 @@
 		totalSteps: number;
 		previewStep?: RuntimeStepState;
 		previewCountdown: number;
+		theme?: DefinitionTheme | null;
 		showAdvancedFields: boolean;
 		uploadKey: string | null;
 		onToggleAdvancedFields: () => void;
@@ -54,6 +55,7 @@
 		totalSteps,
 		previewStep,
 		previewCountdown,
+		theme,
 		showAdvancedFields,
 		uploadKey,
 		onToggleAdvancedFields,
@@ -132,7 +134,7 @@
 	]);
 </script>
 
-<section class="flex h-full min-h-0 flex-col bg-white/70">
+<section class="definition-step-editor-root flex h-full min-h-0 flex-col">
 	<StepHeader
 		{selectedFlatStep}
 		selectedStepTitle={selectedStep.title || $messages.editor.untitledStep}
@@ -185,7 +187,7 @@
 			</div>
 
 			<aside class="definition-step-editor-preview" aria-label={$messages.editor.displayPreview}>
-				<EditorPreviewPane step={previewStep} countdown={previewCountdown} />
+				<EditorPreviewPane step={previewStep} countdown={previewCountdown} {theme} />
 			</aside>
 		</div>
 	</div>

@@ -4,7 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from .lobby import GameState, Player
-from .game_definition import MapInputConfig, PlayerInputKind
+from .game_definition import DefinitionTheme, MapInputConfig, PlayerInputKind
 
 
 class Event(StrEnum):
@@ -320,6 +320,7 @@ class RuntimeSnapshotEvent(BaseEvent):
     type_: str = Event.RUNTIME_SNAPSHOT
     revision: int = 0
     lobby: RuntimeLobbyState
+    theme: DefinitionTheme | None = None
     players: list[Player] = Field(default_factory=list)
     active_item: RuntimeItemState | None = None
     next_item: RuntimeItemState | None = None

@@ -69,6 +69,21 @@ const en = defineMessages({
 		pointsWord: 'points',
 		breadcrumb: 'Breadcrumb'
 	},
+	theme: {
+		appTheme: 'App theme',
+		gameTheme: 'Game theme',
+		light: 'Light',
+		dark: 'Dark',
+		system: 'System',
+		palette: 'Palette',
+		customColors: 'Custom colors',
+		background: 'Background',
+		surface: 'Surface',
+		text: 'Text',
+		primary: 'Primary',
+		accent: 'Accent',
+		resetCustomColors: 'Reset custom colors'
+	},
 	auth: {
 		login: 'Log In',
 		signup: 'Sign Up',
@@ -928,6 +943,21 @@ const et: Messages = {
 		score: 'Skoor',
 		pointsWord: 'punkti',
 		breadcrumb: 'Leivapuru'
+	},
+	theme: {
+		appTheme: 'Rakenduse teema',
+		gameTheme: 'Mängu teema',
+		light: 'Hele',
+		dark: 'Tume',
+		system: 'Süsteem',
+		palette: 'Palett',
+		customColors: 'Kohandatud värvid',
+		background: 'Taust',
+		surface: 'Pind',
+		text: 'Tekst',
+		primary: 'Põhivärv',
+		accent: 'Aktsent',
+		resetCustomColors: 'Lähtesta kohandatud värvid'
 	},
 	auth: {
 		login: 'Logi sisse',

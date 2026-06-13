@@ -39,22 +39,22 @@
 <section class="card controller-compact-card host-review-card stack-md">
 	<h2 class="label-title text-2xl">{$messages.gameplay.reviewQueue}</h2>
 	{#if hostAnswer}
-		<div class="host-review-item rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-			<p class="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
+		<div class="host-review-item theme-soft-correct rounded-2xl border px-4 py-3">
+			<p class="theme-soft-correct-label text-sm font-black uppercase tracking-[0.18em]">
 				{$messages.common.correctAnswer}
 			</p>
-			<p class="mt-2 text-lg font-extrabold leading-tight text-slate-950">
+			<p class="mt-2 text-lg font-extrabold leading-tight">
 				{formatRevealValue(hostAnswer.value)}
 			</p>
 		</div>
 	{/if}
 	{#if activeStep?.input_kind === 'buzzer' && buzzedPlayerId}
-		<div class="host-review-item rounded-2xl bg-white/70 p-3">
-			<p class="font-bold">{playerName(buzzedPlayerId)}</p>
-			<p class="mt-1 text-slate-600">{$messages.gameplay.buzzedInFirst}</p>
+		<div class="host-review-item theme-surface-muted rounded-2xl border p-3">
+			<p class="theme-text font-bold">{playerName(buzzedPlayerId)}</p>
+			<p class="theme-text-muted mt-1">{$messages.gameplay.buzzedInFirst}</p>
 			<div class="mt-3 flex flex-wrap gap-2">
 				{#if isSubmissionReviewed(buzzedPlayerId)}
-					<span class="badge bg-slate-200 text-slate-700">{$messages.gameplay.reviewed}</span>
+					<span class="host-reviewed-badge badge">{$messages.gameplay.reviewed}</span>
 				{:else}
 					<button
 						type="button"
@@ -75,22 +75,24 @@
 		</div>
 	{:else if submissions.length === 0}
 		{#if activeStep?.input_kind === 'buzzer' && disabledBuzzerPlayerIds.length > 0}
-			<p class="text-slate-500">
+			<p class="theme-text-muted">
 				{$messages.gameplay.waitingToReactivateBuzzers}
 				{$messages.gameplay.lockedOut}:
 				{disabledBuzzerPlayerIds.map((playerId) => playerName(playerId)).join(', ')}
 			</p>
 		{:else}
-			<p class="text-slate-500">{$messages.gameplay.noAnswersSubmittedYet}</p>
+			<p class="theme-text-muted">{$messages.gameplay.noAnswersSubmittedYet}</p>
 		{/if}
 	{:else}
 		{#each submissions as submission}
 			<div
-				class={`host-review-item rounded-2xl p-3 ${
-					isSubmissionReviewed(submission.player_id) ? 'bg-slate-100 opacity-70' : 'bg-white/70'
+				class={`host-review-item rounded-2xl border p-3 ${
+					isSubmissionReviewed(submission.player_id)
+						? 'theme-surface-muted opacity-70'
+						: 'theme-surface-muted'
 				}`}
 			>
-				<p class="font-bold">{playerName(submission.player_id)}</p>
+				<p class="theme-text font-bold">{playerName(submission.player_id)}</p>
 				<p class="mt-1 wrap-break-word">{formatRevealValue(submission.value)}</p>
 				<div class="mt-3 flex flex-wrap gap-2">
 					<button
@@ -127,7 +129,7 @@
 							</button>
 						{/if}
 					{:else}
-						<span class="badge bg-slate-200 text-slate-700">{$messages.gameplay.reviewed}</span>
+						<span class="host-reviewed-badge badge">{$messages.gameplay.reviewed}</span>
 					{/if}
 				</div>
 			</div>
@@ -152,5 +154,16 @@
 			font-size: 1rem;
 			line-height: 1.1;
 		}
+	}
+
+	.host-reviewed-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 2.75rem;
+		border: 1px solid var(--party-border);
+		background: var(--party-muted-control);
+		color: var(--party-ink);
+		line-height: 1;
 	}
 </style>

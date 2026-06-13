@@ -209,11 +209,11 @@
 	}
 </script>
 
-<div class="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+<div class="editor-nested-panel rounded-[1.5rem] border p-4">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<p class="text-lg font-bold text-slate-900">{$messages.editor.questionMedia}</p>
-			<p class="text-sm text-slate-600">{$messages.editor.questionMediaHelp}</p>
+			<p class="editor-text text-lg font-bold">{$messages.editor.questionMedia}</p>
+			<p class="editor-text-muted text-sm">{$messages.editor.questionMediaHelp}</p>
 		</div>
 		{#if step.media}
 			<button class="btn btn-danger text-sm" type="button" onclick={() => onRemoveMedia(step)}>
@@ -234,13 +234,13 @@
 						type="button"
 						class={`rounded-[1.35rem] border px-4 py-4 text-left transition ${
 							step.media.type_ === mediaType
-								? 'border-sky-300 bg-sky-50 shadow-sm'
-								: 'border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/50'
+								? 'editor-soft-primary shadow-sm'
+								: 'editor-choice-card-muted'
 						}`}
 						onclick={() => onUpdateMediaType(step, mediaType)}
 					>
-						<p class="text-base font-bold text-slate-900">{getMediaTypeLabel(mediaType)}</p>
-						<p class="mt-1 text-sm text-slate-600">{getMediaTypeHelp(mediaType)}</p>
+						<p class="editor-text text-base font-bold">{getMediaTypeLabel(mediaType)}</p>
+						<p class="editor-text-muted mt-1 text-sm">{getMediaTypeHelp(mediaType)}</p>
 					</button>
 				{/each}
 			</div>
@@ -248,7 +248,7 @@
 			<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
 				<div class="grid gap-4">
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+						<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 							{$messages.editor.sourceUrl}
 						</span>
 						<input
@@ -259,7 +259,7 @@
 								: $messages.editor.sourceUrlPlaceholder}
 						/>
 						{#if step.media.type_ === 'video'}
-							<p class="text-sm text-slate-500">{$messages.editor.videoSourceHelp}</p>
+							<p class="editor-text-muted text-sm">{$messages.editor.videoSourceHelp}</p>
 						{/if}
 					</label>
 
@@ -270,15 +270,15 @@
 									type="button"
 									class={`rounded-[1.25rem] border px-4 py-3 text-left transition ${
 										step.media.reveal === revealMode
-											? 'border-sky-300 bg-sky-50'
-											: 'border-slate-200 bg-white hover:border-sky-200'
+											? 'editor-soft-primary'
+											: 'editor-choice-card-muted'
 									}`}
 									onclick={() => (step.media ? (step.media.reveal = revealMode) : null)}
 								>
-									<p class="text-sm font-bold uppercase tracking-wide text-slate-700">
+									<p class="editor-text text-sm font-bold uppercase tracking-wide">
 										{getRevealLabel(revealMode)}
 									</p>
-									<p class="mt-1 text-sm text-slate-600">
+									<p class="editor-text-muted mt-1 text-sm">
 										{$messages.editor.imageReveal[revealMode].description}
 									</p>
 								</button>
@@ -310,10 +310,10 @@
 						{#if step.media.reveal === 'blur_to_clear' || step.media.reveal === 'blur_circle'}
 							<label class="input-wrap">
 								<div class="flex items-center justify-between gap-3">
-									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+									<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 										{$messages.editor.blurAmount}
 									</span>
-									<span class="text-sm font-semibold text-slate-700">
+									<span class="editor-text text-sm font-semibold">
 										{getBlurAmountDisplayValue().toFixed(0)}px
 									</span>
 								</div>
@@ -337,7 +337,7 @@
 											{ min: BLUR_AMOUNT_MIN, max: BLUR_AMOUNT_MAX }
 										)}
 								/>
-								<p class="text-sm text-slate-500">{$messages.editor.blurAmountHelp}</p>
+								<p class="editor-text-muted text-sm">{$messages.editor.blurAmountHelp}</p>
 							</label>
 						{/if}
 
@@ -345,10 +345,10 @@
 							<div class="grid gap-4 md:grid-cols-3">
 								<label class="input-wrap">
 									<div class="flex items-center justify-between gap-3">
-										<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+										<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 											{$messages.editor.zoomStart}
 										</span>
-										<span class="text-sm font-semibold text-slate-700">
+										<span class="editor-text text-sm font-semibold">
 											{getZoomDisplayValue().toFixed(1)}x
 										</span>
 									</div>
@@ -373,11 +373,11 @@
 												{ min: ZOOM_SLIDER_MIN, max: ZOOM_SLIDER_MAX }
 											)}
 									/>
-									<p class="text-sm text-slate-500">{$messages.editor.zoomStartHelp}</p>
+									<p class="editor-text-muted text-sm">{$messages.editor.zoomStartHelp}</p>
 								</label>
 
 								<label class="input-wrap">
-									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+									<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 										{$messages.editor.zoomOriginX}
 									</span>
 									<input
@@ -403,11 +403,11 @@
 												{ min: 0, max: 100 }
 											)}
 									/>
-									<p class="text-sm text-slate-500">{$messages.editor.zoomOriginXHelp}</p>
+									<p class="editor-text-muted text-sm">{$messages.editor.zoomOriginXHelp}</p>
 								</label>
 
 								<label class="input-wrap">
-									<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+									<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 										{$messages.editor.zoomOriginY}
 									</span>
 									<input
@@ -433,10 +433,10 @@
 												{ min: 0, max: 100 }
 											)}
 									/>
-									<p class="text-sm text-slate-500">{$messages.editor.zoomOriginYHelp}</p>
+									<p class="editor-text-muted text-sm">{$messages.editor.zoomOriginYHelp}</p>
 								</label>
 							</div>
-							<div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+							<div class="editor-text-muted flex flex-wrap items-center gap-3 text-sm">
 								<p>{$messages.editor.zoomFocusPreviewHelp}</p>
 								<button class="btn btn-ghost text-sm" type="button" onclick={resetZoomDefaults}>
 									{$messages.editor.resetZoomDefaults}
@@ -453,19 +453,23 @@
 						{/if}
 					{/if}
 
-					<label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
+					<label
+						class="theme-surface flex items-center justify-between gap-4 rounded-2xl px-4 py-3"
+					>
 						<div>
 							<p class="text-lg font-bold">{$messages.editor.loopMedia}</p>
-							<p class="text-sm text-slate-600">{$messages.editor.loopMediaHelp}</p>
+							<p class="theme-text-muted text-sm">{$messages.editor.loopMediaHelp}</p>
 						</div>
 						<input bind:checked={step.media.loop} type="checkbox" class="h-5 w-5" />
 					</label>
 
 					{#if step.media.type_ === 'video'}
-						<label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
+						<label
+							class="theme-surface flex items-center justify-between gap-4 rounded-2xl px-4 py-3"
+						>
 							<div>
 								<p class="text-lg font-bold">{$messages.editor.autoplayVideo}</p>
-								<p class="text-sm text-slate-600">{$messages.editor.autoplayVideoHelp}</p>
+								<p class="theme-text-muted text-sm">{$messages.editor.autoplayVideoHelp}</p>
 							</div>
 							<input
 								checked={step.media.autoplay ?? true}
@@ -481,10 +485,12 @@
 						</label>
 
 						{#if hasYouTubeVideo()}
-							<label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3">
+							<label
+								class="theme-surface flex items-center justify-between gap-4 rounded-2xl px-4 py-3"
+							>
 								<div>
 									<p class="text-lg font-bold">{$messages.editor.hideYouTubeTitle}</p>
-									<p class="text-sm text-slate-600">{$messages.editor.hideYouTubeTitleHelp}</p>
+									<p class="theme-text-muted text-sm">{$messages.editor.hideYouTubeTitleHelp}</p>
 								</div>
 								<input
 									bind:checked={step.media.hide_youtube_title}
@@ -496,7 +502,7 @@
 					{/if}
 
 					<label class="input-wrap">
-						<span class="text-sm font-bold uppercase tracking-wide text-slate-500">
+						<span class="editor-text-muted text-sm font-bold uppercase tracking-wide">
 							{$messages.editor.uploadFile}
 						</span>
 						<input
@@ -512,8 +518,8 @@
 					{/if}
 				</div>
 
-				<div class="rounded-[1.5rem] border border-slate-200 bg-white p-4">
-					<p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+				<div class="editor-nested-panel rounded-[1.5rem] border p-4">
+					<p class="editor-text-muted text-sm font-bold uppercase tracking-[0.18em]">
 						{$messages.common.preview}
 					</p>
 					{#if step.media.src}
@@ -521,7 +527,7 @@
 							<div class="mt-3 grid gap-2">
 								<button
 									type="button"
-									class={`relative overflow-hidden rounded-2xl bg-slate-100 ${
+									class={`theme-surface-muted relative overflow-hidden rounded-2xl ${
 										step.media.reveal === 'zoom_out' ? 'cursor-crosshair' : 'cursor-default'
 									}`}
 									onclick={setZoomFocusFromPreview}
@@ -548,7 +554,9 @@
 									{/if}
 								</button>
 								{#if step.media.reveal === 'zoom_out'}
-									<p class="text-xs text-slate-500">{$messages.editor.zoomFocusPreviewCaption}</p>
+									<p class="editor-text-muted text-xs">
+										{$messages.editor.zoomFocusPreviewCaption}
+									</p>
 								{/if}
 							</div>
 						{:else if step.media.type_ === 'audio'}
@@ -583,9 +591,9 @@
 								</video>
 							{/if}
 						{/if}
-						<p class="mt-3 text-xs text-slate-500">{step.media.src}</p>
+						<p class="editor-text-muted mt-3 text-xs">{step.media.src}</p>
 					{:else}
-						<p class="mt-3 text-sm text-slate-500">{$messages.editor.previewHelp}</p>
+						<p class="editor-text-muted mt-3 text-sm">{$messages.editor.previewHelp}</p>
 					{/if}
 				</div>
 			</div>

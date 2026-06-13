@@ -15,6 +15,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { get, type Writable } from 'svelte/store';
 	import { createSoundSystem } from '$lib/sound-system.js';
+	import { definitionThemeStyle } from '$lib/theme';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
@@ -31,6 +32,7 @@
 			id: $player?.id || '',
 			players: lobby().players,
 			lastRevision: 0,
+			theme: undefined,
 			isHost: lobby().host_id === $player?.id,
 			answerResult: 'none',
 			submissionError: undefined,
@@ -527,7 +529,12 @@
 		class={`answer-result-border answer-result-border-${$controller.answerResult}`}
 		aria-hidden="true"
 	></div>
-	<div class={`answer-result-toast answer-result-toast-${$controller.answerResult}`} role="status">
+	<div
+		class={`answer-result-toast answer-result-toast-${$controller.answerResult} ${
+			$controller.answerResult === 'correct' ? 'theme-soft-correct' : ''
+		}`}
+		role="status"
+	>
 		{$controller.answerResult === 'correct'
 			? $messages.gameplay.answerMarkedCorrect
 			: $messages.gameplay.answerMarkedWrong}
@@ -541,7 +548,7 @@
 {/if}
 
 {#if $controller.gameState === 'waiting_for_players'}
-	<div class="card mt-0 text-center">
+	<div class="card mt-0 text-center" style={definitionThemeStyle($controller.theme)}>
 		<p class="text-xl font-bold">{$messages.gameplay.waitingForGameStart}</p>
 		{#if $controller.isHost}
 			<p class="mt-2 text-lg">{$messages.gameplay.youAreHostController}</p>
@@ -558,28 +565,29 @@
 {:else}
 	<div
 		class={`controller-stack ${$controller.isHost ? 'controller-stack-host' : 'controller-stack-player'}`}
+		style={definitionThemeStyle($controller.theme)}
 	>
 		{#if !$controller.isHost && !$controller.endGame?.revealed && currentPlayerStanding}
 			<section class="controller-score-card card grid grid-cols-2 gap-2 p-2">
-				<div class="rounded-lg bg-white/70 px-2 py-1.5 text-center">
-					<p class="text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
+				<div class="theme-surface-muted rounded-lg border px-2 py-1.5 text-center">
+					<p class="theme-text-muted text-[0.65rem] font-black uppercase tracking-[0.12em]">
 						{$messages.common.score}
 					</p>
-					<p class="text-2xl font-black leading-none text-slate-950">
+					<p class="theme-text text-2xl font-black leading-none">
 						{currentPlayerStanding.score}
 					</p>
-					<p class="text-[0.65rem] font-bold text-slate-500">
+					<p class="theme-text-muted text-[0.65rem] font-bold">
 						{$messages.common.pointsWord}
 					</p>
 				</div>
-				<div class="rounded-lg bg-white/70 px-2 py-1.5 text-center">
-					<p class="text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
+				<div class="theme-surface-muted rounded-lg border px-2 py-1.5 text-center">
+					<p class="theme-text-muted text-[0.65rem] font-black uppercase tracking-[0.12em]">
 						{$messages.gameplay.currentPlace}
 					</p>
-					<p class="text-2xl font-black leading-none text-sky-700">
+					<p class="theme-text text-2xl font-black leading-none">
 						#{currentPlayerStanding.place}
 					</p>
-					<p class="text-[0.65rem] font-bold text-slate-500">
+					<p class="theme-text-muted text-[0.65rem] font-bold">
 						{$messages.finale.place(currentPlayerStanding.place)}
 					</p>
 				</div>
@@ -592,7 +600,7 @@
 			{#if $controller.isHost}
 				<section class="card stack-md">
 					<h2 class="label-title text-2xl">{$messages.gameplay.finaleControls}</h2>
-					<p class="text-sm text-slate-600">
+					<p class="theme-text-muted text-sm">
 						{$messages.gameplay.stage}: {$messages.finale.stageLabel(
 							$controller.endGame.sequence_stage
 						)} · {$messages.gameplay.autoplay}:
@@ -644,7 +652,7 @@
 		{:else if gameFinished}
 			<section class="card text-center">
 				<p class="text-xl font-bold">{$messages.gameplay.gameComplete}</p>
-				<p class="mt-2 text-slate-600">
+				<p class="theme-text-muted mt-2">
 					{$controller.isHost
 						? $messages.gameplay.revealFinaleFromHost
 						: $messages.gameplay.waitingForFinalResults}
@@ -655,7 +663,7 @@
 		{#if $controller.isHost && !$controller.endGame?.revealed && gameFinished}
 			<section class="card stack-md">
 				<h2 class="label-title text-2xl">{$messages.gameplay.finaleControls}</h2>
-				<p class="text-sm text-slate-600">{$messages.gameplay.gameFinishedRevealEndScreen}</p>
+				<p class="theme-text-muted text-sm">{$messages.gameplay.gameFinishedRevealEndScreen}</p>
 				<div class="flex flex-wrap gap-3">
 					<button type="button" class="btn btn-primary" onclick={revealEndGame}
 						>{$messages.gameplay.revealFinale}</button
@@ -783,15 +791,13 @@
 	}
 
 	.answer-result-toast-correct {
-		border: 1px solid rgba(22, 163, 74, 0.28);
-		background: rgb(220, 252, 231);
-		color: rgb(20, 83, 45);
+		box-shadow: 0 14px 30px color-mix(in srgb, var(--party-success-strong), transparent 70%);
 	}
 
 	.answer-result-toast-wrong {
-		border: 1px solid rgba(220, 38, 38, 0.26);
-		background: rgb(254, 226, 226);
-		color: rgb(127, 29, 29);
+		border: 1px solid var(--party-soft-danger-border);
+		background: var(--party-soft-danger-bg);
+		color: var(--party-soft-danger-text);
 	}
 
 	.scoreboard-visible-chip {

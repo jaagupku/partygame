@@ -275,15 +275,15 @@
 			/>
 			<div class="min-w-0 flex-1">
 				<p class="label-title mb-2">{$messages.join.avatar}</p>
-				<p class="text-xl font-black text-slate-900">
+				<p class="theme-text text-xl font-black">
 					{name.trim() || $messages.join.playerFallback}
 				</p>
-				<p class="text-sm text-slate-600">
+				<p class="theme-text-muted text-sm">
 					{avatarKind === 'custom'
 						? $messages.join.customPhotoAvatar
 						: `${$messages.join.preset}: ${getAvatarPreset(avatarPresetKey)?.label ?? $messages.join.random}`}
 				</p>
-				<p class="mt-2 text-sm font-semibold text-sky-700">
+				<p class="mt-2 text-sm font-semibold" style="color: var(--party-primary-strong)">
 					{avatarPickerOpen ? $messages.join.hideAvatarOptions : $messages.join.changeAvatar}
 				</p>
 			</div>
@@ -327,7 +327,7 @@
 					<div class="flex items-start justify-between gap-4">
 						<div>
 							<p class="label-title">{$messages.join.takePhotoOrChoose}</p>
-							<p class="mt-1 text-sm text-slate-600">{$messages.join.photoHelp}</p>
+							<p class="theme-text-muted mt-1 text-sm">{$messages.join.photoHelp}</p>
 						</div>
 						<label class="btn btn-secondary cursor-pointer">
 							{$messages.join.useCameraPhoto}
@@ -345,7 +345,7 @@
 						<div class="mt-5 grid gap-4 md:grid-cols-[auto_1fr] md:items-start">
 							<AvatarCropEditor bind:this={cropEditor} imageUrl={pendingImageUrl} />
 							<div class="stack-md">
-								<p class="text-sm text-slate-600">{$messages.join.adjustPhoto}</p>
+								<p class="theme-text-muted text-sm">{$messages.join.adjustPhoto}</p>
 								<div class="flex flex-wrap gap-3">
 									<button
 										type="button"
@@ -381,7 +381,7 @@
 		</label>
 
 		{#if validatingProfile}
-			<p class="mt-4 text-sm text-slate-600">{$messages.join.checkingSavedAvatar}</p>
+			<p class="theme-text-muted mt-4 text-sm">{$messages.join.checkingSavedAvatar}</p>
 		{/if}
 
 		<button disabled={!submitEnabled} type="submit" class="btn btn-accent mt-6 w-full text-4xl">
@@ -403,8 +403,13 @@
 		width: 100%;
 		padding: 1rem 1.1rem;
 		border-radius: 1.35rem;
-		border: 1px solid rgb(191 219 254 / 0.7);
-		background: linear-gradient(135deg, rgb(255 247 237 / 0.92), rgb(239 246 255 / 0.95));
+		border: 1px solid color-mix(in srgb, var(--party-primary), var(--party-border) 60%);
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--party-accent), var(--party-surface-strong) 90%),
+			color-mix(in srgb, var(--party-primary), var(--party-surface-strong) 90%)
+		);
+		color: var(--party-ink);
 		transition:
 			transform 150ms ease,
 			box-shadow 150ms ease,
@@ -416,8 +421,8 @@
 	}
 
 	.profile-preview-open {
-		border-color: #38bdf8;
-		box-shadow: 0 16px 30px rgb(14 165 233 / 0.12);
+		border-color: var(--party-primary);
+		box-shadow: 0 16px 30px color-mix(in srgb, var(--party-primary), transparent 84%);
 	}
 
 	.preset-grid {
@@ -432,10 +437,10 @@
 		gap: 0.65rem;
 		padding: 0.9rem 0.75rem;
 		border-radius: 1.25rem;
-		border: 1px solid rgb(203 213 225 / 0.85);
-		background: rgb(255 255 255 / 0.88);
+		border: 1px solid var(--party-border);
+		background: var(--party-surface-strong);
 		font-weight: 800;
-		color: #0f172a;
+		color: var(--party-ink);
 		transition:
 			transform 150ms ease,
 			border-color 150ms ease,
@@ -447,12 +452,17 @@
 	}
 
 	.preset-option.selected {
-		border-color: #0ea5e9;
-		box-shadow: 0 16px 30px rgb(14 165 233 / 0.14);
+		border-color: var(--party-soft-primary-border);
+		background: var(--party-soft-primary-bg);
+		box-shadow: 0 16px 30px color-mix(in srgb, var(--party-primary), transparent 82%);
 	}
 
 	.upload-card {
-		background: linear-gradient(135deg, rgb(240 249 255 / 0.95), rgb(248 250 252 / 0.95));
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--party-primary), var(--party-surface-strong) 92%),
+			var(--party-surface-strong)
+		);
 	}
 
 	@media (max-width: 640px) {
