@@ -7,10 +7,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.14"
-fastapi = "^0.136.1"
+fastapi = ">=0.136.1,<0.139.0"
 pydantic = "^2.13.3"
-redis = "^7.4.0"
-uvicorn = {version = "^0.46.0", extras = ["standard"]}
+redis = ">=7.4,<9.0"
+uvicorn = {version = ">=0.46,<0.50", extras = ["standard"]}
 pydantic-settings = "^2.14.0"
 sqlalchemy = {version = "^2.0.49", extras = ["asyncio"]}
 asyncpg = "^0.31.0"
