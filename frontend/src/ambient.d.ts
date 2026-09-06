@@ -1,15 +1,7 @@
 type ConnectionStatus = 'connected' | 'disconnected';
 type GameState = 'waiting_for_players' | 'running' | 'paused';
 type PlayerInputKind =
-	| 'none'
-	| 'buzzer'
-	| 'text'
-	| 'number'
-	| 'ordering'
-	| 'radio'
-	| 'checkbox'
-	| 'map'
-	| 'drawing';
+	'none' | 'buzzer' | 'text' | 'number' | 'ordering' | 'radio' | 'checkbox' | 'map' | 'drawing';
 type EvaluationType =
 	| 'none'
 	| 'host_judged'
@@ -343,10 +335,7 @@ type CollectPlayerDraftsEvent = {
 };
 
 type SubmissionRejectedReason =
-	| 'invalid_drawing'
-	| 'invalid_submission'
-	| 'duplicate_submission'
-	| 'step_closed';
+	'invalid_drawing' | 'invalid_submission' | 'duplicate_submission' | 'step_closed';
 
 type SubmissionRejectedEvent = {
 	type_: 'submission_rejected';

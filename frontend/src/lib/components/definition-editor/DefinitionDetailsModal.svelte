@@ -117,8 +117,7 @@
 					class="input min-h-32 text-lg"
 					placeholder={$messages.editor.descriptionPlaceholder}
 					oninput={(event) =>
-						onDescriptionChange((event.currentTarget as HTMLTextAreaElement).value)}
-				></textarea>
+						onDescriptionChange((event.currentTarget as HTMLTextAreaElement).value)}></textarea>
 			</label>
 			<label class="input-wrap">
 				<span class="theme-text-muted text-sm font-bold uppercase tracking-wide"

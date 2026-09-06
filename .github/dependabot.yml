@@ -14,6 +14,10 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/frontend"
+    # TypeScript 7 requires a coordinated migration of the Svelte checking toolchain.
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=7.0.0 <8.0.0"]
     schedule:
       interval: "weekly"
       day: "monday"

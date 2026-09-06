@@ -124,6 +124,5 @@
 		bind:this={textarea}
 		bind:value={step.body}
 		class="input min-h-32 text-lg"
-		placeholder={$messages.editor.bodyPlaceholder}
-	></textarea>
+		placeholder={$messages.editor.bodyPlaceholder}></textarea>
 </div>
