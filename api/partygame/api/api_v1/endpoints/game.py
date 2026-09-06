@@ -1,14 +1,14 @@
 import logging
 
-from redis.asyncio import Redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from redis.asyncio import Redis
 
 from partygame import service
-from partygame.state import GameStateRepository
-from partygame.service.connection_access import connection_cookie_name
 from partygame.api import deps
-from partygame.service.player import ClientController
+from partygame.service.connection_access import connection_cookie_name
 from partygame.service.lobby import GameController
+from partygame.service.player import ClientController
+from partygame.state import GameStateRepository
 
 log = logging.getLogger(__name__)
 router = APIRouter()

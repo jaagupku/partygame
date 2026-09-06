@@ -1,14 +1,14 @@
 import asyncio
 import json
-from unittest.mock import AsyncMock
-from types import SimpleNamespace
 from time import time
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
 from partygame import schemas
-from partygame.service import player as player_service
 from partygame.service import lobby as lobby_service
+from partygame.service import player as player_service
 from partygame.state import GameKeyFactory
 
 
@@ -1237,8 +1237,9 @@ async def test_host_selection_is_owned_and_lobby_only(
 @pytest.mark.asyncio
 async def test_concurrent_hostless_submissions_keep_both_answers(monkeypatch):
     import copy
-    from tests.test_game_runtime import FakeRepo as RuntimeRepo
+
     from partygame.service.game import GameRuntimeService
+    from tests.test_game_runtime import FakeRepo as RuntimeRepo
 
     class Repo(RuntimeRepo):
         def __init__(self):

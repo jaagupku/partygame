@@ -1,7 +1,7 @@
 import pytest
 
+from partygame import schemas
 from partygame.schemas import Lobby
-import partygame.schemas as schemas
 from partygame.schemas.game_definition import (
     EvaluationRule,
     EvaluationType,

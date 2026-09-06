@@ -31,7 +31,7 @@ class RuntimeTransitionScheduler:
         *,
         lobby: schemas.Lobby,
         snapshot: schemas.RuntimeSnapshotEvent,
-        runtime: "GameRuntimeService",
+        runtime: GameRuntimeService,
     ) -> ScheduledTransition | None:
         if snapshot.active_item and snapshot.active_item.type_ == "round_intro":
             return ScheduledTransition("round_intro", ROUND_INTRO_DURATION_SECONDS)

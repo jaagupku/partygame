@@ -1,13 +1,12 @@
 from typing import TYPE_CHECKING
 
-from redis.asyncio import Redis
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-
-from partygame.state import GameStateRepository
-from partygame.service.connection_access import connection_cookie_name, set_connection_cookie
+from redis.asyncio import Redis
 
 from partygame import schemas, service
 from partygame.api import deps
+from partygame.service.connection_access import connection_cookie_name, set_connection_cookie
+from partygame.state import GameStateRepository
 
 if TYPE_CHECKING:
     from partygame.state.auth_models import UserRecord
@@ -88,8 +87,9 @@ async def create_lobby(
     response: Response,
     *,
     redis: Redis = Depends(deps.get_redis),
-    current_user: "UserRecord | None" = Depends(deps.get_current_user_optional),
-    create_game: schemas.CreateGame = schemas.CreateGame(),
+    current_user: UserRecord | None = Depends(deps.get_current_user_optional),
+    # FastAPI copies this body default for each request.
+    create_game: schemas.CreateGame = schemas.CreateGame(),  # noqa: B008
 ):
     lobby = await service.lobby.create(redis, create_game, current_user)
     token = await GameStateRepository(redis).issue_connection_token(lobby.id)

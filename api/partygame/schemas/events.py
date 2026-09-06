@@ -3,8 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from .lobby import GameState, Player
 from .game_definition import DefinitionTheme, MapInputConfig, PlayerInputKind
+from .lobby import GameState, Player
 
 
 class Event(StrEnum):

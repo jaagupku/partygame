@@ -1,6 +1,6 @@
-from math import asin, cos, radians, sin, sqrt
 from collections.abc import Awaitable, Callable
-from typing import Any, TYPE_CHECKING
+from math import asin, cos, radians, sin, sqrt
+from typing import TYPE_CHECKING, Any
 
 from partygame import schemas
 from partygame.schemas.game_definition import (
@@ -11,8 +11,8 @@ from partygame.schemas.game_definition import (
 )
 
 if TYPE_CHECKING:
-    from partygame.state.repo import GameStateRepository
     from partygame.service.runtime.timing import TimingState
+    from partygame.state.repo import GameStateRepository
 
 HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.EXACT_TEXT,
@@ -46,8 +46,8 @@ DRAWING_LABEL_PREFIX = "Drawing"
 class EvaluationRuntime:
     def __init__(
         self,
-        repo: "GameStateRepository",
-        timing: "TimingState",
+        repo: GameStateRepository,
+        timing: TimingState,
         get_step_state: Callable[[str], Awaitable[dict[str, Any]]] | None = None,
     ) -> None:
         self.repo = repo

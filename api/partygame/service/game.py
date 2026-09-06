@@ -38,11 +38,11 @@ log = logging.getLogger(__name__)
 __all__ = (
     "END_GAME_COMPONENT_ID",
     "END_GAME_SEQUENCE_STAGES",
-    "GameRuntimeService",
     "HOSTLESS_AUTO_EVALUATION_TYPES",
     "PLAYER_METRICS_COMPONENT_ID",
     "REACTION_KEYS",
     "ROUND_INTRO_DURATION_SECONDS",
+    "GameRuntimeService",
 )
 
 
@@ -954,7 +954,7 @@ class GameRuntimeService:
             return [schemas.ScoresUpdatedEvent()]
 
         points_per_vote = max(0, int(step.evaluation.points))
-        vote_counts: dict[str, int] = {player_id: 0 for player_id in answers.keys()}
+        vote_counts: dict[str, int] = {player_id: 0 for player_id in answers}
         for voter_id, target_player_id in votes.items():
             if (
                 isinstance(voter_id, str)
@@ -1180,7 +1180,7 @@ class GameRuntimeService:
             if isinstance(player_id, str) and player_id in answers
         ]
         missing_player_ids = sorted(
-            player_id for player_id in answers.keys() if player_id not in existing_order
+            player_id for player_id in answers if player_id not in existing_order
         )
         order = existing_order + missing_player_ids
         await self.repo.set_step_cache(lobby_id, {"drawing_vote_order": order})

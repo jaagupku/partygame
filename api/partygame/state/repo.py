@@ -1,7 +1,7 @@
 import json
+from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from secrets import compare_digest, token_urlsafe
-from collections.abc import Iterable
 
 from fastapi import HTTPException
 from redis.asyncio import Redis

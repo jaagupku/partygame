@@ -1,14 +1,14 @@
 import json
 import os
-from io import BytesIO
 import zipfile
+from io import BytesIO
 
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
-from starlette.requests import Request
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from starlette.requests import Request
 
 from partygame.api.api_v1.endpoints import definitions as definitions_endpoints
 from partygame.db.postgres import Base
@@ -901,8 +901,9 @@ def test_map_distance_correct_point_must_be_inside_locked_bounds():
 @pytest.mark.parametrize("case", ["member", "total", "json", "entries", "duplicate_manifest"])
 async def test_import_rejects_expansion_limits_before_saving(tmp_path, monkeypatch, case):
     from unittest.mock import AsyncMock
-    from partygame.service import definition_archive as archive_service
+
     from partygame.core.config import settings
+    from partygame.service import definition_archive as archive_service
 
     definition = _music_definition().model_dump(mode="json")
     entries = [{"src": "/api/v1/media/source", "archive_path": "media/a.png", "kind": "image"}]
@@ -932,8 +933,9 @@ async def test_import_rejects_expansion_limits_before_saving(tmp_path, monkeypat
 
 
 def test_archive_member_read_is_bounded(monkeypatch):
-    from partygame.service import definition_archive as archive_service
     from unittest.mock import MagicMock
+
+    from partygame.service import definition_archive as archive_service
 
     archive = MagicMock()
     handle = archive.open.return_value.__enter__.return_value

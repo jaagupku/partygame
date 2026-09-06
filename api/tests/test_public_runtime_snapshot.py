@@ -1,4 +1,4 @@
-import partygame.schemas as schemas
+from partygame import schemas
 from partygame.service.player import public_runtime_snapshot
 
 
