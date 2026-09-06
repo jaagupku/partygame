@@ -184,6 +184,7 @@
 	}
 
 	function setHost(playerId: string) {
+		if (!data.canManage || $game.state !== 'waiting_for_players' || !$game.host_enabled) return;
 		socket?.send(
 			JSON.stringify({
 				type_: 'set_host',
@@ -239,6 +240,7 @@
 					<button
 						type="button"
 						class="grid w-24 justify-items-center gap-2 text-center transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500"
+						disabled={!data.canManage || !$game.host_enabled}
 						onclick={() => setHost(player.id)}
 						aria-label={`${player.name}${player.isHost ? `, ${$messages.common.host}` : ''}`}
 					>

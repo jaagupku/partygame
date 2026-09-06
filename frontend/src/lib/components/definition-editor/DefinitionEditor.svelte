@@ -73,7 +73,6 @@
 	let pendingDragKey = $state<string | null>(null);
 	let draggedStepKey = $state<string | null>(null);
 	let dropTargetKey = $state<string | null>(null);
-	let dragPreviewDefinition = $state<GameDefinition | null>(null);
 	let dragPointer = $state({ x: 0, y: 0 });
 	let dragPointerOffset = $state({ x: 0, y: 0 });
 	let dragStartPointer = $state({ x: 0, y: 0 });
@@ -119,8 +118,7 @@
 		| null
 	>(null);
 
-	const displayDefinition = $derived(dragPreviewDefinition ?? draft);
-	const flatSteps = $derived(buildFlatSteps(displayDefinition, getStepKey));
+	const flatSteps = $derived(buildFlatSteps(draft, getStepKey));
 	const selectedFlatStep = $derived(
 		selectedStepKey ? (flatSteps.find((item) => item.stepKey === selectedStepKey) ?? null) : null
 	);
@@ -1210,7 +1208,6 @@
 			if (distance >= 6) {
 				draggedStepKey = pendingDragKey;
 				dropTargetKey = null;
-				dragPreviewDefinition = null;
 				selectedStepKey = pendingDragKey;
 			}
 		}
@@ -1220,7 +1217,6 @@
 		pendingDragKey = null;
 		draggedStepKey = null;
 		dropTargetKey = null;
-		dragPreviewDefinition = null;
 		dragPointer = { x: 0, y: 0 };
 		dragPointerOffset = { x: 0, y: 0 };
 		dragStartPointer = { x: 0, y: 0 };
@@ -1257,10 +1253,7 @@
 			Math.min(adjustedTargetIndex, nextRounds[targetRoundIndex].steps.length)
 		);
 
-		const existingIndex = nextRounds[targetRoundIndex].steps.findIndex(
-			(candidate) => getStepKey(candidate) === sourceStepKey
-		);
-		if (existingIndex === insertIndex) {
+		if (source.roundIndex === targetRoundIndex && source.stepIndex === insertIndex) {
 			return definition;
 		}
 
@@ -1271,21 +1264,10 @@
 		};
 	}
 
-	function activateDropTarget(key: string, targetRoundIndex: number, targetStepIndex: number) {
-		if (!draggedStepKey) {
-			return;
+	function activateDropTarget(key: string | null) {
+		if (draggedStepKey) {
+			dropTargetKey = key;
 		}
-		dropTargetKey = key;
-		const nextPreview = buildReorderedDefinition(
-			draft,
-			draggedStepKey,
-			targetRoundIndex,
-			targetStepIndex
-		);
-		if (!nextPreview) {
-			return;
-		}
-		dragPreviewDefinition = nextPreview === draft ? null : nextPreview;
 	}
 
 	function onDropStep(targetRoundIndex: number, targetStepIndex: number, key: string) {
@@ -1301,10 +1283,7 @@
 		);
 		if (nextPreview && nextPreview !== draft) {
 			draft = nextPreview;
-			dragPreviewDefinition = null;
 			selectedStepKey = sourceStepKey;
-		} else {
-			dragPreviewDefinition = null;
 		}
 		dropTargetKey = key;
 	}
@@ -1417,7 +1396,7 @@
 	{:else}
 		<section class="card flex min-h-0 flex-1 flex-col overflow-hidden p-0">
 			<DefinitionEditorToolbar
-				title={displayDefinition.title}
+				title={draft.title}
 				{breadcrumbCurrentLabel}
 				{editingTitle}
 				{saving}
@@ -1445,7 +1424,7 @@
 					class="editor-sidebar-frame min-h-0 overflow-hidden border-b px-3 pt-2 xl:border-b-0 xl:border-r"
 				>
 					<DefinitionStepSorter
-						rounds={displayDefinition.rounds}
+						rounds={draft.rounds}
 						{flatSteps}
 						{selectedStepKey}
 						{draggedStepKey}

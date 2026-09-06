@@ -4,6 +4,8 @@ from redis.asyncio import Redis
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from partygame import service
+from partygame.state import GameStateRepository
+from partygame.service.connection_access import connection_cookie_name
 from partygame.api import deps
 from partygame.service.player import ClientController
 from partygame.service.lobby import GameController
@@ -19,7 +21,10 @@ async def game_websocket_host(
     redis: Redis = Depends(deps.get_redis),
 ):
     lobby = await service.lobby.get(redis, game_id)
-    server = GameController(websocket, redis, lobby)
+    can_manage = await GameStateRepository(redis).verify_connection_token(
+        game_id, websocket.cookies.get(connection_cookie_name(game_id))
+    )
+    server = GameController(websocket, redis, lobby, can_manage=can_manage)
 
     await server.connect()
     # Game Running
@@ -43,6 +48,11 @@ async def game_websocket_controller(
     player_id: str,
     redis: Redis = Depends(deps.get_redis),
 ):
+    if not await GameStateRepository(redis).verify_connection_token(
+        game_id, websocket.cookies.get(connection_cookie_name(game_id, player=True)), player_id
+    ):
+        await websocket.close(code=1008)
+        return
     player = await service.player.get(redis, game_id, player_id)
     lobby = await service.lobby.get(redis, game_id)
 

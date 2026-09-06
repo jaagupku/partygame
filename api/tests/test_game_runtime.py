@@ -1878,8 +1878,7 @@ async def test_end_game_stats_include_correct_wrong_accuracy_and_fastest_buzz():
     assert stats_by_id["most_correct"].value == 2
     assert stats_by_id["most_wrong"].winner_player_ids == ["p2"]
     assert stats_by_id["most_wrong"].value == 1
-    assert stats_by_id["highest_accuracy"].winner_player_ids == ["p1"]
-    assert stats_by_id["highest_accuracy"].value == 100
+    assert "highest_accuracy" not in stats_by_id  # Too few answers to qualify.
     assert stats_by_id["fastest_buzz"].winner_player_ids == ["p1"]
     assert stats_by_id["fastest_buzz"].value > 0
 
@@ -2188,3 +2187,25 @@ async def test_single_drawing_skips_vote_phase_and_reveals_results():
     assert snapshot.drawing_items[0].player_name == "Alice"
     assert snapshot.drawing_items[0].vote_count == 0
     assert snapshot.drawing_items[0].points_awarded == 0
+
+
+@pytest.mark.asyncio
+async def test_reset_closed_question_accepts_another_answer_from_same_player():
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=HostJudgedTextProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
+
+    await service.start_game(lobby)
+    _, handled = await service.submit_player_input(lobby, "p1", "first answer")
+    assert handled is True
+    await service.close_step(lobby)
+    assert lobby.phase != "question_active"
+
+    events = await service.reset_current_step(lobby)
+    snapshot = events[0]
+    assert snapshot.active_step.input_enabled is True
+    assert snapshot.submitted_player_ids == []
+
+    _, handled = await service.submit_player_input(lobby, "p1", "second answer")
+    assert handled is True
+    assert repo.steps[lobby.id]["answers"]["p1"] == "second answer"

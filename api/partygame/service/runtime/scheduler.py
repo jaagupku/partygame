@@ -45,7 +45,11 @@ class RuntimeTransitionScheduler:
         ):
             return ScheduledTransition(
                 "hostless_end_game_stage",
-                HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS,
+                (
+                    12.0
+                    if snapshot.end_game.sequence_stage == "stats"
+                    else HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS
+                ),
             )
 
         if (

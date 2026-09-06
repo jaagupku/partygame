@@ -78,7 +78,12 @@
 			void fitTitleToSingleLine();
 		});
 		titleResizeObserver.observe(contentElement);
+		let cancelled = false;
+		void document.fonts?.ready.then(() => {
+			if (!cancelled) void fitTitleToSingleLine();
+		});
 		return () => {
+			cancelled = true;
 			titleResizeObserver?.disconnect();
 			titleResizeObserver = undefined;
 		};
@@ -114,7 +119,11 @@
 			return;
 		}
 
-		const availableWidth = contentElement.clientWidth;
+		const contentStyle = getComputedStyle(contentElement);
+		const availableWidth =
+			contentElement.clientWidth -
+			Number.parseFloat(contentStyle.paddingLeft) -
+			Number.parseFloat(contentStyle.paddingRight);
 		if (availableWidth <= 0) {
 			return;
 		}
@@ -177,7 +186,9 @@
 	.round-intro-content {
 		position: relative;
 		display: grid;
-		max-width: min(68rem, 92vw);
+		grid-template-columns: minmax(0, 1fr);
+		width: min(68rem, 100%);
+		min-width: 0;
 		justify-items: center;
 		gap: 0.8rem;
 		border-radius: 0.5rem;
@@ -228,6 +239,8 @@
 	.round-intro-title {
 		position: relative;
 		z-index: 1;
+		width: 100%;
+		min-width: 0;
 		max-width: 100%;
 		white-space: nowrap;
 		font-size: clamp(3.4rem, 10vw, 9.5rem);

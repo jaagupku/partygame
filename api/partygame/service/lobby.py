@@ -72,7 +72,10 @@ async def get_id_from_join_code(redis: Redis, join_code: str):
 
 
 class GameController:
-    def __init__(self, websocket: WebSocket, redis: Redis, lobby: schemas.Lobby):
+    def __init__(
+        self, websocket: WebSocket, redis: Redis, lobby: schemas.Lobby, *, can_manage: bool = False
+    ):
+        self.can_manage = can_manage
         self.websocket = websocket
         self.redis = redis
         self.repo = GameStateRepository(redis)
@@ -164,6 +167,18 @@ class GameController:
         await self.broadcast_snapshot()
 
     async def set_host(self, event: schemas.SetHostEvent):
+        async with self.repo.mutation_lock(self.lobby.id):
+            await self.refresh_lobby()
+            if (
+                not self.can_manage
+                or not self.lobby.host_enabled
+                or self.lobby.state != schemas.GameState.WAITING_FOR_PLAYERS
+                or await self.repo.get_player(self.lobby.id, event.player_id) is None
+            ):
+                return
+            await self._set_host(event)
+
+    async def _set_host(self, event: schemas.SetHostEvent):
         prev_host = self.lobby.host_id
         self.lobby.host_id = event.player_id
         await self.repo.set_lobby_fields(self.lobby.id, host_id=event.player_id)
@@ -180,5 +195,5 @@ class GameController:
                 await self.send(await self.runtime.sync_lobby(self.lobby))
             case Event.SET_HOST:
                 await self.set_host(schemas.SetHostEvent.model_validate(msg))
-            case Event.KICK_PLAYER:
+            case Event.KICK_PLAYER if self.can_manage:
                 await self.kick_player(schemas.KickPlayerEvent.model_validate(msg))

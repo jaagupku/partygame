@@ -895,3 +895,50 @@ def test_map_distance_correct_point_must_be_inside_locked_bounds():
                 ],
             }
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", ["member", "total", "json", "entries", "duplicate_manifest"])
+async def test_import_rejects_expansion_limits_before_saving(tmp_path, monkeypatch, case):
+    from unittest.mock import AsyncMock
+    from partygame.service import definition_archive as archive_service
+    from partygame.core.config import settings
+
+    definition = _music_definition().model_dump(mode="json")
+    entries = [{"src": "/api/v1/media/source", "archive_path": "media/a.png", "kind": "image"}]
+    media = b"x" * (1024 * 1024 + 1)
+    if case == "member":
+        monkeypatch.setattr(settings, "MEDIA_MAX_UPLOAD_MB", 1)
+    elif case == "total":
+        monkeypatch.setattr(settings, "DEFINITION_ARCHIVE_MAX_EXPANDED_MB", 1)
+    elif case == "json":
+        monkeypatch.setattr(archive_service, "MAX_JSON_BYTES", 20)
+    elif case == "entries":
+        monkeypatch.setattr(archive_service, "MAX_ARCHIVE_ENTRIES", 2)
+    elif case == "duplicate_manifest":
+        entries *= 2
+    content = BytesIO()
+    with zipfile.ZipFile(content, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("definition.json", json.dumps(definition))
+        archive.writestr("manifest.json", json.dumps({"version": 1, "media": entries}))
+        archive.writestr("media/a.png", media)
+    storage = AsyncMock()
+    with pytest.raises(HTTPException) as error:
+        await archive_service.parse_definition_import_zip(
+            content=content.getvalue(), definition_provider=AsyncMock(), media_storage=storage
+        )
+    assert error.value.status_code == (422 if case == "duplicate_manifest" else 413)
+    storage.save.assert_not_awaited()
+
+
+def test_archive_member_read_is_bounded(monkeypatch):
+    from partygame.service import definition_archive as archive_service
+    from unittest.mock import MagicMock
+
+    archive = MagicMock()
+    handle = archive.open.return_value.__enter__.return_value
+    handle.read.return_value = b"x" * 11
+    with pytest.raises(HTTPException) as error:
+        archive_service._read_archive_member(archive, "media/a.png", 10)
+    assert error.value.status_code == 413
+    handle.read.assert_called_once_with(11)

@@ -28,42 +28,42 @@
 	const stage = $derived(endGame.sequence_stage || 'third_place');
 	const statWinnerNames = (card: EndGameStatCard) =>
 		card.winner_player_ids.map((playerId) => playerMap.get(playerId)?.name ?? playerId).join(', ');
-	const reactionStatKey = (card: EndGameStatCard) =>
-		card.id === 'most_reactions' || card.id === 'signature_reaction' || card.id === 'game_mood'
-			? card.id
-			: undefined;
-	const statLabel = (card: EndGameStatCard) => {
-		const key = reactionStatKey(card);
-		return key ? $messages.finale.statLabels[key] : card.label;
+	const highlights = $derived.by(() => {
+		const ids = endGame.highlight_card_ids;
+		return ids?.length
+			? ids
+					.map((id) => endGame.stats_cards.find((card) => card.id === id))
+					.filter((card): card is EndGameStatCard => Boolean(card))
+					.slice(0, 3)
+			: endGame.stats_cards.filter((card) => card.id !== 'most_wrong').slice(0, 3);
+	});
+	const statLabel = (card: EndGameStatCard) =>
+		$messages.finale.statLabels[card.id as keyof typeof $messages.finale.statLabels] ?? card.label;
+	const statDescription = (card: EndGameStatCard) =>
+		$messages.finale.statDescriptions[card.id as keyof typeof $messages.finale.statDescriptions] ??
+		card.description;
+	const formatStatValue = (card: EndGameStatCard) =>
+		card.unit === 'seconds'
+			? Number(card.value).toFixed(2)
+			: card.unit === 'percent'
+				? `${Number(card.value).toFixed(0)}%`
+				: `${card.value}`;
+	const statUnit = (card: EndGameStatCard) => {
+		const unit = card.unit ?? (card.id === 'most_correct' ? 'answers' : '');
+		return $messages.finale.statUnits[unit as keyof typeof $messages.finale.statUnits] ?? unit;
 	};
-	const statHeadline = (card: EndGameStatCard) => {
-		if (card.headline) {
-			return card.headline;
-		}
-		if (card.id === 'signature_reaction' && card.reaction_key) {
-			return $messages.finale.reactionSignatureHeadlines[card.reaction_key](statWinnerNames(card));
-		}
-		if (card.id === 'game_mood' && card.reaction_key) {
-			return $messages.finale.reactionMoodHeadlines[card.reaction_key];
-		}
-		return statWinnerNames(card);
-	};
-	const statDescription = (card: EndGameStatCard) => {
-		const key = reactionStatKey(card);
-		return key ? $messages.finale.statDescriptions[key] : card.description;
-	};
-	const formatStatValue = (card: EndGameStatCard) => {
-		if (card.unit === 'seconds') {
-			return `${Number(card.value).toFixed(2)}s`;
-		}
-		if (card.unit === 'percent') {
-			return `${Number(card.value).toFixed(0)}%`;
-		}
-		if (card.unit === 'reactions' || card.unit === 'uses') {
-			return `${card.value} ${$messages.finale.reactionStatUnits[card.unit]}`;
-		}
-		return `${card.value}${card.unit ? ` ${card.unit}` : ''}`;
-	};
+	const supportingFacts = (card: EndGameStatCard) =>
+		card.winner_player_ids.length === 0
+			? []
+			: endGame.stats_cards
+					.filter(
+						(other) =>
+							other.id !== card.id &&
+							['most_correct', 'fastest_buzz', 'highest_accuracy'].includes(other.id) &&
+							other.winner_player_ids.length === card.winner_player_ids.length &&
+							other.winner_player_ids.every((id) => card.winner_player_ids.includes(id))
+					)
+					.slice(0, 2);
 	const podiumEntries = $derived(endGame.podium.toSorted((a, b) => a.place - b.place));
 	const visiblePodiumPlaces = $derived.by(() => {
 		if (stage === 'third_place') {
@@ -147,21 +147,65 @@
 			</div>
 		</section>
 	{:else if stage === 'stats'}
-		<section class="stats-grid">
-			{#each endGame.stats_cards as card (card.id)}
-				<article class="card stat-card">
+		<section class="stats-grid" style:--card-count={Math.max(1, highlights.length)}>
+			{#each highlights as card, index (card.id)}
+				<article class="card stat-card" style:--reveal-delay={`${index * 700}ms`}>
 					<p class="stat-label">{statLabel(card)}</p>
-					{#if card.emoji}
-						<p class="stat-emoji" aria-hidden="true">{card.emoji}</p>
-					{/if}
-					<h2 class="stat-winners">{statHeadline(card)}</h2>
-					<p class="stat-value">{formatStatValue(card)}</p>
-					{#if statDescription(card)}
+					<div class="stat-identity">
+						<div class="stat-avatars">
+							{#each card.winner_player_ids as playerId (playerId)}
+								{@const player =
+									playerMap.get(playerId) ??
+									endGame.final_standings.find((entry) => entry.player_id === playerId)}
+								<Avatar
+									name={player?.name ?? playerId}
+									avatarKind={player?.avatar_kind}
+									avatarPresetKey={player?.avatar_preset_key}
+									avatarUrl={player?.avatar_url}
+									sizeClass="h-16 w-16"
+								/>
+							{/each}
+							{#if card.emoji || card.winner_player_ids.length === 0}
+								<span class="stat-emoji" aria-hidden="true">{card.emoji ?? '✨'}</span>
+							{/if}
+						</div>
+						<h2 class="stat-winners">{statWinnerNames(card) || $messages.finale.room}</h2>
+						{#if card.winner_player_ids.length > 1}<p class="stat-tie">
+								{$messages.finale.tiedAward}
+							</p>{/if}
+					</div>
+					<div class="stat-result">
+						<p class="stat-value">{formatStatValue(card)}</p>
+						<p class="stat-unit">{statUnit(card)}</p>
+					</div>
+					<div class="stat-caption">
+						{#if card.id === 'highest_accuracy'}
+							{#each card.winner_player_ids as playerId}
+								{#if card.answer_counts?.[playerId] != null && card.correct_counts?.[playerId] != null}
+									<p class="stat-description">
+										{card.winner_player_ids.length > 1
+											? `${playerMap.get(playerId)?.name ?? playerId}: `
+											: ''}{$messages.finale.accuracyDetail(
+											card.correct_counts[playerId],
+											card.answer_counts[playerId]
+										)}
+									</p>
+								{/if}
+							{/each}
+						{/if}
 						<p class="stat-description">{statDescription(card)}</p>
+					</div>
+					{#if supportingFacts(card).length}
+						<div class="stat-supporting">
+							{#each supportingFacts(card) as fact}<p>
+									{statLabel(fact)} · {formatStatValue(fact)}
+									{statUnit(fact)}
+								</p>{/each}
+						</div>
 					{/if}
 				</article>
 			{/each}
-			{#if endGame.stats_cards.length === 0}
+			{#if highlights.length === 0}
 				<div class="card stat-card empty-card">
 					<p class="stat-label">{$messages.finale.noStatsYet}</p>
 					<p class="stat-description">{$messages.finale.noStatsHelp}</p>
@@ -169,8 +213,20 @@
 			{/if}
 		</section>
 	{:else}
-		<section class="h-full min-h-0">
-			<Scoreboard {players} {playerMap} variant="overlay" {standings} />
+		<section class="scoreboard-with-recap">
+			<div class="min-h-0"><Scoreboard {players} {playerMap} variant="overlay" {standings} /></div>
+			{#if highlights.length}
+				<aside class="highlights-recap" aria-label={$messages.finale.highlightsRecap}>
+					{#each highlights as card (card.id)}
+						<p>
+							<strong>{statLabel(card)}</strong><span
+								>{statWinnerNames(card) || $messages.finale.room} · {formatStatValue(card)}
+								{statUnit(card)}</span
+							>
+						</p>
+					{/each}
+				</aside>
+			{/if}
 		</section>
 	{/if}
 </div>
@@ -318,13 +374,23 @@
 
 	.stats-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		grid-template-columns: repeat(var(--card-count), minmax(0, 1fr));
+		width: min(100%, 90rem);
+		justify-self: center;
+		min-height: 0;
+		overflow-y: auto;
 		gap: 1rem;
 		align-content: start;
 	}
 
 	.stat-card {
-		min-height: 14rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1.1rem;
+		min-width: 0;
+		padding: clamp(1.25rem, 2.5vw, 2.5rem);
+		animation: lift-in 450ms ease-out both;
+		animation-delay: var(--reveal-delay, 0ms);
 		background:
 			linear-gradient(
 				135deg,
@@ -336,14 +402,80 @@
 	}
 
 	.stat-value {
-		margin-top: auto;
-		padding-top: 1.25rem;
-		font-size: clamp(2rem, 5vw, 3.25rem);
+		margin: 0;
+		font-size: clamp(3rem, 6vw, 5.5rem);
 		font-weight: 900;
 		line-height: 1;
-		color: color-mix(in srgb, var(--party-primary-strong), var(--party-ink) 18%);
+		color: color-mix(in srgb, var(--party-primary), var(--party-ink) 70%);
 	}
 
+	.stat-identity {
+		min-height: 8rem;
+	}
+	.stat-avatars {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.stat-avatars .stat-emoji {
+		margin: 0;
+		font-size: 3.5rem;
+	}
+	.stat-winners {
+		font-size: clamp(1.5rem, 2.8vw, 2.6rem);
+		line-height: 1.1;
+		overflow-wrap: anywhere;
+	}
+	.stat-tie,
+	.stat-unit {
+		color: var(--party-subtle);
+		font-size: 1rem;
+	}
+	.stat-result {
+		margin-top: 0.25rem;
+	}
+	.stat-description {
+		margin-top: 0;
+		font-size: 1.05rem;
+	}
+	.stat-caption {
+		display: grid;
+		gap: 0.4rem;
+	}
+	.stat-supporting {
+		border-top: 1px solid var(--party-border);
+		padding-top: 0.75rem;
+		font-size: 0.9rem;
+		color: var(--party-subtle);
+	}
+	.scoreboard-with-recap {
+		display: grid;
+		grid-template-rows: minmax(0, 1fr) auto;
+		min-height: 0;
+		gap: 0.75rem;
+	}
+	.highlights-recap {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 2rem;
+	}
+	.highlights-recap p {
+		display: grid;
+		gap: 0.2rem;
+		font-size: 0.9rem;
+	}
+	.highlights-recap span {
+		color: var(--party-subtle);
+	}
+	@media (max-width: 760px) {
+		.stats-grid {
+			grid-template-columns: 1fr;
+		}
+		.stat-identity {
+			min-height: 0;
+		}
+	}
 	.empty-card {
 		display: grid;
 		place-items: center;
@@ -368,7 +500,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.podium-card {
+		.podium-card,
+		.stat-card {
 			animation: none;
 		}
 	}

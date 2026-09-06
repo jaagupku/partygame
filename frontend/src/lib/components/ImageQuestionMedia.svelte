@@ -7,6 +7,8 @@
 		DEFAULT_ZOOM_OUT_ORIGIN_Y,
 		DEFAULT_ZOOM_OUT_START,
 		getBlurCircleRadius,
+		getImageRevealProgress,
+		createRevealProgressTracker,
 		mapRevealProgress,
 		getScaledImageBlurAmount
 	} from '$lib/media/image-reveal';
@@ -49,14 +51,6 @@
 
 	const revealState = $derived(step.media?.reveal_state ?? 'idle');
 	const imageMedia = $derived(getImageMedia(step.media));
-	const revealElapsedSeconds = $derived.by(() => {
-		const baseElapsed = Math.max(0, imageMedia?.reveal_elapsed_seconds ?? 0);
-		const startedAt = imageMedia?.reveal_started_at;
-		if (revealState !== 'running' || !startedAt) {
-			return baseElapsed;
-		}
-		return baseElapsed + Math.max(0, nowMs / 1000 - startedAt);
-	});
 	const revealDurationSeconds = $derived(step.media?.reveal_duration_seconds ?? 14);
 	const blurAmount = $derived(imageMedia?.blur_amount ?? DEFAULT_IMAGE_BLUR_AMOUNT);
 	const blurCircleStartSize = $derived(
@@ -65,25 +59,16 @@
 	const scaledBlurAmount = $derived(
 		getScaledImageBlurAmount(blurAmount, imageWrapWidth, imageWrapHeight)
 	);
-	const timerProgress = $derived.by(() => {
-		const totalDuration = step.timer.seconds;
-		if (totalDuration === undefined || totalDuration === null) {
-			return null;
-		}
-		const remainingSeconds =
-			step.timer.ends_at !== undefined && step.timer.ends_at !== null
-				? Math.max(0, step.timer.ends_at - nowMs / 1000)
-				: (step.timer.remaining_seconds ?? totalDuration);
-		return Math.min(Math.max(1 - remainingSeconds / Math.max(totalDuration, 1), 0), 1);
-	});
-	const revealProgress = $derived.by(() => {
-		if (revealState === 'revealed') {
-			return 1;
-		}
-		if (timerProgress !== null) {
-			return timerProgress;
-		}
-		return Math.min(revealElapsedSeconds / Math.max(revealDurationSeconds, 1), 1);
+	const trackRevealProgress = createRevealProgressTracker();
+	let revealProgress = $state(0);
+	$effect(() => {
+		// Sample on frames and runtime updates so resuming uses a fresh clock.
+		nowMs;
+		revealProgress = trackRevealProgress(
+			`${step.id}:${imageMedia?.src ?? ''}`,
+			revealState,
+			getImageRevealProgress(step, Date.now())
+		);
 	});
 	const blurRevealProgress = $derived(
 		mapRevealProgress(revealProgress, imageMedia?.blur_reveal_curve)
@@ -377,6 +362,9 @@
 		background-size: contain;
 		border-radius: 999px;
 		clip-path: circle(8% at 20% 20%);
+	}
+
+	.reveal-finish-active .media-spotlight {
 		transition: clip-path 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
@@ -451,7 +439,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.media-spotlight {
+		.reveal-finish-active .media-spotlight {
 			transition: none;
 		}
 

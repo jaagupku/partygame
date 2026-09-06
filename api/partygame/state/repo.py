@@ -1,4 +1,6 @@
 import json
+from contextlib import asynccontextmanager
+from secrets import compare_digest, token_urlsafe
 from collections.abc import Iterable
 
 from fastapi import HTTPException
@@ -12,6 +14,35 @@ from partygame.state.keys import GameKeyFactory
 class GameStateRepository:
     def __init__(self, redis: Redis):
         self.redis = redis
+
+    @asynccontextmanager
+    async def mutation_lock(self, game_id: str):
+        # Shared by every API process; the lease bounds abandoned locks.
+        async with self.redis.lock(f"game:{game_id}:mutation-lock", timeout=60):
+            yield
+
+    async def issue_connection_token(self, game_id: str, player_id: str | None = None) -> str:
+        key = (
+            GameKeyFactory.game_player(game_id, player_id)
+            if player_id
+            else GameKeyFactory.game_meta(game_id)
+        )
+        token = token_urlsafe(32)
+        await self.redis.hset(key, "connection_token", token)
+        return token
+
+    async def verify_connection_token(
+        self, game_id: str, token: str | None, player_id: str | None = None
+    ) -> bool:
+        if not token:
+            return False
+        key = (
+            GameKeyFactory.game_player(game_id, player_id)
+            if player_id
+            else GameKeyFactory.game_meta(game_id)
+        )
+        expected = await self.redis.hget(key, "connection_token")
+        return bool(expected and compare_digest(expected, token))
 
     async def register_game_key(self, game_id: str, key: str):
         await self.redis.sadd(GameKeyFactory.game_keys(game_id), key)

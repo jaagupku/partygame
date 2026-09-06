@@ -94,3 +94,53 @@ export function getBlurCircleRadius(
 	const endRadius = (Math.hypot(width, height) / 2) * BLUR_CIRCLE_END_COVERAGE;
 	return startRadius + Math.max(0, endRadius - startRadius) * progress;
 }
+
+/** Runtime timing initializes a reveal, including one opened while paused. */
+export function getImageRevealProgress(
+	step: Pick<RuntimeStepState, 'media' | 'timer'>,
+	nowMs: number
+): number {
+	const media = step.media?.type_ === 'image' ? step.media : null;
+	if (media?.reveal_state === 'revealed') return 1;
+	const totalDuration = step.timer.seconds;
+	if (totalDuration !== undefined && totalDuration !== null) {
+		const remaining =
+			step.timer.ends_at !== undefined && step.timer.ends_at !== null
+				? Math.max(0, step.timer.ends_at - nowMs / 1000)
+				: (step.timer.remaining_seconds ?? totalDuration);
+		return clampProgress(1 - remaining / Math.max(totalDuration, 1));
+	}
+	let elapsed = Math.max(0, media?.reveal_elapsed_seconds ?? 0);
+	if (media?.reveal_state === 'running' && media.reveal_started_at != null) {
+		elapsed += Math.max(0, nowMs / 1000 - media.reveal_started_at);
+	}
+	return clampProgress(elapsed / Math.max(media?.reveal_duration_seconds ?? 14, 1));
+}
+
+/** Preserve the visible frame across delayed pause/resume updates. */
+export function createRevealProgressTracker() {
+	let previousKey: string | undefined;
+	let previousState = '';
+	let displayed = 0;
+	let resumeOffset = 0;
+	return (key: string, state: string, progress: number): number => {
+		progress = clampProgress(progress);
+		if (key !== previousKey || state === 'idle') {
+			displayed = progress;
+			resumeOffset = 0;
+		} else if (state === 'revealed') {
+			displayed = 1;
+		} else if (state === 'paused' && (previousState === 'running' || previousState === 'paused')) {
+			// The server paused before this client received the update. Keep the
+			// last displayed frame instead of rewinding to the server timestamp.
+		} else if (state === 'running') {
+			if (previousState === 'paused') resumeOffset = displayed - progress;
+			displayed = Math.max(displayed, clampProgress(progress + resumeOffset));
+		} else {
+			displayed = progress;
+		}
+		previousKey = key;
+		previousState = state;
+		return displayed;
+	};
+}

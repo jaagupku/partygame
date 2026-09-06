@@ -40,5 +40,7 @@ export async function load({ fetch, params }) {
 		}
 	}
 
-	return { lobby, definitionTitle };
+	const accessResponse = await fetch(`/api/v1/lobby/${lobby.id}/access`);
+	const canManage = accessResponse.ok && (await accessResponse.json()).can_manage === true;
+	return { lobby, definitionTitle, canManage };
 }

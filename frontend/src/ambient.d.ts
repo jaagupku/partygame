@@ -503,6 +503,8 @@ type FinalStandingEntry = {
 };
 
 type EndGameStatCard = {
+	answer_counts?: Record<string, number>;
+	correct_counts?: Record<string, number>;
 	id: string;
 	label: string;
 	winner_player_ids: string[];
@@ -521,6 +523,7 @@ type EndGameState = {
 	final_standings: FinalStandingEntry[];
 	podium: FinalStandingEntry[];
 	stats_cards: EndGameStatCard[];
+	highlight_card_ids?: string[];
 };
 
 type GameStatSummary = {

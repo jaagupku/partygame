@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import 'iconify-icon';
 	import { stepBadges, stepPreview } from './helpers';
@@ -24,7 +24,7 @@
 		onStepDragStart: (event: PointerEvent, stepKey: string) => void;
 		onStepDragMove: (event: PointerEvent) => void;
 		onStepDragEnd: () => void;
-		onActivateDropTarget: (key: string, targetRoundIndex: number, targetStepIndex: number) => void;
+		onActivateDropTarget: (key: string | null) => void;
 		onDropStep: (targetRoundIndex: number, targetStepIndex: number, key: string) => void;
 	};
 
@@ -59,11 +59,12 @@
 	$effect(() => {
 		const stepKey = selectedStepKey;
 		const scroller = sorterScroller;
-		if (!stepKey || !scroller) {
+		if (!stepKey || !scroller || untrack(() => pointerId !== null)) {
 			return;
 		}
 
 		void tick().then(() => {
+			if (pointerId !== null) return;
 			const selectedCard = scroller.querySelector<HTMLElement>(`[data-step-key="${stepKey}"]`);
 			if (!selectedCard) {
 				return;
@@ -117,51 +118,127 @@
 		return null;
 	}
 
-	function updateAutoScroll(pointerY: number) {
-		if (!sorterScroller || !draggedStepKey) {
-			return;
+	let pointerId: number | null = null;
+	let pointerX = 0;
+	let pointerY = 0;
+	let suppressClick = false;
+	let captureCard: HTMLElement | null = null;
+
+	function updateDropTarget() {
+		const rect = sorterScroller?.getBoundingClientRect();
+		const inside =
+			rect &&
+			pointerX >= rect.left &&
+			pointerX <= rect.right &&
+			pointerY >= rect.top &&
+			pointerY <= rect.bottom;
+		activeDropTarget = inside
+			? parseDropTarget(
+					document.elementFromPoint(pointerX, pointerY) as HTMLElement | null,
+					pointerY
+				)
+			: null;
+		onActivateDropTarget(activeDropTarget?.key ?? null);
+	}
+
+	$effect(() => {
+		if (!draggedStepKey || !sorterScroller) return;
+		const scroller = sorterScroller;
+		let frame: number;
+		let previousTime = 0;
+		function scroll(time: number) {
+			const elapsed = previousTime ? Math.min(time - previousTime, 32) : 0;
+			previousTime = time;
+			const rect = scroller.getBoundingClientRect();
+			if (
+				pointerX >= rect.left &&
+				pointerX <= rect.right &&
+				pointerY >= rect.top &&
+				pointerY <= rect.bottom
+			) {
+				const edge = Math.min(72, rect.height / 3);
+				const speed =
+					pointerY < rect.top + edge
+						? -Math.min(1, (rect.top + edge - pointerY) / edge)
+						: pointerY > rect.bottom - edge
+							? Math.min(1, (pointerY - rect.bottom + edge) / edge)
+							: 0;
+				const before = scroller.scrollTop;
+				scroller.scrollTop += speed * elapsed * 0.7;
+				if (scroller.scrollTop !== before) updateDropTarget();
+			}
+			frame = requestAnimationFrame(scroll);
 		}
-		const rect = sorterScroller.getBoundingClientRect();
-		const edgeThreshold = 72;
-		const maxStep = 18;
-		if (pointerY < rect.top + edgeThreshold) {
-			const distance = rect.top + edgeThreshold - pointerY;
-			sorterScroller.scrollTop -= Math.min(maxStep, Math.max(4, distance / 4));
-			return;
-		}
-		if (pointerY > rect.bottom - edgeThreshold) {
-			const distance = pointerY - (rect.bottom - edgeThreshold);
-			sorterScroller.scrollTop += Math.min(maxStep, Math.max(4, distance / 4));
-		}
+		frame = requestAnimationFrame(scroll);
+		return () => cancelAnimationFrame(frame);
+	});
+
+	function handlePointerDown(event: PointerEvent, stepKey: string) {
+		if (event.button !== 0 || pointerId !== null) return;
+		pointerId = event.pointerId;
+		pointerX = event.clientX;
+		pointerY = event.clientY;
+		suppressClick = false;
+		captureCard = event.currentTarget as HTMLElement;
+		captureCard.setPointerCapture?.(event.pointerId);
+		onStepDragStart(event, stepKey);
 	}
 
 	function handleWindowPointerMove(event: PointerEvent) {
+		if (event.pointerId !== pointerId) return;
+		pointerX = event.clientX;
+		pointerY = event.clientY;
 		onStepDragMove(event);
-		if (!draggedStepKey) {
-			return;
-		}
-		updateAutoScroll(event.clientY);
-		const target = parseDropTarget(
-			document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null,
-			event.clientY
-		);
-		if (!target) {
-			return;
-		}
-		activeDropTarget = target;
-		onActivateDropTarget(target.key, target.roundIndex, target.stepIndex);
+		// Parent props settle on the next Svelte update, including drag activation.
+		void tick().then(() => {
+			if (pointerId === null || !draggedStepKey) return;
+			suppressClick = true;
+			updateDropTarget();
+		});
 	}
 
-	function handleWindowPointerUp() {
-		if (draggedStepKey && activeDropTarget) {
-			onDropStep(activeDropTarget.roundIndex, activeDropTarget.stepIndex, activeDropTarget.key);
+	function finishDrag() {
+		if (pointerId !== null && captureCard?.hasPointerCapture?.(pointerId)) {
+			captureCard.releasePointerCapture(pointerId);
 		}
+		pointerId = null;
+		captureCard = null;
 		activeDropTarget = null;
 		onStepDragEnd();
 	}
+
+	function handleWindowPointerUp(event: PointerEvent) {
+		if (event.pointerId !== pointerId) return;
+		if (draggedStepKey) {
+			suppressClick = true;
+			pointerX = event.clientX;
+			pointerY = event.clientY;
+			updateDropTarget();
+			if (activeDropTarget) {
+				onDropStep(activeDropTarget.roundIndex, activeDropTarget.stepIndex, activeDropTarget.key);
+			}
+		}
+		finishDrag();
+	}
+
+	function cancelDrag() {
+		if (pointerId === null) return;
+		suppressClick = true;
+		finishDrag();
+	}
 </script>
 
-<svelte:window onpointermove={handleWindowPointerMove} onpointerup={handleWindowPointerUp} />
+<svelte:window
+	onpointermove={handleWindowPointerMove}
+	onpointerup={handleWindowPointerUp}
+	onpointercancel={(event) => {
+		if (event.pointerId === pointerId) cancelDrag();
+	}}
+	onblur={cancelDrag}
+	onkeydown={(event) => {
+		if (event.key === 'Escape') cancelDrag();
+	}}
+/>
 
 <section class="editor-sorter-panel flex h-full min-h-0 min-w-0 flex-col">
 	<div class="pb-2">
@@ -176,7 +253,7 @@
 		class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-4 pr-0.5"
 	>
 		{#each rounds as round, roundIndex}
-			<div class="mb-5">
+			<div class="relative mb-5">
 				<div class="editor-round-header sticky top-0 z-10 mb-2 rounded-2xl px-3 py-2 shadow-sm">
 					<div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
 						<div class="min-w-0 flex-1">
@@ -246,26 +323,32 @@
 				{:else}
 					{#each flatSteps.filter((candidate) => candidate.roundIndex === roundIndex) as item, itemIndex (item.stepKey)}
 						{@const step = item.step}
-						<div class="min-w-0" animate:flip={{ duration: 180, easing: (t) => t }}>
+						<div class="relative min-w-0" animate:flip={{ duration: 180 }}>
 							{#if isDropTargetActive(roundIndex, itemIndex)}
 								<div
-									class="mb-1 h-2 rounded-full border-2 border-dashed border-sky-400 bg-sky-100"
+									class="pointer-events-none absolute inset-x-0 top-0 z-20 h-1 -translate-y-1/2 rounded-full bg-sky-400"
 								></div>
 							{/if}
 							<button
-								class={`w-full min-w-0 rounded-3xl border p-4 text-left shadow-sm transition ${
-									selectedStepKey === item.stepKey
-										? 'editor-current-step-card shadow-md'
-										: draggedStepKey === item.stepKey
-											? 'pointer-events-none editor-soft-accent opacity-0'
+								class={`w-full min-w-0 touch-none select-none rounded-3xl border p-4 text-left shadow-sm transition-colors ${
+									draggedStepKey === item.stepKey
+										? 'editor-soft-accent opacity-25'
+										: selectedStepKey === item.stepKey
+											? 'editor-current-step-card shadow-md'
 											: 'editor-muted-step-card hover:border-sky-200'
 								}`}
 								data-step-card
 								data-step-key={item.stepKey}
 								data-round-index={roundIndex}
 								data-step-index={itemIndex}
-								onclick={() => onSelectStep(item.stepKey)}
-								onpointerdown={(event) => onStepDragStart(event, item.stepKey)}
+								onclick={(event) => {
+									if (suppressClick && event.detail !== 0) {
+										event.preventDefault();
+										return;
+									}
+									onSelectStep(item.stepKey);
+								}}
+								onpointerdown={(event) => handlePointerDown(event, item.stepKey)}
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div>
@@ -290,7 +373,7 @@
 
 					{#if isDropTargetActive(roundIndex, round.steps.length)}
 						<div
-							class="mb-1 h-2 rounded-full border-2 border-dashed border-sky-400 bg-sky-100"
+							class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-1 translate-y-1/2 rounded-full bg-sky-400"
 						></div>
 					{/if}
 				{/if}
@@ -300,11 +383,9 @@
 
 	{#if draggedItem}
 		<div
-			class="pointer-events-none fixed z-50 w-[min(20rem,calc(100vw-2rem))]"
-			style={`left: ${Math.max(12, dragPointerX - dragOffsetX)}px; top: ${Math.max(
-				12,
-				dragPointerY - dragOffsetY
-			)}px; width: ${Math.max(220, dragCardWidth)}px;`}
+			aria-hidden="true"
+			class="label-title pointer-events-none fixed z-50"
+			style={`left: ${dragPointerX - dragOffsetX}px; top: ${dragPointerY - dragOffsetY}px; width: ${dragCardWidth}px;`}
 		>
 			<div class="editor-soft-accent rounded-3xl border p-4 text-left shadow-2xl backdrop-blur">
 				<div class="flex items-start justify-between gap-3">

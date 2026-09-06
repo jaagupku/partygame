@@ -25,6 +25,42 @@ from partygame.state.definition_models import DefinitionVisibility
 ARCHIVE_VERSION = 1
 DEFINITION_FILE = "definition.json"
 MANIFEST_FILE = "manifest.json"
+MAX_ARCHIVE_ENTRIES = 1000
+MAX_JSON_BYTES = 5 * 1024 * 1024
+
+
+def _validate_archive_limits(archive: zipfile.ZipFile):
+    entries = archive.infolist()
+    if len(entries) > MAX_ARCHIVE_ENTRIES:
+        raise HTTPException(status_code=413, detail="Archive contains too many files")
+    if len({entry.filename for entry in entries}) != len(entries):
+        raise HTTPException(status_code=422, detail="Archive contains duplicate filenames")
+    total = 0
+    for entry in entries:
+        limit = (
+            MAX_JSON_BYTES
+            if entry.filename in {DEFINITION_FILE, MANIFEST_FILE}
+            else settings.MEDIA_MAX_UPLOAD_MB * 1024 * 1024
+        )
+        total += entry.file_size
+        if (
+            entry.file_size > limit
+            or total > settings.DEFINITION_ARCHIVE_MAX_EXPANDED_MB * 1024 * 1024
+        ):
+            raise HTTPException(status_code=413, detail="Expanded archive exceeds size limit")
+
+
+def _read_archive_member(archive: zipfile.ZipFile, name: str, max_bytes: int) -> bytes:
+    try:
+        with archive.open(name) as handle:
+            payload = handle.read(max_bytes + 1)
+    except KeyError as error:
+        raise HTTPException(status_code=422, detail=f"Archive is missing {name}") from error
+    except (zipfile.BadZipFile, RuntimeError, NotImplementedError, EOFError) as error:
+        raise HTTPException(status_code=422, detail=f"Cannot read archive file {name}") from error
+    if len(payload) > max_bytes:
+        raise HTTPException(status_code=413, detail="Expanded archive file exceeds size limit")
+    return payload
 
 
 @dataclass
@@ -104,11 +140,7 @@ async def build_definition_export_zip(
 
 
 def _read_archive_json(archive: zipfile.ZipFile, name: str) -> dict[str, Any]:
-    try:
-        with archive.open(name) as file_handle:
-            payload = file_handle.read()
-    except KeyError as error:
-        raise HTTPException(status_code=422, detail=f"Archive is missing {name}") from error
+    payload = _read_archive_member(archive, name, MAX_JSON_BYTES)
     try:
         parsed = json.loads(payload.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -124,6 +156,10 @@ def _validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     media_entries = manifest.get("media", [])
     if not isinstance(media_entries, list):
         raise HTTPException(status_code=422, detail="Archive manifest media must be a list")
+    if len(media_entries) > MAX_ARCHIVE_ENTRIES:
+        raise HTTPException(status_code=413, detail="Archive contains too many media entries")
+    seen_paths: set[str] = set()
+    seen_sources: set[str] = set()
     for entry in media_entries:
         if not isinstance(entry, dict):
             raise HTTPException(
@@ -134,6 +170,10 @@ def _validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                 status_code=422, detail="Archive manifest media entry is incomplete"
             )
         archive_path = entry["archive_path"]
+        if archive_path in seen_paths or entry["src"] in seen_sources:
+            raise HTTPException(status_code=422, detail="Archive contains duplicate media entries")
+        seen_paths.add(archive_path)
+        seen_sources.add(entry["src"])
         if archive_path.startswith("/") or ".." in Path(archive_path).parts:
             raise HTTPException(status_code=422, detail="Archive manifest media path is invalid")
     return media_entries
@@ -175,6 +215,7 @@ async def parse_definition_import_zip(
     saved_asset_ids: list[str] = []
     try:
         with archive:
+            _validate_archive_limits(archive)
             definition_payload = _read_archive_json(archive, DEFINITION_FILE)
             manifest = _read_archive_json(archive, MANIFEST_FILE)
             media_entries = _validate_manifest(manifest)
@@ -186,16 +227,15 @@ async def parse_definition_import_zip(
                     status_code=422, detail=f"Definition is invalid: {error}"
                 ) from error
 
+            definition.id = await _next_copy_definition_id(
+                base_id=definition.id, definition_provider=definition_provider
+            )
             source_rewrites: dict[str, str] = {}
             for entry in media_entries:
                 archive_path = entry["archive_path"]
-                try:
-                    media_bytes = archive.read(archive_path)
-                except KeyError as error:
-                    raise HTTPException(
-                        status_code=422,
-                        detail=f"Archive is missing media file {archive_path}",
-                    ) from error
+                media_bytes = _read_archive_member(
+                    archive, archive_path, settings.MEDIA_MAX_UPLOAD_MB * 1024 * 1024
+                )
                 try:
                     kind = MediaKind(entry.get("kind", "image"))
                 except ValueError as error:
@@ -223,10 +263,6 @@ async def parse_definition_import_zip(
         if media.src in source_rewrites:
             media.src = source_rewrites[media.src]
 
-    imported_definition.id = await _next_copy_definition_id(
-        base_id=imported_definition.id,
-        definition_provider=definition_provider,
-    )
     return ImportedDefinition(
         definition=imported_definition,
         visibility=DefinitionVisibility.PRIVATE,

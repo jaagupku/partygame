@@ -54,6 +54,7 @@
 	let pendingDrawingVoteId = $state<string | undefined>(undefined);
 	let orderingStepId = $state<string | undefined>(undefined);
 	let inputStepId = $state<string | undefined>(undefined);
+	let inputStartedAt = $state<number | undefined>(undefined);
 	let pendingSubmissionStepId = $state<string | undefined>(undefined);
 	let drawingInput = $state<{ getDraftSubmission: () => DrawingSubmission | undefined } | null>(
 		null
@@ -76,13 +77,17 @@
 
 	$effect(() => {
 		const step = activeStep;
-		if (step?.id !== inputStepId) {
+		const startedAt = step?.timer.started_at;
+		if (step?.id !== inputStepId || (startedAt != null && startedAt !== inputStartedAt)) {
 			answerValue = hasConfiguredNumberSlider(step) ? step.slider_min : '';
 			selectedRadioOption = null;
 			selectedCheckboxOptions = [];
 			selectedMapPoint = null;
 			pendingDrawingVoteId = undefined;
 			inputStepId = step?.id;
+			inputStartedAt = startedAt;
+			orderingStepId = undefined;
+			lastSubmissionToastKey = '';
 			pendingSubmissionStepId = undefined;
 		}
 		if (step?.input_kind !== 'ordering') {

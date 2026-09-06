@@ -161,6 +161,7 @@ class ClientController:
         self.display_channel = GameKeyFactory.display_channel(self.lobby.id)
         self.player_channel = player_channel(self.lobby.id, self.player.id)
         self.pubsub = None
+        self.command_subscribed = False
         self.send_task: asyncio.Task | None = None
         self.timer_task: asyncio.Task | None = None
         self.transition_scheduler = RuntimeTransitionScheduler()
@@ -232,14 +233,17 @@ class ClientController:
         before_snapshot: schemas.RuntimeSnapshotEvent,
         after_snapshot: schemas.RuntimeSnapshotEvent,
     ):
-        host_patch = self._patch_for_viewer(
-            before_snapshot, after_snapshot, include_host_answer=True
+        viewer_patch = self._patch_for_viewer(
+            before_snapshot,
+            after_snapshot,
+            include_host_answer=self.is_host(),
+            viewer_player_id=self.player.id,
         )
         public_patch = self._patch_for_viewer(
             before_snapshot, after_snapshot, include_host_answer=False
         )
-        if host_patch is not None:
-            await self.send(host_patch)
+        if viewer_patch is not None:
+            await self.send(viewer_patch)
         if public_patch is not None:
             await self._safe_send("display patch publish", self.publish_display(public_patch))
         await self._safe_send(
@@ -336,6 +340,17 @@ class ClientController:
             self.lobby.current_step = lobby.current_step
             self.lobby.host_enabled = lobby.host_enabled
             self.lobby.definition_id = lobby.definition_id
+        if self.pubsub is not None:
+            should_subscribe = self.is_host()
+            if should_subscribe != self.command_subscribed:
+                if should_subscribe:
+                    await self.pubsub.subscribe(self.command_channel)
+                else:
+                    await self.pubsub.unsubscribe(self.command_channel)
+                    if self.timer_task is not None:
+                        self.timer_task.cancel()
+                        self.timer_task = None
+                self.command_subscribed = should_subscribe
 
     async def connect(self):
         await self.websocket.accept()
@@ -352,8 +367,7 @@ class ClientController:
 
         self.pubsub = self.redis.pubsub()
         await self.pubsub.subscribe(self.player_channel)
-        if self.is_host():
-            await self.pubsub.subscribe(self.command_channel)
+        await self.refresh_lobby()
         self.send_task = asyncio.create_task(self.publish_websocket())
         await self.send(await self.runtime.sync_lobby(self.lobby))
         if self.is_host():
@@ -367,7 +381,7 @@ class ClientController:
             self.timer_task.cancel()
         if self.pubsub is not None:
             await self.pubsub.unsubscribe(self.player_channel)
-            if self.is_host():
+            if self.command_subscribed:
                 await self.pubsub.unsubscribe(self.command_channel)
 
         self.player.status = ConnectionStatus.DISCONNECTED
@@ -394,9 +408,17 @@ class ClientController:
                     channel = message.get("channel")
                     if isinstance(channel, bytes):
                         channel = channel.decode()
-                    if channel == self.command_channel and self.is_host():
-                        await self.process_controller(message["data"])
+                    data = json.loads(message["data"])
+                    if channel == self.command_channel:
+                        await self.refresh_lobby()
+                        if self.is_host() and data.get("type_") in {
+                            Event.PLAYER_INPUT_SUBMITTED,
+                            Event.DRAWING_VOTE_SUBMITTED,
+                        }:
+                            await self.process_controller(message["data"])
                     else:
+                        if data.get("type_") == Event.SET_HOST:
+                            await self.refresh_lobby()
                         await self.websocket.send_text(message["data"])
         except Exception as error:
             log.error(error)
@@ -550,12 +572,14 @@ class ClientController:
         await self.refresh_lobby()
         if msg.get("type_") == Event.RESYNC_REQUEST:
             await self.send(await self.runtime.sync_lobby(self.lobby))
-            if self.is_host():
+            if self.is_host() and (self.timer_task is None or self.timer_task.done()):
                 await self._schedule_timer_from_snapshot()
             return
         if msg.get("type_") == Event.PLAYER_REACTION:
             await self._process_player_reaction(msg)
             return
+        if msg.get("type_") in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}:
+            msg = msg | {"player_id": self.player.id}
         if (
             self.is_host()
             or (msg.get("type_") == Event.START_GAME and self.can_start_hostless_game())
@@ -564,13 +588,15 @@ class ClientController:
                 in {Event.CLOSE_STEP, Event.SHOW_ANSWER_REVEAL, Event.STEP_ADVANCED}
                 and await self.can_control_hostless_info_slide()
             )
-            or (msg.get("type_") == Event.PLAYER_INPUT_SUBMITTED and not self.lobby.host_enabled)
+            or (
+                msg.get("type_") in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}
+                and not self.lobby.host_enabled
+            )
         ):
             await self.process_controller(json.dumps(msg))
             return
         if msg.get("type_") in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}:
-            msg = msg | {"player_id": self.player.id}
-        await publish(self.redis, self.command_channel, msg)
+            await publish(self.redis, self.command_channel, msg)
 
     def _can_send_reactions(self) -> bool:
         return self.lobby.state == schemas.GameState.RUNNING or self.lobby.phase == "finished"
@@ -696,12 +722,25 @@ class ClientController:
 
     async def process_controller(self, msg: str):
         data = json.loads(msg)
+        # Let controllers submit drafts while the host waits, before taking the lock.
+        if data.get("type_") in {Event.SHOW_ANSWER_REVEAL, Event.CLOSE_STEP}:
+            await self._collect_player_drafts_before_close(reason="host_reveal")
+        async with self.repo.mutation_lock(self.lobby.id):
+            await self.refresh_lobby()
+            # A host may have been replaced while this command waited for the lock.
+            if self.lobby.host_enabled and not self.is_host():
+                return
+            await self._process_controller_locked(msg)
+
+    async def _process_controller_locked(self, msg: str):
+        data = json.loads(msg)
         event_type = data.get("type_")
         await refresh_idle_ttl(self.repo, self.lobby)
 
         match event_type:
             case Event.START_GAME:
-                await self.start_game()
+                if self.lobby.state == schemas.GameState.WAITING_FOR_PLAYERS:
+                    await self.start_game()
 
             case Event.RESET_STEP:
                 await self._run_runtime_events(
@@ -710,7 +749,6 @@ class ClientController:
                 )
 
             case Event.SHOW_ANSWER_REVEAL:
-                await self._collect_player_drafts_before_close(reason="host_reveal")
                 await self._run_runtime_events(
                     lambda: self.runtime.show_answer_reveal(self.lobby),
                 )
@@ -783,7 +821,6 @@ class ClientController:
                 )
 
             case Event.CLOSE_STEP:
-                await self._collect_player_drafts_before_close(reason="host_reveal")
                 await self._run_runtime_events(
                     lambda: self.runtime.close_step(self.lobby),
                     force_snapshot=True,
@@ -909,7 +946,8 @@ class ClientController:
         self, snapshot: schemas.RuntimeSnapshotEvent | None = None
     ):
         if self.timer_task is not None:
-            self.timer_task.cancel()
+            if self.timer_task is not asyncio.current_task():
+                self.timer_task.cancel()
             self.timer_task = None
 
         snapshot = snapshot or await self.runtime.build_snapshot(self.lobby)
@@ -940,85 +978,99 @@ class ClientController:
             self.timer_task = asyncio.create_task(self._expire_timer(transition.delay_seconds))
 
     async def _finish_round_intro(self, delay: float):
+        expected_step = self.lobby.current_step
         await asyncio.sleep(delay)
-        lobby = await self.repo.get_lobby_meta(self.lobby.id)
-        if lobby is None:
-            return
-        self.lobby = lobby
-        if self.lobby.phase != "round_intro":
-            return
-        before_snapshot = await self.runtime.build_snapshot(self.lobby)
-        snapshot = await self.runtime.open_current_step_after_round_intro(self.lobby)
-        if snapshot is None:
-            return
-        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
-        await self.sync_host_runtime_state(snapshot)
+        async with self.repo.mutation_lock(self.lobby.id):
+            lobby = await self.repo.get_lobby_meta(self.lobby.id)
+            if lobby is None:
+                return
+            self.lobby = lobby
+            if lobby.current_step != expected_step:
+                return
+            if self.lobby.phase != "round_intro":
+                return
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
+            snapshot = await self.runtime.open_current_step_after_round_intro(self.lobby)
+            if snapshot is None:
+                return
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
+            await self.sync_host_runtime_state(snapshot)
 
     async def _advance_hostless_reveal(self, delay: float):
+        expected_step = self.lobby.current_step
         await asyncio.sleep(delay)
-        lobby = await self.repo.get_lobby_meta(self.lobby.id)
-        if lobby is None:
-            return
-        self.lobby = lobby
-        if self.lobby.phase != "step_complete":
-            return
-        current_step = await self.runtime.get_current_step(self.lobby)
-        if current_step is None or not self.runtime.is_hostless_auto_progress_step(
-            self.lobby, current_step
-        ):
-            return
-        before_snapshot = await self.runtime.build_snapshot(self.lobby)
-        events = await self.runtime.advance_step(self.lobby)
-        for event in events:
-            if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                await self.relay_event(event)
-        after_snapshot = await self.runtime.build_snapshot(self.lobby)
-        await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
-        await self.sync_host_runtime_state(snapshot)
+        async with self.repo.mutation_lock(self.lobby.id):
+            lobby = await self.repo.get_lobby_meta(self.lobby.id)
+            if lobby is None:
+                return
+            self.lobby = lobby
+            if lobby.current_step != expected_step:
+                return
+            if self.lobby.phase != "step_complete":
+                return
+            current_step = await self.runtime.get_current_step(self.lobby)
+            if current_step is None or not self.runtime.is_hostless_auto_progress_step(
+                self.lobby, current_step
+            ):
+                return
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
+            events = await self.runtime.advance_step(self.lobby)
+            for event in events:
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            after_snapshot = await self.runtime.build_snapshot(self.lobby)
+            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
+            await self.sync_host_runtime_state(snapshot)
 
     async def _advance_hostless_end_game_stage(self, delay: float):
+        expected_step = self.lobby.current_step
         await asyncio.sleep(delay)
-        lobby = await self.repo.get_lobby_meta(self.lobby.id)
-        if lobby is None:
-            return
-        self.lobby = lobby
-        if self.lobby.phase != "finished":
-            return
-        snapshot = await self.runtime.build_snapshot(self.lobby)
-        end_game = snapshot.end_game
-        if (
-            end_game is None
-            or not end_game.revealed
-            or not end_game.autoplay_enabled
-            or end_game.sequence_stage == "scoreboard"
-        ):
-            return
-        before_snapshot = snapshot
-        events = await self.runtime.advance_end_game_stage(self.lobby)
-        for event in events:
-            if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                await self.relay_event(event)
-        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
-        await self.sync_host_runtime_state(snapshot)
+        async with self.repo.mutation_lock(self.lobby.id):
+            lobby = await self.repo.get_lobby_meta(self.lobby.id)
+            if lobby is None:
+                return
+            self.lobby = lobby
+            if lobby.current_step != expected_step:
+                return
+            if self.lobby.phase != "finished":
+                return
+            snapshot = await self.runtime.build_snapshot(self.lobby)
+            end_game = snapshot.end_game
+            if (
+                end_game is None
+                or not end_game.revealed
+                or not end_game.autoplay_enabled
+                or end_game.sequence_stage == "scoreboard"
+            ):
+                return
+            before_snapshot = snapshot
+            events = await self.runtime.advance_end_game_stage(self.lobby)
+            for event in events:
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
+            await self.sync_host_runtime_state(snapshot)
 
     async def _expire_timer(self, delay: float):
+        expected_step = self.lobby.current_step
         await asyncio.sleep(delay)
-        lobby = await self.repo.get_lobby_meta(self.lobby.id)
-        if lobby is None:
-            return
-        self.lobby = lobby
-        if self.lobby.phase != "question_active":
-            return
         await self._collect_player_drafts_before_close(reason="timer_expired")
-        if self.lobby.phase != "question_active":
-            return
-        before_snapshot = await self.runtime.build_snapshot(self.lobby)
-        events = await self.runtime.close_step(self.lobby)
-        for event in events:
-            if not isinstance(event, schemas.RuntimeSnapshotEvent):
-                await self.relay_event(event)
-        after_snapshot = await self.runtime.build_snapshot(self.lobby)
-        await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-        snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
-        await self.sync_host_runtime_state(snapshot)
+        async with self.repo.mutation_lock(self.lobby.id):
+            lobby = await self.repo.get_lobby_meta(self.lobby.id)
+            if lobby is None:
+                return
+            self.lobby = lobby
+            if lobby.current_step != expected_step:
+                return
+            if self.lobby.phase != "question_active":
+                return
+            before_snapshot = await self.runtime.build_snapshot(self.lobby)
+            events = await self.runtime.close_step(self.lobby)
+            for event in events:
+                if not isinstance(event, schemas.RuntimeSnapshotEvent):
+                    await self.relay_event(event)
+            after_snapshot = await self.runtime.build_snapshot(self.lobby)
+            await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
+            await self.sync_host_runtime_state(snapshot)

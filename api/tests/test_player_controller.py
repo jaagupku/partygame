@@ -1,3 +1,6 @@
+import asyncio
+import json
+from unittest.mock import AsyncMock
 from types import SimpleNamespace
 from time import time
 
@@ -55,12 +58,16 @@ class FakeRedis:
 class FakeRepo:
     def __init__(self, lobby: schemas.Lobby | None = None):
         self.lobby = lobby
+        self.lock = asyncio.Lock()
         self.created_player: schemas.Player | None = None
         self.set_lobby_calls: list[tuple[str, dict]] = []
         self.status_updates: list[tuple[str, str, schemas.ConnectionStatus]] = []
         self.applied_ttls: list[tuple[str, int]] = []
         self.connected_players = 0
         self.players: list[schemas.Player] = []
+
+    def mutation_lock(self, game_id):
+        return self.lock
 
     async def create_player(self, player: schemas.Player):
         self.created_player = player
@@ -369,7 +376,11 @@ async def test_hostless_player_submission_processes_without_command_roundtrip(mo
     await controller.process_input({"type_": "player_input_submitted", "value": "ok"})
 
     assert called["refresh"] == 1
-    assert called["process"] == ['{"type_": "player_input_submitted", "value": "ok"}']
+    assert json.loads(called["process"][0]) == {
+        "type_": "player_input_submitted",
+        "value": "ok",
+        "player_id": "p2",
+    }
 
 
 @pytest.mark.asyncio
@@ -1113,3 +1124,210 @@ def test_runtime_patch_redacts_host_only_fields_for_public_view():
         {"player_id": "p2", "value": "buzz", "reviewed": False}
     ]
     assert public_patch is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "event",
+    [
+        "start_game",
+        "update_score",
+        "reset_step",
+        "show_answer_reveal",
+        "step_advanced",
+        "review_submission",
+    ],
+)
+async def test_ordinary_players_cannot_forward_host_commands(monkeypatch, event):
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="host")
+    controller = player_service.ClientController(
+        FakeWebSocket(), object(), lobby, schemas.Player(id="p1", game_id="g1", name="Player")
+    )
+    controller.refresh_lobby = AsyncMock()
+    controller.process_controller = AsyncMock()
+    publish = AsyncMock()
+    monkeypatch.setattr(player_service, "publish", publish)
+    await controller.process_input({"type_": event, "player_id": "p1", "set_score": 999})
+    publish.assert_not_awaited()
+    controller.process_controller.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hosted", [True, False])
+@pytest.mark.parametrize("event", ["player_input_submitted", "drawing_vote_submitted"])
+async def test_submission_identity_always_comes_from_connection(monkeypatch, hosted, event):
+    lobby = schemas.Lobby(
+        id="g1", join_code="ABCDE", host_enabled=hosted, host_id="host" if hosted else None
+    )
+    controller = player_service.ClientController(
+        FakeWebSocket(), object(), lobby, schemas.Player(id="p1", game_id="g1", name="Player")
+    )
+    controller.refresh_lobby = AsyncMock()
+    controller.process_controller = AsyncMock()
+    publish = AsyncMock()
+    monkeypatch.setattr(player_service, "publish", publish)
+    await controller.process_input(
+        {"type_": event, "player_id": "victim", "value": "answer", "drawing_id": "drawing:0"}
+    )
+    payload = (
+        publish.call_args.args[2]
+        if hosted
+        else json.loads(controller.process_controller.call_args.args[0])
+    )
+    assert payload["player_id"] == "p1"
+
+
+@pytest.mark.asyncio
+async def test_lobby_host_transfer_moves_command_subscription():
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="old")
+    repo = FakeRepo(lobby)
+    controllers = []
+    for player_id in ["old", "new"]:
+        controller = player_service.ClientController(
+            FakeWebSocket(),
+            object(),
+            lobby.model_copy(),
+            schemas.Player(id=player_id, game_id="g1", name=player_id),
+        )
+        controller.repo = repo
+        controller.pubsub = FakePubSub()
+        await controller.refresh_lobby()
+        controllers.append(controller)
+    lobby.host_id = "new"
+    for controller in controllers:
+        await controller.refresh_lobby()
+    old, new = controllers
+    assert old.command_channel in old.pubsub.unsubscriptions
+    assert not old.command_subscribed
+    assert new.command_channel in new.pubsub.subscriptions
+    assert new.command_subscribed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "state,can_manage,host_enabled,exists,allowed",
+    [
+        ("waiting_for_players", True, True, True, True),
+        ("running", True, True, True, False),
+        ("paused", True, True, True, False),
+        ("waiting_for_players", False, True, True, False),
+        ("waiting_for_players", True, False, True, False),
+        ("waiting_for_players", True, True, False, False),
+    ],
+)
+async def test_host_selection_is_owned_and_lobby_only(
+    state, can_manage, host_enabled, exists, allowed
+):
+    persisted = schemas.Lobby(
+        id="g1", join_code="ABCDE", state=state, host_enabled=host_enabled, host_id="old"
+    )
+    stale = persisted.model_copy(update={"state": schemas.GameState.WAITING_FOR_PLAYERS})
+    controller = lobby_service.GameController(
+        FakeWebSocket(), object(), stale, can_manage=can_manage
+    )
+    controller.repo = FakeRepo(persisted)
+    controller.repo.get_player = AsyncMock(
+        return_value=schemas.Player(id="new", game_id="g1", name="New") if exists else None
+    )
+    controller._set_host = AsyncMock()
+    await controller.set_host(schemas.SetHostEvent(player_id="new"))
+    assert controller._set_host.await_count == int(allowed)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_hostless_submissions_keep_both_answers(monkeypatch):
+    import copy
+    from tests.test_game_runtime import FakeRepo as RuntimeRepo
+    from partygame.service.game import GameRuntimeService
+
+    class Repo(RuntimeRepo):
+        def __init__(self):
+            super().__init__()
+            self.lock = asyncio.Lock()
+            self.lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_enabled=False)
+
+        def mutation_lock(self, game_id):
+            return self.lock
+
+        async def get_lobby_meta(self, game_id):
+            return self.lobby.model_copy()
+
+        async def set_lobby_fields(self, game_id, **fields):
+            await super().set_lobby_fields(game_id, **fields)
+            self.lobby = self.lobby.model_copy(update=fields)
+
+        async def get_step_cache(self, game_id):
+            state = copy.deepcopy(await super().get_step_cache(game_id))
+            await asyncio.sleep(0)
+            return state
+
+    repo = Repo()
+    provider = AsyncMock()
+    provider.load.return_value = schemas.GameDefinition(
+        id="test",
+        title="Test",
+        rounds=[
+            schemas.RoundDefinition(
+                id="r",
+                steps=[
+                    schemas.StepDefinition(
+                        id="s",
+                        title="Question",
+                        player_input=schemas.PlayerInputDefinition(kind="text"),
+                        evaluation=schemas.EvaluationRule(
+                            type_="exact_text", answer="yes", points=1
+                        ),
+                    )
+                ],
+            )
+        ],
+    )
+    runtime = GameRuntimeService(repo, definition_provider=provider, archive_game_stats=False)
+    await runtime.start_game(repo.lobby)
+    controllers = []
+    for player_id in ["p1", "p2"]:
+        controller = player_service.ClientController(
+            FakeWebSocket(),
+            object(),
+            repo.lobby.model_copy(),
+            schemas.Player(id=player_id, game_id="g1", name=player_id),
+        )
+        controller.repo = repo
+        controller.runtime = GameRuntimeService(
+            repo, definition_provider=provider, archive_game_stats=False
+        )
+        controller._relay_non_snapshot_events = AsyncMock()
+        controller._emit_runtime_state = AsyncMock()
+        controllers.append(controller)
+    await asyncio.gather(
+        *(c.process_input({"type_": "player_input_submitted", "value": "yes"}) for c in controllers)
+    )
+    state = await repo.get_step_cache("g1")
+    assert state["answers"] == {"p1": "yes", "p2": "yes"}
+    assert repo.scores == {"p1": 1, "p2": 6}
+    assert state["evaluated"] is True
+
+
+@pytest.mark.asyncio
+async def test_hostless_controller_patch_does_not_expose_host_answer():
+    lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_enabled=False)
+    controller = player_service.ClientController(
+        FakeWebSocket(), object(), lobby, schemas.Player(id="p1", game_id="g1", name="Player")
+    )
+    before = schemas.RuntimeSnapshotEvent(
+        lobby=schemas.RuntimeLobbyState(
+            id="g1",
+            join_code="ABCDE",
+            host_enabled=False,
+            state="running",
+            phase="question_active",
+            current_step=0,
+        )
+    )
+    after = before.model_copy(
+        update={"revision": 1, "host_answer": schemas.RevealedAnswer(value="secret")}
+    )
+    controller.send = AsyncMock()
+    controller._broadcast_runtime_patch = AsyncMock()
+    await controller._send_runtime_patch(before, after)
+    controller.send.assert_not_awaited()

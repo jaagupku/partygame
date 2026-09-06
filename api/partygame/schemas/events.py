@@ -416,6 +416,8 @@ class FinalStandingEntry(BaseModel):
 
 
 class EndGameStatCard(BaseModel):
+    answer_counts: dict[str, int] = Field(default_factory=dict)
+    correct_counts: dict[str, int] = Field(default_factory=dict)
     id: str
     label: str
     winner_player_ids: list[str] = Field(default_factory=list)
@@ -434,3 +436,4 @@ class EndGameState(BaseModel):
     final_standings: list[FinalStandingEntry] = Field(default_factory=list)
     podium: list[FinalStandingEntry] = Field(default_factory=list)
     stats_cards: list[EndGameStatCard] = Field(default_factory=list)
+    highlight_card_ids: list[str] = Field(default_factory=list)

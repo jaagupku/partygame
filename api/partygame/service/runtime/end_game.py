@@ -1,4 +1,6 @@
 from collections.abc import Awaitable, Callable
+from hashlib import sha256
+from uuid import uuid4
 from typing import Any, TYPE_CHECKING
 
 from partygame import schemas
@@ -127,6 +129,7 @@ class EndGameRuntime:
                     "revealed": auto_reveal,
                     "sequence_stage": END_GAME_SEQUENCE_STAGES[0],
                     "autoplay_enabled": auto_reveal,
+                    "showcase_seed": uuid4().hex,
                 }
             },
         )
@@ -230,6 +233,9 @@ class EndGameRuntime:
             final_standings=standings,
             podium=standings[:3],
             stats_cards=stats_cards,
+            highlight_card_ids=self._select_highlights(
+                stats_cards, str(end_game_state.get("showcase_seed") or lobby.id)
+            ),
         )
 
     def _build_final_standings(
@@ -339,14 +345,14 @@ class EndGameRuntime:
         add_stat(
             stat_id="highest_accuracy",
             label="Highest Accuracy",
-            description="Best correct-answer rate among players who answered at least once.",
+            description="Best accuracy with at least five answers.",
             values={
                 player_id: round(
                     int(data.get("correct_count", 0)) / int(data.get("answered_count", 0)) * 100,
                     2,
                 )
                 for player_id, data in filtered_metrics.items()
-                if int(data.get("answered_count", 0)) > 0
+                if int(data.get("answered_count", 0)) >= 5
             },
             unit="percent",
         )
@@ -421,4 +427,90 @@ class EndGameRuntime:
                     reaction_key=REACTION_KEYS.get(best_game_reaction),
                 )
             )
+        for card in stats:
+            if card.id == "highest_accuracy":
+                card.answer_counts = {
+                    player_id: int(filtered_metrics[player_id].get("answered_count", 0))
+                    for player_id in card.winner_player_ids
+                }
+                card.correct_counts = {
+                    player_id: int(filtered_metrics[player_id].get("correct_count", 0))
+                    for player_id in card.winner_player_ids
+                }
+
+        total_correct = sum(int(data.get("correct_count", 0)) for data in filtered_metrics.values())
+        if total_correct > 0:
+            stats.append(
+                schemas.EndGameStatCard(
+                    id="team_correct",
+                    label="Team effort",
+                    value=total_correct,
+                    unit="answers",
+                )
+            )
+        if len(game_reaction_counts) >= 3:
+            stats.append(
+                schemas.EndGameStatCard(
+                    id="reaction_variety",
+                    label="All the feels",
+                    value=len(game_reaction_counts),
+                    unit="reaction_types",
+                    emoji="🎭",
+                )
+            )
+        if len(standings) >= 2:
+            margin = standings[0].score - standings[1].score
+            if 0 < margin <= 5:
+                stats.append(
+                    schemas.EndGameStatCard(
+                        id="photo_finish",
+                        label="Photo finish",
+                        value=margin,
+                        unit="points",
+                        winner_player_ids=[standings[0].player_id],
+                        emoji="🏁",
+                    )
+                )
+            elif margin == 0:
+                tied = [entry.player_id for entry in standings if entry.place == 1]
+                stats.append(
+                    schemas.EndGameStatCard(
+                        id="shared_crown",
+                        label="Shared crown",
+                        value=len(tied),
+                        unit="champions",
+                        winner_player_ids=tied,
+                        emoji="👑",
+                    )
+                )
         return stats
+
+    def _select_highlights(self, cards: list[schemas.EndGameStatCard], seed: str) -> list[str]:
+        # Stable within one game, varied on every fresh start. Never invent an award
+        # to fill a slot or put the same winners on multiple headline cards.
+        candidates = [card for card in cards if card.id != "most_wrong"]
+        candidates.sort(key=lambda card: sha256(f"{seed}:{card.id}".encode()).digest())
+        selected: list[str] = []
+        seen_winners: set[str] = set()
+        reaction_selected = False
+        reaction_ids = {"most_reactions", "signature_reaction", "game_mood", "reaction_variety"}
+        performance_ids = {
+            "most_correct",
+            "highest_accuracy",
+            "fastest_buzz",
+            "photo_finish",
+            "shared_crown",
+        }
+        # Lead with an earned gameplay award when one is available.
+        candidates.sort(key=lambda card: card.id not in performance_ids)
+        for card in candidates:
+            if seen_winners.intersection(card.winner_player_ids):
+                continue
+            if card.id in reaction_ids and reaction_selected:
+                continue
+            selected.append(card.id)
+            seen_winners.update(card.winner_player_ids)
+            reaction_selected |= card.id in reaction_ids
+            if len(selected) == 3:
+                break
+        return selected

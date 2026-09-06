@@ -1,0 +1,153 @@
+import { cleanup, fireEvent, render } from '@testing-library/svelte';
+import { tick } from 'svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import DefinitionStepSorter from './DefinitionStepSorter.svelte';
+import { buildFlatSteps, createStepFromTemplate } from './helpers';
+
+function pointer(type: string, x: number, y: number) {
+	const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 });
+	Object.defineProperty(event, 'pointerId', { value: 1 });
+	return event;
+}
+
+function setup() {
+	const rounds = [
+		{
+			id: 'first',
+			title: 'First',
+			steps: [
+				createStepFromTemplate(0, 0, 'open_answer'),
+				createStepFromTemplate(0, 1, 'open_answer')
+			]
+		},
+		{ id: 'empty', title: 'Empty', steps: [] }
+	];
+	const flatSteps = buildFlatSteps({ rounds } as GameDefinition, (step) => step.id!);
+	const props = {
+		rounds,
+		flatSteps,
+		selectedStepKey: flatSteps[0].stepKey,
+		draggedStepKey: null as string | null,
+		dropTargetKey: null,
+		draggedItem: null,
+		dragPointerX: 50,
+		dragPointerY: 150,
+		dragOffsetX: 20,
+		dragOffsetY: 20,
+		dragCardWidth: 300,
+		onSelectStep: vi.fn(),
+		onOpenRoundModal: vi.fn(),
+		moveRound: vi.fn(),
+		onRemoveRound: vi.fn(),
+		onStepDragStart: vi.fn(),
+		onStepDragMove: vi.fn(),
+		onStepDragEnd: vi.fn(),
+		onActivateDropTarget: vi.fn(),
+		onDropStep: vi.fn()
+	};
+	const view = render(DefinitionStepSorter, props);
+	const cards = Array.from(view.container.querySelectorAll<HTMLElement>('[data-step-card]'));
+	const scroller = cards[0].parentElement!.parentElement!.parentElement!;
+	vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue({
+		left: 0,
+		right: 320,
+		top: 0,
+		bottom: 600,
+		height: 600
+	} as DOMRect);
+	cards.forEach((card, index) =>
+		vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
+			top: 100 + index * 150,
+			bottom: 250 + index * 150,
+			height: 150
+		} as DOMRect)
+	);
+	const hit = vi.fn((): Element | null => cards[1]);
+	vi.stubGlobal(
+		'requestAnimationFrame',
+		vi.fn(() => 1)
+	);
+	vi.stubGlobal('cancelAnimationFrame', vi.fn());
+	Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: hit });
+	return {
+		props,
+		view,
+		cards,
+		scroller,
+		hit,
+		async start() {
+			await fireEvent(cards[0], pointer('pointerdown', 50, 150));
+			await view.rerender({ draggedStepKey: flatSteps[0].stepKey });
+		}
+	};
+}
+
+afterEach(() => {
+	cleanup();
+	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
+});
+
+describe('step sorter dragging', () => {
+	it('keeps card order stable while hovering and drops after the target midpoint', async () => {
+		const { props, cards, view, start } = setup();
+		await start();
+		await fireEvent(window, pointer('pointermove', 50, 390));
+		await tick();
+		expect(props.onActivateDropTarget).toHaveBeenLastCalledWith('round-0-index-2');
+		expect(Array.from(view.container.querySelectorAll('[data-step-card]'))).toEqual(cards);
+		expect(props.onDropStep).not.toHaveBeenCalled();
+		await fireEvent(window, pointer('pointerup', 50, 390));
+		expect(props.onDropStep).toHaveBeenCalledExactlyOnceWith(0, 2, 'round-0-index-2');
+	});
+
+	it('clears the destination when leaving the sorter and does not drop on a stale target', async () => {
+		const { props, start } = setup();
+		await start();
+		await fireEvent(window, pointer('pointermove', 50, 390));
+		await fireEvent(window, pointer('pointerup', 500, 390));
+		expect(props.onActivateDropTarget).toHaveBeenLastCalledWith(null);
+		expect(props.onDropStep).not.toHaveBeenCalled();
+		expect(props.onStepDragEnd).toHaveBeenCalledOnce();
+	});
+
+	it('supports dropping into an empty round', async () => {
+		const { props, view, hit, start } = setup();
+		await start();
+		hit.mockReturnValue(view.container.querySelector('[data-empty-round-target]'));
+		await fireEvent(window, pointer('pointerup', 50, 450));
+		expect(props.onDropStep).toHaveBeenCalledExactlyOnceWith(1, 0, 'round-1-index-0');
+	});
+
+	it.each(['pointercancel', 'escape', 'blur'])('cancels on %s without reordering', async (kind) => {
+		const { props, start } = setup();
+		await start();
+		await fireEvent(window, pointer('pointermove', 50, 390));
+		if (kind === 'escape') await fireEvent.keyDown(window, { key: 'Escape' });
+		else if (kind === 'blur') await fireEvent.blur(window);
+		else await fireEvent(window, pointer('pointercancel', 50, 390));
+		await fireEvent(window, pointer('pointerup', 50, 390));
+		expect(props.onDropStep).not.toHaveBeenCalled();
+		expect(props.onStepDragEnd).toHaveBeenCalledOnce();
+	});
+
+	it('scrolls at the edge while the pointer is stationary', async () => {
+		const { start, scroller } = setup();
+		await start();
+		await fireEvent(window, pointer('pointermove', 50, 590));
+		const callback = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+		callback(100);
+		callback(116);
+		expect(scroller.scrollTop).toBeGreaterThan(0);
+	});
+
+	it('preserves ordinary clicks and suppresses the click generated by dropping', async () => {
+		const { props, cards, start } = setup();
+		await fireEvent.click(cards[0], { detail: 1 });
+		expect(props.onSelectStep).toHaveBeenCalledOnce();
+		await start();
+		await fireEvent(window, pointer('pointerup', 50, 390));
+		await fireEvent.click(cards[0], { detail: 1 });
+		expect(props.onSelectStep).toHaveBeenCalledOnce();
+	});
+});
