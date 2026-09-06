@@ -1,4 +1,4 @@
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from partygame import schemas
 from partygame.schemas.game_definition import (
@@ -21,11 +21,11 @@ ROUND_INTRO_DURATION_SECONDS = 5.0
 class SnapshotBuilder:
     def __init__(
         self,
-        runtime: "GameRuntimeService",
-        repo: "GameStateRepository",
-        evaluation: "EvaluationRuntime",
-        timing: "TimingState",
-        end_game: "EndGameRuntime",
+        runtime: GameRuntimeService,
+        repo: GameStateRepository,
+        evaluation: EvaluationRuntime,
+        timing: TimingState,
+        end_game: EndGameRuntime,
     ) -> None:
         self.runtime = runtime
         self.repo = repo
@@ -410,11 +410,11 @@ class SnapshotBuilder:
             for player_id in state.get("drawing_vote_order", [])
             if isinstance(player_id, str) and player_id in answers
         ]
-        order += sorted(player_id for player_id in answers.keys() if player_id not in order)
+        order += sorted(player_id for player_id in answers if player_id not in order)
         votes = state.get("drawing_votes", {})
         if not isinstance(votes, dict):
             votes = {}
-        vote_counts = {player_id: 0 for player_id in answers.keys()}
+        vote_counts = {player_id: 0 for player_id in answers}
         for voter_id, target_player_id in votes.items():
             if (
                 isinstance(voter_id, str)
@@ -460,7 +460,7 @@ class SnapshotBuilder:
             for player_id in state.get("drawing_vote_order", [])
             if isinstance(player_id, str) and player_id in answers
         ]
-        order += sorted(player_id for player_id in answers.keys() if player_id not in order)
+        order += sorted(player_id for player_id in answers if player_id not in order)
         return order
 
     async def sync_lobby(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:

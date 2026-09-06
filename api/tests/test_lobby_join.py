@@ -1,9 +1,9 @@
 import pytest
 from fastapi import HTTPException, Request, Response
-from partygame.service.connection_access import connection_cookie_name
 
 from partygame import schemas
 from partygame.api.api_v1.endpoints.lobby import join_lobby
+from partygame.service.connection_access import connection_cookie_name
 from partygame.state import GameStateRepository
 from tests.test_state_repo_cleanup import FakeRedis
 
@@ -100,8 +100,9 @@ async def test_public_player_id_cannot_be_used_to_rejoin(token):
 
 @pytest.mark.asyncio
 async def test_join_issues_private_cookie_without_leaking_token(monkeypatch):
-    from partygame.service import player as player_service
     from unittest.mock import AsyncMock
+
+    from partygame.service import player as player_service
 
     redis = FakeRedis()
     repo = GameStateRepository(redis)

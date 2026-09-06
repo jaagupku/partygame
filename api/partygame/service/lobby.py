@@ -1,23 +1,25 @@
 import asyncio
 import logging
 
+from fastapi import HTTPException, WebSocket
 from pydantic import BaseModel
 from redis.asyncio import Redis
-from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
 from partygame.core.config import settings
 from partygame.schemas.events import Event
-from partygame.utils import get_unique_join_code, publish
-from partygame.service.player import public_runtime_snapshot, remove as remove_player
-from partygame.service.game import GameRuntimeService
 from partygame.service.definitions import (
     PostgresDefinitionProvider,
     get_default_definition_provider,
 )
-from . import realtime
-from partygame.state import GameStateRepository, GameKeyFactory
+from partygame.service.game import GameRuntimeService
+from partygame.service.player import public_runtime_snapshot
+from partygame.service.player import remove as remove_player
+from partygame.state import GameKeyFactory, GameStateRepository
 from partygame.state.auth_models import UserRecord
+from partygame.utils import get_unique_join_code, publish
+
+from . import realtime
 
 log = logging.getLogger(__name__)
 
@@ -109,8 +111,8 @@ class GameController:
                     continue
                 if message["type"] == "message":
                     await self.websocket.send_text(message["data"])
-        except Exception as error:
-            log.error(error)
+        except Exception:
+            log.exception("Websocket publish loop failed")
 
     async def send(self, payload: dict | BaseModel | str):
         if isinstance(payload, schemas.RuntimeSnapshotEvent):

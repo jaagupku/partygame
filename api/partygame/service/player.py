@@ -2,24 +2,26 @@ import asyncio
 import json
 import logging
 from collections import deque
+from collections.abc import Awaitable, Callable
 from time import time
-from typing import Any, Awaitable, Callable, Literal
+from typing import Any, Literal
 from uuid import uuid4
 
+from fastapi import HTTPException, WebSocket
 from pydantic import BaseModel, ValidationError
 from redis.asyncio import Redis
-from fastapi import HTTPException, WebSocket
 
 from partygame import schemas
 from partygame.core.config import settings
+from partygame.schemas import ConnectionStatus, Lobby, Player
 from partygame.schemas.events import Event
-from partygame.schemas import Lobby, Player, ConnectionStatus
-from partygame.utils import publish
 from partygame.service.game import GameRuntimeService
 from partygame.service.media import get_media_storage
 from partygame.service.runtime import RuntimeTransitionScheduler
+from partygame.state import GameKeyFactory, GameStateRepository
+from partygame.utils import publish
+
 from . import realtime
-from partygame.state import GameStateRepository, GameKeyFactory
 
 log = logging.getLogger(__name__)
 PLAYER_REACTION_WINDOW_SECONDS = 2.0
@@ -420,8 +422,8 @@ class ClientController:
                         if data.get("type_") == Event.SET_HOST:
                             await self.refresh_lobby()
                         await self.websocket.send_text(message["data"])
-        except Exception as error:
-            log.error(error)
+        except Exception:
+            log.exception("Websocket publish loop failed")
 
     async def send(self, payload: dict | BaseModel | str):
         if isinstance(payload, schemas.RuntimeSnapshotEvent):

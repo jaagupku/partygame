@@ -2,8 +2,8 @@ import json
 import random
 import string
 
-from redis.asyncio import Redis
 from pydantic import BaseModel
+from redis.asyncio import Redis
 
 from partygame.state import GameKeyFactory
 

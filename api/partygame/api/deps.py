@@ -1,7 +1,7 @@
-from redis.asyncio import Redis
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from fastapi import Depends, HTTPException, Request
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from partygame.core.config import settings
@@ -11,7 +11,7 @@ from partygame.service.auth import get_user_for_session_token
 from partygame.state.auth_models import UserRecord, UserRole
 
 
-async def get_redis() -> AsyncGenerator[Redis, None]:
+async def get_redis() -> AsyncGenerator[Redis]:
     conn = get_connection()
     yield conn
     await conn.aclose()

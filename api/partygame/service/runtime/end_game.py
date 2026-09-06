@@ -1,7 +1,7 @@
 from collections.abc import Awaitable, Callable
 from hashlib import sha256
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
-from typing import Any, TYPE_CHECKING
 
 from partygame import schemas
 
@@ -31,7 +31,7 @@ END_GAME_SEQUENCE_STAGES = (
 
 
 class EndGameRuntime:
-    def __init__(self, repo: "GameStateRepository", timing: "TimingState") -> None:
+    def __init__(self, repo: GameStateRepository, timing: TimingState) -> None:
         self.repo = repo
         self.timing = timing
 
@@ -385,13 +385,13 @@ class EndGameRuntime:
 
         if signature_entries:
             best_signature_count = max(count for count, _reaction, _player_id in signature_entries)
-            best_signature_reaction = sorted(
+            best_signature_reaction = min(
                 {
                     reaction
                     for count, reaction, _player_id in signature_entries
                     if count == best_signature_count
                 }
-            )[0]
+            )
             signature_winners = sorted(
                 player_id
                 for count, reaction, player_id in signature_entries
@@ -411,11 +411,11 @@ class EndGameRuntime:
 
         if game_reaction_counts:
             best_game_count = max(game_reaction_counts.values())
-            best_game_reaction = sorted(
+            best_game_reaction = min(
                 reaction
                 for reaction, count in game_reaction_counts.items()
                 if count == best_game_count
-            )[0]
+            )
             stats.append(
                 schemas.EndGameStatCard(
                     id="game_mood",

@@ -33,6 +33,14 @@ target-version = ['py314']
 line-length = 100
 target-version = "py314"
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI inspects these declarations; they are not mutable application defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
+[tool.ruff.lint.isort]
+# The local migration directory is not the installed Alembic package.
+known-third-party = ["alembic"]
+
 [tool.mypy]
 python_version = "3.14"
 warn_return_any = true

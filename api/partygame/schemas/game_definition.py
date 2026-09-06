@@ -1,5 +1,5 @@
-from typing import Any, Literal
 from enum import StrEnum, auto
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -83,7 +83,7 @@ class MapBounds(BaseModel):
     west: float = Field(ge=-180.0, le=180.0)
 
     @model_validator(mode="after")
-    def validate_bounds(self) -> "MapBounds":
+    def validate_bounds(self) -> MapBounds:
         if self.north <= self.south:
             raise ValueError("map bounds north must be greater than south")
         if self.east <= self.west:
@@ -104,7 +104,7 @@ class MapInputConfig(BaseModel):
     max_zoom: int | None = Field(default=None, ge=1, le=20)
 
     @model_validator(mode="after")
-    def validate_map_config(self) -> "MapInputConfig":
+    def validate_map_config(self) -> MapInputConfig:
         if not self.bounds.contains(self.initial_center):
             raise ValueError("map initial_center must be inside bounds")
         if (
@@ -135,7 +135,7 @@ class MapDistanceAnswer(BaseModel):
     bands: list[MapDistanceBand] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_scoring(self) -> "MapDistanceAnswer":
+    def validate_scoring(self) -> MapDistanceAnswer:
         if self.scoring_mode == "bands":
             if not self.bands:
                 raise ValueError("map distance band scoring requires at least one band")
@@ -181,7 +181,7 @@ class MediaDefinition(BaseModel):
     zoom_origin_y: float | None = Field(default=None, ge=0.0, le=1.0)
 
     @model_validator(mode="after")
-    def validate_reveal_curves(self) -> "MediaDefinition":
+    def validate_reveal_curves(self) -> MediaDefinition:
         for curve_name in (
             "blur_reveal_curve",
             "blur_circle_reveal_curve",
@@ -216,7 +216,7 @@ class PlayerInputDefinition(BaseModel):
         return self.min_value is not None and self.max_value is not None
 
     @model_validator(mode="after")
-    def validate_input_shape(self) -> "PlayerInputDefinition":
+    def validate_input_shape(self) -> PlayerInputDefinition:
         if (
             self.kind
             in (
@@ -250,7 +250,7 @@ class EvaluationRule(BaseModel):
     points: int = 1
     answer: Any = None
     max_distance: int = Field(default=2, ge=0)
-    number_bands: list["NumberToleranceBand"] = Field(default_factory=list)
+    number_bands: list[NumberToleranceBand] = Field(default_factory=list)
 
 
 class NumberToleranceBand(BaseModel):
@@ -276,7 +276,7 @@ class StepDefinition(BaseModel):
     host_behavior: HostBehavior = Field(default_factory=HostBehavior)
 
     @model_validator(mode="after")
-    def validate_evaluation_shape(self) -> "StepDefinition":
+    def validate_evaluation_shape(self) -> StepDefinition:
         allowed_evaluations = {
             PlayerInputKind.NONE: {EvaluationType.NONE},
             PlayerInputKind.BUZZER: {EvaluationType.HOST_JUDGED},
@@ -331,7 +331,9 @@ class StepDefinition(BaseModel):
             seen_options: set[str] = set()
             for entry in option_scores:
                 if not isinstance(entry, dict):
-                    raise ValueError("option_scores entries must be objects")
+                    raise ValueError(  # noqa: TRY004 - Pydantic validation error
+                        "option_scores entries must be objects"
+                    )
                 option = entry.get("option")
                 points = entry.get("points")
                 if not isinstance(option, str) or option not in self.player_input.options:
@@ -341,7 +343,9 @@ class StepDefinition(BaseModel):
                 if option in seen_options:
                     raise ValueError("option_scores entries must be unique")
                 if not isinstance(points, int):
-                    raise ValueError("option_scores points must be integers")
+                    raise ValueError(  # noqa: TRY004 - Pydantic validation error
+                        "option_scores points must be integers"
+                    )
                 seen_options.add(option)
         if self.evaluation.type_ == EvaluationType.MAP_DISTANCE:
             if self.player_input.map is None:

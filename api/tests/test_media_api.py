@@ -4,10 +4,10 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
+from partygame.api.api_v1.endpoints import media as media_endpoints
 from partygame.core.config import settings
 from partygame.schemas import MediaKind
 from partygame.service.media import LocalFilesystemMediaStorage
-from partygame.api.api_v1.endpoints import media as media_endpoints
 
 
 def _request_with_body(body: bytes) -> Request:
@@ -70,7 +70,7 @@ async def test_media_upload_limit_comes_from_settings(tmp_path, monkeypatch):
             storage=storage,
         )
 
-    assert getattr(error.value, "status_code") == 413
+    assert error.value.status_code == 413
 
 
 @pytest.mark.asyncio

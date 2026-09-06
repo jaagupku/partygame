@@ -255,10 +255,9 @@ class GameStatsArchiver:
                 )
         most_used_reaction = None
         if reaction_counts:
-            most_used_reaction = sorted(
-                reaction_counts.items(),
-                key=lambda item: (-item[1], item[0]),
-            )[0][0]
+            most_used_reaction = min(reaction_counts.items(), key=lambda item: (-item[1], item[0]))[
+                0
+            ]
         return {
             "total_reactions": sum(reaction_counts.values()),
             "most_used_reaction": most_used_reaction,

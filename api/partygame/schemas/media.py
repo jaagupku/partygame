@@ -1,5 +1,5 @@
-from pathlib import Path
 from enum import StrEnum, auto
+from pathlib import Path
 
 from pydantic import BaseModel
 

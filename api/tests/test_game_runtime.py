@@ -3,6 +3,7 @@ from time import time
 import pytest
 from pydantic import ValidationError
 
+from partygame import schemas
 from partygame.schemas import Lobby
 from partygame.schemas.game_definition import (
     EvaluationRule,
@@ -18,7 +19,6 @@ from partygame.schemas.game_definition import (
     TimerDefinition,
 )
 from partygame.service.game import GameRuntimeService
-from partygame import schemas
 
 
 class FakeRepo:

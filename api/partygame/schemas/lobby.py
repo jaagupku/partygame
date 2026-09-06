@@ -1,6 +1,6 @@
-from uuid import uuid4
-from typing import List, Literal
 from enum import StrEnum, auto
+from typing import Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -69,7 +69,7 @@ class BaseComponent(BaseModel):
 class Lobby(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     join_code: str
-    players: List[Player] = Field(default_factory=list)
+    players: list[Player] = Field(default_factory=list)
     starter_id: str | None = None
     host_id: str | None = None
     host_enabled: bool = True

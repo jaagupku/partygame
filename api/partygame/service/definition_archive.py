@@ -1,6 +1,7 @@
 import copy
 import io
 import json
+import logging
 import re
 import zipfile
 from dataclasses import dataclass
@@ -21,6 +22,8 @@ from partygame.service.definitions import (
 from partygame.service.media import LocalFilesystemMediaStorage
 from partygame.state.auth_models import UserRecord
 from partygame.state.definition_models import DefinitionVisibility
+
+log = logging.getLogger(__name__)
 
 ARCHIVE_VERSION = 1
 DEFINITION_FILE = "definition.json"
@@ -255,7 +258,7 @@ async def parse_definition_import_zip(
             try:
                 await media_storage.delete(asset_id)
             except Exception:
-                pass
+                log.exception("Failed to delete imported media during rollback")
         raise
 
     imported_definition = copy.deepcopy(definition)
@@ -290,5 +293,5 @@ async def create_imported_definition(
             try:
                 await media_storage.delete(asset_id)
             except Exception:
-                pass
+                log.exception("Failed to delete imported media during rollback")
         raise
