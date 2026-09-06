@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'leaflet/dist/leaflet.css';
 	import { browser } from '$app/environment';
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { DEFAULT_AVATAR_PRESET_KEY, getAvatarSrc } from '$lib/avatar-presets';
 	import {
 		clampMapPointToBounds,
@@ -99,9 +99,11 @@
 	let lineLayer: import('leaflet').LayerGroup | null = null;
 	let boundsLayer: import('leaflet').LayerGroup | null = null;
 	let scoringLayer: import('leaflet').LayerGroup | null = null;
-	let tileLayer: import('leaflet').TileLayer | null = null;
+	let tileLayer: import('leaflet').Layer | null = null;
+	let baseLayerGeneration = 0;
 	let activeBaseLayer: MapInputConfig['base_layer'] | undefined = undefined;
 	let lastRevealFitKey = '';
+	let viewSyncTimer: number | null = null;
 	let lastResetViewKey: string | number | null | undefined = undefined;
 
 	const displayedBaseLayer = $derived(baseLayer ?? mapConfig.base_layer ?? 'osm');
@@ -200,33 +202,45 @@
 	});
 
 	onDestroy(() => {
+		baseLayerGeneration += 1;
+		if (viewSyncTimer !== null) {
+			window.clearTimeout(viewSyncTimer);
+		}
 		map?.remove();
 		map = null;
 	});
 
+	// Snapshots may replace objects without changing any map content. Compare their
+	// values before touching Leaflet, which otherwise recreates every overlay.
+	const mapSyncKey = $derived(
+		JSON.stringify([
+			mapConfig,
+			selectionLimitBounds,
+			selectedPoint,
+			correctPoint,
+			guessMarkers,
+			scoringAnswer,
+			displayedBaseLayer,
+			effectiveEditablePoint,
+			effectiveEditableViewport,
+			effectiveEditableScoring,
+			effectiveFitRevealToGuesses,
+			effectiveEditingWorldView,
+			effectiveLockViewToBounds,
+			effectiveShowCorrect,
+			effectiveShowGuesses,
+			effectiveShowLines,
+			effectiveShowBounds,
+			effectiveEditableBounds,
+			effectiveGuessLabelMode,
+			resetViewKey
+		])
+	);
+
 	$effect(() => {
-		JSON.stringify(mapConfig);
-		JSON.stringify(selectionLimitBounds);
-		JSON.stringify(selectedPoint);
-		JSON.stringify(correctPoint);
-		JSON.stringify(guessMarkers);
-		JSON.stringify(scoringAnswer);
-		mode;
-		displayedBaseLayer;
-		effectiveEditablePoint;
-		effectiveEditableViewport;
-		effectiveEditableScoring;
-		effectiveFitRevealToGuesses;
-		effectiveEditingWorldView;
-		effectiveLockViewToBounds;
-		effectiveShowCorrect;
-		effectiveShowGuesses;
-		effectiveShowLines;
-		effectiveShowBounds;
-		effectiveEditableBounds;
-		effectiveGuessLabelMode;
-		resetViewKey;
-		syncMap();
+		mapSyncKey;
+		// Keep Leaflet's synchronous event handlers out of the effect's dependencies.
+		untrack(syncMap);
 	});
 
 	function syncMap() {
@@ -248,7 +262,11 @@
 		syncGuessMarkers();
 		syncBounds();
 		syncScoringCircles();
-		window.setTimeout(() => {
+		if (viewSyncTimer !== null) {
+			window.clearTimeout(viewSyncTimer);
+		}
+		viewSyncTimer = window.setTimeout(() => {
+			viewSyncTimer = null;
 			map?.invalidateSize();
 			syncViewConstraints();
 			resetViewToBounds();
@@ -286,18 +304,38 @@
 			: Math.min(mapConfig.max_zoom, nextMinZoom);
 	}
 
-	function syncBaseLayer() {
+	async function syncBaseLayer() {
 		if (!map || !leaflet || activeBaseLayer === displayedBaseLayer) {
 			return;
 		}
-		tileLayer?.remove();
+		const currentMap = map;
+		const generation = ++baseLayerGeneration;
 		const definition = getMapTileLayerDefinition(displayedBaseLayer);
-		tileLayer = leaflet.tileLayer(definition.url, {
-			maxZoom: definition.maxZoom,
-			attribution: definition.attribution
-		});
-		tileLayer.addTo(map);
 		activeBaseLayer = displayedBaseLayer;
+		// Remove labelled tiles immediately when switching to the quiz's label-free map.
+		tileLayer?.remove();
+		tileLayer = null;
+		try {
+			if (definition.type === 'raster') {
+				tileLayer = leaflet.tileLayer(definition.url, {
+					maxZoom: definition.maxZoom,
+					attribution: definition.attribution
+				});
+			} else {
+				const { createOpenFreeMapLayer } = await import('$lib/openfreemap-layer');
+				// A layer switch or teardown may have happened while loading MapLibre.
+				if (generation !== baseLayerGeneration || map !== currentMap) {
+					return;
+				}
+				tileLayer = createOpenFreeMapLayer();
+			}
+			tileLayer.addTo(currentMap);
+		} catch (error) {
+			if (generation === baseLayerGeneration) {
+				activeBaseLayer = undefined;
+			}
+			console.error('Could not load map base layer', error);
+		}
 	}
 
 	function syncPointMarker() {
