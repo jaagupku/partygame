@@ -30,7 +30,7 @@ export async function load({ fetch, params }) {
 
 	let definitionTitle = lobby.definition_id;
 
-	if (lobby.definition_id) {
+	if (lobby.definition_id && lobby.game_type !== 'price_guessing') {
 		const definitionRes = await fetch(
 			`/api/v1/definitions/${encodeDefinitionIdForPath(lobby.definition_id)}`
 		);

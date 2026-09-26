@@ -13,6 +13,8 @@ from partygame.schemas.game_definition import (
     StepDefinition,
 )
 from partygame.service.definitions import DefinitionProvider, get_default_definition_provider
+from partygame.service.game_sessions import load_session_definition
+from partygame.service.prices.scoring import parse_euros, price_points
 from partygame.service.runtime.end_game import (
     END_GAME_COMPONENT_ID,
     END_GAME_SEQUENCE_STAGES,
@@ -83,8 +85,7 @@ class GameRuntimeService:
         self,
         lobby: schemas.Lobby,
     ) -> list[FlattenedStep]:
-        definition_id = lobby.definition_id or "quiz_demo"
-        definition = await self.definition_provider.load(definition_id)
+        definition = await load_session_definition(self.repo, lobby, self.definition_provider)
         visible_rounds: list[tuple[RoundDefinition, list[StepDefinition]]] = []
         for round_definition in definition.rounds:
             compatible_steps = [
@@ -114,8 +115,7 @@ class GameRuntimeService:
         return [item.step for item in await self._flatten_steps_with_metadata(lobby)]
 
     async def get_definition_theme(self, lobby: schemas.Lobby) -> schemas.DefinitionTheme | None:
-        definition_id = lobby.definition_id or "quiz_demo"
-        definition = await self.definition_provider.load(definition_id)
+        definition = await load_session_definition(self.repo, lobby, self.definition_provider)
         return definition.theme
 
     async def get_current_step(self, lobby: schemas.Lobby) -> StepDefinition | None:
@@ -343,6 +343,14 @@ class GameRuntimeService:
         if (
             step.player_input.kind == PlayerInputKind.DRAWING
             and not self.evaluation.is_valid_drawing_submission(value)
+        ):
+            return [], False
+        if step.evaluation.type_ == EvaluationType.PRICE_CLOSENESS and parse_euros(value) is None:
+            return [], False
+        if (
+            step.price_question
+            and step.player_input.kind == PlayerInputKind.RADIO
+            and value not in step.player_input.options
         ):
             return [], False
         answers[player_id] = value
@@ -833,6 +841,16 @@ class GameRuntimeService:
                         accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
+        elif evaluation_type == EvaluationType.PRICE_CLOSENESS:
+            for player_id, value in answers.items():
+                delta = price_points(value, step.evaluation.answer)
+                if delta > 0:
+                    new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                    await self.repo.set_player_score(lobby.id, player_id, new_score)
+                    updates[player_id] = new_score
+                    accepted_player_ids.add(player_id)
+                    metric_updates[player_id]["correct_count"] = 1
+                    metric_updates[player_id]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.CLOSEST_NUMBER:
             try:
                 target = float(step.evaluation.answer)
@@ -1029,6 +1047,7 @@ class GameRuntimeService:
             EvaluationType.EXACT_TEXT,
             EvaluationType.EXACT_NUMBER,
             EvaluationType.CLOSEST_NUMBER,
+            EvaluationType.PRICE_CLOSENESS,
             EvaluationType.ORDERING_MATCH,
             EvaluationType.MULTI_SELECT_WEIGHTED,
             EvaluationType.MAP_DISTANCE,
@@ -1116,6 +1135,8 @@ class GameRuntimeService:
             return []
         step = await self.get_current_step(lobby)
         if step is None:
+            return []
+        if step.price_question and (await self.get_step_state(lobby.id)).get("evaluated"):
             return []
         await self.repo.set_lobby_fields(lobby.id, phase="question_active")
         lobby.phase = "question_active"

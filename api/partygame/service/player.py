@@ -342,6 +342,8 @@ class ClientController:
             self.lobby.current_step = lobby.current_step
             self.lobby.host_enabled = lobby.host_enabled
             self.lobby.definition_id = lobby.definition_id
+            self.lobby.game_type = lobby.game_type
+            self.lobby.session_version = lobby.session_version
         if self.pubsub is not None:
             should_subscribe = self.is_host()
             if should_subscribe != self.command_subscribed:
@@ -739,6 +741,13 @@ class ClientController:
         event_type = data.get("type_")
         await refresh_idle_ttl(self.repo, self.lobby)
 
+        if self.lobby.game_type == "price_guessing" and event_type in {
+            Event.UPDATE_SCORE,
+            Event.REVIEW_SUBMISSION,
+            Event.SCORES_UPDATED,
+            Event.BUZZER_REVIEWED,
+        }:
+            return
         match event_type:
             case Event.START_GAME:
                 if self.lobby.state == schemas.GameState.WAITING_FOR_PLAYERS:

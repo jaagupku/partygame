@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ProductCard from '$lib/components/prices/ProductCard.svelte';
+	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
 	import { flip } from 'svelte/animate';
 	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
@@ -39,7 +41,9 @@
 	const optionStates = $derived.by(() =>
 		step && optionRevealStep ? buildRevealedOptionStates(step, revealedAnswer) : []
 	);
-	const showOptionGrid = $derived(Boolean(step?.input_options.length) && optionRevealStep);
+	const showOptionGrid = $derived(
+		Boolean(step?.input_options.length) && optionRevealStep && !step?.price_mode
+	);
 	const orderingRevealStep = $derived(isOrderingRevealStep(step));
 	const orderingItems = $derived.by(() =>
 		step && orderingRevealStep
@@ -49,6 +53,7 @@
 	const showOrderingList = $derived(Boolean(step?.input_options.length) && orderingRevealStep);
 	const showInlineRevealedAnswer = $derived(
 		showingAnswerReveal &&
+			!step?.price_mode &&
 			revealedAnswer &&
 			!stageVariant &&
 			!optionRevealStep &&
@@ -79,6 +84,10 @@
 	class={`question-card overflow-hidden ${
 		stageVariant ? 'question-card-stage-shell question-card-stage' : 'card stack-md'
 	} ${showingAnswerReveal ? 'question-card-reveal-pulse' : ''}`}
+	class:question-card-price-stage={stageVariant && Boolean(step?.price_mode)}
+	class:question-card-price-reveal={stageVariant &&
+		Boolean(step?.price_mode) &&
+		showingAnswerReveal}
 >
 	{#if step}
 		<div class="question-card-title-row">
@@ -89,37 +98,56 @@
 						: 'text-3xl font-extrabold'
 				}`}
 			>
-				{step.title}
+				{step.price_mode ? $messages.priceGame[step.price_mode] : step.title}
 			</h3>
 			<span class={`question-card-points-badge ${stageVariant ? 'points-badge-stage' : ''}`}>
 				{fullCreditPointsLabel}
 			</span>
 		</div>
+		{#if step.price_mode}
+			<div class:price-stage-content={stageVariant}>
+				<div class:price-stage-inner={stageVariant}>
+					<div
+						class={`grid gap-4 ${step.price_mode === 'compare' ? 'sm:grid-cols-2' : ''}`}
+						class:price-stage-products={stageVariant}
+						class:price-stage-single={stageVariant && step.price_mode === 'guess'}
+					>
+						{#each step.price_products ?? [] as product}<ProductCard
+								{product}
+								stage={stageVariant}
+							/>{/each}
+					</div>
+					<PriceReveal {step} />
+				</div>
+			</div>
+		{/if}
 		{#if step.body}
 			<StepBodyMarkdown source={step.body} {stageVariant} />
 		{/if}
-		<div class={`question-card-media ${stageVariant ? 'question-card-media-stage' : ''}`}>
-			{#if step.media?.type_ === 'image'}
-				<ImageQuestionMedia {step} {stageVariant} />
-			{:else if step.media?.type_ === 'audio'}
-				<AudioQuestionMedia
-					src={step.media.src}
-					loop={step.media.loop}
-					volume={step.media.volume ?? 1}
-					{shouldPauseMedia}
-					{shouldResumePausedMedia}
-					playbackRevision={step.media.playback_revision ?? 0}
-				/>
-			{:else if step.media?.type_ === 'video'}
-				<VideoQuestionMedia
-					{step}
-					{stageVariant}
-					volume={step.media.volume ?? 1}
-					{shouldPauseMedia}
-					{shouldResumePausedMedia}
-				/>
-			{/if}
-		</div>
+		{#if !step.price_mode}
+			<div class={`question-card-media ${stageVariant ? 'question-card-media-stage' : ''}`}>
+				{#if step.media?.type_ === 'image'}
+					<ImageQuestionMedia {step} {stageVariant} />
+				{:else if step.media?.type_ === 'audio'}
+					<AudioQuestionMedia
+						src={step.media.src}
+						loop={step.media.loop}
+						volume={step.media.volume ?? 1}
+						{shouldPauseMedia}
+						{shouldResumePausedMedia}
+						playbackRevision={step.media.playback_revision ?? 0}
+					/>
+				{:else if step.media?.type_ === 'video'}
+					<VideoQuestionMedia
+						{step}
+						{stageVariant}
+						volume={step.media.volume ?? 1}
+						{shouldPauseMedia}
+						{shouldResumePausedMedia}
+					/>
+				{/if}
+			</div>
+		{/if}
 		{#if showOptionGrid}
 			<div
 				class={`question-card-options grid gap-2 ${
@@ -217,6 +245,36 @@
 		min-height: 0;
 		min-width: 0;
 		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+	}
+
+	.question-card-stage.question-card-price-stage {
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+	.price-stage-content {
+		display: flex;
+		min-height: 0;
+		overflow-y: auto;
+	}
+	.price-stage-inner {
+		width: 100%;
+		max-width: 76rem;
+		margin: auto;
+		padding-block: 1rem;
+	}
+	.price-stage-products {
+		align-items: start;
+	}
+	.price-stage-single {
+		max-width: 38rem;
+		margin-inline: auto;
+	}
+	.question-card-price-reveal {
+		--product-image-height: clamp(8rem, 18vh, 14rem);
+	}
+	@media (max-width: 639px) {
+		.question-card-price-stage {
+			--product-image-height: clamp(7rem, 18vh, 12rem);
+		}
 	}
 
 	.question-card-stage-shell {

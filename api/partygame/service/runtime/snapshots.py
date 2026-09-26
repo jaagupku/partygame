@@ -6,6 +6,8 @@ from partygame.schemas.game_definition import (
     PlayerInputKind,
     StepDefinition,
 )
+from partygame.schemas.price_game import PriceResult
+from partygame.service.prices.scoring import price_points
 from partygame.service.runtime.steps import FlattenedStep
 
 if TYPE_CHECKING:
@@ -161,7 +163,11 @@ class SnapshotBuilder:
             revealed_answer = schemas.RevealedAnswer(value=step_state.get("revealed_answer_value"))
 
         host_answer = None
-        if step is not None and self._step_has_revealable_answer(step):
+        if (
+            step is not None
+            and step.price_question is None
+            and self._step_has_revealable_answer(step)
+        ):
             host_answer = schemas.RevealedAnswer(value=step.evaluation.answer)
 
         submissions = self._build_submissions_event_from_state(step_state)
@@ -177,6 +183,7 @@ class SnapshotBuilder:
                 id=lobby.id,
                 join_code=lobby.join_code,
                 definition_id=lobby.definition_id,
+                game_type=lobby.game_type,
                 host_enabled=lobby.host_enabled,
                 starter_id=lobby.starter_id,
                 host_id=lobby.host_id,
@@ -231,7 +238,30 @@ class SnapshotBuilder:
         input_enabled: bool,
     ) -> schemas.RuntimeStepState:
         evaluation_type = await self.evaluation.resolve_evaluation_type(lobby, step)
+        price = step.price_question
+        reveal_price = price is not None and step_state.get("display_phase") == "answer_reveal"
+        price_results = []
+        if reveal_price:
+            answers = step_state.get("answers", {})
+            for player in await self.repo.get_players(lobby.id):
+                if player.id == lobby.host_id:
+                    continue
+                value = answers.get(player.id)
+                points = (
+                    price_points(value, step.evaluation.answer)
+                    if price.mode == "guess"
+                    else 1000 if value == step.evaluation.answer else 0
+                )
+                price_results.append(
+                    PriceResult(
+                        player_id=player.id, player_name=player.name, answer=value, points=points
+                    )
+                )
         return schemas.RuntimeStepState(
+            price_mode=price.mode if price else None,
+            price_products=price.products if price else [],
+            price_reveal=price.reveal if reveal_price else [],
+            price_results=price_results,
             id=step.id,
             title=step.title,
             body=step.body,

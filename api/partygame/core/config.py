@@ -30,7 +30,7 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    PROJECT_NAME: str = "partygame"
+    PROJECT_NAME: str = "Mänguõhtu"
     MEDIA_ROOT: Path = Path(__file__).resolve().parents[2] / "media"
     MEDIA_PUBLIC_BASE: str = "/api/v1/media"
     MEDIA_MAX_UPLOAD_MB: int = 50

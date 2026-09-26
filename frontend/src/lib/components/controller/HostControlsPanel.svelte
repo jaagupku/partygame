@@ -255,7 +255,12 @@
 			{$messages.gameplay.previous}
 		</button>
 		{#if !reviewingHistory}
-			<button type="button" class="btn btn-ghost w-full" onclick={onResetStep}>
+			<button
+				type="button"
+				class="btn btn-ghost w-full"
+				onclick={onResetStep}
+				disabled={Boolean(activeStep?.price_mode && displayPhase === 'answer_reveal')}
+			>
 				{$messages.gameplay.resetQuestion}
 			</button>
 			<button type="button" class="btn btn-ghost w-full" onclick={onToggleScoreboardVisibility}>

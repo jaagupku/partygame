@@ -7,6 +7,12 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-yaml
+        exclude: ^compose\.price-e2e\.yml$
+      - id: check-yaml
+        name: check yaml (Compose tags)
+        files: ^compose\.price-e2e\.yml$
+        # Compose !reset and !override tags require syntax-only parsing.
+        args: [--unsafe]
 
   # Frontend formatting with Prettier (using frontend workspace deps)
   - repo: local

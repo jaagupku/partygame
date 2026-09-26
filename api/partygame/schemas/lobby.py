@@ -2,7 +2,9 @@ from enum import StrEnum, auto
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from partygame.schemas.price_game import PriceGameSettings
 
 
 class ConnectionStatus(StrEnum):
@@ -25,8 +27,17 @@ class DisplayComponent(StrEnum):
 
 
 class CreateGame(BaseModel):
+    price_settings: PriceGameSettings | None = None
+    game_type: str = "trivia"
     definition_id: str = "quiz_demo"
     host_enabled: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def price_defaults(cls, values):
+        if isinstance(values, dict) and values.get("game_type") == "price_guessing":
+            return {"host_enabled": False, "price_settings": {}, **values}
+        return values
 
 
 class ComponentType(StrEnum):
@@ -67,6 +78,8 @@ class BaseComponent(BaseModel):
 
 
 class Lobby(BaseModel):
+    game_type: str = "trivia"
+    session_version: int | None = None
     id: str = Field(default_factory=lambda: uuid4().hex)
     join_code: str
     players: list[Player] = Field(default_factory=list)

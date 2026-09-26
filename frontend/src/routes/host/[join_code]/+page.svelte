@@ -21,7 +21,11 @@
 	const lobby = () => data.lobby;
 	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
 	const definitionTitle = () =>
-		data.definitionTitle || data.lobby.definition_id || $messages.definitions.untitledDefinition;
+		data.lobby.game_type === 'price_guessing'
+			? $messages.priceGame.title
+			: data.definitionTitle ||
+				data.lobby.definition_id ||
+				$messages.definitions.untitledDefinition;
 
 	const game = createGameStore(lobby());
 	const soundSystem = createSoundSystem('host-display');

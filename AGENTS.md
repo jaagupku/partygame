@@ -42,14 +42,25 @@ docker compose up --build
 This starts:
 
 - `valkey` on `6379`
-- `api`
-- `frontend`
+- `api` with Uvicorn reload, after applying migrations
+- `frontend` with Vite hot reload
 - `gateway` on `http://localhost:80`
+
+Compose uses the `development` Dockerfile targets. Source/configuration files are bind-mounted read-only; dependencies and generated files stay in containers. Plain Dockerfile builds still produce production images.
+
+- Use `DEV_PORT=8080 docker compose up --build` to change the gateway port.
+- Demo admin: `admin@example.com` / `admin123`, seeded on first startup.
+- Rebuild with the same start command after dependency changes; use `docker compose restart api` after adding migrations.
+- `docker compose down` preserves PostgreSQL and uploaded-media volumes; `down -v` deletes them. Valkey lobby state is disposable.
+- Container checks: `docker compose exec frontend pnpm run check`, `docker compose exec frontend pnpm run lint`, `docker compose exec frontend pnpm run test`, and `docker compose exec api poetry run pytest`.
+- Only Docker and Compose are required on the host. Polling supports Docker Desktop/WSL source changes.
 
 Health endpoints used by compose:
 
 - API: `http://localhost:8000/api/health`
 - Frontend: `http://localhost:3000`
+
+These addresses are internal to their containers. On the host, use `http://localhost/api/health` and `http://localhost` through the gateway.
 
 ### Backend
 
@@ -64,7 +75,7 @@ poetry install
 Run the dev server:
 
 ```bash
-poetry run uvicorn partygame:app --reload --reload-include "api/"
+poetry run uvicorn partygame:app --reload --reload-dir partygame
 ```
 
 Useful backend checks:
@@ -95,7 +106,7 @@ pnpm install
 Run the dev server:
 
 ```bash
-pnpm run dev -- --host
+pnpm run dev --host
 ```
 
 Useful frontend checks:

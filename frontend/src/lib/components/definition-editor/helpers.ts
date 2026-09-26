@@ -270,6 +270,14 @@ export function getEvaluationDetails(): Record<EvaluationType, EvaluationPresent
 			requiresAnswer: true,
 			manualReview: false
 		},
+		price_closeness: {
+			type: 'price_closeness',
+			label: getMessages().priceGame.closenessTitle,
+			description: getMessages().priceGame.closenessDescription,
+			icon: 'fluent:target-arrow-16-filled',
+			requiresAnswer: true,
+			manualReview: false
+		},
 		closest_number: {
 			type: 'closest_number',
 			label: localized.closest_number.label,

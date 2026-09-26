@@ -18,6 +18,7 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.EXACT_TEXT,
     EvaluationType.EXACT_NUMBER,
     EvaluationType.CLOSEST_NUMBER,
+    EvaluationType.PRICE_CLOSENESS,
     EvaluationType.ORDERING_MATCH,
     EvaluationType.MULTI_SELECT_WEIGHTED,
     EvaluationType.MAP_DISTANCE,
@@ -269,7 +270,11 @@ class EvaluationRuntime:
         answer = step.evaluation.answer
         if evaluation_type in (EvaluationType.EXACT_TEXT,):
             return bool(self._exact_text_answers(step))
-        if evaluation_type in (EvaluationType.EXACT_NUMBER, EvaluationType.CLOSEST_NUMBER):
+        if evaluation_type in (
+            EvaluationType.EXACT_NUMBER,
+            EvaluationType.CLOSEST_NUMBER,
+            EvaluationType.PRICE_CLOSENESS,
+        ):
             try:
                 return answer is not None and float(answer) == float(answer)
             except TypeError, ValueError:

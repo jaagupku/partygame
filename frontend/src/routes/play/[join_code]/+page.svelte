@@ -4,6 +4,7 @@
 	import { createControllerStore } from '$lib/controller-store.js';
 	import HostControlsPanel from '$lib/components/controller/HostControlsPanel.svelte';
 	import HostReviewQueue from '$lib/components/controller/HostReviewQueue.svelte';
+	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import PlayerInputPanel from '$lib/components/controller/PlayerInputPanel.svelte';
 	import ReactionBar from '$lib/components/controller/ReactionBar.svelte';
@@ -710,36 +711,42 @@
 				onToggleScoreboardVisibility={toggleScoreboardVisibility}
 			/>
 
-			{#if $controller.activeStep?.evaluation_type !== 'favorite_vote'}
-				<HostReviewQueue
-					activeStep={$controller.activeStep}
-					buzzedPlayerId={$controller.buzzedPlayerId}
-					{customScore}
-					disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
-					hostAnswer={$controller.hostAnswer}
-					{playerMap}
-					submissions={$controller.submissions}
-					{isSubmissionReviewed}
-					onRevealSubmission={revealSubmission}
-					onReviewSubmission={reviewSubmission}
-				/>
+			{#if $controller.activeStep?.price_mode}
+				<QuestionCard step={$controller.activeStep} displayPhase={$controller.displayPhase} />
 			{/if}
 
-			<section class="card controller-compact-card controller-manual-score stack-md">
-				<h2 class="label-title text-2xl">{$messages.gameplay.manualScore}</h2>
-				<input class="input" type="number" bind:value={customScore} min="-500" max="500" />
-				<div class="flex flex-wrap gap-2">
-					{#each $controller.players.filter((entry) => entry.id !== $controller.id) as entry}
-						<button
-							type="button"
-							class="btn btn-ghost"
-							onclick={() => adjustScore(entry.id, customScore)}
-						>
-							{entry.name}
-						</button>
-					{/each}
-				</div>
-			</section>
+			{#if lobby().game_type !== 'price_guessing'}
+				{#if $controller.activeStep?.evaluation_type !== 'favorite_vote'}
+					<HostReviewQueue
+						activeStep={$controller.activeStep}
+						buzzedPlayerId={$controller.buzzedPlayerId}
+						{customScore}
+						disabledBuzzerPlayerIds={$controller.disabledBuzzerPlayerIds}
+						hostAnswer={$controller.hostAnswer}
+						{playerMap}
+						submissions={$controller.submissions}
+						{isSubmissionReviewed}
+						onRevealSubmission={revealSubmission}
+						onReviewSubmission={reviewSubmission}
+					/>
+				{/if}
+
+				<section class="card controller-compact-card controller-manual-score stack-md">
+					<h2 class="label-title text-2xl">{$messages.gameplay.manualScore}</h2>
+					<input class="input" type="number" bind:value={customScore} min="-500" max="500" />
+					<div class="flex flex-wrap gap-2">
+						{#each $controller.players.filter((entry) => entry.id !== $controller.id) as entry}
+							<button
+								type="button"
+								class="btn btn-ghost"
+								onclick={() => adjustScore(entry.id, customScore)}
+							>
+								{entry.name}
+							</button>
+						{/each}
+					</div>
+				</section>
+			{/if}
 		{/if}
 	</div>
 {/if}

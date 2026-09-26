@@ -10,6 +10,7 @@ export const locales = [
 export type Locale = (typeof locales)[number]['code'];
 
 const fallbackLocale: Locale = 'en';
+const appName = 'Mänguõhtu';
 
 type Widen<T> = T extends string
 	? string
@@ -31,7 +32,7 @@ function defineMessages<T>(value: T): Widen<T> {
 
 const en = defineMessages({
 	common: {
-		appName: 'Party Game',
+		appName,
 		language: 'Language',
 		home: 'Home',
 		back: 'Back',
@@ -98,9 +99,75 @@ const en = defineMessages({
 		needAccount: 'Need an account? Sign up',
 		haveAccount: 'Already have an account? Log in'
 	},
+	priceGame: {
+		retailers: { rimi: 'Rimi', klick: 'Klick' },
+		title: 'Price Guessing',
+		subtitle: 'Guess real product prices or choose which item costs more.',
+		mode: 'Question mode',
+		guess: 'Guess the price',
+		compare: 'Which costs more?',
+		mixed: 'Mixed',
+		productRange: 'Products',
+		groceries: 'Groceries',
+		electronics: 'Electronics',
+		both: 'Both',
+		questions: 'Questions',
+		answerTime: 'Answer time',
+		seconds: 'seconds',
+		hostPaced: 'Host-paced',
+		automatic: 'Automatic',
+		progression: 'Progression',
+		priceLabel: 'Your price (€)',
+		submit: 'Submit price',
+		choose: 'Choose the more expensive item',
+		rules:
+			'Up to 1,000 points for price closeness. Correct comparisons earn 1,000 points. No speed bonus.',
+		priceBasis:
+			'Guess the regular price in euros, including VAT, excluding discounts, deposits and delivery.',
+		loading: 'Loading product availability...',
+		unavailable:
+			'Not enough products are available for these options. Try a shorter game or another product range.',
+		loadFailed: 'Could not load product availability.',
+		createFailed: 'Could not create the game. Please try again.',
+		retry: 'Try again',
+		captured: 'Prices recorded',
+		noDataset: 'No product dataset yet',
+		actualPrice: 'Recorded regular price',
+		results: 'Answers and points',
+		noAnswer: 'No answer',
+		answer: 'Answer',
+		points: 'Points',
+		source: 'View product',
+		imageUnavailable: 'Product image unavailable',
+		invalidPrice: 'Enter a non-negative price with at most two decimal places.',
+		closenessTitle: 'Price closeness',
+		closenessDescription:
+			'Every player earns points based on percentage distance from the recorded price.'
+	},
+	gameCatalog: {
+		title: 'Choose a game',
+		available: 'Ready to play',
+		comingSoon: 'Coming soon',
+		loading: 'Loading games...',
+		loadFailed: 'Could not load games. Please try again.',
+		retry: 'Try again',
+		unavailable: 'This game is not available yet.',
+		setupFailed: 'Could not load game packs. Please try again.',
+		previewFailed: 'Could not load this game pack. Please try again.',
+		createFailed: 'Could not create the lobby. Please try again.',
+		creating: 'Creating lobby...',
+		empty: 'No game packs are available.',
+		trivia: {
+			title: 'Trivia',
+			description: 'Pick a quiz pack and play with a host or let the game run the show.'
+		},
+		priceGuessing: {
+			title: 'Price Guessing',
+			description: 'Guess the prices of real-world items in rounds generated from data.'
+		}
+	},
 	home: {
-		title: 'Party Quiz Arena',
-		subtitle: 'Pick how you want to enter the game.',
+		subtitle: 'Quizzes and party games for everyone.',
 		create: 'Create',
 		join: 'Join'
 	},
@@ -936,7 +1003,7 @@ export type Messages = typeof en;
 
 const et: Messages = {
 	common: {
-		appName: 'Peomäng',
+		appName,
 		language: 'Keel',
 		home: 'Avaleht',
 		back: 'Tagasi',
@@ -1003,9 +1070,74 @@ const et: Messages = {
 		needAccount: 'Vajad kontot? Registreeru',
 		haveAccount: 'Konto on olemas? Logi sisse'
 	},
+	priceGame: {
+		retailers: { rimi: 'Rimi', klick: 'Klick' },
+		title: 'Hinnaarvamine',
+		subtitle: 'Arva päris kaupade hindu või vali, kumb toode on kallim.',
+		mode: 'Küsimuste tüüp',
+		guess: 'Arva hind',
+		compare: 'Kumb on kallim?',
+		mixed: 'Mõlemad',
+		productRange: 'Tooted',
+		groceries: 'Toidukaubad',
+		electronics: 'Elektroonika',
+		both: 'Mõlemad',
+		questions: 'Küsimusi',
+		answerTime: 'Vastamise aeg',
+		seconds: 'sekundit',
+		hostPaced: 'Mängujuhi juhitud',
+		automatic: 'Automaatne',
+		progression: 'Mängu juhtimine',
+		priceLabel: 'Sinu pakutud hind (€)',
+		submit: 'Saada hind',
+		choose: 'Vali kallim toode',
+		rules:
+			'Hinna täpsuse eest kuni 1000 punkti. Õige võrdlus annab 1000 punkti. Kiiruse eest lisapunkte ei saa.',
+		priceBasis: 'Arva tavahind eurodes koos käibemaksuga, ilma soodustuste, pandi ja transpordita.',
+		loading: 'Laen toodete saadavust...',
+		unavailable:
+			'Nende valikute jaoks pole piisavalt tooteid. Vali lühem mäng või teine tooterühm.',
+		loadFailed: 'Toodete saadavust ei saanud laadida.',
+		createFailed: 'Mängu ei saanud luua. Proovi uuesti.',
+		retry: 'Proovi uuesti',
+		captured: 'Hinnad salvestatud',
+		noDataset: 'Tooteandmed puuduvad',
+		actualPrice: 'Salvestatud tavahind',
+		results: 'Vastused ja punktid',
+		noAnswer: 'Vastus puudub',
+		answer: 'Vastus',
+		points: 'Punktid',
+		source: 'Vaata toodet',
+		imageUnavailable: 'Toote pilt pole saadaval',
+		invalidPrice: 'Sisesta mittenegatiivne hind kuni kahe komakohaga.',
+		closenessTitle: 'Hinna täpsus',
+		closenessDescription:
+			'Iga mängija saab punkte vastavalt protsentuaalsele erinevusele salvestatud hinnast.'
+	},
+	gameCatalog: {
+		title: 'Vali mäng',
+		available: 'Valmis mängimiseks',
+		comingSoon: 'Peagi tulekul',
+		loading: 'Laen mänge...',
+		loadFailed: 'Mänge ei saanud laadida. Proovi uuesti.',
+		retry: 'Proovi uuesti',
+		unavailable: 'See mäng pole veel saadaval.',
+		setupFailed: 'Mängupakke ei saanud laadida. Proovi uuesti.',
+		previewFailed: 'Seda mängupakki ei saanud laadida. Proovi uuesti.',
+		createFailed: 'Mängutuba ei saanud luua. Proovi uuesti.',
+		creating: 'Loon mängutuba...',
+		empty: 'Ühtegi mängupakki pole saadaval.',
+		trivia: {
+			title: 'Viktoriin',
+			description: 'Vali küsimustepakk ja mängi mängujuhiga või lase mängul end juhtida.'
+		},
+		priceGuessing: {
+			title: 'Hinnaarvamine',
+			description: 'Arva päris kaupade hindu andmetest loodud voorudes.'
+		}
+	},
 	home: {
-		title: 'Peomängu Areen',
-		subtitle: 'Vali, kuidas soovid mängu siseneda.',
+		subtitle: 'Viktoriinid ja seltskonnamängud kõigile.',
 		create: 'Loo',
 		join: 'Liitu'
 	},

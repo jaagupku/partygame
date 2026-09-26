@@ -4,9 +4,6 @@ Dockerfile
 .gitignore
 .gitattributes
 README.md
-.npmrc
-.prettierrc
-.eslintrc.cjs
 .graphqlrc
 .editorconfig
 .svelte-kit
@@ -15,3 +12,6 @@ node_modules
 build
 package
 **/.env
+
+test-results
+playwright-report

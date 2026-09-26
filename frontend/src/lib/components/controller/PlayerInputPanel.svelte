@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ProductCard from '$lib/components/prices/ProductCard.svelte';
+	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
 	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
 	import { messages } from '$lib/i18n';
 	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
@@ -61,6 +63,7 @@
 	);
 	let lastSubmissionToastKey = $state('');
 
+	const validPrice = $derived(/^\d+(?:[.,]\d{1,2})?$/.test(String(answerValue)));
 	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
 	const useNumberSlider = $derived(hasConfiguredNumberSlider(activeStep));
@@ -149,6 +152,7 @@
 			return undefined;
 		}
 		if (step.input_kind === 'number') {
+			if (step.price_mode) return validPrice ? String(answerValue).replace(',', '.') : undefined;
 			return Number(answerValue);
 		}
 		if (step.input_kind === 'ordering') {
@@ -251,7 +255,49 @@
 	}
 </script>
 
-{#if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && displayPhase === 'drawing_vote' && drawingItems.length > 0}
+{#if activeStep?.price_mode}
+	<section class="card controller-compact-card stack-md">
+		<h2 class="label-title text-2xl">{$messages.priceGame[activeStep.price_mode]}</h2>
+		{#if activeStep.price_mode === 'compare'}
+			<p>{$messages.priceGame.choose}</p>
+			<div class="grid gap-3 sm:grid-cols-2">
+				{#each activeStep.price_products ?? [] as product}
+					<button
+						class={`theme-surface rounded-xl border p-3 text-left ${selectedRadioOption === product.id ? 'ring-2 ring-sky-500' : ''}`}
+						disabled={inputDisabled || displayPhase === 'answer_reveal'}
+						onclick={() => submitRadioOption(product.id)}
+						aria-pressed={selectedRadioOption === product.id}><ProductCard {product} /></button
+					>
+				{/each}
+			</div>
+		{:else}
+			{#each activeStep.price_products ?? [] as product}<ProductCard {product} />{/each}
+			{#if displayPhase !== 'answer_reveal'}
+				<label class="input-wrap"
+					><span class="label-title">{$messages.priceGame.priceLabel}</span><input
+						class="input"
+						inputmode="decimal"
+						bind:value={answerValue}
+						disabled={inputDisabled}
+						placeholder={$messages.priceGame.priceLabel}
+					/></label
+				>
+				{#if answerValue !== '' && !validPrice}<p role="status">
+						{$messages.priceGame.invalidPrice}
+					</p>{/if}
+				<button
+					class="btn btn-primary"
+					disabled={inputDisabled || previewMode || !validPrice}
+					onclick={submitAnswer}>{$messages.priceGame.submit}</button
+				>
+			{/if}
+		{/if}
+		{#if hasSubmitted && displayPhase !== 'answer_reveal'}<p role="status">
+				{$messages.gameplay.answerSubmitted}
+			</p>{/if}
+		<PriceReveal step={activeStep} />
+	</section>
+{:else if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && displayPhase === 'drawing_vote' && drawingItems.length > 0}
 	<section class="card controller-compact-card stack-md">
 		<h2 class="label-title text-2xl">{$messages.gameplay.voteForFavoriteDrawing}</h2>
 		<p class="theme-text-muted text-sm">

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from .game_definition import DefinitionTheme, MapInputConfig, PlayerInputKind
 from .lobby import GameState, Player
+from .price_game import PriceCard, PriceResult, PriceReveal
 
 
 class Event(StrEnum):
@@ -225,6 +226,10 @@ class RuntimeMediaState(BaseModel):
 
 
 class RuntimeStepState(BaseModel):
+    price_mode: Literal["guess", "compare"] | None = None
+    price_products: list[PriceCard] = Field(default_factory=list)
+    price_reveal: list[PriceReveal] = Field(default_factory=list)
+    price_results: list[PriceResult] = Field(default_factory=list)
     id: str
     title: str
     body: str | None = None
@@ -280,6 +285,7 @@ class NextHostActionState(BaseModel):
 
 
 class RuntimeLobbyState(BaseModel):
+    game_type: str = "trivia"
     id: str
     join_code: str
     definition_id: str | None = None

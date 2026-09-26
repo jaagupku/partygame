@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from uuid import uuid4
 
 from fastapi import HTTPException, WebSocket
 from pydantic import BaseModel
@@ -8,11 +9,9 @@ from redis.asyncio import Redis
 from partygame import schemas
 from partygame.core.config import settings
 from partygame.schemas.events import Event
-from partygame.service.definitions import (
-    PostgresDefinitionProvider,
-    get_default_definition_provider,
-)
+from partygame.service.definitions import get_default_definition_provider
 from partygame.service.game import GameRuntimeService
+from partygame.service.game_sessions import SESSION_COMPONENT_ID, prepare_session
 from partygame.service.player import public_runtime_snapshot
 from partygame.service.player import remove as remove_player
 from partygame.state import GameKeyFactory, GameStateRepository
@@ -42,20 +41,24 @@ async def create(
     repo = GameStateRepository(redis)
     payload = create_game or schemas.CreateGame()
     definition_provider = get_default_definition_provider()
-    if isinstance(definition_provider, PostgresDefinitionProvider):
-        try:
-            await definition_provider.require_playable(payload.definition_id, current_user)
-        except FileNotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
-        except PermissionError as error:
-            raise HTTPException(status_code=403, detail=str(error)) from error
+    prepared = await prepare_session(payload, current_user, definition_provider)
     lobby = schemas.Lobby(
+        id=prepared.session_id or uuid4().hex,
         join_code=await get_unique_join_code(redis),
-        definition_id=payload.definition_id,
+        definition_id=prepared.definition.id,
+        game_type=payload.game_type,
+        session_version=prepared.version,
         host_enabled=payload.host_enabled,
     )
-    await repo.create_lobby(lobby)
-    await repo.apply_game_ttl(lobby.id, settings.GAME_IDLE_TTL_SECONDS)
+    try:
+        await repo.set_component_state(
+            lobby.id, SESSION_COMPONENT_ID, {"snapshot": prepared.model_dump(mode="json")}
+        )
+        await repo.create_lobby(lobby)
+        await repo.apply_game_ttl(lobby.id, settings.GAME_IDLE_TTL_SECONDS)
+    except Exception:
+        await repo.delete_game(lobby.id)
+        raise
     return lobby
 
 
@@ -158,6 +161,8 @@ class GameController:
             self.lobby.current_step = lobby.current_step
             self.lobby.host_enabled = lobby.host_enabled
             self.lobby.definition_id = lobby.definition_id
+            self.lobby.game_type = lobby.game_type
+            self.lobby.session_version = lobby.session_version
 
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:

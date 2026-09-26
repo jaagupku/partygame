@@ -8,6 +8,7 @@ type EvaluationType =
 	| 'exact_text'
 	| 'exact_number'
 	| 'closest_number'
+	| 'price_closeness'
 	| 'ordering_match'
 	| 'multi_select_weighted'
 	| 'map_distance'
@@ -108,6 +109,8 @@ type DrawingSubmission = {
 };
 
 type Lobby = {
+	game_type?: string;
+	session_version?: number | null;
 	id: string;
 	join_code: string;
 	starter_id?: string;
@@ -407,7 +410,20 @@ type RuntimeVideoMediaState = {
 
 type RuntimeMediaState = RuntimeImageMediaState | RuntimeAudioMediaState | RuntimeVideoMediaState;
 
+type PriceCard = { id: string; title: string; detail: string; image_url: string };
+type PriceReveal = {
+	id: string;
+	price_minor: number;
+	retailer: string;
+	source_url: string;
+	captured_at: string;
+};
+type PriceResult = { player_id: string; player_name: string; answer: unknown; points: number };
 type RuntimeStepState = {
+	price_mode?: 'guess' | 'compare' | null;
+	price_products?: PriceCard[];
+	price_reveal?: PriceReveal[];
+	price_results?: PriceResult[];
 	id: string;
 	title: string;
 	body?: string;
@@ -449,6 +465,7 @@ type RuntimeRoundIntroItemState = {
 type RuntimeItemState = RuntimeStepItemState | RuntimeRoundIntroItemState;
 
 type RuntimeLobbyState = {
+	game_type?: string;
 	id: string;
 	join_code: string;
 	definition_id?: string;

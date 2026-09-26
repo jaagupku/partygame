@@ -87,6 +87,8 @@ class GameStateRepository:
                 "connection",
                 "active_game",
                 "definition_id",
+                "game_type",
+                "session_version",
                 "current_step",
                 "phase",
                 "state_revision",

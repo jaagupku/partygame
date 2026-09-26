@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from partygame import schemas
 from partygame.db.postgres import AsyncSessionLocal
 from partygame.service.definitions import DefinitionProvider, get_default_definition_provider
+from partygame.service.game_sessions import SESSION_COMPONENT_ID, load_session_definition
 from partygame.service.runtime.end_game import PLAYER_METRICS_COMPONENT_ID
 from partygame.state import GameStateRepository
 from partygame.state.stats_models import GameStatSummaryRecord
@@ -101,7 +102,7 @@ class GameStatsArchiver:
         definition = None
         definition_id = lobby.definition_id or "quiz_demo"
         try:
-            definition = await self.definition_provider.load(definition_id)
+            definition = await load_session_definition(self.repo, lobby, self.definition_provider)
         except Exception:
             log.exception("Failed to load definition %s for game stats", definition_id)
 
@@ -116,8 +117,15 @@ class GameStatsArchiver:
         )
         finished_at = datetime.now(tz=UTC)
 
+        prepared = (
+            await self.repo.get_component_state(lobby.id, SESSION_COMPONENT_ID)
+            if lobby.session_version
+            else {}
+        )
         summary = {
             "version": 1,
+            "game_type": lobby.game_type,
+            "datasets": prepared.get("snapshot", {}).get("datasets", []),
             "scoreboard": scoreboard,
             "answers": self._build_answer_summary(metrics, step_states),
             "buzzers": self._build_buzzer_summary(step_states),

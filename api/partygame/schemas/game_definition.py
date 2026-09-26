@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from partygame.schemas.price_game import PriceQuestion
+
 DEFINITION_ID_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,79}$"
 
 
@@ -42,6 +44,7 @@ class EvaluationType(StrEnum):
     EXACT_TEXT = auto()
     EXACT_NUMBER = auto()
     CLOSEST_NUMBER = auto()
+    PRICE_CLOSENESS = auto()
     ORDERING_MATCH = auto()
     MULTI_SELECT_WEIGHTED = auto()
     MAP_DISTANCE = auto()
@@ -266,6 +269,7 @@ class HostBehavior(BaseModel):
 
 
 class StepDefinition(BaseModel):
+    price_question: PriceQuestion | None = None
     id: str
     title: str
     body: str | None = None
@@ -277,6 +281,17 @@ class StepDefinition(BaseModel):
 
     @model_validator(mode="after")
     def validate_evaluation_shape(self) -> StepDefinition:
+        if self.evaluation.type_ == EvaluationType.PRICE_CLOSENESS and (
+            type(self.evaluation.answer) is not int or self.evaluation.answer <= 0
+        ):
+            raise ValueError("price_closeness requires a positive target in cents")
+        if self.price_question is not None:
+            question = self.price_question
+            expected = 1 if question.mode == "guess" else 2
+            if len(question.products) != expected or len(question.reveal) != expected:
+                raise ValueError("Invalid price question item count")
+            if [p.id for p in question.products] != [p.id for p in question.reveal]:
+                raise ValueError("Price reveal IDs must match cards")
         allowed_evaluations = {
             PlayerInputKind.NONE: {EvaluationType.NONE},
             PlayerInputKind.BUZZER: {EvaluationType.HOST_JUDGED},
@@ -290,6 +305,7 @@ class StepDefinition(BaseModel):
                 EvaluationType.HOST_JUDGED,
                 EvaluationType.EXACT_NUMBER,
                 EvaluationType.CLOSEST_NUMBER,
+                EvaluationType.PRICE_CLOSENESS,
             },
             PlayerInputKind.ORDERING: {
                 EvaluationType.NONE,
