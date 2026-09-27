@@ -18,6 +18,15 @@ from partygame.schemas import MediaKind
 from partygame.schemas.price_catalog import SOURCE_RANGES
 from partygame.service.media import get_media_storage
 from partygame.service.prices.datasets import PriceDatasets
+from partygame.service.prices.fashion_tech_sources import (
+    HOSTS,
+    IMAGE_HOSTS,
+    LISTINGS,
+    PARSERS,
+)
+from partygame.service.prices.fashion_tech_sources import (
+    product_links as fashion_tech_links,
+)
 from partygame.service.prices.home_sources import (
     ANTIQUE_LISTINGS,
     FURNITURE_LISTINGS,
@@ -45,6 +54,8 @@ ALLOWED_HOSTS = {
     "tootemaailm.ee",
     "media.tootemaailm.ee",
     "www.e-antiik.ee",
+    *HOSTS.values(),
+    *(host for hosts in IMAGE_HOSTS.values() for host in hosts),
 }
 
 
@@ -105,6 +116,8 @@ def next_refresh(now: datetime) -> datetime:
 
 async def collect(source, max_pages=80):
     captured = datetime.now(UTC)
+    if source in PARSERS:
+        return await collect_fashion_tech(source, max_pages, captured)
     if source in ("tootemaailm", "eantiik"):
         return await collect_home(source, max_pages, captured)
     if source not in SOURCE_RANGES:
@@ -150,6 +163,35 @@ async def collect(source, max_pages=80):
         except ValueError, URLError, TimeoutError:
             log.warning("Skipping inaccessible Klick product %s", url)
     return list({p.id: p for p in products}.values())
+
+
+async def collect_fashion_tech(source, max_pages, captured):
+    groups = []
+    budget = max_pages
+    for url, category in LISTINGS[source]:
+        if budget <= 0:
+            break
+        budget -= 1
+        try:
+            groups.append(
+                [(link, category) for link in fashion_tech_links(await page(url), source)]
+            )
+        except ValueError, URLError, TimeoutError:
+            log.warning("Skipping inaccessible %s listing %s", source, url)
+    links = {}
+    for group in zip_longest(*groups):
+        for entry in group:
+            if entry:
+                links.setdefault(*entry)
+    products = []
+    for url, category in list(links.items())[:budget]:
+        try:
+            products.extend(PARSERS[source](await page(url), captured, category))
+        except ValueError, URLError, TimeoutError:
+            log.warning("Skipping inaccessible %s product %s", source, url)
+    unique = list({p.id: p for p in products}.values())
+    log.info("%s accepted_records=%d", source, len(unique))
+    return unique
 
 
 async def collect_home(source, max_pages, captured):

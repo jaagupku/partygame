@@ -10,7 +10,9 @@ class PriceGameSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Literal["guess", "compare", "mixed"] = "mixed"
     product_ranges: list[ProductRange] = Field(
-        default_factory=lambda: ["groceries", "electronics"], min_length=1, max_length=4
+        default_factory=lambda: ["groceries", "electronics"],
+        min_length=1,
+        max_length=len(PRODUCT_RANGES),
     )
     questions: Literal[5, 10, 15, 20] = 10
     answer_seconds: Literal[15, 30, 45, 60] = 30

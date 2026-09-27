@@ -169,7 +169,7 @@ async def test_refresh_rejects_broken_images_and_retains_last_good(store, monkey
 
 
 @pytest.mark.asyncio
-async def test_four_category_publication_and_cross_source_leases(store):
+async def test_category_publication_and_cross_source_leases(store):
     from partygame.schemas.price_catalog import SOURCE_RANGES
 
     versions = {}
@@ -186,15 +186,16 @@ async def test_four_category_publication_and_cross_source_leases(store):
         ]
         versions[source] = await store.publish(source, candidates)
     available = await store.availability()
-    assert len(available["combinations"]) == 180
+    assert len(available["combinations"]) == 372
     bundles, provenance = await store.prepare(
         PriceGameSettings(mode="compare", product_ranges=["furniture", "electronics"]),
         123,
         "mixed-sources",
     )
-    assert {p["source_id"] for p in provenance} == {"tootemaailm", "klick"}
+    assert {p["source_id"] for p in provenance} == {"tootemaailm", "klick", "arvutitark"}
     assert all(
-        {p.retailer for p in step.price_question.reveal} == {"tootemaailm", "klick"}
+        {p.retailer for p in step.price_question.reveal}
+        in ({"tootemaailm", "klick"}, {"tootemaailm", "arvutitark"})
         for step in bundles[0].rounds[0].steps
     )
     async with store.sessionmaker() as session:
@@ -202,4 +203,5 @@ async def test_four_category_publication_and_cross_source_leases(store):
         assert {lease.dataset_id for lease in leases} == {
             versions["tootemaailm"],
             versions["klick"],
+            versions["arvutitark"],
         }

@@ -19,12 +19,16 @@ from partygame.service.prices.generator import (
 from partygame.service.prices.home_sources import parse_eantiik, parse_tootemaailm, product_links
 from tests.test_price_game import CAPTURED, FIXTURES, dataset
 
-SELECTIONS = [list(group) for size in range(1, 5) for group in combinations(PRODUCT_RANGES, size)]
+SELECTIONS = [
+    list(group)
+    for size in range(1, len(PRODUCT_RANGES) + 1)
+    for group in combinations(PRODUCT_RANGES, size)
+]
 
 
 def all_categories():
     source = dataset()
-    originals = source.records[:60]
+    originals = source.records[:40]
     source.records = [
         dict(
             p,
@@ -138,8 +142,8 @@ async def test_availability_matches_creation_for_all_selections_and_seeds():
     store = PriceDatasets(sessionmaker=lambda: session)
     store.latest = AsyncMock(return_value=records)
     available = await store.availability()
-    assert len(available["ranges"]) == 4
-    assert len(available["combinations"]) == 180
+    assert len(available["ranges"]) == len(PRODUCT_RANGES)
+    assert len(available["combinations"]) == 12 * (2 ** len(PRODUCT_RANGES) - 1)
     for config in available["combinations"]:
         for seed in (0, 19):
             PriceGenerator().generate(PriceGameSettings(**config), seed=seed, dataset=source)

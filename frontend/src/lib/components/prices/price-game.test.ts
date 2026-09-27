@@ -9,8 +9,8 @@ const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('$app/environment', () => ({ browser: true }));
 const modes = ['guess', 'compare', 'mixed'];
-const ranges = ['groceries', 'electronics', 'furniture', 'antiques'];
-const selections = Array.from({ length: 15 }, (_, i) =>
+const ranges = ['groceries', 'electronics', 'furniture', 'antiques', 'clothing'];
+const selections = Array.from({ length: 2 ** ranges.length - 1 }, (_, i) =>
 	ranges.filter((_, bit) => (i + 1) & (1 << bit))
 );
 const availability = {
@@ -167,7 +167,13 @@ describe('price game', () => {
 		vi.stubGlobal('fetch', fetch);
 		render(PriceGameSetup);
 		await screen.findByRole('checkbox', { name: 'Furniture' });
-		for (const label of ['Groceries', 'Electronics', 'Furniture', 'Antiques & vintage']) {
+		for (const label of [
+			'Groceries',
+			'Electronics',
+			'Furniture',
+			'Antiques & vintage',
+			'Clothing'
+		]) {
 			await fireEvent.click(screen.getByRole('checkbox', { name: label }));
 		}
 		expect((screen.getByRole('button', { name: 'Start Game' }) as HTMLButtonElement).disabled).toBe(

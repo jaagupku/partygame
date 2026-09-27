@@ -53,8 +53,8 @@ class PriceDatasets:
         async with self.sessionmaker() as session, session.begin():
             await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": DATASET_LOCK})
             latest = await self.latest(session)
-            sources = sources_for(settings.product_ranges)
-            if any(source not in latest for source in sources):
+            sources = [s for s in sources_for(settings.product_ranges) if s in latest]
+            if {SOURCE_RANGES[s] for s in sources} != set(settings.product_ranges):
                 raise InsufficientPriceData("Missing product range")
             records = [latest[source] for source in sources]
             snapshot = self.snapshot(records)
@@ -77,20 +77,20 @@ class PriceDatasets:
         async with self.sessionmaker() as session:
             latest = await self.latest(session)
             result = []
-            for source, product_range in SOURCE_RANGES.items():
-                record = latest.get(source)
+            for product_range in PRODUCT_RANGES:
+                records = [latest[s] for s in sources_for([product_range]) if s in latest]
                 result.append(
                     {
                         "product_range": product_range,
-                        "available": bool(record),
-                        "captured_at": record.captured_at if record else None,
+                        "available": bool(records),
+                        "captured_at": min(r.captured_at for r in records) if records else None,
                     }
                 )
             feasible = []
             for size in range(1, len(PRODUCT_RANGES) + 1):
                 for ranges in combinations(PRODUCT_RANGES, size):
-                    sources = sources_for(ranges)
-                    if any(source not in latest for source in sources):
+                    sources = [s for s in sources_for(ranges) if s in latest]
+                    if {SOURCE_RANGES[s] for s in sources} != set(ranges):
                         continue
                     snapshot = self.snapshot([latest[source] for source in sources])
                     products = selected_products(snapshot, ranges)

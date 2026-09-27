@@ -98,7 +98,10 @@
 		!$controller.isHost &&
 			($controller.lobbyPhase !== 'question_active' ||
 				!$controller.activeStep?.input_enabled ||
-				($controller.hasSubmitted && $controller.displayPhase !== 'drawing_vote'))
+				($controller.hasSubmitted &&
+					$controller.displayPhase !== 'drawing_vote' &&
+					!$controller.activeStep?.price_mode &&
+					$controller.activeStep?.input_kind !== 'radio'))
 	);
 	const submittedPlayerNames = $derived(
 		$controller.submittedPlayerIds

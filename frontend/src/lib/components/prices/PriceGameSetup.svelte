@@ -14,7 +14,7 @@
 		submitLabel?: string;
 	} = $props();
 	type Mode = 'guess' | 'compare' | 'mixed';
-	type ProductRange = 'groceries' | 'electronics' | 'furniture' | 'antiques';
+	type ProductRange = 'groceries' | 'electronics' | 'furniture' | 'antiques' | 'clothing';
 	type Availability = {
 		ranges: { product_range: ProductRange; available: boolean; captured_at: string | null }[];
 		combinations: { mode: Mode; product_ranges: ProductRange[]; questions: number }[];

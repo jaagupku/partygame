@@ -2,14 +2,16 @@
 
 from typing import Literal, get_args
 
-ProductRange = Literal["groceries", "electronics", "furniture", "antiques"]
-PriceRetailer = Literal["rimi", "klick", "tootemaailm", "eantiik"]
+ProductRange = Literal["groceries", "electronics", "furniture", "antiques", "clothing"]
+PriceRetailer = Literal["rimi", "klick", "tootemaailm", "eantiik", "arvutitark", "reserved"]
 PRODUCT_RANGES = get_args(ProductRange)
 SOURCE_RANGES: dict[str, ProductRange] = {
     "rimi": "groceries",
     "klick": "electronics",
     "tootemaailm": "furniture",
     "eantiik": "antiques",
+    "arvutitark": "electronics",
+    "reserved": "clothing",
 }
 
 

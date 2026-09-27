@@ -249,8 +249,16 @@ async def test_runtime_price_privacy_reconnect_and_idempotent_scoring(mode, host
     invalid = "1.001" if mode == "guess" else "bad-id"
     assert (await runtime.submit_player_input(lobby, "p1", invalid))[1] is False
     answer = str(step.evaluation.answer / 100) if mode == "guess" else step.evaluation.answer
+    first_answer = (
+        "1.00"
+        if mode == "guess"
+        else next(option for option in step.player_input.options if option != answer)
+    )
+    assert (await runtime.submit_player_input(lobby, "p1", first_answer))[1] is True
     assert (await runtime.submit_player_input(lobby, "p1", answer))[1] is True
+    assert (await runtime.get_step_state(lobby.id))["answers"]["p1"] == answer
     await runtime.close_step(lobby)
+    assert (await runtime.submit_player_input(lobby, "p1", first_answer))[1] is False
     await runtime.close_step(lobby)
     assert await repo.get_player_score("g1", "p1") == 1000
     assert await runtime.reset_current_step(lobby) == []

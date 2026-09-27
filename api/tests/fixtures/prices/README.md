@@ -28,3 +28,13 @@ Furniture and antique excerpts captured on 2026-09-26:
 These preserve main-product price/stock markup, structured metadata and details,
 excluding unrelated products and navigation. Negative cases mutate these excerpts
 in tests; they are not claimed as additional live captures.
+
+
+Captured 2026-09-27 for clothing and additional electronics:
+
+- `arvutitark.html`: https://arvutitark.ee/arvutikomponendid/protsessorid-cpu/amd-am5-ryzen-7-7800x3d-tray-50ghz-8xcore-120w-1259445
+- `reserved.html`: https://www.reserved.com/ee/et/puuvillane-t-sark-regular-fit-103la-01x
+
+These excerpts preserve captured JSON-LD, relevant product-state fields and
+regular-price metadata; unrelated scripts, descriptions and state fields were
+removed. Negative/sale cases in tests deliberately mutate these captured fields.

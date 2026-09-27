@@ -100,7 +100,14 @@ const en = defineMessages({
 		haveAccount: 'Already have an account? Log in'
 	},
 	priceGame: {
-		retailers: { rimi: 'Rimi', klick: 'Klick', tootemaailm: 'Tootemaailm', eantiik: 'E-antiik' },
+		retailers: {
+			rimi: 'Rimi',
+			klick: 'Klick',
+			tootemaailm: 'Tootemaailm',
+			eantiik: 'E-antiik',
+			arvutitark: 'Arvutitark',
+			reserved: 'Reserved'
+		},
 		title: 'Price Guessing',
 		subtitle: 'Guess real product prices or choose which item costs more.',
 		mode: 'Question mode',
@@ -112,6 +119,7 @@ const en = defineMessages({
 		electronics: 'Electronics',
 		furniture: 'Furniture',
 		antiques: 'Antiques & vintage',
+		clothing: 'Clothing',
 		categoryMixing: 'Choose one or more categories. Comparisons can mix categories and shops.',
 		questions: 'Questions',
 		answerTime: 'Answer time',
@@ -126,6 +134,7 @@ const en = defineMessages({
 		progression: 'Progression',
 		priceLabel: 'Your price (€)',
 		submit: 'Submit price',
+		submitHint: 'Enter the full price, then submit. Unsubmitted prices are not sent automatically.',
 		choose: 'Choose the more expensive item',
 		rules:
 			'Up to 1,000 points for price closeness. Correct comparisons earn 1,000 points. No speed bonus.',
@@ -363,7 +372,8 @@ const en = defineMessages({
 		chooseOne: 'Choose One',
 		choiceLocked: 'Your choice is locked in. You can choose again on the next question.',
 		newSelectionsDisabled: 'This question has been closed. New selections are disabled.',
-		tapOneOption: 'Tap one option to submit it immediately.',
+		tapOneOption: 'Tap an option to answer. You can change it until answering ends.',
+		canChangeChoice: 'You can change your choice until answering ends.',
 		chooseOneOrMore: 'Choose One or More',
 		selectionSubmitted: 'Your selection is submitted. You can choose again on the next question.',
 		tapOptionsThenSubmit: 'Tap options to highlight them, then submit when you are ready.',
@@ -401,9 +411,9 @@ const en = defineMessages({
 		brushSize: 'Brush size',
 		drawingColor: (color: string) => `Drawing color ${color}`,
 		voteForFavoriteDrawing: 'Vote For A Favorite',
-		pickFavoriteDrawing: 'Pick the drawing you like best.',
+		pickFavoriteDrawing: 'Tap your favorite drawing. You can change your vote until voting ends.',
 		drawingVoteRubric: 'Rubric',
-		drawingVoteSubmitted: 'Your vote is in.',
+		drawingVoteSubmitted: 'Your vote is in. You can change it until voting ends.',
 		noOtherDrawingsToVote: 'No other drawings are available to vote for.',
 		drawingResults: 'Drawing Results',
 		drawingResultsOnMainScreen: 'Results are showing on the main screen.',
@@ -1104,7 +1114,14 @@ const et: Messages = {
 		haveAccount: 'Konto on olemas? Logi sisse'
 	},
 	priceGame: {
-		retailers: { rimi: 'Rimi', klick: 'Klick', tootemaailm: 'Tootemaailm', eantiik: 'E-antiik' },
+		retailers: {
+			rimi: 'Rimi',
+			klick: 'Klick',
+			tootemaailm: 'Tootemaailm',
+			eantiik: 'E-antiik',
+			arvutitark: 'Arvutitark',
+			reserved: 'Reserved'
+		},
 		title: 'Hinnaarvamine',
 		subtitle: 'Arva päris kaupade hindu või vali, kumb toode on kallim.',
 		mode: 'Küsimuste tüüp',
@@ -1116,6 +1133,7 @@ const et: Messages = {
 		electronics: 'Elektroonika',
 		furniture: 'Mööbel',
 		antiques: 'Antiik ja vanavara',
+		clothing: 'Riided',
 		categoryMixing:
 			'Vali üks või mitu kategooriat. Võrdlused võivad ühendada eri kategooriate ja poodide tooteid.',
 		questions: 'Küsimusi',
@@ -1131,6 +1149,7 @@ const et: Messages = {
 		progression: 'Mängu juhtimine',
 		priceLabel: 'Sinu pakutud hind (€)',
 		submit: 'Saada hind',
+		submitHint: 'Sisesta kogu hind ja vajuta saatmisnuppu. Saatmata hinda automaatselt ei saadeta.',
 		choose: 'Vali kallim toode',
 		rules:
 			'Hinna täpsuse eest kuni 1000 punkti. Õige võrdlus annab 1000 punkti. Kiiruse eest lisapunkte ei saa.',
@@ -1365,7 +1384,8 @@ const et: Messages = {
 		chooseOne: 'Vali üks',
 		choiceLocked: 'Sinu valik on lukustatud. Järgmisel küsimusel saad uuesti valida.',
 		newSelectionsDisabled: 'See küsimus on suletud. Uued valikud on keelatud.',
-		tapOneOption: 'Puuduta ühte valikut, et see kohe saata.',
+		tapOneOption: 'Vastamiseks puuduta valikut. Saad seda muuta vastamise lõpuni.',
+		canChangeChoice: 'Saad oma valikut muuta vastamise lõpuni.',
 		chooseOneOrMore: 'Vali üks või mitu',
 		selectionSubmitted: 'Sinu valik on saadetud. Järgmisel küsimusel saad uuesti valida.',
 		tapOptionsThenSubmit: 'Puuduta valikuid nende märkimiseks ja saada siis, kui oled valmis.',
@@ -1397,9 +1417,9 @@ const et: Messages = {
 		brushSize: 'Pintsli suurus',
 		drawingColor: (color) => `Joonistusvärv ${color}`,
 		voteForFavoriteDrawing: 'Hääleta lemmiku poolt',
-		pickFavoriteDrawing: 'Vali joonistus, mis sulle kõige rohkem meeldib.',
+		pickFavoriteDrawing: 'Puuduta oma lemmikjoonistust. Saad häält muuta hääletamise lõpuni.',
 		drawingVoteRubric: 'Hindamisreegel',
-		drawingVoteSubmitted: 'Sinu hääl on kohal.',
+		drawingVoteSubmitted: 'Sinu hääl on kohal. Saad seda muuta hääletamise lõpuni.',
 		noOtherDrawingsToVote: 'Teisi joonistusi pole hääletamiseks saadaval.',
 		drawingResults: 'Joonistuste tulemused',
 		drawingResultsOnMainScreen: 'Tulemused on põhiekraanil nähtaval.',

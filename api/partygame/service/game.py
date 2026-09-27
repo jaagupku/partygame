@@ -382,7 +382,9 @@ class GameRuntimeService:
             ], True
 
         answers = state.get("answers", {})
-        if player_id in answers:
+        if player_id in answers and not (
+            step.price_question or step.player_input.kind == PlayerInputKind.RADIO
+        ):
             return [], False
         if (
             step.player_input.kind == PlayerInputKind.MAP
@@ -439,11 +441,11 @@ class GameRuntimeService:
         if state.get("display_phase") != "drawing_vote":
             return [], False
         votes = dict(state.get("drawing_votes", {}))
-        if player_id in votes:
-            return [], False
-
         target_player_id = self._drawing_player_id_for_vote_id(state, drawing_id)
         if not target_player_id or target_player_id == player_id:
+            return [], False
+
+        if votes.get(player_id) == target_player_id:
             return [], False
 
         votes[player_id] = target_player_id

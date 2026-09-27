@@ -864,7 +864,7 @@ type GameSetupSettings = {
 	host_enabled: boolean;
 	price_settings?: {
 		mode: 'guess' | 'compare' | 'mixed';
-		product_ranges: ('groceries' | 'electronics' | 'furniture' | 'antiques')[];
+		product_ranges: ('groceries' | 'electronics' | 'furniture' | 'antiques' | 'clothing')[];
 		questions: number;
 		answer_seconds: number;
 		reveal_seconds: number;

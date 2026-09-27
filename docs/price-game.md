@@ -1,14 +1,19 @@
 # Price Guessing
 
 Price Guessing generates frozen sessions from recorded public shop prices:
-Rimi groceries, Klick electronics, Tootemaailm furniture, and E-antiik antiques
-and vintage items. Setup offers guess, compare, or mixed mode; any nonempty
-selection of available categories; 5/10/15/20 questions; 15/30/45/60 seconds; 4/6/8/10/15 seconds to show correct prices in automatic mode; and
+Rimi groceries, Klick and Arvutitark electronics, Tootemaailm furniture, E-antiik
+antiques and vintage items, and affordable clothing from Reserved. H&M and Gucci
+are not imported: their public pages were inaccessible during adapter validation.
+
+Setup offers guess, compare, or mixed mode; any nonempty selection of available categories; 5/10/15/20 questions; 15/30/45/60 seconds; 4/6/8/10/15 seconds to show correct prices in automatic mode; and
 host-paced or automatic progression. Defaults are mixed/all available/10/30/4/automatic.
 During automatic correct-price reveals, each player can toggle Ready. Every ready
 player makes the remaining countdown run 15% faster; toggling off removes that
 boost without restoring elapsed time. Host-paced reveals advance manually.
-Categories without a published dataset stay visible but disabled.
+Categories without a published dataset stay visible but disabled. A category may
+have several retailers; any published retailer keeps it available, so a missing
+new retailer does not disable an existing category. The displayed category capture
+date is the oldest included source date; reveals retain each product capture date.
 
 Regular prices include VAT and exclude discounts, membership deals, deposits,
 delivery and monthly installments. Antique prices are the shop's recorded asking
@@ -20,6 +25,12 @@ Guess scoring is `round_half_up(1000 * max(0, 1 - abs(guess - price) / price))`.
 Each player is scored independently with no speed bonus. Comparisons award
 1,000 points for the correct card. Missing answers award zero. Money is stored
 as integer cents and guesses are converted with decimal arithmetic.
+
+Guesses require an explicit Submit price action; unfinished input is not automatically
+submitted when time expires or the host reveals answers. Players can submit a revised
+price or tap a different comparison card while answering remains open. The latest
+submitted answer is scored. Rounds still close when all players answer, time expires,
+or the host reveals the answer.
 
 ## Data and deployment
 
@@ -35,7 +46,7 @@ Refresh explicitly with:
 docker compose exec api poetry run python -m partygame.service.prices.refresh
 ```
 
-`--source rimi`, `klick`, `tootemaailm`, or `eantiik` limits a refresh to one source. `--max-pages`
+`--source rimi`, `klick`, `arvutitark`, `tootemaailm`, `eantiik`, or `reserved` limits a refresh to one source. `--max-pages`
 (default 80, capped at 200) bounds page retrieval; Rimi uses at most 10 listing
 pages. Klick interleaves phone, laptop, headphone and monitor category listings,
 then supplements them with campaign and sitemap links within the page budget.
@@ -52,6 +63,15 @@ published year at least 20 years old, and always excludes items labeled Uus.
 Unknown object types and sold/unavailable products are excluded. Both adapters
 count listing and detail pages against `--max-pages`, use product-detail regular
 prices, and restrict page/image requests and redirects to known source hosts.
+
+Arvutitark interleaves CPUs, graphics cards, memory, SSDs, mice and keyboards.
+Its product state supplies the explicit VAT-inclusive original price, checked
+against the same product's EUR offer and model number. Reserved interleaves
+T-shirts, trousers, shirts and dresses; it checks regular prices against the
+product metadata and requires an available size. Both adapters count listing and
+detail requests against the page budget, validate source/image hosts and retain
+the same publication quality gates as other retailers. No synthetic data is
+published when a retailer fails.
 
 The Compose `price-scheduler` service uses the API image and shared media volume.
 It refreshes missing sources on startup, then refreshes on Mondays at 04:00 UTC.
@@ -89,7 +109,7 @@ supported settings, capture dates and feasible combinations, never prices. A
 creation request uses `game_type: "price_guessing"`, `host_enabled`, and
 `price_settings: {mode, product_ranges, questions, answer_seconds, reveal_seconds}`, where
 `product_ranges` is a nonempty, unique list drawn from `groceries`, `electronics`,
-`furniture`, and `antiques`. Availability combinations use the same list field.
+`furniture`, `antiques`, and `clothing`. Availability combinations use the same list field.
 Legacy `product_range` requests remain accepted: `both` means groceries plus
 electronics. Supplying both formats is invalid. Omitted API settings retain the
 legacy groceries/electronics default; the setup screen explicitly sends its selection. It does not

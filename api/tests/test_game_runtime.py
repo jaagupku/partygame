@@ -2209,3 +2209,27 @@ async def test_reset_closed_question_accepts_another_answer_from_same_player():
     _, handled = await service.submit_player_input(lobby, "p1", "second answer")
     assert handled is True
     assert repo.steps[lobby.id]["answers"]["p1"] == "second answer"
+
+
+@pytest.mark.asyncio
+async def test_drawing_vote_can_change_until_voting_closes():
+    repo = FakeRepo()
+    repo.players.append(schemas.Player(id="p3", game_id="g1", name="Charlie"))
+    repo.scores["p3"] = 0
+    service = GameRuntimeService(repo, DrawingDefinitionProvider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="drawing_test", host_enabled=True)
+    await service.start_game(lobby)
+    for player in repo.players:
+        await service.submit_player_input(lobby, player.id, valid_drawing("#ef4444"))
+    await service.close_step(lobby)
+    assert (await service.submit_drawing_vote(lobby, "p1", "drawing:1"))[1]
+    assert (await service.submit_drawing_vote(lobby, "p1", "drawing:2"))[1]
+    assert repo.steps["g1"]["drawing_votes"] == {"p1": "p3"}
+    assert not (await service.submit_drawing_vote(lobby, "p1", "drawing:0"))[1]
+    assert not (await service.submit_drawing_vote(lobby, "p1", "missing"))[1]
+    await service.submit_drawing_vote(lobby, "p2", "drawing:2")
+    await service.submit_drawing_vote(lobby, "p3", "drawing:1")
+    assert repo.steps["g1"]["display_phase"] == "answer_reveal"
+    assert not (await service.submit_drawing_vote(lobby, "p1", "drawing:1"))[1]
+    snapshot = await service.build_snapshot(lobby)
+    assert [item.vote_count for item in snapshot.drawing_items] == [0, 1, 2]

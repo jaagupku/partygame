@@ -66,7 +66,7 @@
 	let selectedRadioOption = $state<string | null>(null);
 	let selectedCheckboxOptions = $state<string[]>([]);
 	let selectedMapPoint = $state<MapPoint | null>(null);
-	let pendingDrawingVoteId = $state<string | undefined>(undefined);
+	let selectedDrawingVoteId = $state<string | undefined>(undefined);
 	let orderingStepId = $state<string | undefined>(undefined);
 	let inputStepId = $state<string | undefined>(undefined);
 	let inputStartedAt = $state<number | undefined>(undefined);
@@ -90,7 +90,12 @@
 		)
 	);
 	const validPrice = $derived(/^\d+(?:[.,]\d{1,2})?$/.test(String(answerValue)));
-	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
+	const canReviseAnswer = $derived(
+		Boolean(activeStep?.price_mode) || activeStep?.input_kind === 'radio'
+	);
+	const inputDisabled = $derived(
+		baseInputDisabled || (!canReviseAnswer && pendingSubmissionStepId === activeStep?.id)
+	);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
 	const useNumberSlider = $derived(hasConfiguredNumberSlider(activeStep));
 	const drawingVoteSubmitted = $derived(drawingVotedPlayerIds.includes(playerId));
@@ -100,9 +105,7 @@
 		activeStep ? `${activeStep.id}:${activeStep.timer.started_at ?? 'not-started'}` : ''
 	);
 	const previewMode = $derived(mode === 'preview');
-	const drawingVoteDisabled = $derived(
-		baseInputDisabled || previewMode || drawingVoteSubmitted || Boolean(pendingDrawingVoteId)
-	);
+	const drawingVoteDisabled = $derived(baseInputDisabled || previewMode);
 
 	$effect(() => {
 		const step = activeStep;
@@ -112,7 +115,7 @@
 			selectedRadioOption = null;
 			selectedCheckboxOptions = [];
 			selectedMapPoint = null;
-			pendingDrawingVoteId = undefined;
+			selectedDrawingVoteId = undefined;
 			inputStepId = step?.id;
 			inputStartedAt = startedAt;
 			orderingStepId = undefined;
@@ -145,12 +148,6 @@
 				lastSubmissionToastKey = toastKey;
 				showErrorToast($messages.gameplay.submissionRejected[submissionError]);
 			}
-		}
-	});
-
-	$effect(() => {
-		if (drawingVoteSubmitted) {
-			pendingDrawingVoteId = undefined;
 		}
 	});
 
@@ -208,6 +205,7 @@
 		if (
 			!step ||
 			step.id !== stepId ||
+			Boolean(step.price_mode) ||
 			inputDisabled ||
 			previewMode ||
 			hasSubmitted ||
@@ -243,6 +241,7 @@
 	}
 
 	function submitRadioOption(option: string) {
+		if (inputDisabled) return;
 		selectedRadioOption = option;
 		answerValue = option;
 		if (!previewMode) {
@@ -276,7 +275,7 @@
 		if (drawingVoteDisabled) {
 			return;
 		}
-		pendingDrawingVoteId = drawingId;
+		selectedDrawingVoteId = drawingId;
 		onSubmitDrawingVote(drawingId);
 	}
 </script>
@@ -286,6 +285,7 @@
 		<h2 class="label-title text-2xl">{$messages.priceGame[activeStep.price_mode]}</h2>
 		{#if activeStep.price_mode === 'compare'}
 			<p>{$messages.priceGame.choose}</p>
+			<p class="theme-text-muted text-sm">{$messages.gameplay.canChangeChoice}</p>
 			<div class="grid gap-3 sm:grid-cols-2">
 				{#each activeStep.price_products ?? [] as product}
 					<button
@@ -299,6 +299,7 @@
 		{:else}
 			{#each activeStep.price_products ?? [] as product}<ProductCard {product} />{/each}
 			{#if displayPhase !== 'answer_reveal'}
+				<p class="theme-text-muted text-sm">{$messages.priceGame.submitHint}</p>
 				<label class="input-wrap"
 					><span class="label-title">{$messages.priceGame.priceLabel}</span><input
 						class="input"
@@ -312,6 +313,7 @@
 						{$messages.priceGame.invalidPrice}
 					</p>{/if}
 				<button
+					type="button"
 					class="btn btn-primary"
 					disabled={inputDisabled || previewMode || !validPrice}
 					onclick={submitAnswer}>{$messages.priceGame.submit}</button
@@ -355,12 +357,13 @@
 			</div>
 		{/if}
 		{#if visibleDrawingItems.length > 0}
-			<div class="grid gap-3 sm:grid-cols-2">
-				{#each visibleDrawingItems as item}
+			<div class="drawing-vote-grid">
+				{#each visibleDrawingItems as item (item.id)}
 					<button
 						type="button"
-						class={`drawing-vote-card ${pendingDrawingVoteId === item.id ? 'drawing-vote-card-selected' : ''}`}
+						class={`drawing-vote-card ${selectedDrawingVoteId === item.id ? 'drawing-vote-card-selected' : ''}`}
 						disabled={drawingVoteDisabled}
+						aria-pressed={selectedDrawingVoteId === item.id}
 						onclick={() => submitDrawingVote(item.id)}
 					>
 						<DrawingDisplay drawing={item.value} />
@@ -656,7 +659,15 @@
 		min-height: 0;
 	}
 
+	.drawing-vote-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.65rem;
+	}
+
 	.drawing-vote-card {
+		min-width: 0;
+		touch-action: pan-y pinch-zoom;
 		display: grid;
 		gap: 0.65rem;
 		border-radius: 1rem;
