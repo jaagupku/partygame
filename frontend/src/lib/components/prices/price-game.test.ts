@@ -9,16 +9,19 @@ const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('$app/environment', () => ({ browser: true }));
 const modes = ['guess', 'compare', 'mixed'];
-const ranges = ['groceries', 'electronics', 'both'];
+const ranges = ['groceries', 'electronics', 'furniture', 'antiques'];
+const selections = Array.from({ length: 15 }, (_, i) =>
+	ranges.filter((_, bit) => (i + 1) & (1 << bit))
+);
 const availability = {
-	ranges: ranges.slice(0, 2).map((product_range) => ({
+	ranges: ranges.map((product_range) => ({
 		product_range,
 		available: true,
 		captured_at: '2026-09-19T00:00:00Z'
 	})),
 	combinations: modes.flatMap((mode) =>
-		ranges.flatMap((product_range) =>
-			[5, 10, 15, 20].map((questions) => ({ mode, product_range, questions }))
+		selections.flatMap((product_ranges) =>
+			[5, 10, 15, 20].map((questions) => ({ mode, product_ranges, questions }))
 		)
 	)
 };
@@ -102,8 +105,100 @@ describe('price game', () => {
 		expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
 			game_type: 'price_guessing',
 			host_enabled: false,
-			price_settings: { mode, product_range: 'both', questions: 10, answer_seconds: 30 }
+			price_settings: {
+				mode,
+				product_ranges: ranges,
+				questions: 10,
+				answer_seconds: 30,
+				reveal_seconds: 4
+			}
 		});
+	});
+	it('sends a chosen correct-price reveal duration', async () => {
+		const fetch = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: true, json: async () => availability })
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ join_code: 'ABCDE' }) });
+		vi.stubGlobal('fetch', fetch);
+		render(PriceGameSetup);
+		await screen.findByLabelText('Correct price reveal time');
+		await fireEvent.change(screen.getByLabelText('Correct price reveal time'), {
+			target: { value: '15' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+		expect(JSON.parse(fetch.mock.calls[1][1].body).price_settings.reveal_seconds).toBe(15);
+	});
+	it('shows a toggleable Ready control only for automatic price reveals', async () => {
+		const toggle = vi.fn();
+		const props = {
+			activeStep: step('guess'),
+			baseInputDisabled: true,
+			buzzerActive: false,
+			canContinueHostlessInfoSlide: false,
+			disabledBuzzerPlayerIds: [],
+			displayPhase: 'answer_reveal',
+			drawingItems: [],
+			drawingVotedPlayerIds: [],
+			hasSubmitted: true,
+			playerId: 'p1',
+			showPriceReady: true,
+			priceReady: false,
+			priceRevealRemainingSeconds: 8,
+			priceRevealSpeed: 1,
+			priceRevealReceivedAt: Date.now() / 1000,
+			onTogglePriceReady: toggle,
+			onContinueInfoSlide: vi.fn(),
+			onSubmitAnswer: vi.fn(),
+			onSubmitDrawingVote: vi.fn()
+		};
+		const view = render(PlayerInputPanel, props);
+		await fireEvent.click(screen.getByRole('button', { name: 'Ready' }));
+		expect(toggle).toHaveBeenCalledOnce();
+		await view.rerender({ ...props, priceReady: true, priceRevealSpeed: 1.15 });
+		expect(screen.getByRole('button', { name: 'Not ready' }).getAttribute('aria-pressed')).toBe(
+			'true'
+		);
+		view.unmount();
+		render(PlayerInputPanel, { ...props, showPriceReady: false });
+		expect(screen.queryByRole('button', { name: 'Ready' })).toBeNull();
+	});
+	it('allows arbitrary category combinations and prevents empty selection', async () => {
+		const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => availability });
+		vi.stubGlobal('fetch', fetch);
+		render(PriceGameSetup);
+		await screen.findByRole('checkbox', { name: 'Furniture' });
+		for (const label of ['Groceries', 'Electronics', 'Furniture', 'Antiques & vintage']) {
+			await fireEvent.click(screen.getByRole('checkbox', { name: label }));
+		}
+		expect((screen.getByRole('button', { name: 'Start Game' }) as HTMLButtonElement).disabled).toBe(
+			true
+		);
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Furniture' }));
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Electronics' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+		expect(JSON.parse(fetch.mock.calls[1][1].body).price_settings.product_ranges.sort()).toEqual([
+			'electronics',
+			'furniture'
+		]);
+	});
+	it('disables unpublished categories and selects only available datasets', async () => {
+		const partial = {
+			...availability,
+			ranges: availability.ranges.map((range) => ({
+				...range,
+				available: range.product_range === 'electronics'
+			}))
+		};
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => partial }));
+		render(PriceGameSetup);
+		const furniture = await screen.findByRole('checkbox', { name: /Furniture/ });
+		expect((furniture as HTMLInputElement).disabled).toBe(true);
+		expect(
+			(screen.getByRole('checkbox', { name: 'Electronics' }) as HTMLInputElement).checked
+		).toBe(true);
+		expect((screen.getByRole('button', { name: 'Start Game' }) as HTMLButtonElement).disabled).toBe(
+			false
+		);
 	});
 	it('accepts decimal comma and rejects too much precision', async () => {
 		const submit = panel(step('guess'));

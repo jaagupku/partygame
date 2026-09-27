@@ -95,9 +95,12 @@ def test_question_selection_balances_categories_and_avoids_adjacent_repeats():
                 .rounds[0]
                 .steps
             )
-            chosen = [categories[s.price_question.reveal[0].source_url] for s in steps]
-            assert set(Counter(chosen).values()) == {5}
-            assert all(a != b for a, b in pairwise(chosen))
+            chosen = [categories[p.source_url] for s in steps for p in s.price_question.reveal]
+            counts = Counter(chosen)
+            assert len(counts) == 3
+            assert max(counts.values()) - min(counts.values()) <= 2
+            if mode == "guess":
+                assert all(a != b for a, b in pairwise(chosen))
 
 
 def test_familiar_products_preferred_within_category():

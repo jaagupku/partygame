@@ -3,6 +3,10 @@ from time import time
 from typing import TYPE_CHECKING, Literal
 
 from partygame import schemas
+from partygame.service.runtime.price_reveal import (
+    price_reveal_speed,
+    remaining_price_reveal_seconds,
+)
 from partygame.service.runtime.snapshots import ROUND_INTRO_DURATION_SECONDS
 
 if TYPE_CHECKING:
@@ -63,6 +67,15 @@ class RuntimeTransitionScheduler:
                 lobby, current_step
             ):
                 return None
+            if current_step.price_question is not None:
+                state = await runtime.get_step_state(lobby.id)
+                return ScheduledTransition(
+                    "hostless_answer_reveal",
+                    remaining_price_reveal_seconds(
+                        state, current_step.price_question.reveal_seconds
+                    )
+                    / price_reveal_speed(state),
+                )
             return ScheduledTransition(
                 "hostless_answer_reveal",
                 HOSTLESS_ANSWER_REVEAL_DELAY_SECONDS,

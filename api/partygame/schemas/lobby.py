@@ -39,6 +39,12 @@ class CreateGame(BaseModel):
             return {"host_enabled": False, "price_settings": {}, **values}
         return values
 
+    @model_validator(mode="after")
+    def normalized_price_settings(self):
+        if self.game_type == "price_guessing" and self.price_settings is None:
+            self.price_settings = PriceGameSettings()
+        return self
+
 
 class ComponentType(StrEnum):
     DISPLAY = auto()
@@ -78,6 +84,8 @@ class BaseComponent(BaseModel):
 
 
 class Lobby(BaseModel):
+    run_id: str | None = None
+    definition_title: str | None = None
     game_type: str = "trivia"
     session_version: int | None = None
     id: str = Field(default_factory=lambda: uuid4().hex)
@@ -97,3 +105,15 @@ class Lobby(BaseModel):
 class ConnectedToLobby(BaseModel):
     player: Player
     lobby: Lobby
+
+
+class ContinueGame(BaseModel):
+    expected_run_id: str
+    settings: CreateGame
+
+
+class LobbySetup(BaseModel):
+    run_id: str
+    settings: CreateGame
+    settings_complete: bool = True
+    definition_title: str | None = None

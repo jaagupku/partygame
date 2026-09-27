@@ -1,18 +1,33 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { messages, locale } from '$lib/i18n';
+	const {
+		initialSettings,
+		onsubmit,
+		oncancel,
+		submitLabel
+	}: {
+		initialSettings?: GameSetupSettings;
+		onsubmit?: (settings: GameSetupSettings) => Promise<void>;
+		oncancel?: () => void;
+		submitLabel?: string;
+	} = $props();
 	type Mode = 'guess' | 'compare' | 'mixed';
-	type ProductRange = 'groceries' | 'electronics' | 'both';
+	type ProductRange = 'groceries' | 'electronics' | 'furniture' | 'antiques';
 	type Availability = {
 		ranges: { product_range: ProductRange; available: boolean; captured_at: string | null }[];
-		combinations: { mode: Mode; product_range: ProductRange; questions: number }[];
+		combinations: { mode: Mode; product_ranges: ProductRange[]; questions: number }[];
 	};
-	let mode = $state<Mode>('mixed');
-	let productRange = $state<ProductRange>('both');
-	let questions = $state(10);
-	let seconds = $state(30);
-	let hostEnabled = $state(false);
+	let mode = $state<Mode>(untrack(() => initialSettings?.price_settings?.mode ?? 'mixed'));
+	let productRanges = $state<ProductRange[]>(
+		untrack(() => initialSettings?.price_settings?.product_ranges ?? [])
+	);
+	let selectionInitialized = untrack(() => Boolean(initialSettings?.price_settings));
+	let questions = $state(untrack(() => initialSettings?.price_settings?.questions ?? 10));
+	let seconds = $state(untrack(() => initialSettings?.price_settings?.answer_seconds ?? 30));
+	let revealSeconds = $state(untrack(() => initialSettings?.price_settings?.reveal_seconds ?? 4));
+	let hostEnabled = $state(untrack(() => initialSettings?.host_enabled ?? false));
 	let availability = $state<Availability | null>(null);
 	let loading = $state(true);
 	let failed = $state(false);
@@ -20,7 +35,11 @@
 	let createError = $state<'unavailable' | 'createFailed' | null>(null);
 	const playable = $derived(
 		availability?.combinations.some(
-			(c) => c.mode === mode && c.product_range === productRange && c.questions === questions
+			(c) =>
+				c.mode === mode &&
+				c.questions === questions &&
+				c.product_ranges.length === productRanges.length &&
+				c.product_ranges.every((range) => productRanges.includes(range))
 		) ?? false
 	);
 	async function load() {
@@ -29,7 +48,13 @@
 		try {
 			const response = await fetch('/api/v1/game-types/price_guessing/availability');
 			if (!response.ok) throw new Error('Availability failed');
-			availability = await response.json();
+			const loaded: Availability = await response.json();
+			availability = loaded;
+			const available = loaded.ranges
+				.filter((range) => range.available)
+				.map((range) => range.product_range);
+			productRanges = selectionInitialized ? productRanges : available;
+			if (available.length) selectionInitialized = true;
 		} catch {
 			failed = true;
 		} finally {
@@ -44,13 +69,33 @@
 		creating = true;
 		createError = null;
 		try {
+			if (onsubmit) {
+				await onsubmit({
+					game_type: 'price_guessing',
+					host_enabled: hostEnabled,
+					price_settings: {
+						mode,
+						product_ranges: productRanges,
+						questions,
+						answer_seconds: seconds,
+						reveal_seconds: revealSeconds
+					}
+				});
+				return;
+			}
 			const response = await fetch('/api/v1/lobby/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					game_type: 'price_guessing',
 					host_enabled: hostEnabled,
-					price_settings: { mode, product_range: productRange, questions, answer_seconds: seconds }
+					price_settings: {
+						mode,
+						product_ranges: productRanges,
+						questions,
+						answer_seconds: seconds,
+						reveal_seconds: revealSeconds
+					}
 				})
 			});
 			if (!response.ok) {
@@ -88,15 +133,32 @@
 						>{/each}</select
 				></label
 			>
-			<label class="input-wrap"
-				><span class="label-title">{$messages.priceGame.productRange}</span><select
-					class="input"
-					bind:value={productRange}
-					>{#each ['groceries', 'electronics', 'both'] as option}<option value={option}
-							>{$messages.priceGame[option as ProductRange]}</option
-						>{/each}</select
-				></label
-			>
+			<fieldset class="min-w-0 sm:col-span-2">
+				<legend class="label-title">{$messages.priceGame.productRange}</legend>
+				<div class="grid gap-2 sm:grid-cols-2">
+					{#each availability?.ranges ?? [] as range}
+						<label class="flex min-h-12 items-center gap-3 rounded-lg border p-3">
+							<input
+								type="checkbox"
+								value={range.product_range}
+								bind:group={productRanges}
+								disabled={!range.available}
+								aria-describedby={!range.available
+									? `unavailable-${range.product_range}`
+									: undefined}
+							/>
+							<span
+								>{$messages.priceGame[range.product_range]}
+								{#if !range.available}<span
+										id={`unavailable-${range.product_range}`}
+										class="block text-sm theme-text-muted">{$messages.priceGame.noDataset}</span
+									>{/if}
+							</span>
+						</label>
+					{/each}
+				</div>
+				<p class="mt-2 text-sm theme-text-muted">{$messages.priceGame.categoryMixing}</p>
+			</fieldset>
 			<label class="input-wrap"
 				><span class="label-title">{$messages.priceGame.questions}</span><select
 					class="input"
@@ -113,6 +175,17 @@
 						>{/each}</select
 				></label
 			>
+			{#if !hostEnabled}
+				<label class="input-wrap"
+					><span class="label-title">{$messages.priceGame.revealTime}</span><select
+						class="input"
+						bind:value={revealSeconds}
+						>{#each [4, 6, 8, 10, 15] as value}<option {value}
+								>{value} {$messages.priceGame.seconds}</option
+							>{/each}</select
+					></label
+				>
+			{/if}
 			<label class="input-wrap"
 				><span class="label-title">{$messages.priceGame.progression}</span><select
 					class="input"
@@ -132,8 +205,14 @@
 			<button class="btn btn-ghost" onclick={load}>{$messages.priceGame.retry}</button>{/if}
 		{#if createError}<p role="alert">{$messages.priceGame[createError]}</p>{/if}
 		<button class="btn btn-primary min-h-16" disabled={!playable || creating} onclick={create}
-			>{creating ? $messages.gameCatalog.creating : $messages.common.createGame}</button
+			>{creating
+				? onsubmit
+					? $messages.continueGame.preparing
+					: $messages.gameCatalog.creating
+				: (submitLabel ?? $messages.common.createGame)}</button
 		>
 	{/if}
-	<a class="btn btn-ghost" href="/">{$messages.common.back}</a>
+	{#if oncancel}<button class="btn btn-ghost" disabled={creating} onclick={oncancel}
+			>{$messages.common.back}</button
+		>{:else}<a class="btn btn-ghost" href="/">{$messages.common.back}</a>{/if}
 </div>

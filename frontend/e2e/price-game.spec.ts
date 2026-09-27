@@ -21,7 +21,9 @@ async function start(
 	mode: Mode,
 	hosted: boolean,
 	locale = 'en',
-	seconds = '60'
+	seconds = '60',
+	viewport = { width: 390, height: 844 },
+	revealSeconds = '4'
 ) {
 	await page.addInitScript(() => localStorage.setItem('partygame-locale', JSON.stringify('en')));
 	await page.goto('/create?game=price_guessing');
@@ -29,6 +31,7 @@ async function start(
 	await page.getByLabel('Questions').selectOption('5');
 	await page.getByLabel('Answer time').selectOption(seconds);
 	await page.getByLabel('Progression').selectOption(String(hosted));
+	if (!hosted) await page.getByLabel('Correct price reveal time').selectOption(revealSeconds);
 	const creation = page.waitForResponse((r) => r.url().endsWith('/api/v1/lobby/create'));
 	await page.getByRole('button', { name: 'Start Game', exact: true }).click();
 	const lobby = await (await creation).json();
@@ -40,7 +43,9 @@ async function start(
 	}
 	const context = await browser.newContext({
 		baseURL: new URL(page.url()).origin,
-		viewport: { width: 390, height: 844 }
+		viewport,
+		isMobile: true,
+		hasTouch: true
 	});
 	contexts.push(context);
 	await context.addInitScript(
@@ -60,7 +65,7 @@ async function start(
 	);
 	await phone.goto(`/play/${lobby.join_code}`);
 	await (host ?? phone).getByRole('button', { name: 'Start Game', exact: true }).click();
-	await expect(phone.locator(imageSelector)).not.toHaveCount(0);
+	await expect(phone.locator(imageSelector)).not.toHaveCount(0, { timeout: 20_000 });
 	return { phone, host, contexts, frames };
 }
 
@@ -79,6 +84,73 @@ async function answer(phone: Page, locale = 'en') {
 		await option.focus();
 		await phone.keyboard.press('Enter');
 	}
+}
+
+for (const viewport of [
+	{ width: 360, height: 640 },
+	{ width: 390, height: 844 }
+]) {
+	test(`mobile comparison lower option stays reachable at ${viewport.width}x${viewport.height}`, async ({
+		browser,
+		page
+	}, testInfo) => {
+		const { phone, contexts } = await start(browser, page, 'compare', true, 'en', '60', viewport);
+		try {
+			const options = phone.locator('.controller-player-input button[aria-pressed]');
+			await expect(options).toHaveCount(2);
+			if (viewport.width === 390) {
+				// Stress the rendered cards with wrapping titles and the real image-error fallback.
+				await options.evaluateAll((buttons) => {
+					for (const button of buttons) {
+						button.querySelector('p')!.textContent =
+							'Extra long product title with additional model details and package information';
+						button.querySelector('img')!.dispatchEvent(new Event('error'));
+					}
+				});
+				await expect(phone.getByText('Product image unavailable', { exact: true })).toHaveCount(2);
+			}
+			const session = await phone.context().newCDPSession(phone);
+			for (let swipe = 0; swipe < 4; swipe++) {
+				const x = viewport.width / 2;
+				await session.send('Input.dispatchTouchEvent', {
+					type: 'touchStart',
+					touchPoints: [{ x, y: viewport.height * 0.8 }]
+				});
+				for (let move = 1; move <= 10; move++) {
+					await session.send('Input.dispatchTouchEvent', {
+						type: 'touchMove',
+						touchPoints: [{ x, y: viewport.height * (0.8 - move * 0.06) }]
+					});
+					await phone.waitForTimeout(20);
+				}
+				await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+			}
+			await phone.waitForTimeout(300);
+
+			const lowerOption = options.last();
+			const assertReachable = async () => {
+				const card = await lowerOption.boundingBox();
+				const dock = await phone.locator('.reaction-buttons').boundingBox();
+				expect(card).not.toBeNull();
+				expect(dock).not.toBeNull();
+				expect(card!.y + card!.height).toBeLessThanOrEqual(dock!.y - 4);
+			};
+			await assertReachable();
+			const scrollY = await phone.evaluate(() => window.scrollY);
+			// Let touch momentum settle and routine websocket updates arrive.
+			await phone.waitForTimeout(1500);
+			expect(await phone.evaluate(() => window.scrollY)).toBeCloseTo(scrollY, 0);
+			await assertReachable();
+			await phone.screenshot({ path: testInfo.outputPath('mobile-comparison.png') });
+			const card = (await lowerOption.boundingBox())!;
+			await phone.touchscreen.tap(card.x + card.width / 2, card.y + card.height - 8);
+			await expect(lowerOption).toHaveAttribute('aria-pressed', 'true');
+			await expect(phone.getByText('Answers and points', { exact: true })).toBeVisible();
+			expect(await phone.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
+		} finally {
+			for (const context of contexts) await context.close();
+		}
+	});
 }
 
 for (const mode of ['guess', 'compare', 'mixed'] as const) {
@@ -194,12 +266,54 @@ test('automatic mixed game reaches finale, including a missing timed-out answer'
 				timeout: 20_000
 			});
 			if (question === 4) await expect(phone.getByText('No answer', { exact: true })).toBeVisible();
-			await expect(phone.getByText('Answers and points', { exact: true })).toHaveCount(0, {
-				timeout: 20_000
-			});
+			if (question < 4) {
+				await expect(phone.getByText('Answers and points', { exact: true })).toHaveCount(0, {
+					timeout: 20_000
+				});
+			}
 		}
 		await expect.poll(() => JSON.stringify(frames).includes('"revealed":true')).toBe(true);
 		await page.screenshot({ path: testInfo.outputPath('finale.png') });
+	} finally {
+		for (const context of contexts) await context.close();
+	}
+});
+
+test('automatic price reveal Ready toggles the countdown speed', async ({ browser, page }) => {
+	const { phone, contexts } = await start(
+		browser,
+		page,
+		'guess',
+		false,
+		'en',
+		'15',
+		{ width: 390, height: 844 },
+		'10'
+	);
+	try {
+		await answer(phone);
+		await expect(phone.getByText('Answers and points', { exact: true })).toBeVisible({
+			timeout: 20_000
+		});
+		await expect(phone.locator('p').filter({ hasText: 'Time remaining' })).toContainText('1.00×');
+		const ready = phone.getByRole('button', { name: 'Ready', exact: true });
+		await ready.click();
+		await expect(phone.getByRole('button', { name: 'Not ready', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		await phone.reload();
+		await expect(phone.getByRole('button', { name: 'Not ready', exact: true })).toBeVisible();
+		await expect(phone.locator('p').filter({ hasText: 'Time remaining' })).toContainText('1.15×');
+		await phone.getByRole('button', { name: 'Not ready', exact: true }).click();
+		await expect(phone.getByRole('button', { name: 'Ready', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		await expect(phone.locator('p').filter({ hasText: 'Time remaining' })).toContainText('1.00×');
+		await expect(phone.getByText('Answers and points', { exact: true })).toHaveCount(0, {
+			timeout: 20_000
+		});
 	} finally {
 		for (const context of contexts) await context.close();
 	}

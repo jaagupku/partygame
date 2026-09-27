@@ -26,6 +26,7 @@ from partygame.service.runtime.evaluation import (
     HOSTLESS_AUTO_EVALUATION_TYPES,
     EvaluationRuntime,
 )
+from partygame.service.runtime.price_reveal import remaining_price_reveal_seconds
 from partygame.service.runtime.snapshots import (
     ROUND_INTRO_DURATION_SECONDS,
     SnapshotBuilder,
@@ -192,6 +193,9 @@ class GameRuntimeService:
                 "media_playback_revision": 0,
                 "media_volume": 1,
                 "answers": {},
+                "price_ready_player_ids": [],
+                "price_reveal_remaining_seconds": None,
+                "price_reveal_updated_at": None,
                 "drawing_votes": {},
                 "drawing_vote_order": [],
                 "drawing_score_updates": {},
@@ -252,6 +256,51 @@ class GameRuntimeService:
 
     async def get_step_state(self, lobby_id: str) -> dict[str, Any]:
         return await self.repo.get_step_cache(lobby_id)
+
+    async def set_price_reveal_ready(
+        self, lobby: schemas.Lobby, player_id: str, step_id: str, ready: bool
+    ) -> bool:
+        if (
+            lobby.game_type != "price_guessing"
+            or lobby.host_enabled
+            or lobby.phase != "step_complete"
+        ):
+            return False
+        step = await self.get_current_step(lobby)
+        state = await self.get_step_state(lobby.id)
+        if (
+            step is None
+            or step.id != step_id
+            or step.price_question is None
+            or state.get("display_phase") != "answer_reveal"
+            or self._review_step_index(state) is not None
+        ):
+            return False
+        players = await self.repo.get_players(lobby.id)
+        if not any(player.id == player_id and player.id != lobby.host_id for player in players):
+            return False
+        ready_ids = set(state.get("price_ready_player_ids", []))
+        if (player_id in ready_ids) == ready:
+            return False
+        now = time()
+        remaining = remaining_price_reveal_seconds(
+            state, step.price_question.reveal_seconds, now=now
+        )
+        if remaining <= 0:
+            return False
+        if ready:
+            ready_ids.add(player_id)
+        else:
+            ready_ids.remove(player_id)
+        await self.repo.set_step_cache(
+            lobby.id,
+            {
+                "price_reveal_remaining_seconds": remaining,
+                "price_reveal_updated_at": now,
+                "price_ready_player_ids": sorted(ready_ids),
+            },
+        )
+        return True
 
     def _step_archive_component_id(self, step_index: int) -> str:
         return f"step_archive:{step_index}"
@@ -1016,6 +1065,10 @@ class GameRuntimeService:
         step = await self.get_current_step(lobby)
         if step is None:
             return []
+        if step.price_question is not None and lobby.phase == "step_complete":
+            state = await self.get_step_state(lobby.id)
+            if state.get("display_phase") == "answer_reveal":
+                return [await self.build_snapshot(lobby)]
         if await self.evaluation.should_skip_answer_reveal(lobby, step):
             return await self.advance_step(lobby)
         phase = "step_complete"
@@ -1086,6 +1139,12 @@ class GameRuntimeService:
                         not lobby.host_enabled and await self.is_current_step_round_end(lobby)
                     ),
                 } | self.timing.answer_reveal_updates(step)
+                if step.price_question is not None and not lobby.host_enabled:
+                    step_updates.update(
+                        price_ready_player_ids=[],
+                        price_reveal_remaining_seconds=step.price_question.reveal_seconds,
+                        price_reveal_updated_at=time(),
+                    )
             await self.repo.set_step_cache(lobby.id, step_updates)
         events.append(await self.build_snapshot(lobby))
         return events

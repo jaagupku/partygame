@@ -25,6 +25,7 @@ class Event(StrEnum):
     STEP_ADVANCED = auto()
     SCORES_UPDATED = auto()
     PLAYER_INPUT_SUBMITTED = auto()
+    PRICE_REVEAL_READY = auto()
     BUZZER_STATE = auto()
     BUZZER_CLICKED = auto()
     RUNTIME_SNAPSHOT = auto()
@@ -116,6 +117,12 @@ class PlayerInputSubmittedEvent(BaseEvent):
     component_id: str | None = None
     player_id: str = ""
     value: Any
+
+
+class PriceRevealReadyEvent(BaseEvent):
+    type_: str = Event.PRICE_REVEAL_READY
+    step_id: str
+    ready: bool
 
 
 class DrawingVoteSubmittedEvent(BaseEvent):
@@ -285,6 +292,8 @@ class NextHostActionState(BaseModel):
 
 
 class RuntimeLobbyState(BaseModel):
+    run_id: str | None = None
+    definition_title: str | None = None
     game_type: str = "trivia"
     id: str
     join_code: str
@@ -343,6 +352,9 @@ class RuntimeSnapshotEvent(BaseEvent):
     buzzed_player_id: str | None = None
     disabled_buzzer_player_ids: list[str] = Field(default_factory=list)
     submitted_player_ids: list[str] = Field(default_factory=list)
+    price_ready_player_ids: list[str] = Field(default_factory=list)
+    price_reveal_remaining_seconds: float | None = None
+    price_reveal_speed: float = 1.0
     submission_count: int = 0
     pending_review_count: int = 0
     drawing_items: list[DrawingVoteItem] = Field(default_factory=list)

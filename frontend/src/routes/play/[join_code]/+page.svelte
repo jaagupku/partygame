@@ -1,4 +1,6 @@
 <script lang="ts">
+	import TimerTopBar from '$lib/components/controller/TimerTopBar.svelte';
+	import ContinueGame from '$lib/components/setup/ContinueGame.svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { createControllerStore } from '$lib/controller-store.js';
@@ -31,6 +33,7 @@
 	const controller = createControllerStore(
 		{
 			id: $player?.id || '',
+			runId: lobby().run_id ?? lobby().id,
 			players: lobby().players,
 			lastRevision: 0,
 			theme: undefined,
@@ -57,6 +60,10 @@
 			buzzedPlayerId: undefined,
 			disabledBuzzerPlayerIds: [],
 			submittedPlayerIds: [],
+			priceReadyPlayerIds: [],
+			priceRevealRemainingSeconds: undefined,
+			priceRevealSpeed: 1,
+			priceRevealReceivedAt: 0,
 			hasSubmitted: false,
 			submissionCount: 0,
 			pendingReviewCount: 0,
@@ -115,7 +122,7 @@
 			return undefined;
 		}
 		const rankedPlayers = $controller.players
-			.filter((entry) => !entry.isHost && entry.id !== lobby().host_id)
+			.filter((entry) => !entry.isHost)
 			.toSorted(
 				(a, b) => b.score - a.score || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
 			);
@@ -277,10 +284,28 @@
 	function sendAction(msg: Record<string, unknown>) {
 		socket?.send(
 			JSON.stringify({
+				run_id: $controller.runId ?? lobby().id,
 				...msg,
 				player_id: $controller.id
 			})
 		);
+	}
+
+	function togglePriceReady() {
+		const step = $controller.activeStep;
+		if (
+			!isConnected ||
+			$controller.hostEnabled ||
+			$controller.lobbyPhase !== 'step_complete' ||
+			$controller.displayPhase !== 'answer_reveal' ||
+			!step?.price_mode
+		)
+			return;
+		sendAction({
+			type_: 'price_reveal_ready',
+			step_id: step.id,
+			ready: !$controller.priceReadyPlayerIds.includes($controller.id)
+		});
 	}
 
 	function requestResync() {
@@ -289,6 +314,7 @@
 		}
 		const sent = socket?.send(
 			JSON.stringify({
+				run_id: $controller.runId ?? lobby().id,
 				type_: 'resync_request',
 				last_revision: $controller.lastRevision
 			})
@@ -430,6 +456,7 @@
 		}
 		socket?.send(
 			JSON.stringify({
+				run_id: $controller.runId ?? lobby().id,
 				type_: 'review_submission',
 				player_id: playerId,
 				accepted,
@@ -441,6 +468,7 @@
 	function revealSubmission(playerId?: string) {
 		socket?.send(
 			JSON.stringify({
+				run_id: $controller.runId ?? lobby().id,
 				type_: 'revealed_submission',
 				player_id: playerId
 			})
@@ -450,6 +478,7 @@
 	function adjustScore(playerId: string, amount: number, useSet = false) {
 		socket?.send(
 			JSON.stringify({
+				run_id: $controller.runId ?? lobby().id,
 				type_: 'update_score',
 				player_id: playerId,
 				add_score: useSet ? 0 : amount,
@@ -517,6 +546,14 @@
 		)}</title
 	>
 </svelte:head>
+
+{#if !$controller.isHost && !gameFinished && $controller.lobbyPhase === 'question_active' && $controller.displayPhase !== 'answer_reveal' && $controller.activeStep}
+	<TimerTopBar timer={$controller.activeStep.timer} />
+{/if}
+
+{#if gameFinished && ($controller.isHost || canStartHostlessGame)}
+	{#key $controller.runId}<ContinueGame lobbyId={lobby().id} onprepared={requestResync} />{/key}
+{/if}
 
 <GameConnectionStatus
 	connected={isConnected}
@@ -644,6 +681,14 @@
 					drawingVotedPlayerIds={$controller.drawingVotedPlayerIds}
 					hasSubmitted={$controller.hasSubmitted}
 					playerId={$controller.id}
+					showPriceReady={!$controller.hostEnabled &&
+						isConnected &&
+						$controller.lobbyPhase === 'step_complete'}
+					priceReady={$controller.priceReadyPlayerIds.includes($controller.id)}
+					priceRevealRemainingSeconds={$controller.priceRevealRemainingSeconds}
+					priceRevealSpeed={$controller.priceRevealSpeed}
+					priceRevealReceivedAt={$controller.priceRevealReceivedAt}
+					onTogglePriceReady={togglePriceReady}
 					submissionError={$controller.submissionError}
 					onContinueInfoSlide={nextStep}
 					onSubmitAnswer={submitAnswer}
@@ -871,6 +916,8 @@
 		.controller-stack-player {
 			gap: 0.5rem;
 			min-height: calc(100dvh - 2rem);
+			/* Keep the final answer above the fixed reaction buttons when scrolled down. */
+			padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
 		}
 
 		.controller-player-input {

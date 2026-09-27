@@ -50,7 +50,12 @@ async def create(
         session_version=prepared.version,
         host_enabled=payload.host_enabled,
     )
+    lobby.run_id = lobby.id
+    lobby.definition_title = prepared.definition.title
     try:
+        await repo.set_component_state(
+            lobby.id, "game_setup", {"settings": payload.model_dump(mode="json")}
+        )
         await repo.set_component_state(
             lobby.id, SESSION_COMPONENT_ID, {"snapshot": prepared.model_dump(mode="json")}
         )
@@ -163,6 +168,8 @@ class GameController:
             self.lobby.definition_id = lobby.definition_id
             self.lobby.game_type = lobby.game_type
             self.lobby.session_version = lobby.session_version
+            self.lobby.run_id = lobby.run_id
+            self.lobby.definition_title = lobby.definition_title
 
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:
@@ -174,10 +181,12 @@ class GameController:
         await self.broadcast_snapshot()
 
     async def set_host(self, event: schemas.SetHostEvent):
+        expected_run = self.lobby.run_id or self.lobby.id
         async with self.repo.mutation_lock(self.lobby.id):
             await self.refresh_lobby()
             if (
-                not self.can_manage
+                (self.lobby.run_id or self.lobby.id) != expected_run
+                or not self.can_manage
                 or not self.lobby.host_enabled
                 or self.lobby.state != schemas.GameState.WAITING_FOR_PLAYERS
                 or await self.repo.get_player(self.lobby.id, event.player_id) is None
@@ -196,6 +205,10 @@ class GameController:
     async def process_input(self, msg: dict):
         await self.refresh_lobby()
         if "type_" not in msg:
+            return
+        if msg["type_"] != Event.RESYNC_REQUEST and msg.get("run_id", self.lobby.id) != (
+            self.lobby.run_id or self.lobby.id
+        ):
             return
         match msg["type_"]:
             case Event.RESYNC_REQUEST:

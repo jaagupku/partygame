@@ -54,6 +54,8 @@ function hostState(overrides: Partial<HostGameState> = {}): HostGameState {
 		buzzerActive: false,
 		buzzedPlayerId: undefined,
 		disabledBuzzerPlayerIds: [],
+		submittedPlayerIds: [],
+		priceReadyPlayerIds: [],
 		submissionCount: 0,
 		pendingReviewCount: 0,
 		revealedSubmission: undefined,

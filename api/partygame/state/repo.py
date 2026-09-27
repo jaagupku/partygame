@@ -79,6 +79,8 @@ class GameStateRepository:
             key: data[key]
             for key in (
                 "id",
+                "run_id",
+                "definition_title",
                 "join_code",
                 "starter_id",
                 "host_id",
@@ -95,6 +97,7 @@ class GameStateRepository:
             )
             if key in data
         }
+        filtered.setdefault("run_id", game_id)
         return schemas.Lobby.model_validate(filtered)
 
     async def set_lobby_fields(self, game_id: str, **fields):
@@ -293,3 +296,41 @@ class GameStateRepository:
         keys.append(registry_key)
         if keys:
             await self.redis.delete(*keys)
+
+    async def replace_run(self, lobby, prepared, setup, ttl_seconds: int):
+        """Replace per-run data in one transaction, preserving identity and credentials.
+
+        Caller holds mutation_lock; the registry also retains connection/player keys.
+        """
+        game_id = lobby.id
+        registry = GameKeyFactory.game_keys(game_id)
+        keys = await self.redis.smembers(registry)
+        obsolete = {
+            key
+            for key in keys
+            if key.startswith(f"game:{game_id}:components:")
+            or key == GameKeyFactory.game_steps(game_id)
+        }
+        session_key = GameKeyFactory.game_component(game_id, "prepared_session")
+        setup_key = GameKeyFactory.game_component(game_id, "game_setup")
+        retained = (keys - obsolete) | {session_key, setup_key}
+        player_ids = await self.get_player_ids(game_id, withscores=False)
+        fields = lobby.model_dump(mode="json", exclude={"players"}, exclude_none=True)
+        async with self.redis.pipeline(transaction=True) as pipe:
+            if obsolete:
+                pipe.delete(*obsolete)
+                pipe.srem(registry, *obsolete)
+            pipe.hdel(GameKeyFactory.game_meta(game_id), "host_id", "active_game")
+            pipe.hset(
+                GameKeyFactory.game_meta(game_id),
+                mapping={key: str(value) for key, value in fields.items()},
+            )
+            pipe.hincrby(GameKeyFactory.game_meta(game_id), "state_revision", 1)
+            if player_ids:
+                pipe.zadd(GameKeyFactory.game_scores(game_id), {pid: 0 for pid in player_ids})
+            pipe.hset(session_key, mapping={"snapshot": prepared.model_dump_json()})
+            pipe.hset(setup_key, mapping={"settings": setup.model_dump_json()})
+            pipe.sadd(registry, session_key, setup_key)
+            for key in retained | {registry}:
+                pipe.expire(key, ttl_seconds)
+            await pipe.execute()

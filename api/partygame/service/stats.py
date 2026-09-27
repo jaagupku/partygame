@@ -79,7 +79,7 @@ class GameStatsArchiver:
             {"started_at": datetime.now(tz=UTC).timestamp()},
         )
 
-    async def archive_finished_game(self, lobby: schemas.Lobby):
+    async def archive_finished_game(self, lobby: schemas.Lobby, *, strict: bool = False):
         try:
             record_values = await self._build_record_values(lobby)
             async with self.sessionmaker() as session:
@@ -97,6 +97,8 @@ class GameStatsArchiver:
                 await session.commit()
         except Exception:
             log.exception("Failed to archive game stats for game %s", lobby.id)
+            if strict:
+                raise
 
     async def _build_record_values(self, lobby: schemas.Lobby) -> dict[str, Any]:
         definition = None
@@ -124,6 +126,7 @@ class GameStatsArchiver:
         )
         summary = {
             "version": 1,
+            "lobby_id": lobby.id,
             "game_type": lobby.game_type,
             "datasets": prepared.get("snapshot", {}).get("datasets", []),
             "scoreboard": scoreboard,
@@ -132,7 +135,7 @@ class GameStatsArchiver:
             "reactions": self._build_reaction_summary(metrics),
         }
         return {
-            "game_id": lobby.id,
+            "game_id": lobby.run_id or lobby.id,
             "join_code": lobby.join_code,
             "definition_id": definition_id,
             "definition_title": definition.title if definition is not None else None,

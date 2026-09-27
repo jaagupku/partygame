@@ -15,8 +15,16 @@ from sqlalchemy import text
 
 from partygame.db.redis import get_connection
 from partygame.schemas import MediaKind
+from partygame.schemas.price_catalog import SOURCE_RANGES
 from partygame.service.media import get_media_storage
 from partygame.service.prices.datasets import PriceDatasets
+from partygame.service.prices.home_sources import (
+    ANTIQUE_LISTINGS,
+    FURNITURE_LISTINGS,
+    parse_eantiik,
+    parse_tootemaailm,
+    product_links,
+)
 from partygame.service.prices.quality import inspect_image
 from partygame.service.prices.sources import klick_links, parse_klick, parse_rimi
 from partygame.state import GameStateRepository
@@ -29,7 +37,15 @@ KLICK_DISCOVERY_CATEGORIES = (
     "heli-ja-pilt/korvaklapid-2/juhtmevabad-korvaklapid-3",
     "arvutid-ja-lisad/monitorid-ja-lisad/monitorid",
 )
-ALLOWED_HOSTS = {"www.rimi.ee", "www.klick.ee", "rimibaltic-res.cloudinary.com", "vsf-api.klick.ee"}
+ALLOWED_HOSTS = {
+    "www.rimi.ee",
+    "www.klick.ee",
+    "rimibaltic-res.cloudinary.com",
+    "vsf-api.klick.ee",
+    "tootemaailm.ee",
+    "media.tootemaailm.ee",
+    "www.e-antiik.ee",
+}
 
 
 def validate_url(url):
@@ -89,6 +105,10 @@ def next_refresh(now: datetime) -> datetime:
 
 async def collect(source, max_pages=80):
     captured = datetime.now(UTC)
+    if source in ("tootemaailm", "eantiik"):
+        return await collect_home(source, max_pages, captured)
+    if source not in SOURCE_RANGES:
+        raise ValueError("Unsupported price source")
     if source == "rimi":
         products = []
         for number in range(1, min(max_pages, 10) + 1):
@@ -132,11 +152,38 @@ async def collect(source, max_pages=80):
     return list({p.id: p for p in products}.values())
 
 
+async def collect_home(source, max_pages, captured):
+    listings = FURNITURE_LISTINGS if source == "tootemaailm" else ANTIQUE_LISTINGS
+    if source == "tootemaailm":
+        listings = tuple(url for base in listings for url in (base, base + "page/2/"))
+    parser = parse_tootemaailm if source == "tootemaailm" else parse_eantiik
+    groups = []
+    budget = max_pages
+    for url in listings:
+        if budget <= 0:
+            break
+        budget -= 1
+        try:
+            groups.append(product_links(await page(url), source))
+        except ValueError, URLError, TimeoutError:
+            log.warning("Skipping inaccessible %s listing %s", source, url)
+    links = list(dict.fromkeys(url for group in zip_longest(*groups) for url in group if url))
+    products = []
+    for url in links[:budget]:
+        try:
+            products.extend(parser(await page(url), captured))
+        except ValueError, URLError, TimeoutError:
+            log.warning("Skipping inaccessible %s product %s", source, url)
+    unique = list({p.id: p for p in products}.values())
+    log.info("%s pages=%d accepted_records=%d", source, min(len(links), budget), len(unique))
+    return unique
+
+
 async def refresh(
     *,
     missing_only=False,
     max_pages=80,
-    sources=("rimi", "klick"),
+    sources=tuple(SOURCE_RANGES),
     datasets=None,
     storage=None,
     accept_price_changes=False,
@@ -222,7 +269,7 @@ async def main():
         help="Publish independently verified price changes over 50%% (one-shot only)",
     )
     parser.add_argument("--max-pages", type=int, default=80)
-    parser.add_argument("--source", choices=["rimi", "klick"])
+    parser.add_argument("--source", choices=list(SOURCE_RANGES))
     args = parser.parse_args()
     if not 1 <= args.max_pages <= 200:
         parser.error("--max-pages must be between 1 and 200")
@@ -230,7 +277,7 @@ async def main():
         parser.error("--accept-price-changes is only allowed for a reviewed one-shot refresh")
     if args.accept_price_changes:
         log.warning("Operator accepted large regular-price changes for this refresh")
-    sources = (args.source,) if args.source else ("rimi", "klick")
+    sources = (args.source,) if args.source else tuple(SOURCE_RANGES)
     succeeded = await refresh(
         missing_only=args.schedule,
         max_pages=args.max_pages,

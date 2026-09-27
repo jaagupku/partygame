@@ -5,7 +5,7 @@ from collections import Counter
 
 from partygame.schemas.price_game import PriceProduct
 
-GENERATOR_VERSION = "price-v2"
+GENERATOR_VERSION = "price-v3"
 LOCAL_GROCERY_BRANDS = re.compile(
     r"\b(alma|tere|valio|kalev|põltsamaa|salvest|rakvere|maks & moorits|"
     r"saaremaa|farmi|leibur|eesti pagar|a. le coq|saku|rimi)\b",
@@ -36,7 +36,7 @@ HOUSEHOLD_ELECTRONICS = (
 
 
 def category_key(product: PriceProduct):
-    return product.retailer, product.category
+    return product.product_range, product.retailer, product.category
 
 
 def familiar(product: PriceProduct) -> bool:
@@ -45,42 +45,46 @@ def familiar(product: PriceProduct) -> bool:
     return any(word in product.category.casefold() for word in HOUSEHOLD_ELECTRONICS)
 
 
-def select_varied(bundles: list[list[PriceProduct]], count: int, usage: Counter):
-    """Input order is seeded; favour unused categories, then familiar products.
+def variety_rank(bundle, usage):
+    """Count both cards; a large source must not crowd out smaller categories."""
+    ranges = [usage[p.product_range] for p in bundle]
+    categories = [usage[category_key(p)] for p in bundle]
+    return max(ranges), sum(ranges), max(categories), sum(categories), -sum(map(familiar, bundle))
 
-    Bundles are already disjoint. Reordering them cannot change matching capacity.
-    """
+
+def record_usage(bundle, usage):
+    for product in bundle:
+        usage[product.product_range] += 1
+        usage[category_key(product)] += 1
+
+
+def select_varied(bundles: list[list[PriceProduct]], count: int, usage: Counter):
     remaining = list(bundles)
     selected = []
     for _ in range(count):
-        index = min(
-            range(len(remaining)),
-            key=lambda i: (
-                usage[category_key(remaining[i][0])],
-                -sum(familiar(p) for p in remaining[i]),
-            ),
-        )
+        index = min(range(len(remaining)), key=lambda i: variety_rank(remaining[i], usage))
         bundle = remaining.pop(index)
-        usage[category_key(bundle[0])] += 1
+        record_usage(bundle, usage)
         selected.append(bundle)
     return selected
 
 
 def sequence_varied(indices, selected):
-    """Avoid consecutive categories whenever another category remains."""
+    """Minimize category overlap with the preceding question, including both cards."""
     remaining = list(indices)
     order = []
-    previous = None
+    previous = set()
     while remaining:
-        counts = Counter(category_key(selected[i][0]) for i in remaining)
+        keys = {i: {category_key(p) for p in selected[i]} for i in remaining}
+        counts = Counter(key for values in keys.values() for key in values)
         index = min(
             range(len(remaining)),
             key=lambda j: (
-                category_key(selected[remaining[j]][0]) == previous,
-                -counts[category_key(selected[remaining[j]][0])],
+                len(keys[remaining[j]] & previous),
+                -sum(counts[key] for key in keys[remaining[j]]),
             ),
         )
         item = remaining.pop(index)
         order.append(item)
-        previous = category_key(selected[item][0])
+        previous = keys[item]
     return order

@@ -3,6 +3,7 @@
 	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
 	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
 	import { messages } from '$lib/i18n';
+	import { onMount } from 'svelte';
 	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
 	import DrawingInput from '$lib/components/DrawingInput.svelte';
 	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
@@ -22,6 +23,12 @@
 		drawingVotedPlayerIds: string[];
 		hasSubmitted: boolean;
 		playerId: string;
+		showPriceReady?: boolean;
+		priceReady?: boolean;
+		priceRevealRemainingSeconds?: number;
+		priceRevealSpeed?: number;
+		priceRevealReceivedAt?: number;
+		onTogglePriceReady?: () => void;
 		submissionError?: SubmissionRejectedReason;
 		mode?: 'live' | 'preview';
 		onContinueInfoSlide: () => void;
@@ -41,6 +48,12 @@
 		drawingVotedPlayerIds,
 		hasSubmitted,
 		playerId,
+		showPriceReady = false,
+		priceReady = false,
+		priceRevealRemainingSeconds,
+		priceRevealSpeed = 1,
+		priceRevealReceivedAt = 0,
+		onTogglePriceReady,
 		submissionError,
 		mode = 'live',
 		onContinueInfoSlide,
@@ -62,7 +75,20 @@
 		null
 	);
 	let lastSubmissionToastKey = $state('');
+	let clockSeconds = $state(Date.now() / 1000);
 
+	onMount(() => {
+		const interval = window.setInterval(() => (clockSeconds = Date.now() / 1000), 100);
+		return () => window.clearInterval(interval);
+	});
+
+	const priceRevealSecondsLeft = $derived(
+		Math.max(
+			0,
+			(priceRevealRemainingSeconds ?? 0) -
+				Math.max(0, clockSeconds - priceRevealReceivedAt) * priceRevealSpeed
+		)
+	);
 	const validPrice = $derived(/^\d+(?:[.,]\d{1,2})?$/.test(String(answerValue)));
 	const inputDisabled = $derived(baseInputDisabled || pendingSubmissionStepId === activeStep?.id);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
@@ -296,6 +322,21 @@
 				{$messages.gameplay.answerSubmitted}
 			</p>{/if}
 		<PriceReveal step={activeStep} />
+		{#if showPriceReady && displayPhase === 'answer_reveal' && priceRevealRemainingSeconds !== undefined}
+			<p class="theme-text-muted text-sm">
+				{$messages.priceGame.revealRemaining}: {Math.ceil(priceRevealSecondsLeft)}
+				{$messages.priceGame.secondsShort}
+				({priceRevealSpeed.toFixed(2)}×)
+			</p>
+			<button
+				type="button"
+				class={priceReady ? 'btn btn-ghost' : 'btn btn-primary'}
+				aria-pressed={priceReady}
+				disabled={previewMode || priceRevealSecondsLeft <= 0 || !onTogglePriceReady}
+				onclick={() => onTogglePriceReady?.()}
+				>{priceReady ? $messages.priceGame.notReady : $messages.priceGame.ready}</button
+			>
+		{/if}
 	</section>
 {:else if activeStep?.input_kind === 'drawing' && activeStep.evaluation_type === 'favorite_vote' && displayPhase === 'drawing_vote' && drawingItems.length > 0}
 	<section class="card controller-compact-card stack-md">

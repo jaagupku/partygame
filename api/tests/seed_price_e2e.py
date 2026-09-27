@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw
 from sqlalchemy import text
 
 from partygame.schemas import MediaKind
+from partygame.schemas.price_catalog import SOURCE_RANGES
 from partygame.schemas.price_game import PriceProduct
 from partygame.service.media import get_media_storage
 from partygame.service.prices.datasets import PriceDatasets
@@ -20,7 +21,7 @@ async def main():
         if await session.scalar(text("SELECT current_database()")) != "partygame_price_e2e":
             raise RuntimeError("Browser fixtures require the isolated partygame_price_e2e database")
     storage = get_media_storage()
-    for source, product_range in [("rimi", "groceries"), ("klick", "electronics")]:
+    for source, product_range in SOURCE_RANGES.items():
         products = []
         for index in range(48):
             image = Image.new("RGB", (600, 600), "white")

@@ -100,19 +100,26 @@ const en = defineMessages({
 		haveAccount: 'Already have an account? Log in'
 	},
 	priceGame: {
-		retailers: { rimi: 'Rimi', klick: 'Klick' },
+		retailers: { rimi: 'Rimi', klick: 'Klick', tootemaailm: 'Tootemaailm', eantiik: 'E-antiik' },
 		title: 'Price Guessing',
 		subtitle: 'Guess real product prices or choose which item costs more.',
 		mode: 'Question mode',
 		guess: 'Guess the price',
 		compare: 'Which costs more?',
 		mixed: 'Mixed',
-		productRange: 'Products',
+		productRange: 'Categories',
 		groceries: 'Groceries',
 		electronics: 'Electronics',
-		both: 'Both',
+		furniture: 'Furniture',
+		antiques: 'Antiques & vintage',
+		categoryMixing: 'Choose one or more categories. Comparisons can mix categories and shops.',
 		questions: 'Questions',
 		answerTime: 'Answer time',
+		revealTime: 'Correct price reveal time',
+		ready: 'Ready',
+		notReady: 'Not ready',
+		revealRemaining: 'Time remaining',
+		secondsShort: 's',
 		seconds: 'seconds',
 		hostPaced: 'Host-paced',
 		automatic: 'Automatic',
@@ -123,10 +130,10 @@ const en = defineMessages({
 		rules:
 			'Up to 1,000 points for price closeness. Correct comparisons earn 1,000 points. No speed bonus.',
 		priceBasis:
-			'Guess the regular price in euros, including VAT, excluding discounts, deposits and delivery.',
+			'Guess the regular price in euros, including VAT, excluding discounts, deposits and delivery. Antiques use the shop’s recorded asking price, not an appraisal.',
 		loading: 'Loading product availability...',
 		unavailable:
-			'Not enough products are available for these options. Try a shorter game or another product range.',
+			'Not enough products are available for these options. Try a shorter game or other categories.',
 		loadFailed: 'Could not load product availability.',
 		createFailed: 'Could not create the game. Please try again.',
 		retry: 'Try again',
@@ -143,6 +150,25 @@ const en = defineMessages({
 		closenessTitle: 'Price closeness',
 		closenessDescription:
 			'Every player earns points based on percentage distance from the recorded price.'
+	},
+
+	continueGame: {
+		title: 'Keep playing',
+		nextGame: 'Next game',
+		preparing: 'Preparing next game...',
+		playAgain: 'Play again',
+		chooseAnother: 'Choose another game',
+		help: 'Keep the same players and join code. Scores reset for the next game. Prepare the lobby, then start when everyone is ready.',
+		prepare: 'Prepare next game',
+		loadFailed: 'Could not load game settings. Please try again.',
+		missingSettings:
+			'The original settings were not saved. Review these settings before continuing.',
+		archiveFailed:
+			'Could not save the finished game to history. Your results are safe here; please try again.',
+		changed: 'This lobby has already moved on. Synchronizing the current game.',
+		unavailable:
+			'There is not enough content for these settings. Change the settings or try again.',
+		failed: 'Could not prepare the next game. Please try again.'
 	},
 	gameCatalog: {
 		title: 'Choose a game',
@@ -292,6 +318,13 @@ const en = defineMessages({
 		playerStatusWaiting: 'Waiting for players'
 	},
 	gameplay: {
+		waitingActions: {
+			answer: (name: string) => `Waiting for ${name} to answer`,
+			vote: (name: string) => `Waiting for ${name} to vote`,
+			buzzer: (name: string) => `Waiting for ${name} to buzz`,
+			ready: (name: string) => `Waiting for ${name} to be ready`,
+			continue: (name: string) => `Waiting for ${name} to continue`
+		},
 		hostControllerTitle: 'Host Controller',
 		playerControllerTitle: 'Player Controller',
 		waitingForGameStart: 'Waiting for game to start.',
@@ -1071,19 +1104,27 @@ const et: Messages = {
 		haveAccount: 'Konto on olemas? Logi sisse'
 	},
 	priceGame: {
-		retailers: { rimi: 'Rimi', klick: 'Klick' },
+		retailers: { rimi: 'Rimi', klick: 'Klick', tootemaailm: 'Tootemaailm', eantiik: 'E-antiik' },
 		title: 'Hinnaarvamine',
 		subtitle: 'Arva päris kaupade hindu või vali, kumb toode on kallim.',
 		mode: 'Küsimuste tüüp',
 		guess: 'Arva hind',
 		compare: 'Kumb on kallim?',
 		mixed: 'Mõlemad',
-		productRange: 'Tooted',
+		productRange: 'Kategooriad',
 		groceries: 'Toidukaubad',
 		electronics: 'Elektroonika',
-		both: 'Mõlemad',
+		furniture: 'Mööbel',
+		antiques: 'Antiik ja vanavara',
+		categoryMixing:
+			'Vali üks või mitu kategooriat. Võrdlused võivad ühendada eri kategooriate ja poodide tooteid.',
 		questions: 'Küsimusi',
 		answerTime: 'Vastamise aeg',
+		revealTime: 'Õige hinna näitamise aeg',
+		ready: 'Valmis',
+		notReady: 'Pole valmis',
+		revealRemaining: 'Aega jäänud',
+		secondsShort: 's',
 		seconds: 'sekundit',
 		hostPaced: 'Mängujuhi juhitud',
 		automatic: 'Automaatne',
@@ -1093,10 +1134,11 @@ const et: Messages = {
 		choose: 'Vali kallim toode',
 		rules:
 			'Hinna täpsuse eest kuni 1000 punkti. Õige võrdlus annab 1000 punkti. Kiiruse eest lisapunkte ei saa.',
-		priceBasis: 'Arva tavahind eurodes koos käibemaksuga, ilma soodustuste, pandi ja transpordita.',
+		priceBasis:
+			'Arva tavahind eurodes koos käibemaksuga, ilma soodustuste, pandi ja transpordita. Antiigi puhul kasutame poe salvestatud müügihinda, mitte eksperdihinnangut.',
 		loading: 'Laen toodete saadavust...',
 		unavailable:
-			'Nende valikute jaoks pole piisavalt tooteid. Vali lühem mäng või teine tooterühm.',
+			'Nende valikute jaoks pole piisavalt tooteid. Vali lühem mäng või teised kategooriad.',
 		loadFailed: 'Toodete saadavust ei saanud laadida.',
 		createFailed: 'Mängu ei saanud luua. Proovi uuesti.',
 		retry: 'Proovi uuesti',
@@ -1113,6 +1155,23 @@ const et: Messages = {
 		closenessTitle: 'Hinna täpsus',
 		closenessDescription:
 			'Iga mängija saab punkte vastavalt protsentuaalsele erinevusele salvestatud hinnast.'
+	},
+
+	continueGame: {
+		title: 'Mängime edasi',
+		nextGame: 'Järgmine mäng',
+		preparing: 'Uue mängu ettevalmistamine...',
+		playAgain: 'Mängi uuesti',
+		chooseAnother: 'Vali teine mäng',
+		help: 'Mängijad ja liitumiskood jäävad samaks. Uue mängu punktid algavad nullist. Valmista ooteruum ette ja alusta, kui kõik on valmis.',
+		prepare: 'Valmista uus mäng ette',
+		loadFailed: 'Mängu seadete laadimine ebaõnnestus. Proovi uuesti.',
+		missingSettings: 'Algseid seadeid ei salvestatud. Vaata need seaded enne jätkamist üle.',
+		archiveFailed:
+			'Lõppenud mängu ajalukku salvestamine ebaõnnestus. Tulemused on siin alles; proovi uuesti.',
+		changed: 'See ooteruum on juba edasi liikunud. Sünkroonime praeguse mängu.',
+		unavailable: 'Nende seadete jaoks ei ole piisavalt sisu. Muuda seadeid või proovi uuesti.',
+		failed: 'Uue mängu ettevalmistamine ebaõnnestus. Proovi uuesti.'
 	},
 	gameCatalog: {
 		title: 'Vali mäng',
@@ -1261,6 +1320,13 @@ const et: Messages = {
 		playerStatusWaiting: 'Ootab mängijaid'
 	},
 	gameplay: {
+		waitingActions: {
+			answer: (name: string) => `Ootame mängija ${name} vastust`,
+			vote: (name: string) => `Ootame mängija ${name} häält`,
+			buzzer: (name: string) => `Ootame mängija ${name} nupuvajutust`,
+			ready: (name: string) => `Ootame, et ${name} oleks valmis`,
+			continue: (name: string) => `Ootame, et ${name} jätkaks`
+		},
 		hostControllerTitle: 'Mängujuhi kontroller',
 		playerControllerTitle: 'Mängija kontroller',
 		waitingForGameStart: 'Mängu algust oodatakse.',

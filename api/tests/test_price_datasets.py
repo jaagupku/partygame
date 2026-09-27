@@ -166,3 +166,40 @@ async def test_refresh_rejects_broken_images_and_retains_last_good(store, monkey
     storage.save.assert_not_called()
     async with store.sessionmaker() as session:
         assert (await store.latest(session))["rimi"].id == old
+
+
+@pytest.mark.asyncio
+async def test_four_category_publication_and_cross_source_leases(store):
+    from partygame.schemas.price_catalog import SOURCE_RANGES
+
+    versions = {}
+    for source, product_range in SOURCE_RANGES.items():
+        candidates = [
+            p.model_copy(
+                update={
+                    "retailer": source,
+                    "product_range": product_range,
+                    "source_url": f"https://{source}.ee/{p.id}",
+                }
+            )
+            for p in products()
+        ]
+        versions[source] = await store.publish(source, candidates)
+    available = await store.availability()
+    assert len(available["combinations"]) == 180
+    bundles, provenance = await store.prepare(
+        PriceGameSettings(mode="compare", product_ranges=["furniture", "electronics"]),
+        123,
+        "mixed-sources",
+    )
+    assert {p["source_id"] for p in provenance} == {"tootemaailm", "klick"}
+    assert all(
+        {p.retailer for p in step.price_question.reveal} == {"tootemaailm", "klick"}
+        for step in bundles[0].rounds[0].steps
+    )
+    async with store.sessionmaker() as session:
+        leases = (await session.scalars(select(PriceDatasetLease))).all()
+        assert {lease.dataset_id for lease in leases} == {
+            versions["tootemaailm"],
+            versions["klick"],
+        }

@@ -17,3 +17,14 @@ Tests also derive explicit mutations for unavailable/used goods, missing regular
 prices, loyalty-only discounts, installment labels, missing images, malformed
 JSON-LD and absent breadcrumb categories. These mutations are test cases, not
 claims that the captured retailer pages contained those errors.
+
+
+Furniture and antique excerpts captured on 2026-09-26:
+
+- `tootemaailm.html`: https://tootemaailm.ee/pooratava-plaadi-ja-sahtlitega-diivanilaud/
+- `eantiik-antique.html`: https://www.e-antiik.ee/shop/product/av9-02112-seinakell-42165
+- `eantiik-vintage.html`: https://www.e-antiik.ee/shop/product/av9-02056-vitriinkapp-41972
+
+These preserve main-product price/stock markup, structured metadata and details,
+excluding unrelated products and navigation. Negative cases mutate these excerpts
+in tests; they are not claimed as additional live captures.

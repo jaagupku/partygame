@@ -8,6 +8,7 @@ from io import BytesIO
 from PIL import Image, ImageStat
 
 from partygame.schemas.game_session import DatasetSnapshot
+from partygame.schemas.price_catalog import SOURCE_RANGES
 from partygame.schemas.price_game import PriceGameSettings, PriceProduct
 from partygame.service.prices.generator import PriceGenerator
 
@@ -49,7 +50,7 @@ def inspect_image(data: bytes):
 def validate_dataset(
     source: str, products: list[PriceProduct], previous=(), *, accept_price_changes=False
 ):
-    expected_range = {"rimi": "groceries", "klick": "electronics"}.get(source)
+    expected_range = SOURCE_RANGES.get(source)
     if expected_range is None or len(products) < MIN_PRODUCTS:
         raise ValueError(
             f"Dataset requires at least {MIN_PRODUCTS} products from a supported source"
@@ -99,7 +100,7 @@ def validate_dataset(
     )
     for mode in ("guess", "compare", "mixed"):
         PriceGenerator().generate(
-            PriceGameSettings(mode=mode, product_range=expected_range, questions=20),
+            PriceGameSettings(mode=mode, product_ranges=[expected_range], questions=20),
             seed=0,
             dataset=snapshot,
         )

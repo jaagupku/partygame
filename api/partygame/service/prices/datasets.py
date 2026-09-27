@@ -1,12 +1,21 @@
 from datetime import UTC, datetime, timedelta
+from itertools import combinations
 from uuid import uuid4
 
 from sqlalchemy import delete, select, text
 
 from partygame.db.postgres import AsyncSessionLocal
 from partygame.schemas.game_session import DatasetSnapshot
+from partygame.schemas.price_catalog import PRODUCT_RANGES, SOURCE_RANGES, sources_for
 from partygame.schemas.price_game import PriceGameSettings, PriceProduct
-from partygame.service.prices.generator import InsufficientPriceData, PriceGenerator
+from partygame.service.prices.generator import (
+    InsufficientPriceData,
+    PriceGenerator,
+    comparison_graph,
+    has_capacity,
+    selected_products,
+)
+from partygame.service.prices.matching import maximum_pairs
 from partygame.service.prices.quality import validate_dataset
 from partygame.service.prices.selection import GENERATOR_VERSION
 from partygame.state.price_models import PriceDatasetLease, PriceDatasetRecord
@@ -44,9 +53,7 @@ class PriceDatasets:
         async with self.sessionmaker() as session, session.begin():
             await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": DATASET_LOCK})
             latest = await self.latest(session)
-            sources = {"groceries": ["rimi"], "electronics": ["klick"], "both": ["rimi", "klick"]}[
-                settings.product_range
-            ]
+            sources = sources_for(settings.product_ranges)
             if any(source not in latest for source in sources):
                 raise InsufficientPriceData("Missing product range")
             records = [latest[source] for source in sources]
@@ -70,7 +77,7 @@ class PriceDatasets:
         async with self.sessionmaker() as session:
             latest = await self.latest(session)
             result = []
-            for product_range, source in [("groceries", "rimi"), ("electronics", "klick")]:
+            for source, product_range in SOURCE_RANGES.items():
                 record = latest.get(source)
                 result.append(
                     {
@@ -79,34 +86,35 @@ class PriceDatasets:
                         "captured_at": record.captured_at if record else None,
                     }
                 )
-            combinations = []
-            for product_range in ["groceries", "electronics", "both"]:
-                sources = {
-                    "groceries": ["rimi"],
-                    "electronics": ["klick"],
-                    "both": ["rimi", "klick"],
-                }[product_range]
-                if any(source not in latest for source in sources):
-                    continue
-                snapshot = self.snapshot([latest[source] for source in sources])
-                for mode in ["guess", "compare", "mixed"]:
-                    for count in [5, 10, 15, 20]:
-                        config = PriceGameSettings(
-                            mode=mode, product_range=product_range, questions=count
-                        )
-                        try:
-                            PriceGenerator().generate(config, seed=0, dataset=snapshot)
-                            combinations.append(
-                                {"mode": mode, "product_range": product_range, "questions": count}
+            feasible = []
+            for size in range(1, len(PRODUCT_RANGES) + 1):
+                for ranges in combinations(PRODUCT_RANGES, size):
+                    sources = sources_for(ranges)
+                    if any(source not in latest for source in sources):
+                        continue
+                    snapshot = self.snapshot([latest[source] for source in sources])
+                    products = selected_products(snapshot, ranges)
+                    pairs_count = len(maximum_pairs(comparison_graph(products)))
+                    for mode in ["guess", "compare", "mixed"]:
+                        for count in [5, 10, 15, 20]:
+                            config = PriceGameSettings(
+                                mode=mode, product_ranges=list(ranges), questions=count
                             )
-                        except InsufficientPriceData:
-                            pass
+                            if has_capacity(config, len(products), pairs_count):
+                                feasible.append(
+                                    {
+                                        "mode": mode,
+                                        "product_ranges": list(ranges),
+                                        "questions": count,
+                                    }
+                                )
             return {
                 "ranges": result,
-                "combinations": combinations,
+                "combinations": feasible,
                 "modes": ["guess", "compare", "mixed"],
                 "questions": [5, 10, 15, 20],
                 "answer_seconds": [15, 30, 45, 60],
+                "reveal_seconds": [4, 6, 8, 10, 15],
             }
 
     async def publish(

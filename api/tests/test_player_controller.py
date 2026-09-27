@@ -180,6 +180,38 @@ async def test_create_assigns_starter_without_host_in_hostless_lobby(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_hostless_starter_reschedules_transition_on_connect(monkeypatch):
+    lobby = schemas.Lobby(
+        id="g1",
+        join_code="ABCDE",
+        host_enabled=False,
+        starter_id="p1",
+        phase="round_intro",
+    )
+    player = schemas.Player(id="p1", game_id="g1", name="Starter")
+    repo = FakeRepo(lobby)
+    websocket = FakeWebSocket()
+    controller = player_service.ClientController(websocket, FakeRedis(FakePubSub()), lobby, player)
+    controller.repo = repo
+    controller.runtime = SimpleNamespace(sync_lobby=AsyncMock(return_value={}))
+    controller.send = AsyncMock()
+    controller._schedule_timer_from_snapshot = AsyncMock()
+
+    async def fake_publish(redis, channel, payload):
+        return None
+
+    def fake_create_task(coroutine):
+        coroutine.close()
+        return DummyTask()
+
+    monkeypatch.setattr(player_service, "publish", fake_publish)
+    monkeypatch.setattr(player_service.asyncio, "create_task", fake_create_task)
+    await controller.connect()
+    controller._schedule_timer_from_snapshot.assert_awaited_once()
+    await controller.disconnect()
+
+
+@pytest.mark.asyncio
 async def test_host_controller_subscribes_to_command_channel(monkeypatch):
     lobby = schemas.Lobby(id="g1", join_code="ABCDE", host_id="p1")
     player = schemas.Player(id="p1", game_id="g1", name="Host")
@@ -463,6 +495,8 @@ async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
         FakeWebSocket(), redis=object(), lobby=lobby, player=player
     )
 
+    controller.repo = FakeRepo(lobby)
+
     called = {"refresh": 0, "relayed": []}
 
     async def refresh_lobby():
@@ -485,7 +519,7 @@ async def test_player_reaction_relays_without_runtime_snapshot(monkeypatch):
 
     await controller.process_input({"type_": "player_reaction", "reaction": "🔥"})
 
-    assert called["refresh"] == 1
+    assert called["refresh"] == 2
     assert len(called["relayed"]) == 1
     event, _players, _exclude = called["relayed"][0]
     assert event.type_ == "player_reaction"
@@ -509,6 +543,8 @@ async def test_finished_player_reaction_relays_through_runtime_guard(monkeypatch
         FakeWebSocket(), redis=object(), lobby=lobby, player=player
     )
 
+    controller.repo = FakeRepo(lobby)
+
     called = {"refresh": 0, "relayed": 0, "recorded": 0}
 
     async def refresh_lobby():
@@ -526,7 +562,7 @@ async def test_finished_player_reaction_relays_through_runtime_guard(monkeypatch
 
     await controller.process_input({"type_": "player_reaction", "reaction": "🤮"})
 
-    assert called == {"refresh": 1, "relayed": 1, "recorded": 1}
+    assert called == {"refresh": 2, "relayed": 1, "recorded": 1}
 
 
 @pytest.mark.asyncio

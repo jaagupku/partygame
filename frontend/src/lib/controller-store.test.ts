@@ -44,3 +44,54 @@ describe('controller question resets', () => {
 		}
 	);
 });
+
+it('resets finale and answer feedback on a new run and ignores an older snapshot', () => {
+	const store = createControllerStore(
+		{
+			id: 'p1',
+			runId: 'old',
+			lastRevision: 8,
+			isHost: true,
+			answerResult: 'correct',
+			submissionError: 'step_closed',
+			endGame: { revealed: true },
+			lastReaction: { reaction: '🔥' }
+		} as unknown as ControllerState,
+		vi.fn<() => void>()
+	);
+	const snapshot = {
+		type_: 'runtime_snapshot',
+		revision: 9,
+		lobby: {
+			run_id: 'new',
+			host_enabled: false,
+			host_id: null,
+			starter_id: 'p1',
+			state: 'waiting_for_players',
+			phase: 'waiting',
+			current_step: 0
+		},
+		players: [{ id: 'p1', score: 0 }],
+		submitted_player_ids: [],
+		active_step: null,
+		end_game: null,
+		submissions: [],
+		display_phase: 'question_active'
+	};
+	store.onMessage(JSON.stringify(snapshot));
+	expect(get(store)).toMatchObject({
+		runId: 'new',
+		gameState: 'waiting_for_players',
+		isHost: false,
+		answerResult: 'none',
+		hasSubmitted: false,
+		endGame: null
+	});
+	expect(get(store).submissionError).toBeUndefined();
+	expect(get(store).lastReaction).toBeUndefined();
+	store.onMessage(
+		JSON.stringify({ ...snapshot, revision: 8, lobby: { run_id: 'old', phase: 'finished' } })
+	);
+	expect(get(store).runId).toBe('new');
+	expect(get(store).lobbyPhase).toBe('waiting');
+});

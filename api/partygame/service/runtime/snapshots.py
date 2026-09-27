@@ -1,3 +1,4 @@
+from time import time
 from typing import TYPE_CHECKING, Any
 
 from partygame import schemas
@@ -8,6 +9,10 @@ from partygame.schemas.game_definition import (
 )
 from partygame.schemas.price_game import PriceResult
 from partygame.service.prices.scoring import price_points
+from partygame.service.runtime.price_reveal import (
+    price_reveal_speed,
+    remaining_price_reveal_seconds,
+)
 from partygame.service.runtime.steps import FlattenedStep
 
 if TYPE_CHECKING:
@@ -58,8 +63,9 @@ class SnapshotBuilder:
         *,
         revision: int | None = None,
     ) -> schemas.RuntimeSnapshotEvent:
-        live_step = await self.runtime.get_current_step(lobby)
-        live_round = await self.runtime.get_current_round(lobby)
+        waiting = lobby.state == schemas.GameState.WAITING_FOR_PLAYERS
+        live_step = None if waiting else await self.runtime.get_current_step(lobby)
+        live_round = None if waiting else await self.runtime.get_current_round(lobby)
         live_step_state = await self.runtime.get_step_state(lobby.id)
         review_step_index = self.runtime._review_step_index(live_step_state)
         reviewing_history = review_step_index is not None
@@ -110,7 +116,7 @@ class SnapshotBuilder:
         elif active_step is not None:
             active_item = schemas.RuntimeStepItemState(step=active_step)
 
-        next_item = await self._build_next_item(lobby)
+        next_item = None if waiting else await self._build_next_item(lobby)
         pending_review_count = self._pending_review_count(step_state)
         can_review_previous = (
             review_step_index if review_step_index is not None else lobby.current_step
@@ -175,12 +181,22 @@ class SnapshotBuilder:
         drawing_owner_ids = self._drawing_owner_ids(step, step_state)
         drawing_voted_player_ids = list(step_state.get("drawing_votes", {}).keys())
         end_game = await self.end_game.build_end_game_state(lobby, players)
+        show_price_timer = (
+            not lobby.host_enabled
+            and not reviewing_history
+            and lobby.phase == "step_complete"
+            and step is not None
+            and step.price_question is not None
+            and step_state.get("display_phase") == "answer_reveal"
+        )
         theme = await self.runtime.get_definition_theme(lobby)
 
         return schemas.RuntimeSnapshotEvent(
             revision=snapshot_revision,
             lobby=schemas.RuntimeLobbyState(
                 id=lobby.id,
+                run_id=lobby.run_id or lobby.id,
+                definition_title=lobby.definition_title,
                 join_code=lobby.join_code,
                 definition_id=lobby.definition_id,
                 game_type=lobby.game_type,
@@ -208,6 +224,17 @@ class SnapshotBuilder:
             buzzed_player_id=step_state.get("buzzed_player_id") or None,
             disabled_buzzer_player_ids=list(step_state.get("disabled_buzzer_player_ids", [])),
             submitted_player_ids=list(step_state.get("answers", {}).keys()),
+            price_ready_player_ids=(
+                list(step_state.get("price_ready_player_ids", [])) if show_price_timer else []
+            ),
+            price_reveal_remaining_seconds=(
+                remaining_price_reveal_seconds(
+                    step_state, step.price_question.reveal_seconds, now=time()
+                )
+                if show_price_timer
+                else None
+            ),
+            price_reveal_speed=price_reveal_speed(step_state) if show_price_timer else 1.0,
             submission_count=len(step_state.get("answers", {})),
             pending_review_count=pending_review_count,
             drawing_items=drawing_items,

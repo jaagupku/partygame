@@ -1,5 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
+	import ContinueGame from '$lib/components/setup/ContinueGame.svelte';
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -8,6 +9,7 @@
 	import FinaleDisplay from '$lib/components/endgame/FinaleDisplay.svelte';
 	import ReactionBurstOverlay from '$lib/components/host/ReactionBurstOverlay.svelte';
 	import RoundIntroOverlay from '$lib/components/host/RoundIntroOverlay.svelte';
+	import WaitingPlayers from '$lib/components/host/WaitingPlayers.svelte';
 	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
 	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
 	import { createGameStore } from '$lib/game-store.js';
@@ -21,15 +23,17 @@
 	const lobby = () => data.lobby;
 	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
 	const definitionTitle = () =>
-		data.lobby.game_type === 'price_guessing'
+		$game.game_type === 'price_guessing'
 			? $messages.priceGame.title
-			: data.definitionTitle ||
-				data.lobby.definition_id ||
+			: $game.definition_title ||
+				data.definitionTitle ||
+				$game.definition_id ||
 				$messages.definitions.untitledDefinition;
 
 	const game = createGameStore(lobby());
 	const soundSystem = createSoundSystem('host-display');
 	let isConnected = $state(false);
+	let waitingRailWidth = $state(0);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
 	let resyncIntervalId = $state<number | null>(null);
@@ -59,6 +63,13 @@
 	let lastReactionInstanceId = $state<string | undefined>(undefined);
 	let reactionCleanupIntervalId = $state<number | null>(null);
 	let qrGenerationId = 0;
+
+	$effect(() => {
+		if ($game.state === 'waiting_for_players') {
+			activeReactions = [];
+			lastReactionInstanceId = undefined;
+		}
+	});
 
 	function addReactionEffect(event: PlayerReactionEvent) {
 		const durationMs = 2600 + Math.random() * 1200;
@@ -178,6 +189,7 @@
 		}
 		const sent = socket?.send(
 			JSON.stringify({
+				run_id: $game.run_id ?? lobby().id,
 				type_: 'resync_request',
 				last_revision: $game.lastRevision
 			})
@@ -191,6 +203,7 @@
 		if (!data.canManage || $game.state !== 'waiting_for_players' || !$game.host_enabled) return;
 		socket?.send(
 			JSON.stringify({
+				run_id: $game.run_id ?? lobby().id,
 				type_: 'set_host',
 				player_id: playerId
 			})
@@ -201,6 +214,10 @@
 <svelte:head>
 	<title>{pageTitle(`${definitionTitle()} | ${$messages.hostView.hostLobbyTitle}`)}</title>
 </svelte:head>
+
+{#if $game.phase === 'finished' && data.canManage}
+	{#key $game.run_id}<ContinueGame lobbyId={lobby().id} onprepared={requestResync} />{/key}
+{/if}
 
 {#if $game.state === 'waiting_for_players'}
 	<h1 class="page-title">{definitionTitle()}</h1>
@@ -281,7 +298,11 @@
 	{/if}
 {:else}
 	<div class="relative h-full min-h-0 overflow-hidden" style={definitionThemeStyle($game.theme)}>
-		<section class="relative h-full min-w-0 min-h-0 mt0">
+		<WaitingPlayers gameState={$game} bind:reservedWidth={waitingRailWidth} />
+		<section
+			class="relative h-full min-w-0 min-h-0 mt0"
+			style:padding-left={`${waitingRailWidth}px`}
+		>
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
 					endGame={$game.endGame}

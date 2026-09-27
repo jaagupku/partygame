@@ -6,6 +6,13 @@ function withHostFlags(players: Player[], hostId?: string): Player[] {
 }
 
 export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEvent) {
+	if (event.revision < state.lastRevision) return;
+	if (state.run_id !== event.lobby.run_id) state.lastReaction = undefined;
+	state.run_id = event.lobby.run_id;
+	state.game_type = event.lobby.game_type;
+	state.definition_id = event.lobby.definition_id;
+	state.definition_title = event.lobby.definition_title;
+	state.starter_id = event.lobby.starter_id;
 	state.lastRevision = event.revision;
 	state.players = withHostFlags(event.players, event.lobby.host_id);
 	state.state = event.lobby.state;
@@ -28,6 +35,9 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.buzzerActive = event.buzzer_active;
 	state.buzzedPlayerId = event.buzzed_player_id;
 	state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
+	state.submittedPlayerIds = event.submitted_player_ids ?? [];
+	state.priceReadyPlayerIds = event.price_ready_player_ids ?? [];
+	state.priceRevealRemainingSeconds = event.price_reveal_remaining_seconds ?? undefined;
 	state.submissionCount = event.submission_count;
 	state.pendingReviewCount = event.pending_review_count;
 	state.drawingItems = event.drawing_items;
@@ -115,6 +125,15 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 	if (changes.disabled_buzzer_player_ids !== undefined) {
 		state.disabledBuzzerPlayerIds = changes.disabled_buzzer_player_ids;
 	}
+	if (changes.submitted_player_ids !== undefined) {
+		state.submittedPlayerIds = changes.submitted_player_ids;
+	}
+	if (changes.price_ready_player_ids !== undefined) {
+		state.priceReadyPlayerIds = changes.price_ready_player_ids;
+	}
+	if ('price_reveal_remaining_seconds' in changes) {
+		state.priceRevealRemainingSeconds = changes.price_reveal_remaining_seconds ?? undefined;
+	}
 	if (changes.submission_count !== undefined) {
 		state.submissionCount = changes.submission_count;
 	}
@@ -150,6 +169,13 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 }
 
 export function applyControllerSnapshot(state: ControllerState, event: RuntimeSnapshotEvent) {
+	if (event.revision < state.lastRevision) return;
+	if (state.runId !== event.lobby.run_id) {
+		state.answerResult = 'none';
+		state.submissionError = undefined;
+		state.lastReaction = undefined;
+	}
+	state.runId = event.lobby.run_id;
 	state.lastRevision = event.revision;
 	state.players = withHostFlags(event.players, event.lobby.host_id);
 	state.gameState = event.lobby.state;
@@ -174,6 +200,10 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.buzzedPlayerId = event.buzzed_player_id;
 	state.disabledBuzzerPlayerIds = event.disabled_buzzer_player_ids;
 	state.submittedPlayerIds = event.submitted_player_ids;
+	state.priceReadyPlayerIds = event.price_ready_player_ids;
+	state.priceRevealRemainingSeconds = event.price_reveal_remaining_seconds ?? undefined;
+	state.priceRevealSpeed = event.price_reveal_speed;
+	state.priceRevealReceivedAt = Date.now() / 1000;
 	state.hasSubmitted = event.submitted_player_ids.includes(state.id);
 	state.submissionCount = event.submission_count;
 	state.pendingReviewCount = event.pending_review_count;
@@ -270,6 +300,16 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 	if (changes.submitted_player_ids !== undefined) {
 		state.submittedPlayerIds = changes.submitted_player_ids;
 		state.hasSubmitted = changes.submitted_player_ids.includes(state.id);
+	}
+	if (changes.price_ready_player_ids !== undefined) {
+		state.priceReadyPlayerIds = changes.price_ready_player_ids;
+	}
+	if ('price_reveal_remaining_seconds' in changes) {
+		state.priceRevealRemainingSeconds = changes.price_reveal_remaining_seconds ?? undefined;
+		state.priceRevealReceivedAt = Date.now() / 1000;
+	}
+	if (changes.price_reveal_speed !== undefined) {
+		state.priceRevealSpeed = changes.price_reveal_speed;
 	}
 	if (changes.submission_count !== undefined) {
 		state.submissionCount = changes.submission_count;

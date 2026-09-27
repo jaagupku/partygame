@@ -61,3 +61,32 @@ Legacy create requests default to Trivia. New catalog/metadata fields are
 additive; deploy backend support before the frontend. Existing lobbies without a
 snapshot retain legacy behavior until they expire. The session foundation itself needs no database migration. Price Guessing adds
 dataset/lease tables and a separate weekly ingestion worker.
+
+## Continuing a lobby
+
+After the finale, the assigned host, automatic-mode starter, or browser that
+created the lobby can prepare another game. Setup is local to that browser until
+confirmed; other players keep seeing the completed game. Confirmation returns
+all connected clients to the waiting lobby, with the same join code and player
+credentials, and resets scores. The normal Start Game action starts the new run.
+
+- `GET /api/v1/lobby/{game_id}/setup` returns the current run ID and saved creation
+  settings to an authorized manager. Older procedural lobbies report incomplete
+  settings so the manager can review defaults explicitly.
+- `POST /api/v1/lobby/{game_id}/continue` accepts `expected_run_id` and `settings`
+  (the same options as lobby creation). It requires a finished, matching run.
+  Preparation or history failures leave the completed run intact.
+- `run_id` identifies one game within the stable lobby; `session_version` still
+  identifies the prepared snapshot format. Snapshots expose `run_id`, and
+  controller/display commands include it to reject actions from an earlier run.
+  Commands without it are accepted only for the original run for compatibility.
+- Generated games get fresh content with the chosen settings. Replaying the same
+  Trivia pack uses its frozen content. Switching packs applies normal access
+  checks. Individual generated questions may repeat across games.
+- History records use the run ID as `game_id`, and retain the lobby ID in summary
+  metadata. No database migration is needed for existing history.
+
+Run `PRICE_E2E_URL=http://localhost pnpm --dir frontend exec playwright test
+lobby-continuation.spec.ts` against an existing local stack with Price Guessing
+content, or pass `lobby-continuation.spec.ts` to `scripts/test-price-browser.sh`
+for the isolated fixture stack.

@@ -19,8 +19,11 @@
 					<p class="font-bold">{step.price_products?.find((p) => p.id === item.id)?.title}</p>
 					<p class="my-2 text-3xl font-extrabold">{euro(item.price_minor)}</p>
 					<p class="text-sm">
-						{$messages.priceGame.retailers[item.retailer as 'rimi' | 'klick']} · {$messages
-							.priceGame.captured}: {new Date(item.captured_at).toLocaleDateString($locale)}
+						{$messages.priceGame.retailers[
+							item.retailer as keyof typeof $messages.priceGame.retailers
+						]} · {$messages.priceGame.captured}: {new Date(item.captured_at).toLocaleDateString(
+							$locale
+						)}
 					</p>
 					<a class="underline" href={item.source_url} target="_blank" rel="noopener noreferrer"
 						>{$messages.priceGame.source}</a

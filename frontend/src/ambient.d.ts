@@ -109,6 +109,8 @@ type DrawingSubmission = {
 };
 
 type Lobby = {
+	run_id?: string;
+	definition_title?: string;
 	game_type?: string;
 	session_version?: number | null;
 	id: string;
@@ -465,6 +467,8 @@ type RuntimeRoundIntroItemState = {
 type RuntimeItemState = RuntimeStepItemState | RuntimeRoundIntroItemState;
 
 type RuntimeLobbyState = {
+	run_id?: string;
+	definition_title?: string;
 	game_type?: string;
 	id: string;
 	join_code: string;
@@ -596,6 +600,9 @@ type RuntimeSnapshotEvent = {
 	buzzed_player_id?: string;
 	disabled_buzzer_player_ids: string[];
 	submitted_player_ids: string[];
+	price_ready_player_ids: string[];
+	price_reveal_remaining_seconds?: number | null;
+	price_reveal_speed: number;
 	submission_count: number;
 	pending_review_count: number;
 	drawing_items: DrawingVoteItem[];
@@ -632,6 +639,9 @@ type RuntimePatchEvent = {
 		buzzed_player_id?: string;
 		disabled_buzzer_player_ids?: string[];
 		submitted_player_ids?: string[];
+		price_ready_player_ids?: string[];
+		price_reveal_remaining_seconds?: number | null;
+		price_reveal_speed?: number;
 		submission_count?: number;
 		pending_review_count?: number;
 		drawing_items?: DrawingVoteItem[];
@@ -750,6 +760,9 @@ type HostGameState = Lobby & {
 	buzzerActive: boolean;
 	buzzedPlayerId?: string;
 	disabledBuzzerPlayerIds: string[];
+	submittedPlayerIds: string[];
+	priceReadyPlayerIds: string[];
+	priceRevealRemainingSeconds?: number;
 	submissionCount: number;
 	pendingReviewCount: number;
 	drawingItems?: DrawingVoteItem[];
@@ -764,6 +777,7 @@ type HostGameState = Lobby & {
 };
 
 type ControllerState = {
+	runId?: string;
 	id: string;
 	players: Player[];
 	lastRevision: number;
@@ -791,6 +805,10 @@ type ControllerState = {
 	buzzedPlayerId?: string;
 	disabledBuzzerPlayerIds: string[];
 	submittedPlayerIds: string[];
+	priceReadyPlayerIds: string[];
+	priceRevealRemainingSeconds?: number;
+	priceRevealSpeed: number;
+	priceRevealReceivedAt: number;
 	hasSubmitted: boolean;
 	submissionCount: number;
 	pendingReviewCount: number;
@@ -839,3 +857,16 @@ interface Window {
 	YT?: YouTubeNamespace;
 	onYouTubeIframeAPIReady?: () => void;
 }
+
+type GameSetupSettings = {
+	game_type: string;
+	definition_id?: string;
+	host_enabled: boolean;
+	price_settings?: {
+		mode: 'guess' | 'compare' | 'mixed';
+		product_ranges: ('groceries' | 'electronics' | 'furniture' | 'antiques')[];
+		questions: number;
+		answer_seconds: number;
+		reveal_seconds: number;
+	} | null;
+};

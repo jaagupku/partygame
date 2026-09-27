@@ -5,6 +5,8 @@ from redis.asyncio import Redis
 
 from partygame import schemas, service
 from partygame.api import deps
+from partygame.schemas.lobby import ContinueGame, LobbySetup
+from partygame.service import continuation
 from partygame.service.connection_access import connection_cookie_name, set_connection_cookie
 from partygame.state import GameStateRepository
 
@@ -95,3 +97,23 @@ async def create_lobby(
     token = await GameStateRepository(redis).issue_connection_token(lobby.id)
     set_connection_cookie(response, request, lobby.id, token)
     return lobby
+
+
+@router.get("/{game_id}/setup", response_model=LobbySetup)
+async def get_lobby_setup(game_id: str, request: Request, redis: Redis = Depends(deps.get_redis)):
+    repo = GameStateRepository(redis)
+    lobby = await continuation.require_manager(repo, game_id, request)
+    return await continuation.read_setup(repo, lobby)
+
+
+@router.post("/{game_id}/continue", response_model=schemas.Lobby)
+async def continue_lobby(
+    game_id: str,
+    request: Request,
+    payload: ContinueGame,
+    redis: Redis = Depends(deps.get_redis),
+    current_user: UserRecord | None = Depends(deps.get_current_user_optional),
+):
+    return await continuation.continue_game(
+        GameStateRepository(redis), game_id, request, payload, current_user
+    )

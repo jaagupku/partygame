@@ -18,6 +18,7 @@ from partygame.schemas.events import Event
 from partygame.service.game import GameRuntimeService
 from partygame.service.media import get_media_storage
 from partygame.service.runtime import RuntimeTransitionScheduler
+from partygame.service.runtime.price_reveal import remaining_price_reveal_seconds
 from partygame.state import GameKeyFactory, GameStateRepository
 from partygame.utils import publish
 
@@ -343,7 +344,12 @@ class ClientController:
             self.lobby.host_enabled = lobby.host_enabled
             self.lobby.definition_id = lobby.definition_id
             self.lobby.game_type = lobby.game_type
+            if self.lobby.run_id != lobby.run_id and self.timer_task is not None:
+                self.timer_task.cancel()
+                self.timer_task = None
             self.lobby.session_version = lobby.session_version
+            self.lobby.run_id = lobby.run_id
+            self.lobby.definition_title = lobby.definition_title
         if self.pubsub is not None:
             should_subscribe = self.is_host()
             if should_subscribe != self.command_subscribed:
@@ -374,7 +380,7 @@ class ClientController:
         await self.refresh_lobby()
         self.send_task = asyncio.create_task(self.publish_websocket())
         await self.send(await self.runtime.sync_lobby(self.lobby))
-        if self.is_host():
+        if self.is_host() or self.can_start_hostless_game():
             await self._schedule_timer_from_snapshot()
 
     async def disconnect(self):
@@ -421,7 +427,7 @@ class ClientController:
                         }:
                             await self.process_controller(message["data"])
                     else:
-                        if data.get("type_") == Event.SET_HOST:
+                        if data.get("type_") in {Event.SET_HOST, Event.RUNTIME_SNAPSHOT}:
                             await self.refresh_lobby()
                         await self.websocket.send_text(message["data"])
         except Exception:
@@ -576,14 +582,21 @@ class ClientController:
         await self.refresh_lobby()
         if msg.get("type_") == Event.RESYNC_REQUEST:
             await self.send(await self.runtime.sync_lobby(self.lobby))
-            if self.is_host() and (self.timer_task is None or self.timer_task.done()):
+            if (self.is_host() or self.can_start_hostless_game()) and (
+                self.timer_task is None or self.timer_task.done()
+            ):
                 await self._schedule_timer_from_snapshot()
+            return
+        if not self._matches_run(msg):
             return
         if msg.get("type_") == Event.PLAYER_REACTION:
             await self._process_player_reaction(msg)
             return
         if msg.get("type_") in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}:
             msg = msg | {"player_id": self.player.id}
+        if msg.get("type_") == Event.PRICE_REVEAL_READY and not self.lobby.host_enabled:
+            await self.process_controller(json.dumps(msg))
+            return
         if (
             self.is_host()
             or (msg.get("type_") == Event.START_GAME and self.can_start_hostless_game())
@@ -630,8 +643,12 @@ class ClientController:
             )
         except TypeError, ValueError, ValidationError:
             return
-        await self.runtime.record_player_reaction(self.lobby, event.player_id, event.reaction)
-        await self.relay_event(event)
+        async with self.repo.mutation_lock(self.lobby.id):
+            await self.refresh_lobby()
+            if not self._matches_run(msg) or not self._can_send_reactions():
+                return
+            await self.runtime.record_player_reaction(self.lobby, event.player_id, event.reaction)
+            await self.relay_event(event)
 
     async def start_game(self):
         before_snapshot = await self.runtime.build_snapshot(self.lobby)
@@ -724,13 +741,22 @@ class ClientController:
         await self.refresh_lobby()
         return True
 
+    def _matches_run(self, data: dict) -> bool:
+        current = self.lobby.run_id or self.lobby.id
+        return data.get("run_id", self.lobby.id) == current
+
     async def process_controller(self, msg: str):
         data = json.loads(msg)
+        await self.refresh_lobby()
+        if not self._matches_run(data):
+            return
         # Let controllers submit drafts while the host waits, before taking the lock.
         if data.get("type_") in {Event.SHOW_ANSWER_REVEAL, Event.CLOSE_STEP}:
             await self._collect_player_drafts_before_close(reason="host_reveal")
         async with self.repo.mutation_lock(self.lobby.id):
             await self.refresh_lobby()
+            if not self._matches_run(data):
+                return
             # A host may have been replaced while this command waited for the lock.
             if self.lobby.host_enabled and not self.is_host():
                 return
@@ -837,6 +863,14 @@ class ClientController:
                     force_snapshot=True,
                     begin_round_intro=True,
                 )
+
+            case Event.PRICE_REVEAL_READY:
+                payload = schemas.PriceRevealReadyEvent.model_validate(data)
+                before_snapshot = await self.runtime.build_snapshot(self.lobby)
+                if await self.runtime.set_price_reveal_ready(
+                    self.lobby, self.player.id, payload.step_id, payload.ready
+                ):
+                    await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
             case Event.PLAYER_INPUT_SUBMITTED:
                 payload = schemas.PlayerInputSubmittedEvent.model_validate(
@@ -972,31 +1006,40 @@ class ClientController:
 
         if transition.kind == "round_intro":
             self.timer_task = asyncio.create_task(
-                self._finish_round_intro(transition.delay_seconds)
+                self._finish_round_intro(
+                    transition.delay_seconds, self.lobby.run_id or self.lobby.id
+                )
             )
             return
         if transition.kind == "hostless_end_game_stage":
             self.timer_task = asyncio.create_task(
-                self._advance_hostless_end_game_stage(transition.delay_seconds)
+                self._advance_hostless_end_game_stage(
+                    transition.delay_seconds, self.lobby.run_id or self.lobby.id
+                )
             )
             return
         if transition.kind == "hostless_answer_reveal":
             self.timer_task = asyncio.create_task(
-                self._advance_hostless_reveal(transition.delay_seconds)
+                self._advance_hostless_reveal(
+                    transition.delay_seconds, self.lobby.run_id or self.lobby.id
+                )
             )
             return
         if transition.kind == "timer_expired":
-            self.timer_task = asyncio.create_task(self._expire_timer(transition.delay_seconds))
+            self.timer_task = asyncio.create_task(
+                self._expire_timer(transition.delay_seconds, self.lobby.run_id or self.lobby.id)
+            )
 
-    async def _finish_round_intro(self, delay: float):
+    async def _finish_round_intro(self, delay: float, expected_run: str | None = None):
         expected_step = self.lobby.current_step
+        expected_run = expected_run or self.lobby.run_id or self.lobby.id
         await asyncio.sleep(delay)
         async with self.repo.mutation_lock(self.lobby.id):
             lobby = await self.repo.get_lobby_meta(self.lobby.id)
             if lobby is None:
                 return
             self.lobby = lobby
-            if lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "round_intro":
                 return
@@ -1007,15 +1050,16 @@ class ClientController:
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
 
-    async def _advance_hostless_reveal(self, delay: float):
+    async def _advance_hostless_reveal(self, delay: float, expected_run: str | None = None):
         expected_step = self.lobby.current_step
+        expected_run = expected_run or self.lobby.run_id or self.lobby.id
         await asyncio.sleep(delay)
         async with self.repo.mutation_lock(self.lobby.id):
             lobby = await self.repo.get_lobby_meta(self.lobby.id)
             if lobby is None:
                 return
             self.lobby = lobby
-            if lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "step_complete":
                 return
@@ -1024,6 +1068,16 @@ class ClientController:
                 self.lobby, current_step
             ):
                 return
+            if current_step.price_question is not None:
+                state = await self.runtime.get_step_state(self.lobby.id)
+                if (
+                    remaining_price_reveal_seconds(
+                        state, current_step.price_question.reveal_seconds
+                    )
+                    > 0
+                ):
+                    await self._schedule_timer_from_snapshot()
+                    return
             before_snapshot = await self.runtime.build_snapshot(self.lobby)
             events = await self.runtime.advance_step(self.lobby)
             for event in events:
@@ -1034,15 +1088,16 @@ class ClientController:
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
 
-    async def _advance_hostless_end_game_stage(self, delay: float):
+    async def _advance_hostless_end_game_stage(self, delay: float, expected_run: str | None = None):
         expected_step = self.lobby.current_step
+        expected_run = expected_run or self.lobby.run_id or self.lobby.id
         await asyncio.sleep(delay)
         async with self.repo.mutation_lock(self.lobby.id):
             lobby = await self.repo.get_lobby_meta(self.lobby.id)
             if lobby is None:
                 return
             self.lobby = lobby
-            if lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "finished":
                 return
@@ -1063,16 +1118,20 @@ class ClientController:
             snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
 
-    async def _expire_timer(self, delay: float):
+    async def _expire_timer(self, delay: float, expected_run: str | None = None):
         expected_step = self.lobby.current_step
+        expected_run = expected_run or self.lobby.run_id or self.lobby.id
         await asyncio.sleep(delay)
+        await self.refresh_lobby()
+        if (self.lobby.run_id or self.lobby.id) != expected_run:
+            return
         await self._collect_player_drafts_before_close(reason="timer_expired")
         async with self.repo.mutation_lock(self.lobby.id):
             lobby = await self.repo.get_lobby_meta(self.lobby.id)
             if lobby is None:
                 return
             self.lobby = lobby
-            if lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "question_active":
                 return

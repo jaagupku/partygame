@@ -18,7 +18,13 @@ from partygame.schemas.price_game import (
     PriceReveal,
 )
 from partygame.service.prices.matching import maximum_pairs
-from partygame.service.prices.selection import GENERATOR_VERSION, select_varied, sequence_varied
+from partygame.service.prices.selection import (
+    GENERATOR_VERSION,
+    record_usage,
+    select_varied,
+    sequence_varied,
+    variety_rank,
+)
 
 
 class InsufficientPriceData(ValueError):
@@ -27,12 +33,80 @@ class InsufficientPriceData(ValueError):
 
 def comparable(left: PriceProduct, right: PriceProduct) -> bool:
     low, high = sorted((left.price_minor, right.price_minor))
+    return (left.retailer, left.id) != (
+        right.retailer,
+        right.id,
+    ) and 11 * low <= 10 * high <= 30 * low
+
+
+def selected_products(dataset, ranges):
+    products = [PriceProduct.model_validate(record) for record in dataset.records]
+    unique = {(p.retailer, p.id): p for p in products if p.product_range in ranges}
+    return sorted(unique.values(), key=lambda p: (p.retailer, p.id))
+
+
+def comparison_graph(products):
+    return [[j for j, right in enumerate(products) if comparable(left, right)] for left in products]
+
+
+def comparison_count(settings):
     return (
-        left.id != right.id
-        and left.retailer == right.retailer
-        and left.category == right.category
-        and 11 * low <= 10 * high <= 30 * low
+        settings.questions // 2
+        if settings.mode == "mixed"
+        else settings.questions if settings.mode == "compare" else 0
     )
+
+
+def has_capacity(settings, products_count, pairs_count):
+    count = comparison_count(settings)
+    return products_count >= settings.questions + count and pairs_count >= count
+
+
+def select_pairs(products, graph, count, usage):
+    """Prefer cross-category pairs without reducing remaining matching capacity."""
+    active = set(range(len(products)))
+    selected = []
+
+    def matching(vertices):
+        indices = sorted(vertices)
+        positions = {index: i for i, index in enumerate(indices)}
+        reduced = [[positions[j] for j in graph[i] if j in vertices] for i in indices]
+        return {(indices[a], indices[b]) for a, b in maximum_pairs(reduced)}
+
+    pairs = matching(active)
+    if len(pairs) < count:
+        raise InsufficientPriceData("Not enough unique comparable products")
+    while len(selected) < count:
+        needed = count - len(selected) - 1
+        candidates = [(a, b) for a in sorted(active) for b in graph[a] if b > a and b in active]
+
+        def rank(edge):
+            bundle = [products[i] for i in edge]
+            variety = variety_rank(bundle, usage)
+            return (
+                variety[:2],
+                bundle[0].product_range == bundle[1].product_range,
+                variety[2:],
+            )
+
+        candidates.sort(key=rank)
+        for a, b in candidates:
+            remaining = active - {a, b}
+            if (a, b) in pairs:
+                rest = pairs - {(a, b)}
+            else:
+                rest = matching(remaining) if needed else set()
+            if len(rest) < needed:
+                continue
+            bundle = [products[a], products[b]]
+            selected.append(bundle)
+            record_usage(bundle, usage)
+            active = remaining
+            pairs = rest
+            break
+        else:
+            raise InsufficientPriceData("Not enough unique comparable products")
+    return selected
 
 
 class PriceGenerator:
@@ -40,98 +114,29 @@ class PriceGenerator:
         self, settings: PriceGameSettings, *, seed: int, dataset: DatasetSnapshot
     ) -> list[RoundBundle]:
         rng = Random(seed)
-        products = [PriceProduct.model_validate(record) for record in dataset.records]
-        products = list({(p.retailer, p.id): p for p in products}.values())
-        products.sort(key=lambda p: (p.retailer, p.id))
-        ranges = (
-            ["groceries", "electronics"]
-            if settings.product_range == "both"
-            else [settings.product_range]
-        )
-        modes = (
-            ["guess"] * ((settings.questions + 1) // 2) + ["compare"] * (settings.questions // 2)
-            if settings.mode == "mixed"
-            else [settings.mode] * settings.questions
-        )
-        # Compute capacities before assigning modes to ranges, so a valid balanced
-        # game cannot fail just because a seed assigned too many pairs to one range.
-        pools = {pool: [p for p in products if p.product_range == pool] for pool in ranges}
-        pair_pools = {}
-        for pool, candidates in pools.items():
-            groups: dict[tuple[str, str], list[PriceProduct]] = {}
-            for product in candidates:
-                groups.setdefault((product.retailer, product.category), []).append(product)
-            pairs = []
-            for group in groups.values():
-                rng.shuffle(group)
-                graph = [
-                    [j for j, right in enumerate(group) if comparable(left, right)]
-                    for left in group
-                ]
-                pairs.extend([group[left], group[right]] for left, right in maximum_pairs(graph))
-            rng.shuffle(pairs)
-            pair_pools[pool] = pairs
-        counts = {
-            pool: sum(ranges[i % len(ranges)] == pool for i in range(settings.questions))
-            for pool in ranges
-        }
-        compare_count = modes.count("compare")
-        allocations = []
-        for first in range(compare_count + 1):
-            allocation = [first] if len(ranges) == 1 else [first, compare_count - first]
-            if sum(allocation) != compare_count:
-                continue
-            if all(
-                count <= counts[pool]
-                and count <= len(pair_pools[pool])
-                and counts[pool] + count <= len(pools[pool])
-                for pool, count in zip(ranges, allocation, strict=True)
-            ):
-                allocations.append(allocation)
-        if not allocations:
+        products = selected_products(dataset, settings.product_ranges)
+        rng.shuffle(products)
+        compare_count = comparison_count(settings)
+        if len(products) < settings.questions + compare_count:
             raise InsufficientPriceData("Not enough unique comparable products")
-        allocation = rng.choice(allocations)
-        specs = [
-            (mode, pool)
-            for pool, count in zip(ranges, allocation, strict=True)
-            for mode in ["compare"] * count + ["guess"] * (counts[pool] - count)
-        ]
-        selected: dict[int, list[PriceProduct]] = {}
-        category_usage = Counter()
-        for product_range in ranges:
-            candidates = pools[product_range]
-            pairs = pair_pools[product_range]
-            compare_slots = [
-                i
-                for i, (mode, pool) in enumerate(specs)
-                if mode == "compare" and pool == product_range
-            ]
-            if len(pairs) < len(compare_slots):
-                raise InsufficientPriceData("Not enough comparable products")
-            used = set()
-            chosen_pairs = select_varied(pairs, len(compare_slots), category_usage)
-            for index, pair in zip(compare_slots, chosen_pairs, strict=True):
-                rng.shuffle(pair)
-                selected[index] = pair
-                used.update((p.retailer, p.id) for p in pair)
-            singles = [p for p in candidates if (p.retailer, p.id) not in used]
-            rng.shuffle(singles)
-            guess_slots = [
-                i
-                for i, (mode, pool) in enumerate(specs)
-                if mode == "guess" and pool == product_range
-            ]
-            if len(singles) < len(guess_slots):
-                raise InsufficientPriceData("Not enough unique products")
-            chosen_singles = select_varied([[p] for p in singles], len(guess_slots), category_usage)
-            for index, bundle in zip(guess_slots, chosen_singles, strict=True):
-                selected[index] = bundle
+        usage = Counter()
+        pairs = (
+            select_pairs(products, comparison_graph(products), compare_count, usage)
+            if compare_count
+            else []
+        )
+        used = {(p.retailer, p.id) for pair in pairs for p in pair}
+        singles = [[p] for p in products if (p.retailer, p.id) not in used]
+        guesses = select_varied(singles, settings.questions - compare_count, usage)
+        selected = dict(enumerate(pairs + guesses))
+        for pair in pairs:
+            rng.shuffle(pair)
         order = list(range(settings.questions))
         rng.shuffle(order)
         order = sequence_varied(order, selected)
         steps = []
         for index in order:
-            mode = specs[index][0]
+            mode = "compare" if len(selected[index]) == 2 else "guess"
             items = selected[index]
             cards = [
                 PriceCard(id=str(i), title=p.title, detail=p.detail, image_url=p.image_url)
@@ -168,7 +173,12 @@ class PriceGenerator:
                         ),
                     ),
                     host_behavior=HostBehavior(allow_custom_points=False),
-                    price_question=PriceQuestion(mode=mode, products=cards, reveal=reveal),
+                    price_question=PriceQuestion(
+                        mode=mode,
+                        products=cards,
+                        reveal=reveal,
+                        reveal_seconds=settings.reveal_seconds,
+                    ),
                 )
             )
         return [
