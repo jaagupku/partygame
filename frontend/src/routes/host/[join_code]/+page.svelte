@@ -1,6 +1,5 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import ContinueGame from '$lib/components/setup/ContinueGame.svelte';
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -214,10 +213,6 @@
 <svelte:head>
 	<title>{pageTitle(`${definitionTitle()} | ${$messages.hostView.hostLobbyTitle}`)}</title>
 </svelte:head>
-
-{#if $game.phase === 'finished' && data.canManage}
-	{#key $game.run_id}<ContinueGame lobbyId={lobby().id} onprepared={requestResync} />{/key}
-{/if}
 
 {#if $game.state === 'waiting_for_players'}
 	<h1 class="page-title">{definitionTitle()}</h1>

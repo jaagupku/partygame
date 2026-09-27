@@ -125,11 +125,10 @@ def payload(host_enabled=True, **kwargs):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("manager", ["display", "host"])
-async def test_replay_preserves_identity_resets_runtime_and_broadcasts(game, manager):
+async def test_replay_preserves_identity_resets_runtime_and_broadcasts(game):
     repo, tokens, archive = game
     result = await continuation.continue_game(
-        repo, "g1", request(tokens[manager], player=manager != "display"), payload()
+        repo, "g1", request(tokens["host"], player=True), payload()
     )
     assert result.id == "g1" and result.join_code == "ABCDE"
     assert result.run_id != "g1" and result.phase == "waiting"
@@ -190,7 +189,9 @@ async def test_archive_failure_leaves_everything_untouched(game):
     repo, tokens, archive = game
     archive.side_effect = RuntimeError("database unavailable")
     with pytest.raises(HTTPException) as error:
-        await continuation.continue_game(repo, "g1", request(tokens["display"]), payload())
+        await continuation.continue_game(
+            repo, "g1", request(tokens["host"], player=True), payload()
+        )
     assert error.value.status_code == 503
     assert (await repo.get_lobby_meta("g1")).phase == "finished"
     assert await repo.get_player_score("g1", "player") == 42
@@ -204,7 +205,7 @@ async def test_generation_failure_leaves_finished_game_untouched(game, monkeypat
     monkeypatch.setattr(continuation, "prepare_session", prepare)
     with pytest.raises(HTTPException):
         await continuation.continue_game(
-            repo, "g1", request(tokens["display"]), payload(game_type="price_guessing")
+            repo, "g1", request(tokens["host"], player=True), payload(game_type="price_guessing")
         )
     assert (await repo.get_lobby_meta("g1")).phase == "finished"
     archive.assert_not_awaited()
@@ -215,7 +216,7 @@ async def test_duplicate_continuation_does_not_replace_next_run(game):
     repo, tokens, archive = game
     results = await asyncio.gather(
         *[
-            continuation.continue_game(repo, "g1", request(tokens["display"]), payload())
+            continuation.continue_game(repo, "g1", request(tokens["host"], player=True), payload())
             for _ in range(2)
         ],
         return_exceptions=True,
@@ -256,7 +257,7 @@ async def test_price_replay_uses_new_preparation_and_settings(game, monkeypatch)
     result = await continuation.continue_game(
         repo,
         "g1",
-        request(tokens["display"]),
+        request(tokens["host"], player=True),
         payload(game_type="price_guessing", price_settings={"questions": 5}),
     )
     assert result.run_id == "new-price-run"
@@ -281,7 +282,7 @@ async def test_stale_commands_and_timers_do_not_mutate_next_run(game, monkeypatc
     old = await repo.get_lobby_meta("g1")
     player = await repo.get_player("g1", "host")
     controller = ClientController(AsyncMock(), repo.redis, old, player)
-    await continuation.continue_game(repo, "g1", request(tokens["display"]), payload())
+    await continuation.continue_game(repo, "g1", request(tokens["host"], player=True), payload())
     await controller.process_input({"type_": "start_game", "run_id": "g1"})
     await controller.process_input({"type_": "start_game"})
     assert (await repo.get_lobby_meta("g1")).phase == "waiting"
@@ -323,7 +324,9 @@ async def test_missing_frozen_session_does_not_silently_reload_source(game, monk
     prepare = AsyncMock()
     monkeypatch.setattr(continuation, "prepare_session", prepare)
     with pytest.raises(HTTPException) as error:
-        await continuation.continue_game(repo, "g1", request(tokens["display"]), payload())
+        await continuation.continue_game(
+            repo, "g1", request(tokens["host"], player=True), payload()
+        )
     assert error.value.status_code == 409
     prepare.assert_not_awaited()
     archive.assert_not_awaited()
@@ -343,6 +346,20 @@ async def test_permissions_are_rechecked_after_preparation(game, monkeypatch):
         await continuation.continue_game(
             repo, "g1", request(tokens["host"], player=True), payload(game_type="price_guessing")
         )
+    assert error.value.status_code == 403
+    archive.assert_not_awaited()
+    assert (await repo.get_lobby_meta("g1")).phase == "finished"
+
+
+@pytest.mark.asyncio
+async def test_creator_display_cannot_read_setup_or_prepare_rematch(game):
+    repo, tokens, archive = game
+    display_request = request(tokens["display"])
+    with pytest.raises(HTTPException) as error:
+        await continuation.require_manager(repo, "g1", display_request)
+    assert error.value.status_code == 403
+    with pytest.raises(HTTPException) as error:
+        await continuation.continue_game(repo, "g1", display_request, payload())
     assert error.value.status_code == 403
     archive.assert_not_awaited()
     assert (await repo.get_lobby_meta("g1")).phase == "finished"

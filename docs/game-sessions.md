@@ -64,8 +64,10 @@ dataset/lease tables and a separate weekly ingestion worker.
 
 ## Continuing a lobby
 
-After the finale, the assigned host, automatic-mode starter, or browser that
-created the lobby can prepare another game. Setup is local to that browser until
+After the finale, only the player who can start the game (the assigned host or
+automatic-mode starter) can prepare another game from their controller. The main
+display never shows rematch controls and its management cookie does not grant
+access to rematch setup. Setup is local to that browser until
 confirmed; other players keep seeing the completed game. Confirmation returns
 all connected clients to the waiting lobby, with the same join code and player
 credentials, and resets scores. The normal Start Game action starts the new run.

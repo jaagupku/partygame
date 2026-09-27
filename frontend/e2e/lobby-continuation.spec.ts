@@ -81,13 +81,14 @@ test('same lobby replays fresh content, preserves players, and switches game and
 		expect((await (await page.request.get(`/api/v1/lobby/${lobby.id}`)).json()).run_id).toBe(
 			finished.run_id
 		);
-		// Use the creator's display for one replay, and the phone host for the next switch.
-		await page.getByRole('button', { name: 'Play again', exact: true }).click();
-		await page.getByLabel('Answer time').selectOption('45');
-		const replayResponse = page.waitForResponse((r) =>
+		await expect(page.getByRole('region', { name: 'Keep playing', exact: true })).toHaveCount(0);
+		expect((await page.request.get(`/api/v1/lobby/${lobby.id}/setup`)).status()).toBe(403);
+		await host.getByRole('button', { name: 'Play again', exact: true }).click();
+		await host.getByLabel('Answer time').selectOption('45');
+		const replayResponse = host.waitForResponse((r) =>
 			r.url().endsWith(`/lobby/${lobby.id}/continue`)
 		);
-		await page.getByRole('button', { name: 'Prepare next game', exact: true }).click();
+		await host.getByRole('button', { name: 'Prepare next game', exact: true }).click();
 		const replay = await (await replayResponse).json();
 		expect(replay.run_id).not.toBe(finished.run_id);
 		expect(replay.id).toBe(lobby.id);
@@ -160,6 +161,7 @@ test('automatic starter can replay unchanged settings and start again after reco
 			await expect(starter.getByText('Answers and points', { exact: true })).toBeVisible();
 			await expect(starter.getByText('Answers and points', { exact: true })).toHaveCount(0);
 		}
+		await expect(page.getByRole('region', { name: 'Keep playing', exact: true })).toHaveCount(0);
 		await starter.getByRole('button', { name: 'Play again', exact: true }).click();
 		await expect(starter.getByRole('combobox', { name: 'Questions', exact: true })).toHaveValue(
 			'5'

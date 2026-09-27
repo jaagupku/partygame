@@ -21,16 +21,12 @@ async def require_manager(repo: GameStateRepository, game_id: str, request: Requ
     lobby = await repo.get_lobby_meta(game_id)
     if lobby is None:
         raise HTTPException(404, "Lobby data not found")
-    if await repo.verify_connection_token(
-        game_id, request.cookies.get(connection_cookie_name(game_id))
-    ):
-        return lobby
     manager_id = lobby.host_id if lobby.host_enabled else lobby.starter_id
     if manager_id and await repo.verify_connection_token(
         game_id, request.cookies.get(connection_cookie_name(game_id, player=True)), manager_id
     ):
         return lobby
-    raise HTTPException(403, "Only the lobby manager can configure the next game")
+    raise HTTPException(403, "Only the player who starts the game can configure the next game")
 
 
 async def read_setup(repo: GameStateRepository, lobby: schemas.Lobby) -> LobbySetup:
