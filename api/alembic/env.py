@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from partygame.core.config import settings
 from partygame.db.postgres import Base
 from partygame.state.auth_models import UserRecord, UserSessionRecord
+from partygame.state.calorie_models import CalorieDatasetLease, CalorieDatasetRecord  # noqa: F401
 from partygame.state.definition_models import GameDefinitionRecord
 from partygame.state.price_models import PriceDatasetLease, PriceDatasetRecord  # noqa: F401
 from partygame.state.stats_models import GameStatSummaryRecord

@@ -1,6 +1,6 @@
 export type GameType = {
 	id: string;
-	localization_key: 'trivia' | 'priceGuessing';
+	localization_key: 'drawingMashup' | 'trivia' | 'priceGuessing' | 'calorieGuessing';
 	availability: 'available' | 'coming_soon';
 	host_modes: ('hosted' | 'automatic')[];
 };

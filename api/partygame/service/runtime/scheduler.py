@@ -67,12 +67,12 @@ class RuntimeTransitionScheduler:
                 lobby, current_step
             ):
                 return None
-            if current_step.price_question is not None:
+            if current_step.product_question is not None:
                 state = await runtime.get_step_state(lobby.id)
                 return ScheduledTransition(
                     "hostless_answer_reveal",
                     remaining_price_reveal_seconds(
-                        state, current_step.price_question.reveal_seconds
+                        state, current_step.product_question.reveal_seconds
                     )
                     / price_reveal_speed(state),
                 )

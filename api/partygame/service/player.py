@@ -62,6 +62,12 @@ def public_runtime_snapshot(
         own_drawing_id = f"drawing:{snapshot.drawing_owner_ids.index(viewer_player_id)}"
     return snapshot.model_copy(
         update={
+            "drawing_game": (
+                (snapshot.drawing_private.get(viewer_player_id) or snapshot.drawing_game)
+                if viewer_player_id
+                else snapshot.drawing_game
+            ),
+            "drawing_private": {},
             "host_answer": None,
             "submissions": submissions,
             "drawing_owner_ids": [],
@@ -177,7 +183,7 @@ class ClientController:
         include_host_answer: bool,
         viewer_player_id: str | None = None,
     ) -> schemas.RuntimeSnapshotEvent:
-        if include_host_answer:
+        if include_host_answer and snapshot.drawing_game is None:
             return snapshot
         return public_runtime_snapshot(snapshot, viewer_player_id=viewer_player_id)
 
@@ -380,10 +386,15 @@ class ClientController:
         await self.refresh_lobby()
         self.send_task = asyncio.create_task(self.publish_websocket())
         await self.send(await self.runtime.sync_lobby(self.lobby))
+        if self.lobby.game_type == "drawing_mashup":
+            from partygame.service.drawing.runtime import DrawingRuntime
+
+            await DrawingRuntime(self.repo).broadcast(self.lobby)
         if self.is_host() or self.can_start_hostless_game():
             await self._schedule_timer_from_snapshot()
 
     async def disconnect(self):
+        await self.refresh_lobby()
         realtime.unregister_player(self.lobby.id, self.player.id, self)
         if self.send_task is not None:
             self.send_task.cancel()
@@ -394,6 +405,10 @@ class ClientController:
             if self.command_subscribed:
                 await self.pubsub.unsubscribe(self.command_channel)
 
+        if self.lobby.game_type == "drawing_mashup" and any(
+            other.player.id == self.player.id for other in realtime.get_players(self.lobby.id)
+        ):
+            return
         self.player.status = ConnectionStatus.DISCONNECTED
         await self.repo.set_player_status(self.lobby.id, self.player.id, self.player.status)
         connected_players = await self.repo.count_connected_players(self.lobby.id)
@@ -407,6 +422,10 @@ class ClientController:
             self.display_channel,
             schemas.PlayerDisconnectedEvent(player_id=self.player.id),
         )
+        if self.lobby.game_type == "drawing_mashup":
+            from partygame.service.drawing.runtime import DrawingRuntime
+
+            await DrawingRuntime(self.repo).broadcast(self.lobby)
 
     async def publish_websocket(self):
         try:
@@ -589,6 +608,14 @@ class ClientController:
             return
         if not self._matches_run(msg):
             return
+        if self.lobby.game_type == "drawing_mashup":
+            if msg.get("type_") in {"drawing_command", "start_game"}:
+                from partygame.service.drawing.transport import process_command
+
+                await process_command(self, msg)
+            elif msg.get("type_") == Event.PLAYER_REACTION:
+                await self._process_player_reaction(msg)
+            return
         if msg.get("type_") == Event.PLAYER_REACTION:
             await self._process_player_reaction(msg)
             return
@@ -767,7 +794,7 @@ class ClientController:
         event_type = data.get("type_")
         await refresh_idle_ttl(self.repo, self.lobby)
 
-        if self.lobby.game_type == "price_guessing" and event_type in {
+        if self.lobby.game_type in {"price_guessing", "calorie_guessing"} and event_type in {
             Event.UPDATE_SCORE,
             Event.REVIEW_SUBMISSION,
             Event.SCORES_UPDATED,
@@ -995,6 +1022,8 @@ class ClientController:
                 self.timer_task.cancel()
             self.timer_task = None
 
+        if self.lobby.game_type == "drawing_mashup":
+            return
         snapshot = snapshot or await self.runtime.build_snapshot(self.lobby)
         transition = await self.transition_scheduler.next_transition(
             lobby=self.lobby,
@@ -1068,11 +1097,11 @@ class ClientController:
                 self.lobby, current_step
             ):
                 return
-            if current_step.price_question is not None:
+            if current_step.product_question is not None:
                 state = await self.runtime.get_step_state(self.lobby.id)
                 if (
                     remaining_price_reveal_seconds(
-                        state, current_step.price_question.reveal_seconds
+                        state, current_step.product_question.reveal_seconds
                     )
                     > 0
                 ):

@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI
@@ -29,7 +30,15 @@ async def seed_builtin_game_definitions():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await seed_builtin_game_definitions()
-    yield
+    from partygame.service.drawing.scheduler import run_scheduler
+
+    drawing_scheduler = asyncio.create_task(run_scheduler())
+    try:
+        yield
+    finally:
+        drawing_scheduler.cancel()
+        with suppress(asyncio.CancelledError):
+            await drawing_scheduler
 
 
 app = FastAPI(

@@ -24,6 +24,18 @@ GAME_TYPES = (
         availability="available",
         host_modes=("hosted", "automatic"),
     ),
+    GameType(
+        id="calorie_guessing",
+        localization_key="calorieGuessing",
+        availability="available",
+        host_modes=("hosted", "automatic"),
+    ),
+    GameType(
+        id="drawing_mashup",
+        localization_key="drawingMashup",
+        availability="available",
+        host_modes=("automatic",),
+    ),
 )
 
 

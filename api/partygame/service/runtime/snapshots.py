@@ -8,6 +8,7 @@ from partygame.schemas.game_definition import (
     StepDefinition,
 )
 from partygame.schemas.price_game import PriceResult
+from partygame.service.calories.scoring import calorie_points
 from partygame.service.prices.scoring import price_points
 from partygame.service.runtime.price_reveal import (
     price_reveal_speed,
@@ -171,7 +172,7 @@ class SnapshotBuilder:
         host_answer = None
         if (
             step is not None
-            and step.price_question is None
+            and step.product_question is None
             and self._step_has_revealable_answer(step)
         ):
             host_answer = schemas.RevealedAnswer(value=step.evaluation.answer)
@@ -186,7 +187,7 @@ class SnapshotBuilder:
             and not reviewing_history
             and lobby.phase == "step_complete"
             and step is not None
-            and step.price_question is not None
+            and step.product_question is not None
             and step_state.get("display_phase") == "answer_reveal"
         )
         theme = await self.runtime.get_definition_theme(lobby)
@@ -229,7 +230,7 @@ class SnapshotBuilder:
             ),
             price_reveal_remaining_seconds=(
                 remaining_price_reveal_seconds(
-                    step_state, step.price_question.reveal_seconds, now=time()
+                    step_state, step.product_question.reveal_seconds, now=time()
                 )
                 if show_price_timer
                 else None
@@ -265,7 +266,8 @@ class SnapshotBuilder:
         input_enabled: bool,
     ) -> schemas.RuntimeStepState:
         evaluation_type = await self.evaluation.resolve_evaluation_type(lobby, step)
-        price = step.price_question
+        price = step.product_question
+        calorie = step.calorie_question is not None
         reveal_price = price is not None and step_state.get("display_phase") == "answer_reveal"
         price_results = []
         if reveal_price:
@@ -275,7 +277,7 @@ class SnapshotBuilder:
                     continue
                 value = answers.get(player.id)
                 points = (
-                    price_points(value, step.evaluation.answer)
+                    (calorie_points if calorie else price_points)(value, step.evaluation.answer)
                     if price.mode == "guess"
                     else 1000 if value == step.evaluation.answer else 0
                 )
@@ -285,10 +287,14 @@ class SnapshotBuilder:
                     )
                 )
         return schemas.RuntimeStepState(
-            price_mode=price.mode if price else None,
-            price_products=price.products if price else [],
-            price_reveal=price.reveal if reveal_price else [],
-            price_results=price_results,
+            calorie_mode=price.mode if calorie else None,
+            calorie_products=price.products if calorie else [],
+            calorie_reveal=price.reveal if calorie and reveal_price else [],
+            calorie_results=[r.model_dump() for r in price_results] if calorie else [],
+            price_mode=price.mode if price and not calorie else None,
+            price_products=price.products if price and not calorie else [],
+            price_reveal=price.reveal if reveal_price and not calorie else [],
+            price_results=price_results if not calorie else [],
             id=step.id,
             title=step.title,
             body=step.body,

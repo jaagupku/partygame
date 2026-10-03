@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
-	let { product, stage = false }: { product: PriceCard; stage?: boolean } = $props();
+	let { product, stage = false }: { product: PriceCard | CalorieCard; stage?: boolean } = $props();
 	let failed = $state(false);
 	$effect(() => {
 		product.image_url;
@@ -24,6 +24,9 @@
 		/>
 	{/if}
 	<p class="text-center text-lg font-bold leading-snug">{product.title}</p>
+	{#if 'basis' in product}<p class="font-bold">
+			{$messages.calorieGame[product.basis === '100ml' ? 'per100ml' : 'per100g']}
+		</p>{/if}
 	{#if product.detail && !product.title.includes(product.detail)}<p
 			class="theme-text-muted text-center text-sm"
 		>

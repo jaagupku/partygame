@@ -741,9 +741,48 @@ async def test_snapshot_includes_active_round_metadata_across_rounds():
 
 
 @pytest.mark.asyncio
-async def test_round_intro_snapshot_hides_active_step_until_opened():
+@pytest.mark.parametrize("title", [None, "", "   "])
+@pytest.mark.parametrize("host_enabled", [True, False])
+async def test_untitled_single_round_skips_intro(title, host_enabled):
+    class Provider(MixedDefinitionProvider):
+        async def load(self, definition_id):
+            definition = await super().load(definition_id)
+            definition.rounds[0].title = title
+            return definition
+
     repo = FakeRepo()
-    service = GameRuntimeService(repo=repo, definition_provider=MixedDefinitionProvider())
+    service = GameRuntimeService(repo=repo, definition_provider=Provider())
+    lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=host_enabled)
+
+    await service.start_game(lobby)
+    step_state = dict(repo.steps["g1"])
+    snapshot = await service.begin_round_intro(lobby)
+
+    assert lobby.phase == "question_active"
+    assert snapshot.active_round.number == 1
+    assert snapshot.active_round.total == 1
+    assert snapshot.active_item.type_ == "step"
+    assert snapshot.active_step is not None
+    assert repo.steps["g1"] == step_state
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("title, total", [("Opening round", 1), (None, 2)])
+async def test_round_intro_snapshot_hides_active_step_until_opened(title, total):
+    class Provider(MixedDefinitionProvider):
+        async def load(self, definition_id):
+            definition = await super().load(definition_id)
+            definition.rounds[0].title = title
+            if total == 2:
+                definition.rounds.append(
+                    RoundDefinition(
+                        id="round2", steps=[StepDefinition(id="next_step", title="Next question")]
+                    )
+                )
+            return definition
+
+    repo = FakeRepo()
+    service = GameRuntimeService(repo=repo, definition_provider=Provider())
     lobby = Lobby(id="g1", join_code="ABCDE", definition_id="quiz_demo", host_enabled=True)
 
     await service.start_game(lobby)

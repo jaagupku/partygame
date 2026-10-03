@@ -12,6 +12,7 @@ from partygame.schemas.game_definition import (
     RoundDefinition,
     StepDefinition,
 )
+from partygame.service.calories.scoring import calorie_points, parse_calories
 from partygame.service.definitions import DefinitionProvider, get_default_definition_provider
 from partygame.service.game_sessions import load_session_definition
 from partygame.service.prices.scoring import parse_euros, price_points
@@ -225,6 +226,15 @@ class GameRuntimeService:
         )
 
     async def begin_round_intro(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:
+        round_state = await self.get_current_round(lobby)
+        if (
+            round_state is not None
+            and round_state.number == 1
+            and round_state.total == 1
+            and not (round_state.title or "").strip()
+        ):
+            return await self.build_snapshot(lobby)
+
         await self.repo.set_lobby_fields(lobby.id, phase="round_intro")
         lobby.phase = "round_intro"
         await self.repo.set_step_cache(
@@ -261,7 +271,7 @@ class GameRuntimeService:
         self, lobby: schemas.Lobby, player_id: str, step_id: str, ready: bool
     ) -> bool:
         if (
-            lobby.game_type != "price_guessing"
+            lobby.game_type not in {"price_guessing", "calorie_guessing"}
             or lobby.host_enabled
             or lobby.phase != "step_complete"
         ):
@@ -271,7 +281,7 @@ class GameRuntimeService:
         if (
             step is None
             or step.id != step_id
-            or step.price_question is None
+            or step.product_question is None
             or state.get("display_phase") != "answer_reveal"
             or self._review_step_index(state) is not None
         ):
@@ -284,7 +294,7 @@ class GameRuntimeService:
             return False
         now = time()
         remaining = remaining_price_reveal_seconds(
-            state, step.price_question.reveal_seconds, now=now
+            state, step.product_question.reveal_seconds, now=now
         )
         if remaining <= 0:
             return False
@@ -383,7 +393,7 @@ class GameRuntimeService:
 
         answers = state.get("answers", {})
         if player_id in answers and not (
-            step.price_question or step.player_input.kind == PlayerInputKind.RADIO
+            step.product_question or step.player_input.kind == PlayerInputKind.RADIO
         ):
             return [], False
         if (
@@ -396,10 +406,15 @@ class GameRuntimeService:
             and not self.evaluation.is_valid_drawing_submission(value)
         ):
             return [], False
+        if (
+            step.evaluation.type_ == EvaluationType.CALORIE_CLOSENESS
+            and parse_calories(value) is None
+        ):
+            return [], False
         if step.evaluation.type_ == EvaluationType.PRICE_CLOSENESS and parse_euros(value) is None:
             return [], False
         if (
-            step.price_question
+            step.product_question
             and step.player_input.kind == PlayerInputKind.RADIO
             and value not in step.player_input.options
         ):
@@ -892,9 +907,13 @@ class GameRuntimeService:
                         accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
-        elif evaluation_type == EvaluationType.PRICE_CLOSENESS:
+        elif evaluation_type in {EvaluationType.PRICE_CLOSENESS, EvaluationType.CALORIE_CLOSENESS}:
             for player_id, value in answers.items():
-                delta = price_points(value, step.evaluation.answer)
+                delta = (
+                    calorie_points
+                    if evaluation_type == EvaluationType.CALORIE_CLOSENESS
+                    else price_points
+                )(value, step.evaluation.answer)
                 if delta > 0:
                     new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
                     await self.repo.set_player_score(lobby.id, player_id, new_score)
@@ -1067,7 +1086,7 @@ class GameRuntimeService:
         step = await self.get_current_step(lobby)
         if step is None:
             return []
-        if step.price_question is not None and lobby.phase == "step_complete":
+        if step.product_question is not None and lobby.phase == "step_complete":
             state = await self.get_step_state(lobby.id)
             if state.get("display_phase") == "answer_reveal":
                 return [await self.build_snapshot(lobby)]
@@ -1103,6 +1122,7 @@ class GameRuntimeService:
             EvaluationType.EXACT_NUMBER,
             EvaluationType.CLOSEST_NUMBER,
             EvaluationType.PRICE_CLOSENESS,
+            EvaluationType.CALORIE_CLOSENESS,
             EvaluationType.ORDERING_MATCH,
             EvaluationType.MULTI_SELECT_WEIGHTED,
             EvaluationType.MAP_DISTANCE,
@@ -1141,10 +1161,10 @@ class GameRuntimeService:
                         not lobby.host_enabled and await self.is_current_step_round_end(lobby)
                     ),
                 } | self.timing.answer_reveal_updates(step)
-                if step.price_question is not None and not lobby.host_enabled:
+                if step.product_question is not None and not lobby.host_enabled:
                     step_updates.update(
                         price_ready_player_ids=[],
-                        price_reveal_remaining_seconds=step.price_question.reveal_seconds,
+                        price_reveal_remaining_seconds=step.product_question.reveal_seconds,
                         price_reveal_updated_at=time(),
                     )
             await self.repo.set_step_cache(lobby.id, step_updates)
@@ -1197,7 +1217,7 @@ class GameRuntimeService:
         step = await self.get_current_step(lobby)
         if step is None:
             return []
-        if step.price_question and (await self.get_step_state(lobby.id)).get("evaluated"):
+        if step.product_question and (await self.get_step_state(lobby.id)).get("evaluated"):
             return []
         await self.repo.set_lobby_fields(lobby.id, phase="question_active")
         lobby.phase = "question_active"
@@ -1229,6 +1249,10 @@ class GameRuntimeService:
         *,
         revision: int | None = None,
     ) -> schemas.RuntimeSnapshotEvent:
+        if lobby.game_type == "drawing_mashup":
+            from partygame.service.drawing.runtime import DrawingRuntime
+
+            return await DrawingRuntime(self.repo).snapshot(lobby, revision)
         return await self.snapshots.build_snapshot(lobby, revision=revision)
 
     async def sync_lobby(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:

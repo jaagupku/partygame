@@ -1,12 +1,13 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
 	import {
 		DRAWING_CANVAS_HEIGHT,
 		DRAWING_CANVAS_WIDTH,
 		DRAWING_COLORS,
 		encodeDrawingSubmission,
+		decodeDrawingSubmission,
 		simplifyDrawingPoints
 	} from '$lib/drawing-codec.js';
 	import { DRAWING_LIMITS, getDrawingLimitUsage } from '$lib/drawing-limits.js';
@@ -19,6 +20,8 @@
 		showSubmit?: boolean;
 		submitPosition?: 'top' | 'bottom';
 		onSubmit: (drawing: DrawingSubmission) => void;
+		initialDrawing?: DrawingSubmission | null;
+		onChange?: (drawing: DrawingSubmission | null) => void;
 	}
 
 	let {
@@ -27,14 +30,18 @@
 		resetKey = '',
 		showSubmit = true,
 		submitPosition = 'bottom',
-		onSubmit
+		onSubmit,
+		initialDrawing = null,
+		onChange
 	}: DrawingInputProps = $props();
 	let canvas: HTMLCanvasElement;
 	let selectedColor = $state('#0f172a');
 	let eraserEnabled = $state(false);
 	let brushControlsOpen = $state(false);
 	let brushSize = $state(8);
-	let strokes = $state<DrawingStroke[]>([]);
+	let strokes = $state<DrawingStroke[]>(
+		untrack(() => (initialDrawing ? decodeDrawingSubmission(initialDrawing) : []))
+	);
 	let redoStrokes = $state<DrawingStroke[]>([]);
 	let activeStroke = $state<DrawingStroke | null>(null);
 	let clearConfirming = $state(false);
@@ -104,6 +111,7 @@
 	}
 
 	function endStroke() {
+		if (!activeStroke) return;
 		if (activeStroke) {
 			const simplifiedStroke = {
 				...activeStroke,
@@ -112,6 +120,7 @@
 			strokes = [...strokes.slice(0, -1), simplifiedStroke];
 		}
 		activeStroke = null;
+		onChange?.(strokes.length ? buildSubmission() : null);
 	}
 
 	function undoStroke() {
@@ -126,6 +135,7 @@
 		activeStroke = null;
 		strokes = strokes.slice(0, -1);
 		redoStrokes = [...redoStrokes, undoneStroke];
+		onChange?.(strokes.length ? buildSubmission() : null);
 	}
 
 	function redoStroke() {
@@ -140,6 +150,7 @@
 		activeStroke = null;
 		redoStrokes = redoStrokes.slice(0, -1);
 		strokes = [...strokes, redoneStroke];
+		onChange?.(buildSubmission());
 	}
 
 	function clearDrawing() {
@@ -159,6 +170,7 @@
 		}
 		resetClearConfirmation();
 		resetDrawing();
+		onChange?.(null);
 	}
 
 	function resetDrawing() {

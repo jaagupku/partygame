@@ -40,6 +40,7 @@ export function applyHostSnapshot(state: HostGameState, event: RuntimeSnapshotEv
 	state.priceRevealRemainingSeconds = event.price_reveal_remaining_seconds ?? undefined;
 	state.submissionCount = event.submission_count;
 	state.pendingReviewCount = event.pending_review_count;
+	state.drawingGame = event.drawing_game ?? undefined;
 	state.drawingItems = event.drawing_items;
 	state.ownDrawingId = event.own_drawing_id ?? undefined;
 	state.drawingVotedPlayerIds = event.drawing_voted_player_ids;
@@ -56,6 +57,7 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 	}
 
 	const { changes } = event;
+	if ('drawing_game' in changes) state.drawingGame = changes.drawing_game ?? undefined;
 	if (changes.players !== undefined) {
 		state.players =
 			changes.lobby && 'host_id' in changes.lobby
@@ -207,6 +209,7 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 	state.hasSubmitted = event.submitted_player_ids.includes(state.id);
 	state.submissionCount = event.submission_count;
 	state.pendingReviewCount = event.pending_review_count;
+	state.drawingGame = event.drawing_game ?? undefined;
 	state.drawingItems = event.drawing_items;
 	state.ownDrawingId = event.own_drawing_id ?? undefined;
 	state.drawingVotedPlayerIds = event.drawing_voted_player_ids;
@@ -224,6 +227,7 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 	}
 
 	const { changes } = event;
+	if ('drawing_game' in changes) state.drawingGame = changes.drawing_game ?? undefined;
 	if (changes.players !== undefined) {
 		const currentHostId = state.players.find((player) => player.isHost)?.id;
 		state.players =

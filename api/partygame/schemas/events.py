@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from .calorie_game import CalorieCard, CalorieResult, CalorieReveal
+from .drawing_game import DrawingGameView
 from .game_definition import DefinitionTheme, MapInputConfig, PlayerInputKind
 from .lobby import GameState, Player
 from .price_game import PriceCard, PriceResult, PriceReveal
@@ -233,6 +235,10 @@ class RuntimeMediaState(BaseModel):
 
 
 class RuntimeStepState(BaseModel):
+    calorie_mode: Literal["guess", "compare"] | None = None
+    calorie_products: list[CalorieCard] = Field(default_factory=list)
+    calorie_reveal: list[CalorieReveal] = Field(default_factory=list)
+    calorie_results: list[CalorieResult] = Field(default_factory=list)
     price_mode: Literal["guess", "compare"] | None = None
     price_products: list[PriceCard] = Field(default_factory=list)
     price_reveal: list[PriceReveal] = Field(default_factory=list)
@@ -332,6 +338,8 @@ class DrawingVoteItem(BaseModel):
 
 
 class RuntimeSnapshotEvent(BaseEvent):
+    drawing_game: DrawingGameView | None = None
+    drawing_private: dict[str, DrawingGameView] = Field(default_factory=dict)
     type_: str = Event.RUNTIME_SNAPSHOT
     revision: int = 0
     lobby: RuntimeLobbyState

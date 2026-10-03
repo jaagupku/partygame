@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
+from partygame.schemas.calorie_game import CalorieGameSettings
+from partygame.schemas.drawing_game import DrawingSettings
 from partygame.schemas.price_game import PriceGameSettings
 
 
@@ -27,7 +29,9 @@ class DisplayComponent(StrEnum):
 
 
 class CreateGame(BaseModel):
+    drawing_settings: DrawingSettings | None = None
     price_settings: PriceGameSettings | None = None
+    calorie_settings: CalorieGameSettings | None = None
     game_type: str = "trivia"
     definition_id: str = "quiz_demo"
     host_enabled: bool = True
@@ -37,12 +41,20 @@ class CreateGame(BaseModel):
     def price_defaults(cls, values):
         if isinstance(values, dict) and values.get("game_type") == "price_guessing":
             return {"host_enabled": False, "price_settings": {}, **values}
+        if isinstance(values, dict) and values.get("game_type") == "calorie_guessing":
+            return {"host_enabled": False, "calorie_settings": {}, **values}
+        if isinstance(values, dict) and values.get("game_type") == "drawing_mashup":
+            return {"host_enabled": False, "drawing_settings": {}, **values}
         return values
 
     @model_validator(mode="after")
     def normalized_price_settings(self):
         if self.game_type == "price_guessing" and self.price_settings is None:
             self.price_settings = PriceGameSettings()
+        if self.game_type == "calorie_guessing" and self.calorie_settings is None:
+            self.calorie_settings = CalorieGameSettings()
+        if self.game_type == "drawing_mashup" and self.drawing_settings is None:
+            self.drawing_settings = DrawingSettings()
         return self
 
 

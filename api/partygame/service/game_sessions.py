@@ -6,10 +6,14 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from partygame.schemas.calorie_game import CalorieGameSettings
+from partygame.schemas.drawing_game import DrawingMetadata, DrawingSettings, PreparedDrawingSession
 from partygame.schemas.game_definition import GameDefinition
 from partygame.schemas.game_session import PreparedSession, RoundBundle, RoundOrigin, SourceMetadata
 from partygame.schemas.lobby import CreateGame, Lobby
 from partygame.schemas.price_game import PriceGameSettings
+from partygame.service.calories.datasets import CalorieDatasets
+from partygame.service.calories.generator import InsufficientCalorieData
 from partygame.service.definitions import (
     DefinitionProvider,
     PostgresDefinitionProvider,
@@ -100,13 +104,41 @@ class PriceSessionBuilder:
         return PreparedSession.model_validate(prepared.model_dump())
 
 
+class CalorieSessionBuilder:
+    async def prepare(self, settings: CreateGame, user: UserRecord | None) -> PreparedSession:
+        session_id = uuid4().hex
+        try:
+            bundles, datasets = await CalorieDatasets().prepare(
+                settings.calorie_settings or CalorieGameSettings(), randbits(32), session_id
+            )
+        except InsufficientCalorieData as error:
+            raise HTTPException(status_code=409, detail="calorie_content_unavailable") from error
+        prepared = compose_rounds(
+            bundles, definition_id="calorie_guessing", title="Calorie Guessing"
+        )
+        prepared.session_id = session_id
+        prepared.datasets = [SourceMetadata.model_validate(item) for item in datasets]
+        return PreparedSession.model_validate(prepared.model_dump())
+
+
 async def prepare_session(
     settings: CreateGame, user: UserRecord | None, provider: DefinitionProvider
-) -> PreparedSession:
+) -> PreparedSession | PreparedDrawingSession:
     require_game_type(settings.game_type, host_enabled=settings.host_enabled)
+    if settings.game_type == "drawing_mashup":
+        options = settings.drawing_settings or DrawingSettings()
+        return PreparedDrawingSession(
+            session_id=uuid4().hex,
+            seed=randbits(32),
+            settings=options,
+            definition=DrawingMetadata(
+                title="Joonistussegadus" if options.language == "et" else "Drawing Mashup"
+            ),
+        )
     builders: dict[str, SessionBuilder[CreateGame]] = {
         "trivia": TriviaSessionBuilder(provider),
         "price_guessing": PriceSessionBuilder(),
+        "calorie_guessing": CalorieSessionBuilder(),
     }
     try:
         return await builders[settings.game_type].prepare(settings, user)

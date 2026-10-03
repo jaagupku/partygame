@@ -200,65 +200,91 @@
 					{/each}
 				</div>
 
-				<div class="card stack-md">
-					<h2 class="label-title text-2xl">{$messages.admin.answers}</h2>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div>
-							{$messages.admin.totalSubmissions}: {selectedStats.summary.answers?.submitted_count ??
-								0}
-						</div>
-						<div>
-							{$messages.admin.reviewed}: {selectedStats.summary.answers?.reviewed_count ?? 0}
-						</div>
-						<div>
-							{$messages.admin.correctWrong}: {selectedStats.summary.answers?.correct_count ?? 0} /
-							{selectedStats.summary.answers?.wrong_count ?? 0}
-						</div>
-						<div>
-							{$messages.admin.averageAccuracy}: {selectedStats.summary.answers
-								?.average_accuracy_percent ?? '-'}%
-						</div>
-					</div>
-				</div>
-
-				<div class="card stack-md">
-					<h2 class="label-title text-2xl">{$messages.admin.buzzers}</h2>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div>{$messages.admin.buzzCount}: {selectedStats.summary.buzzers?.buzz_count ?? 0}</div>
-						<div>
-							{$messages.admin.fastestBuzz}: {formatSeconds(
-								selectedStats.summary.buzzers?.fastest_reaction_seconds
-							)}
-						</div>
-						<div>
-							{$messages.admin.medianBuzz}: {formatSeconds(
-								selectedStats.summary.buzzers?.median_reaction_seconds
-							)}
-						</div>
-						<div>
-							{$messages.admin.closeCalls}: {selectedStats.summary.buzzers?.close_call_count ?? 0}
-						</div>
-					</div>
-				</div>
-
-				<div class="card stack-md">
-					<h2 class="label-title text-2xl">{$messages.admin.reactions}</h2>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div>
-							{$messages.admin.totalReactions}: {selectedStats.summary.reactions?.total_reactions ??
-								0}
-						</div>
-						<div>
-							{$messages.admin.mostUsedReaction}: {selectedStats.summary.reactions
-								?.most_used_reaction ?? '-'}
-						</div>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						{#each Object.entries(selectedStats.summary.reactions?.reaction_counts ?? {}) as [reaction, count]}
-							<span class="theme-surface-muted badge border">{reaction} {count}</span>
+				{#if selectedStats.summary.drawing}
+					<div class="card stack-md">
+						<h2 class="label-title text-2xl">{$messages.drawingMashup.title}</h2>
+						{#each selectedStats.summary.scoreboard ?? [] as player}
+							{@const metrics = selectedStats.summary.drawing[player.player_id]}
+							{#if metrics}
+								<div class="theme-surface-muted rounded-2xl border px-4 py-3">
+									<strong>{player.name}</strong>
+									<dl class="grid grid-cols-2 gap-2 mt-2">
+										<dt>{$messages.drawingMashup.artistPoints}</dt>
+										<dd>{metrics.artist_points}</dd>
+										<dt>{$messages.drawingMashup.drawing_votes}</dt>
+										<dd>{metrics.votes}</dd>
+										<dt>{$messages.drawingMashup.topicCommendations}</dt>
+										<dd>{metrics.topic}</dd>
+										<dt>{$messages.drawingMashup.criterionCommendations}</dt>
+										<dd>{metrics.criterion}</dd>
+									</dl>
+								</div>
+							{/if}
 						{/each}
 					</div>
-				</div>
+				{:else}
+					<div class="card stack-md">
+						<h2 class="label-title text-2xl">{$messages.admin.answers}</h2>
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div>
+								{$messages.admin.totalSubmissions}: {selectedStats.summary.answers
+									?.submitted_count ?? 0}
+							</div>
+							<div>
+								{$messages.admin.reviewed}: {selectedStats.summary.answers?.reviewed_count ?? 0}
+							</div>
+							<div>
+								{$messages.admin.correctWrong}: {selectedStats.summary.answers?.correct_count ?? 0} /
+								{selectedStats.summary.answers?.wrong_count ?? 0}
+							</div>
+							<div>
+								{$messages.admin.averageAccuracy}: {selectedStats.summary.answers
+									?.average_accuracy_percent ?? '-'}%
+							</div>
+						</div>
+					</div>
+
+					<div class="card stack-md">
+						<h2 class="label-title text-2xl">{$messages.admin.buzzers}</h2>
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div>
+								{$messages.admin.buzzCount}: {selectedStats.summary.buzzers?.buzz_count ?? 0}
+							</div>
+							<div>
+								{$messages.admin.fastestBuzz}: {formatSeconds(
+									selectedStats.summary.buzzers?.fastest_reaction_seconds
+								)}
+							</div>
+							<div>
+								{$messages.admin.medianBuzz}: {formatSeconds(
+									selectedStats.summary.buzzers?.median_reaction_seconds
+								)}
+							</div>
+							<div>
+								{$messages.admin.closeCalls}: {selectedStats.summary.buzzers?.close_call_count ?? 0}
+							</div>
+						</div>
+					</div>
+
+					<div class="card stack-md">
+						<h2 class="label-title text-2xl">{$messages.admin.reactions}</h2>
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div>
+								{$messages.admin.totalReactions}: {selectedStats.summary.reactions
+									?.total_reactions ?? 0}
+							</div>
+							<div>
+								{$messages.admin.mostUsedReaction}: {selectedStats.summary.reactions
+									?.most_used_reaction ?? '-'}
+							</div>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							{#each Object.entries(selectedStats.summary.reactions?.reaction_counts ?? {}) as [reaction, count]}
+								<span class="theme-surface-muted badge border">{reaction} {count}</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
 			</section>
 		{/if}
 	</div>

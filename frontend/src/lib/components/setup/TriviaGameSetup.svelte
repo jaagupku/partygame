@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { beginDisplayFullscreen } from '$lib/display-fullscreen';
 	import { goto } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
@@ -110,6 +111,8 @@
 			return;
 		creating = true;
 		createFailed = false;
+		let cancelFullscreen: (() => void) | undefined;
+		let openedDisplay = false;
 		try {
 			if (onsubmit) {
 				await onsubmit({
@@ -119,6 +122,7 @@
 				});
 				return;
 			}
+			cancelFullscreen = beginDisplayFullscreen();
 			const response = await fetch('/api/v1/lobby/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -131,9 +135,11 @@
 			if (!response.ok) throw new Error('Creation failed');
 			const lobby: Lobby = await response.json();
 			await goto(`/host/${lobby.join_code}`);
+			openedDisplay = true;
 		} catch {
 			createFailed = true;
 		} finally {
+			if (!openedDisplay) cancelFullscreen?.();
 			creating = false;
 		}
 	}

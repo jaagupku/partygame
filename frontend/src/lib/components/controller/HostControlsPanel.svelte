@@ -259,7 +259,9 @@
 				type="button"
 				class="btn btn-ghost w-full"
 				onclick={onResetStep}
-				disabled={Boolean(activeStep?.price_mode && displayPhase === 'answer_reveal')}
+				disabled={Boolean(
+					(activeStep?.price_mode || activeStep?.calorie_mode) && displayPhase === 'answer_reveal'
+				)}
 			>
 				{$messages.gameplay.resetQuestion}
 			</button>

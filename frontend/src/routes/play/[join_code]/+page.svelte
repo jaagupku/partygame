@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DrawingPlayer from '$lib/components/drawing/DrawingPlayer.svelte';
+	import DrawingStage from '$lib/components/drawing/DrawingStage.svelte';
 	import TimerTopBar from '$lib/components/controller/TimerTopBar.svelte';
 	import ContinueGame from '$lib/components/setup/ContinueGame.svelte';
 	import { browser } from '$app/environment';
@@ -100,7 +102,7 @@
 				!$controller.activeStep?.input_enabled ||
 				($controller.hasSubmitted &&
 					$controller.displayPhase !== 'drawing_vote' &&
-					!$controller.activeStep?.price_mode &&
+					!($controller.activeStep?.price_mode || $controller.activeStep?.calorie_mode) &&
 					$controller.activeStep?.input_kind !== 'radio'))
 	);
 	const submittedPlayerNames = $derived(
@@ -301,7 +303,7 @@
 			$controller.hostEnabled ||
 			$controller.lobbyPhase !== 'step_complete' ||
 			$controller.displayPhase !== 'answer_reveal' ||
-			!step?.price_mode
+			!(step?.price_mode || step?.calorie_mode)
 		)
 			return;
 		sendAction({
@@ -591,15 +593,24 @@
 {#if $controller.gameState === 'waiting_for_players'}
 	<div class="card mt-0 text-center" style={definitionThemeStyle($controller.theme)}>
 		<p class="text-xl font-bold">{$messages.gameplay.waitingForGameStart}</p>
+		{#if $controller.drawingGame}<p>{$messages.drawingMashup.minimum}</p>{/if}
 		{#if $controller.isHost}
 			<p class="mt-2 text-lg">{$messages.gameplay.youAreHostController}</p>
-			<button type="button" class="btn btn-primary mt-4 text-3xl" onclick={startGame}
-				>{$messages.gameplay.startGame}</button
+			<button
+				type="button"
+				class="btn btn-primary mt-4 text-3xl"
+				disabled={$controller.drawingGame !== undefined &&
+					$controller.players.filter((p) => p.status === 'connected').length < 3}
+				onclick={startGame}>{$messages.gameplay.startGame}</button
 			>
 		{:else if canStartHostlessGame}
 			<p class="mt-2 text-lg">{$messages.gameplay.youCanStartAsFirstPlayer}</p>
-			<button type="button" class="btn btn-primary mt-4 text-3xl" onclick={startGame}
-				>{$messages.gameplay.startGame}</button
+			<button
+				type="button"
+				class="btn btn-primary mt-4 text-3xl"
+				disabled={$controller.drawingGame !== undefined &&
+					$controller.players.filter((p) => p.status === 'connected').length < 3}
+				onclick={startGame}>{$messages.gameplay.startGame}</button
 			>
 		{/if}
 	</div>
@@ -667,6 +678,18 @@
 					</div>
 				</section>
 			{/if}
+		{:else if $controller.drawingGame && $controller.drawingGame.is_participant}
+			<DrawingPlayer
+				view={$controller.drawingGame}
+				ack={$controller.drawingAck}
+				runId={$controller.runId ?? lobby().id}
+				playerId={$controller.id}
+				organizer={canStartHostlessGame}
+				connected={isConnected}
+				send={sendAction}
+			/>
+		{:else if $controller.drawingGame}
+			<DrawingStage view={$controller.drawingGame} />
 		{:else if !gameFinished && !$controller.isHost}
 			<div
 				class={`controller-player-input controller-player-input-${$controller.activeStep?.input_kind ?? 'none'}`}
@@ -759,11 +782,11 @@
 				onToggleScoreboardVisibility={toggleScoreboardVisibility}
 			/>
 
-			{#if $controller.activeStep?.price_mode}
+			{#if $controller.activeStep?.price_mode || $controller.activeStep?.calorie_mode}
 				<QuestionCard step={$controller.activeStep} displayPhase={$controller.displayPhase} />
 			{/if}
 
-			{#if lobby().game_type !== 'price_guessing'}
+			{#if !['price_guessing', 'calorie_guessing'].includes(lobby().game_type ?? 'trivia')}
 				{#if $controller.activeStep?.evaluation_type !== 'favorite_vote'}
 					<HostReviewQueue
 						activeStep={$controller.activeStep}

@@ -117,3 +117,40 @@ async def continue_lobby(
     return await continuation.continue_game(
         GameStateRepository(redis), game_id, request, payload, current_user
     )
+
+
+@router.get("/{game_id}/drawing/{run_id}/{drawing_id}")
+async def get_drawing_artwork(
+    game_id: str,
+    run_id: str,
+    drawing_id: str,
+    request: Request,
+    response: Response,
+    player_id: str | None = None,
+    redis: Redis = Depends(deps.get_redis),
+):
+    from partygame.service.drawing.runtime import DrawingRuntime
+
+    repo = GameStateRepository(redis)
+    display = await repo.verify_connection_token(
+        game_id, request.cookies.get(connection_cookie_name(game_id))
+    )
+    player = player_id and await repo.verify_connection_token(
+        game_id, request.cookies.get(connection_cookie_name(game_id, player=True)), player_id
+    )
+    if not display and not player:
+        raise HTTPException(403, "Drawing access denied")
+    lobby = await repo.get_lobby_meta(game_id)
+    if (
+        not lobby
+        or lobby.game_type != "drawing_mashup"
+        or (lobby.run_id or lobby.id) != run_id
+        or lobby.phase != "finished"
+    ):
+        raise HTTPException(404, "Drawing not available")
+    state = await DrawingRuntime(repo).load(lobby)
+    art = state["artworks"].get(drawing_id) if state else None
+    if not art or not art["value"]:
+        raise HTTPException(404, "Drawing not available")
+    response.headers["Cache-Control"] = "private, no-store"
+    return art["value"]

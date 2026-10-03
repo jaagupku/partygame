@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DrawingGallery from '$lib/components/drawing/DrawingGallery.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
 	import CelebrationBackground from '$lib/components/endgame/CelebrationBackground.svelte';
@@ -6,6 +7,9 @@
 	import { messages } from '$lib/i18n';
 
 	interface FinaleDisplayProps {
+		drawingGame?: DrawingGameView;
+		lobbyId?: string;
+		runId?: string;
 		endGame: EndGameState;
 		players: Player[];
 		playerMap: Map<string, Player>;
@@ -16,6 +20,9 @@
 	}
 
 	let {
+		drawingGame,
+		lobbyId = '',
+		runId = '',
 		endGame,
 		players,
 		playerMap,
@@ -38,7 +45,9 @@
 			: endGame.stats_cards.filter((card) => card.id !== 'most_wrong').slice(0, 3);
 	});
 	const statLabel = (card: EndGameStatCard) =>
-		$messages.finale.statLabels[card.id as keyof typeof $messages.finale.statLabels] ?? card.label;
+		($messages.drawingMashup[card.id as 'drawing_votes'] as string | undefined) ??
+		$messages.finale.statLabels[card.id as keyof typeof $messages.finale.statLabels] ??
+		card.label;
 	const statDescription = (card: EndGameStatCard) =>
 		$messages.finale.statDescriptions[card.id as keyof typeof $messages.finale.statDescriptions] ??
 		card.description;
@@ -213,9 +222,19 @@
 			{/if}
 		</section>
 	{:else}
-		<section class="scoreboard-with-recap">
+		<section
+			class="scoreboard-with-recap"
+			class:scoreboard-with-gallery={!!drawingGame?.gallery.length}
+		>
 			<div class="min-h-0"><Scoreboard {players} {playerMap} variant="overlay" {standings} /></div>
-			{#if highlights.length}
+			{#if drawingGame?.gallery.length}
+				<DrawingGallery
+					items={drawingGame.gallery}
+					{lobbyId}
+					{runId}
+					language={drawingGame.language}
+				/>
+			{:else if highlights.length}
 				<aside class="highlights-recap" aria-label={$messages.finale.highlightsRecap}>
 					{#each highlights as card (card.id)}
 						<p>
@@ -454,6 +473,18 @@
 		grid-template-rows: minmax(0, 1fr) auto;
 		min-height: 0;
 		gap: 0.75rem;
+	}
+	.scoreboard-with-gallery {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr);
+		overflow: auto;
+	}
+	@media (max-width: 760px) {
+		.scoreboard-with-gallery {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-rows: minmax(240px, auto) max-content;
+			align-content: start;
+		}
 	}
 	.highlights-recap {
 		display: flex;

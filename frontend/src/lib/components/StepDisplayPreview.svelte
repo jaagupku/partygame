@@ -68,7 +68,7 @@
 	const drawingVoteRubric = $derived(getDrawingVoteRubric(step));
 	const showStageRevealCard = $derived(
 		stageLayout &&
-			!step?.price_mode &&
+			!(step?.price_mode || step?.calorie_mode) &&
 			showingAnswerReveal &&
 			revealedAnswer &&
 			!mapRevealStep &&

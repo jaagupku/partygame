@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from partygame.schemas.calorie_game import CalorieQuestion
 from partygame.schemas.price_game import PriceQuestion
 
 DEFINITION_ID_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,79}$"
@@ -45,6 +46,7 @@ class EvaluationType(StrEnum):
     EXACT_NUMBER = auto()
     CLOSEST_NUMBER = auto()
     PRICE_CLOSENESS = auto()
+    CALORIE_CLOSENESS = auto()
     ORDERING_MATCH = auto()
     MULTI_SELECT_WEIGHTED = auto()
     MAP_DISTANCE = auto()
@@ -270,6 +272,12 @@ class HostBehavior(BaseModel):
 
 class StepDefinition(BaseModel):
     price_question: PriceQuestion | None = None
+    calorie_question: CalorieQuestion | None = None
+
+    @property
+    def product_question(self) -> PriceQuestion | CalorieQuestion | None:
+        return self.price_question or self.calorie_question
+
     id: str
     title: str
     body: str | None = None
@@ -285,8 +293,21 @@ class StepDefinition(BaseModel):
             type(self.evaluation.answer) is not int or self.evaluation.answer <= 0
         ):
             raise ValueError("price_closeness requires a positive target in cents")
-        if self.price_question is not None:
-            question = self.price_question
+        if self.price_question is not None and self.calorie_question is not None:
+            raise ValueError("Only one product question is allowed")
+        if self.evaluation.type_ == EvaluationType.CALORIE_CLOSENESS and (
+            type(self.evaluation.answer) is not int or self.evaluation.answer <= 0
+        ):
+            raise ValueError("calorie_closeness requires positive whole kcal")
+        if self.calorie_question is not None:
+            question = self.calorie_question
+            if len({p.basis for p in question.products}) != 1:
+                raise ValueError("Calorie comparisons require the same basis")
+            values = [p.kcal for p in question.reveal]
+            if question.mode == "compare" and len(set(values)) != 2:
+                raise ValueError("Calorie comparisons require distinct values")
+        if self.product_question is not None:
+            question = self.product_question
             expected = 1 if question.mode == "guess" else 2
             if len(question.products) != expected or len(question.reveal) != expected:
                 raise ValueError("Invalid price question item count")
@@ -306,6 +327,7 @@ class StepDefinition(BaseModel):
                 EvaluationType.EXACT_NUMBER,
                 EvaluationType.CLOSEST_NUMBER,
                 EvaluationType.PRICE_CLOSENESS,
+                EvaluationType.CALORIE_CLOSENESS,
             },
             PlayerInputKind.ORDERING: {
                 EvaluationType.NONE,

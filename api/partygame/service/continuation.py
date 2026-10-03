@@ -44,7 +44,8 @@ async def read_setup(repo: GameStateRepository, lobby: schemas.Lobby) -> LobbySe
     return LobbySetup(
         run_id=lobby.run_id or lobby.id,
         settings=payload,
-        settings_complete=bool(saved) or lobby.game_type != "price_guessing",
+        settings_complete=bool(saved)
+        or lobby.game_type not in {"price_guessing", "calorie_guessing", "drawing_mashup"},
         definition_title=lobby.definition_title,
     )
 
@@ -92,7 +93,15 @@ async def continue_game(repo, game_id: str, request: Request, payload: ContinueG
         # Frozen trivia snapshots may originate from an older generated session.
         if next_lobby.run_id == (lobby.run_id or lobby.id):
             next_lobby.run_id = uuid4().hex
+        if setup.game_type == "calorie_guessing":
+            from partygame.service.calories.datasets import CalorieDatasets
+
+            await CalorieDatasets().bind_lobby(prepared.session_id, game_id)
         await repo.replace_run(next_lobby, prepared, setup, settings.GAME_IDLE_TTL_SECONDS)
+        if next_lobby.game_type == "drawing_mashup":
+            from partygame.service.drawing.runtime import DrawingRuntime
+
+            await DrawingRuntime(repo).schedule(next_lobby)
         next_lobby.players = await repo.get_players(game_id)
         snapshot = await GameRuntimeService(repo).build_snapshot(next_lobby)
         public = public_runtime_snapshot(snapshot).model_dump_json()

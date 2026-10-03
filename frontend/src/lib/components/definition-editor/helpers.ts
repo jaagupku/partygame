@@ -278,6 +278,14 @@ export function getEvaluationDetails(): Record<EvaluationType, EvaluationPresent
 			requiresAnswer: true,
 			manualReview: false
 		},
+		calorie_closeness: {
+			type: 'calorie_closeness',
+			label: getMessages().calorieGame.closenessTitle,
+			description: getMessages().calorieGame.closenessDescription,
+			icon: 'fluent:target-arrow-16-filled',
+			requiresAnswer: true,
+			manualReview: false
+		},
 		closest_number: {
 			type: 'closest_number',
 			label: localized.closest_number.label,

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
 	import ProductCard from '$lib/components/prices/ProductCard.svelte';
 	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
 	import { flip } from 'svelte/animate';
@@ -35,6 +36,13 @@
 		variant = 'default'
 	}: QuestionCardProps = $props();
 
+	const productMode = $derived(step?.calorie_mode ?? step?.price_mode);
+	const products = $derived(
+		step?.calorie_products?.length ? step.calorie_products : (step?.price_products ?? [])
+	);
+	const productCopy = $derived(
+		step?.calorie_mode ? { ...$messages.priceGame, ...$messages.calorieGame } : $messages.priceGame
+	);
 	const stageVariant = $derived(variant === 'stage');
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
 	const optionRevealStep = $derived(isOptionRevealStep(step));
@@ -42,7 +50,7 @@
 		step && optionRevealStep ? buildRevealedOptionStates(step, revealedAnswer) : []
 	);
 	const showOptionGrid = $derived(
-		Boolean(step?.input_options.length) && optionRevealStep && !step?.price_mode
+		Boolean(step?.input_options.length) && optionRevealStep && !productMode
 	);
 	const orderingRevealStep = $derived(isOrderingRevealStep(step));
 	const orderingItems = $derived.by(() =>
@@ -53,7 +61,7 @@
 	const showOrderingList = $derived(Boolean(step?.input_options.length) && orderingRevealStep);
 	const showInlineRevealedAnswer = $derived(
 		showingAnswerReveal &&
-			!step?.price_mode &&
+			!productMode &&
 			revealedAnswer &&
 			!stageVariant &&
 			!optionRevealStep &&
@@ -84,10 +92,8 @@
 	class={`question-card overflow-hidden ${
 		stageVariant ? 'question-card-stage-shell question-card-stage' : 'card stack-md'
 	} ${showingAnswerReveal ? 'question-card-reveal-pulse' : ''}`}
-	class:question-card-price-stage={stageVariant && Boolean(step?.price_mode)}
-	class:question-card-price-reveal={stageVariant &&
-		Boolean(step?.price_mode) &&
-		showingAnswerReveal}
+	class:question-card-price-stage={stageVariant && Boolean(productMode)}
+	class:question-card-price-reveal={stageVariant && Boolean(productMode) && showingAnswerReveal}
 >
 	{#if step}
 		<div class="question-card-title-row">
@@ -98,33 +104,30 @@
 						: 'text-3xl font-extrabold'
 				}`}
 			>
-				{step.price_mode ? $messages.priceGame[step.price_mode] : step.title}
+				{productMode ? productCopy[productMode] : step.title}
 			</h3>
 			<span class={`question-card-points-badge ${stageVariant ? 'points-badge-stage' : ''}`}>
 				{fullCreditPointsLabel}
 			</span>
 		</div>
-		{#if step.price_mode}
+		{#if productMode}
 			<div class:price-stage-content={stageVariant}>
 				<div class:price-stage-inner={stageVariant}>
 					<div
-						class={`grid gap-4 ${step.price_mode === 'compare' ? 'sm:grid-cols-2' : ''}`}
+						class={`grid gap-4 ${productMode === 'compare' ? 'sm:grid-cols-2' : ''}`}
 						class:price-stage-products={stageVariant}
-						class:price-stage-single={stageVariant && step.price_mode === 'guess'}
+						class:price-stage-single={stageVariant && productMode === 'guess'}
 					>
-						{#each step.price_products ?? [] as product}<ProductCard
-								{product}
-								stage={stageVariant}
-							/>{/each}
+						{#each products as product}<ProductCard {product} stage={stageVariant} />{/each}
 					</div>
-					<PriceReveal {step} />
+					{#if step.calorie_mode}<CalorieReveal {step} />{:else}<PriceReveal {step} />{/if}
 				</div>
 			</div>
 		{/if}
 		{#if step.body}
 			<StepBodyMarkdown source={step.body} {stageVariant} />
 		{/if}
-		{#if !step.price_mode}
+		{#if !productMode}
 			<div class={`question-card-media ${stageVariant ? 'question-card-media-stage' : ''}`}>
 				{#if step.media?.type_ === 'image'}
 					<ImageQuestionMedia {step} {stageVariant} />

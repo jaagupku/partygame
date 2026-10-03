@@ -101,6 +101,8 @@ class GameStatsArchiver:
                 raise
 
     async def _build_record_values(self, lobby: schemas.Lobby) -> dict[str, Any]:
+        if lobby.game_type == "drawing_mashup":
+            return await self._drawing_record(lobby)
         definition = None
         definition_id = lobby.definition_id or "quiz_demo"
         try:
@@ -150,6 +152,37 @@ class GameStatsArchiver:
                 else len(step_states)
             ),
             "summary": summary,
+        }
+
+    async def _drawing_record(self, lobby) -> dict[str, Any]:
+        from partygame.service.drawing.runtime import DrawingRuntime
+
+        runtime = DrawingRuntime(self.repo)
+        state = await runtime.load(lobby)
+        if not state or state["phase"] != "finished":
+            raise ValueError("Drawing game is not finished")
+        players = [
+            schemas.Player.model_validate(p | {"score": state["scores"][pid]})
+            for pid, p in state["roster"].items()
+        ]
+        return {
+            "game_id": state["run_id"],
+            "join_code": lobby.join_code,
+            "definition_id": "drawing_mashup",
+            "definition_title": lobby.definition_title,
+            "host_enabled": False,
+            "started_at": _to_datetime(state["started_at"]),
+            "finished_at": _to_datetime(state["finished_at"]),
+            "player_count": len(players),
+            "round_count": 1,
+            "step_count": len(state["matchups"]),
+            "summary": {
+                "version": 1,
+                "lobby_id": lobby.id,
+                "game_type": lobby.game_type,
+                "scoreboard": self._build_scoreboard(players, None),
+                "drawing": state["metrics"],
+            },
         }
 
     async def _get_player_metrics(self, lobby_id: str) -> dict[str, dict[str, Any]]:

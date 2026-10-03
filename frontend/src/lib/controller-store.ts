@@ -43,6 +43,10 @@ export function createControllerStore(initialState: ControllerState, onKick: Cal
 	function onMessage(msg: string) {
 		const messageData = JSON.parse(msg);
 		switch (messageData.type_) {
+			case 'drawing_ack': {
+				controller.update((state) => ({ ...state, drawingAck: messageData as DrawingAck }));
+				break;
+			}
 			case 'set_host': {
 				const event: SetHostEvent = messageData;
 				setHost(event.player_id);

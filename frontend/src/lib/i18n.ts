@@ -31,6 +31,117 @@ function defineMessages<T>(value: T): Widen<T> {
 }
 
 const en = defineMessages({
+	drawingMashup: {
+		title: 'Drawing Mashup',
+		description: 'Write topics, draw together, and vote using surprise criteria.',
+		rules:
+			'Write one broad topic and one voting criterion. Draw 2 images with 3–4 players, or 3 with 5+. Criteria stay secret until voting. Each topic shares 1,000 artist points; commendations give writers 10 extra points.',
+		minimum:
+			'At least 3 connected players are needed. With 3 players, you may draw for your own hidden criterion. You never draw your own topic.',
+		writing: 'Write the prompts',
+		drawing: 'Time to draw',
+		voting: 'Vote on the surprise criterion',
+		results: 'Topic results',
+		finished: 'Gallery',
+		topic: 'Drawing topic',
+		criterion: 'Voting criterion',
+		topicHelp: 'Think broadly: a celebration, a journey, a strange place…',
+		criterionHelp: 'How should we judge? Most chaotic, most luxurious, most likely to go wrong…',
+		writingSeconds: 'Writing time (seconds)',
+		drawingSeconds: 'Time per drawing (seconds)',
+		votingSeconds: 'Voting time per topic (seconds)',
+		language: 'Game language for built-in prompts',
+		done: 'Done',
+		ready: 'Ready — waiting for the others',
+		saving: 'Saving…',
+		saved: 'Saved',
+		unsaved: 'Saved on this device; waiting to sync',
+		drawHelp:
+			'Move between your drawings. Your unfinished work is saved and submitted when time runs out. The voting criterion is a surprise.',
+		criterionHidden: 'The criterion will be revealed during voting.',
+		commendTopic: 'Commend the topic (+10)',
+		commendCriterion: 'Commend the criterion (+10)',
+		abstain: 'Abstain',
+		own: 'Your drawing',
+		cannotVote: "You can't vote right now",
+		voteHelp:
+			'Choose a drawing, optionally commend the writing, then tap Done. You can change your ballot until voting closes.',
+		pause: 'Pause',
+		resume: 'Resume',
+		paused: 'Game paused',
+		advance: 'End this phase',
+		confirmAdvance: 'End this phase now? Saved work will be submitted.',
+		progress: 'Players ready',
+		timeLeft: 'Time left',
+		queue: 'Your drawings',
+		waiting: 'Follow the prompts on your device.',
+		points: 'points',
+		votes: 'votes',
+		voteCount: (count: number) => `${count} ${count === 1 ? 'vote' : 'votes'}`,
+		artistPoints: 'Artist points',
+		topicCommendations: 'Topic commendations',
+		criterionCommendations: 'Criterion commendations',
+		uncontested: 'Only one drawing was submitted. Its artist receives all 1,000 points.',
+		no_votes: 'No drawing votes were cast. The 1,000 points are shared equally.',
+		empty: 'No drawings were submitted for this topic. No points awarded.',
+		allocationVotes: '1,000 artist points shared by vote ratio.',
+		revealArtists: 'Meet the artists',
+		revealVotes: 'Who voted for whom?',
+		revealPoints: 'Splitting the 1,000 points',
+		revealBonuses: 'A little love for the writers',
+		revealSummary: 'The results are in!',
+		topDrawing: 'Top drawing',
+		votedForDrawing: (name: string) => `Voted for ${name}'s drawing`,
+		pointShare: (percent: number) => `${percent}% of the 1,000-point pool`,
+		bonusBreakdown: (count: number, points: number) =>
+			`${count} ${count === 1 ? 'commendation' : 'commendations'} × 10 = +${points} points`,
+		previous: 'Previous',
+		next: 'Next',
+		gallery: 'Drawing gallery',
+		galleryError: 'Could not load the drawing. Retrying…',
+		retry: 'Retry',
+		createFailed: 'Could not create the game. Please try again.',
+		error: 'Could not save that action. Please try again.',
+		closed: 'This phase has closed.',
+		conflict: 'This draft changed on another connection. The saved version has been restored.',
+		incomplete: 'Complete every field or drawing before marking yourself done.',
+		invalid_drawing: 'This drawing could not be saved. Check the drawing limits.',
+		invalid_vote: 'That vote or commendation is not allowed.',
+		forbidden: 'This action is not available to you.',
+		stale: 'The game has moved on. Your view has been refreshed.',
+		needs_three_players: 'At least 3 connected players are needed.',
+		drawing_votes: 'Most drawing votes',
+		drawing_topic: 'Most loved topics',
+		drawing_criterion: 'Most loved criteria',
+		fallbackTopics: [
+			'A celebration',
+			'A journey',
+			'An unusual home',
+			'Life underwater',
+			'The distant future',
+			'A mysterious place',
+			'A day at work',
+			'A surprising friendship',
+			'A new invention',
+			'A magical forest',
+			'An unexpected visitor',
+			'A holiday'
+		],
+		fallbackCriteria: [
+			'Most chaotic',
+			'Most luxurious',
+			'Most likely to go wrong',
+			'Most welcoming',
+			'Most mysterious',
+			'Most dramatic',
+			'Most relaxing',
+			'Most surprising',
+			'Most adventurous',
+			'Most ridiculous',
+			'Most futuristic',
+			'Most heartwarming'
+		]
+	},
 	common: {
 		appName,
 		language: 'Language',
@@ -98,6 +209,37 @@ const en = defineMessages({
 		signupFailed: 'Could not create an account.',
 		needAccount: 'Need an account? Sign up',
 		haveAccount: 'Already have an account? Log in'
+	},
+	calorieGame: {
+		title: 'Calorie Guessing',
+		subtitle: 'Guess calories or choose the product with more energy.',
+		guess: 'Guess the calories',
+		compare: 'Which has more calories?',
+		mixed: 'Mixed',
+		rules:
+			'Up to 1,000 points based on percentage closeness. Correct comparisons earn 1,000 points. No speed bonus.',
+		priceBasis:
+			'Foods use kcal per 100 g; drinks use kcal per 100 ml. Values are for the product as sold, rounded to whole kcal.',
+		priceLabel: 'Your guess (kcal)',
+		submit: 'Submit guess',
+		submitHint: 'Enter whole kcal, then submit. Unsubmitted guesses are not sent automatically.',
+		choose: 'Choose the product with more calories for the displayed quantity',
+		invalidPrice: 'Enter a non-negative whole number of kcal.',
+		actualPrice: 'Recorded calories',
+		captured: 'Nutrition recorded',
+		revealTime: 'Correct calorie reveal time',
+		unavailable:
+			'Not enough products are available for these options. Try a shorter game or retry later.',
+		closenessTitle: 'Calorie closeness',
+		closenessDescription:
+			'Every player earns points based on percentage distance from the recorded calories.',
+		per100g: 'kcal per 100 g',
+		per100ml: 'kcal per 100 ml',
+		attribution: 'Product data and images: Open Food Facts contributors',
+		dataset: 'Download dataset (ODbL)',
+		imageLicense: 'Image license (CC BY-SA)',
+		selection:
+			'Products sold in Estonia are preferred, with international products added when needed.'
 	},
 	priceGame: {
 		retailers: {
@@ -180,6 +322,10 @@ const en = defineMessages({
 		failed: 'Could not prepare the next game. Please try again.'
 	},
 	gameCatalog: {
+		drawingMashup: {
+			title: 'Drawing Mashup',
+			description: 'Write topics, draw together, and vote using surprise criteria.'
+		},
 		title: 'Choose a game',
 		available: 'Ready to play',
 		comingSoon: 'Coming soon',
@@ -196,12 +342,17 @@ const en = defineMessages({
 			title: 'Trivia',
 			description: 'Pick a quiz pack and play with a host or let the game run the show.'
 		},
+		calorieGuessing: {
+			title: 'Calorie Guessing',
+			description: 'Guess calories or choose the product with more energy.'
+		},
 		priceGuessing: {
 			title: 'Price Guessing',
 			description: 'Guess the prices of real-world items in rounds generated from data.'
 		}
 	},
 	home: {
+		title: 'Game Night',
 		subtitle: 'Quizzes and party games for everyone.',
 		create: 'Create',
 		join: 'Join'
@@ -441,6 +592,7 @@ const en = defineMessages({
 		revealFinale: 'Reveal Finale',
 		gameFinishedRevealEndScreen:
 			'The game is finished. Reveal the end game screen when you are ready.',
+		organizerControls: 'Organizer controls',
 		hostControls: 'Host Controls',
 		phaseLabel: 'Phase',
 		submissionsLabel: 'Submissions',
@@ -1045,6 +1197,117 @@ const en = defineMessages({
 export type Messages = typeof en;
 
 const et: Messages = {
+	drawingMashup: {
+		title: 'Joonistussegadus',
+		description: 'Kirjuta teemasid, joonista ja hääleta üllatuslike kriteeriumide järgi.',
+		rules:
+			'Kirjuta üks üldine teema ja üks hindamiskriteerium. 3–4 mängijaga joonistab igaüks 2 pilti, vähemalt 5 mängijaga 3. Kriteerium selgub hääletamisel. Iga teema jagab kunstnikele 1000 punkti; kiitus annab kirjutajale 10 lisapunkti.',
+		minimum:
+			'Vaja on vähemalt 3 ühendatud mängijat. Kolmekesi võib sulle sattuda sinu enda salajane kriteerium. Enda teemat sa kunagi ei joonista.',
+		writing: 'Kirjuta ülesanded',
+		drawing: 'Joonistamise aeg',
+		voting: 'Hääleta üllatuskriteeriumi järgi',
+		results: 'Teema tulemused',
+		finished: 'Galerii',
+		topic: 'Joonistamise teema',
+		criterion: 'Hindamiskriteerium',
+		topicHelp: 'Mõtle üldiselt: pidu, teekond, kummaline paik…',
+		criterionHelp: 'Mille järgi hinnata? Kõige kaootilisem, luksuslikum, tõenäolisemalt nurjuv…',
+		writingSeconds: 'Kirjutamise aeg (sekundit)',
+		drawingSeconds: 'Aeg ühe joonistuse kohta (sekundit)',
+		votingSeconds: 'Hääletamise aeg teema kohta (sekundit)',
+		language: 'Valmisteemade keel',
+		done: 'Valmis',
+		ready: 'Valmis — ootame teisi',
+		saving: 'Salvestan…',
+		saved: 'Salvestatud',
+		unsaved: 'Seadmesse salvestatud; ootame ühendust',
+		drawHelp:
+			'Liigu oma piltide vahel. Pooleliolev töö salvestatakse ja esitatakse aja lõppedes. Hindamiskriteerium on üllatus.',
+		criterionHidden: 'Kriteerium selgub hääletamisel.',
+		commendTopic: 'Kiida teemat (+10)',
+		commendCriterion: 'Kiida kriteeriumi (+10)',
+		abstain: 'Jätan hääletamata',
+		own: 'Sinu joonistus',
+		cannotVote: 'Sa ei saa praegu hääletada',
+		voteHelp:
+			'Vali pilt, soovi korral kiida kirjutatut ja vajuta Valmis. Häält saab muuta hääletamise lõpuni.',
+		pause: 'Peata',
+		resume: 'Jätka',
+		paused: 'Mäng on peatatud',
+		advance: 'Lõpeta see etapp',
+		confirmAdvance: 'Kas lõpetada etapp kohe? Salvestatud töö esitatakse.',
+		progress: 'Valmis mängijaid',
+		timeLeft: 'Aega jäänud',
+		queue: 'Sinu joonistused',
+		waiting: 'Järgi oma seadmes kuvatavaid juhiseid.',
+		points: 'punkti',
+		votes: 'häält',
+		voteCount: (count: number) => `${count} ${count === 1 ? 'hääl' : 'häält'}`,
+		artistPoints: 'Joonistuspunktid',
+		topicCommendations: 'Teema kiitused',
+		criterionCommendations: 'Hindamisaluse kiitused',
+		uncontested: 'Esitati ainult üks pilt. Selle autor saab kõik 1000 punkti.',
+		no_votes: 'Piltidele ei antud ühtegi häält. 1000 punkti jagatakse võrdselt.',
+		empty: 'Selle teema kohta ei esitatud ühtegi pilti. Punkte ei jagata.',
+		allocationVotes: '1000 punkti jagatakse häälte osakaalu järgi.',
+		revealArtists: 'Saame kunstnikega tuttavaks',
+		revealVotes: 'Kes kelle poolt hääletas?',
+		revealPoints: 'Jagame 1000 punkti',
+		revealBonuses: 'Kiitus ka kirjutajatele',
+		revealSummary: 'Tulemused on selgunud!',
+		topDrawing: 'Parim joonistus',
+		votedForDrawing: (name: string) => `Mängija ${name} joonistuse poolt hääletanud`,
+		pointShare: (percent: number) => `${String(percent).replace('.', ',')}% 1000 punktist`,
+		bonusBreakdown: (count: number, points: number) =>
+			`${count} ${count === 1 ? 'kiitus' : 'kiitust'} × 10 = +${points} punkti`,
+		previous: 'Eelmine',
+		next: 'Järgmine',
+		gallery: 'Joonistuste galerii',
+		galleryError: 'Pilti ei saanud laadida. Proovime uuesti…',
+		retry: 'Proovi uuesti',
+		createFailed: 'Mängu ei saanud luua. Proovi uuesti.',
+		error: 'Tegevust ei saanud salvestada. Proovi uuesti.',
+		closed: 'See etapp on lõppenud.',
+		conflict: 'Mustand muutus teises ühenduses. Salvestatud versioon taastati.',
+		incomplete: 'Täida kõik väljad või joonistused enne valmimist.',
+		invalid_drawing: 'Pilti ei saanud salvestada. Kontrolli joonistuse piiranguid.',
+		invalid_vote: 'See hääl või kiitus ei ole lubatud.',
+		forbidden: 'See tegevus pole sulle saadaval.',
+		stale: 'Mäng on edasi liikunud. Vaadet värskendati.',
+		needs_three_players: 'Vaja on vähemalt 3 ühendatud mängijat.',
+		drawing_votes: 'Enim joonistushääli',
+		drawing_topic: 'Armastatuimad teemad',
+		drawing_criterion: 'Armastatuimad kriteeriumid',
+		fallbackTopics: [
+			'Pidu',
+			'Teekond',
+			'Ebatavaline kodu',
+			'Elu vee all',
+			'Kauge tulevik',
+			'Salapärane paik',
+			'Tööpäev',
+			'Üllatav sõprus',
+			'Uus leiutis',
+			'Võlumets',
+			'Ootamatu külaline',
+			'Puhkus'
+		],
+		fallbackCriteria: [
+			'Kõige kaootilisem',
+			'Kõige luksuslikum',
+			'Kõige tõenäolisemalt nurjuv',
+			'Kõige külalislahkem',
+			'Kõige salapärasem',
+			'Kõige dramaatilisem',
+			'Kõige lõõgastavam',
+			'Kõige üllatavam',
+			'Kõige seikluslikum',
+			'Kõige naljakam',
+			'Kõige tulevikulisem',
+			'Kõige südamlikum'
+		]
+	},
 	common: {
 		appName,
 		language: 'Keel',
@@ -1112,6 +1375,36 @@ const et: Messages = {
 		signupFailed: 'Kontot ei saanud luua.',
 		needAccount: 'Vajad kontot? Registreeru',
 		haveAccount: 'Konto on olemas? Logi sisse'
+	},
+	calorieGame: {
+		title: 'Kalorite arvamine',
+		subtitle: 'Arva kalorite hulka või vali suurema energiasisaldusega toode.',
+		guess: 'Arva kalorite hulka',
+		compare: 'Kummas on rohkem kaloreid?',
+		mixed: 'Segamini',
+		rules:
+			'Kuni 1000 punkti vastuse suhtelise täpsuse eest. Õige võrdlus annab 1000 punkti. Kiirusboonust ei ole.',
+		priceBasis:
+			'Toidu puhul kcal 100 g kohta, joogi puhul kcal 100 ml kohta. Väärtused on müüdava toote kohta ja ümardatud täiskaloriteni.',
+		priceLabel: 'Sinu pakkumine (kcal)',
+		submit: 'Saada pakkumine',
+		submitHint:
+			'Sisesta kalorite arv täisarvuna ja saada pakkumine. Saatmata pakkumist automaatselt ei edastata.',
+		choose: 'Vali toode, milles on näidatud koguse kohta rohkem kaloreid',
+		invalidPrice: 'Sisesta mittenegatiivne täisarv kaloreid.',
+		actualPrice: 'Salvestatud kalorid',
+		captured: 'Toitumisandmed salvestatud',
+		revealTime: 'Õige kalorihulga näitamise aeg',
+		unavailable:
+			'Nende valikute jaoks pole piisavalt tooteid. Proovi lühemat mängu või hiljem uuesti.',
+		closenessTitle: 'Kaloripakkumise täpsus',
+		closenessDescription: 'Iga mängija saab punkte pakkumise suhtelise erinevuse põhjal.',
+		per100g: 'kcal 100 g kohta',
+		per100ml: 'kcal 100 ml kohta',
+		attribution: 'Tooteandmed ja pildid: Open Food Factsi kaastöölised',
+		dataset: 'Laadi andmestik alla (ODbL)',
+		imageLicense: 'Piltide litsents (CC BY-SA)',
+		selection: 'Eelistatakse Eestis müüdavaid tooteid, vajadusel lisatakse rahvusvahelisi tooteid.'
 	},
 	priceGame: {
 		retailers: {
@@ -1193,6 +1486,10 @@ const et: Messages = {
 		failed: 'Uue mängu ettevalmistamine ebaõnnestus. Proovi uuesti.'
 	},
 	gameCatalog: {
+		drawingMashup: {
+			title: 'Joonistussegadus',
+			description: 'Kirjuta teemasid, joonista ja hääleta üllatuslike kriteeriumide järgi.'
+		},
 		title: 'Vali mäng',
 		available: 'Valmis mängimiseks',
 		comingSoon: 'Peagi tulekul',
@@ -1209,12 +1506,17 @@ const et: Messages = {
 			title: 'Viktoriin',
 			description: 'Vali küsimustepakk ja mängi mängujuhiga või lase mängul end juhtida.'
 		},
+		calorieGuessing: {
+			title: 'Kalorite arvamine',
+			description: 'Arva kalorite hulka või vali suurema energiasisaldusega toode.'
+		},
 		priceGuessing: {
 			title: 'Hinnaarvamine',
 			description: 'Arva päris kaupade hindu andmetest loodud voorudes.'
 		}
 	},
 	home: {
+		title: 'Mänguõhtu',
 		subtitle: 'Viktoriinid ja seltskonnamängud kõigile.',
 		create: 'Loo',
 		join: 'Liitu'
@@ -1446,6 +1748,7 @@ const et: Messages = {
 		waitingForFinalResults: 'Ootan, kuni host näitab lõpptulemusi.',
 		revealFinale: 'Näita finaali',
 		gameFinishedRevealEndScreen: 'Mäng on lõppenud. Näita lõppvaadet siis, kui oled valmis.',
+		organizerControls: 'Korraldaja nupud',
 		hostControls: 'Mängujuhi kontrollid',
 		phaseLabel: 'Faas',
 		submissionsLabel: 'Vastuseid',

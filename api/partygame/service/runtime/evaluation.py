@@ -19,6 +19,7 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
     EvaluationType.EXACT_NUMBER,
     EvaluationType.CLOSEST_NUMBER,
     EvaluationType.PRICE_CLOSENESS,
+    EvaluationType.CALORIE_CLOSENESS,
     EvaluationType.ORDERING_MATCH,
     EvaluationType.MULTI_SELECT_WEIGHTED,
     EvaluationType.MAP_DISTANCE,
@@ -274,6 +275,7 @@ class EvaluationRuntime:
             EvaluationType.EXACT_NUMBER,
             EvaluationType.CLOSEST_NUMBER,
             EvaluationType.PRICE_CLOSENESS,
+            EvaluationType.CALORIE_CLOSENESS,
         ):
             try:
                 return answer is not None and float(answer) == float(answer)

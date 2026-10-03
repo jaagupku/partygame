@@ -1,5 +1,8 @@
 <script lang="ts">
+	import DrawingStage from '$lib/components/drawing/DrawingStage.svelte';
 	import 'iconify-icon';
+	import { exitDisplayFullscreen } from '$lib/display-fullscreen';
+	import { idleCursor } from '$lib/idle-cursor';
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -169,6 +172,7 @@
 	});
 
 	onDestroy(() => {
+		exitDisplayFullscreen();
 		if (resyncIntervalId !== null) {
 			clearInterval(resyncIntervalId);
 			resyncIntervalId = null;
@@ -292,7 +296,11 @@
 		</ul>
 	{/if}
 {:else}
-	<div class="relative h-full min-h-0 overflow-hidden" style={definitionThemeStyle($game.theme)}>
+	<div
+		use:idleCursor
+		class="host-stage relative h-full min-h-0 overflow-hidden"
+		style={definitionThemeStyle($game.theme)}
+	>
 		<WaitingPlayers gameState={$game} bind:reservedWidth={waitingRailWidth} />
 		<section
 			class="relative h-full min-w-0 min-h-0 mt0"
@@ -300,6 +308,9 @@
 		>
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
+					drawingGame={$game.drawingGame}
+					lobbyId={lobby().id}
+					runId={$game.run_id ?? lobby().id}
 					endGame={$game.endGame}
 					players={$game.players}
 					{playerMap}
@@ -323,6 +334,8 @@
 						/>
 					</div>
 				</section>
+			{:else if $game.drawingGame}
+				<DrawingStage view={$game.drawingGame} />
 			{:else if $game.activeItem?.type_ === 'round_intro'}
 				<RoundIntroOverlay round={$game.activeItem.round} persistent={true} />
 			{:else}
@@ -369,6 +382,11 @@
 {/if}
 
 <style>
+	.host-stage:global([data-cursor-idle]),
+	.host-stage:global([data-cursor-idle]) :global(*) {
+		cursor: none !important;
+	}
+
 	.final-ready-panel {
 		background:
 			radial-gradient(

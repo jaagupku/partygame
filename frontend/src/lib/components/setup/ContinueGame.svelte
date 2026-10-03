@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DrawingGameSetup from '$lib/components/drawing/DrawingGameSetup.svelte';
+	import CalorieGameSetup from '$lib/components/calories/CalorieGameSetup.svelte';
 	import { messages } from '$lib/i18n';
 	import { loadGameCatalog, type GameType } from '$lib/game-catalog';
 	import TriviaGameSetup from './TriviaGameSetup.svelte';
@@ -59,7 +61,7 @@
 						? 'archiveFailed'
 						: detail === 'game_run_changed'
 							? 'changed'
-							: detail === 'price_content_unavailable'
+							: ['price_content_unavailable', 'calorie_content_unavailable'].includes(detail)
 								? 'unavailable'
 								: 'failed';
 				if (error === 'changed') onprepared();
@@ -124,7 +126,21 @@
 					{$messages.continueGame.missingSettings}
 				</p>{/if}
 			{#key formKey}
-				{#if selected === 'price_guessing'}
+				{#if selected === 'drawing_mashup'}
+					<DrawingGameSetup
+						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
+						onsubmit={prepare}
+						oncancel={cancel}
+						submitLabel={$messages.continueGame.prepare}
+					/>
+				{:else if selected === 'calorie_guessing'}
+					<CalorieGameSetup
+						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
+						onsubmit={prepare}
+						oncancel={cancel}
+						submitLabel={$messages.continueGame.prepare}
+					/>
+				{:else if selected === 'price_guessing'}
 					<PriceGameSetup
 						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
 						onsubmit={prepare}

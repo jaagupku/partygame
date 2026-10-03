@@ -56,6 +56,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  calorie-scheduler:
+    build:
+      context: ./api
+      target: development
+    command: ["python", "-m", "partygame.service.calories.refresh", "--schedule"]
+    environment:
+      - VALKEY_HOST=valkey
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=partygame
+      - POSTGRES_USER=partygame
+      - POSTGRES_PASSWORD=partygame
+      - MEDIA_ROOT=/app/media
+    volumes:
+      - ./api/partygame:/app/partygame:ro
+      - api-media:/app/media
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

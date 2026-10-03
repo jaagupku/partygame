@@ -61,6 +61,10 @@ async def create(
         )
         await repo.create_lobby(lobby)
         await repo.apply_game_ttl(lobby.id, settings.GAME_IDLE_TTL_SECONDS)
+        if lobby.game_type == "drawing_mashup":
+            from partygame.service.drawing.runtime import DrawingRuntime
+
+            await DrawingRuntime(repo).schedule(lobby)
     except Exception:
         await repo.delete_game(lobby.id)
         raise
@@ -152,6 +156,11 @@ class GameController:
         )
 
     async def broadcast_snapshot(self):
+        if self.lobby.game_type == "drawing_mashup":
+            from partygame.service.drawing.runtime import DrawingRuntime
+
+            await DrawingRuntime(self.repo).broadcast(self.lobby)
+            return
         snapshot = await self.runtime.build_snapshot(self.lobby)
         await self.send(snapshot)
         await self.broadcast(snapshot)

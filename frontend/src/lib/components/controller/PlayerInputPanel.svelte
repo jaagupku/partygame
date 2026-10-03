@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
 	import ProductCard from '$lib/components/prices/ProductCard.svelte';
 	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
 	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
@@ -89,10 +90,23 @@
 				Math.max(0, clockSeconds - priceRevealReceivedAt) * priceRevealSpeed
 		)
 	);
-	const validPrice = $derived(/^\d+(?:[.,]\d{1,2})?$/.test(String(answerValue)));
-	const canReviseAnswer = $derived(
-		Boolean(activeStep?.price_mode) || activeStep?.input_kind === 'radio'
+	const productMode = $derived(activeStep?.calorie_mode ?? activeStep?.price_mode);
+	const products = $derived(
+		activeStep?.calorie_products?.length
+			? activeStep.calorie_products
+			: (activeStep?.price_products ?? [])
 	);
+	const productCopy = $derived(
+		activeStep?.calorie_mode
+			? { ...$messages.priceGame, ...$messages.calorieGame }
+			: $messages.priceGame
+	);
+	const validPrice = $derived(
+		activeStep?.calorie_mode
+			? /^\d+$/.test(String(answerValue)) && Number(answerValue) <= 1000000
+			: /^\d+(?:[.,]\d{1,2})?$/.test(String(answerValue))
+	);
+	const canReviseAnswer = $derived(Boolean(productMode) || activeStep?.input_kind === 'radio');
 	const inputDisabled = $derived(
 		baseInputDisabled || (!canReviseAnswer && pendingSubmissionStepId === activeStep?.id)
 	);
@@ -175,7 +189,8 @@
 			return undefined;
 		}
 		if (step.input_kind === 'number') {
-			if (step.price_mode) return validPrice ? String(answerValue).replace(',', '.') : undefined;
+			if (step.calorie_mode || step.price_mode)
+				return validPrice ? String(answerValue).replace(',', '.') : undefined;
 			return Number(answerValue);
 		}
 		if (step.input_kind === 'ordering') {
@@ -205,7 +220,7 @@
 		if (
 			!step ||
 			step.id !== stepId ||
-			Boolean(step.price_mode) ||
+			Boolean(step.calorie_mode || step.price_mode) ||
 			inputDisabled ||
 			previewMode ||
 			hasSubmitted ||
@@ -280,14 +295,14 @@
 	}
 </script>
 
-{#if activeStep?.price_mode}
+{#if activeStep && productMode}
 	<section class="card controller-compact-card stack-md">
-		<h2 class="label-title text-2xl">{$messages.priceGame[activeStep.price_mode]}</h2>
-		{#if activeStep.price_mode === 'compare'}
-			<p>{$messages.priceGame.choose}</p>
+		<h2 class="label-title text-2xl">{productCopy[productMode]}</h2>
+		{#if productMode === 'compare'}
+			<p>{productCopy.choose}</p>
 			<p class="theme-text-muted text-sm">{$messages.gameplay.canChangeChoice}</p>
 			<div class="grid gap-3 sm:grid-cols-2">
-				{#each activeStep.price_products ?? [] as product}
+				{#each products as product}
 					<button
 						class={`theme-surface rounded-xl border p-3 text-left ${selectedRadioOption === product.id ? 'ring-2 ring-sky-500' : ''}`}
 						disabled={inputDisabled || displayPhase === 'answer_reveal'}
@@ -297,33 +312,35 @@
 				{/each}
 			</div>
 		{:else}
-			{#each activeStep.price_products ?? [] as product}<ProductCard {product} />{/each}
+			{#each products as product}<ProductCard {product} />{/each}
 			{#if displayPhase !== 'answer_reveal'}
-				<p class="theme-text-muted text-sm">{$messages.priceGame.submitHint}</p>
+				<p class="theme-text-muted text-sm">{productCopy.submitHint}</p>
 				<label class="input-wrap"
-					><span class="label-title">{$messages.priceGame.priceLabel}</span><input
+					><span class="label-title">{productCopy.priceLabel}</span><input
 						class="input"
-						inputmode="decimal"
+						inputmode={activeStep?.calorie_mode ? 'numeric' : 'decimal'}
 						bind:value={answerValue}
 						disabled={inputDisabled}
-						placeholder={$messages.priceGame.priceLabel}
+						placeholder={productCopy.priceLabel}
 					/></label
 				>
 				{#if answerValue !== '' && !validPrice}<p role="status">
-						{$messages.priceGame.invalidPrice}
+						{productCopy.invalidPrice}
 					</p>{/if}
 				<button
 					type="button"
 					class="btn btn-primary"
 					disabled={inputDisabled || previewMode || !validPrice}
-					onclick={submitAnswer}>{$messages.priceGame.submit}</button
+					onclick={submitAnswer}>{productCopy.submit}</button
 				>
 			{/if}
 		{/if}
 		{#if hasSubmitted && displayPhase !== 'answer_reveal'}<p role="status">
 				{$messages.gameplay.answerSubmitted}
 			</p>{/if}
-		<PriceReveal step={activeStep} />
+		{#if activeStep.calorie_mode}<CalorieReveal step={activeStep} />{:else}<PriceReveal
+				step={activeStep}
+			/>{/if}
 		{#if showPriceReady && displayPhase === 'answer_reveal' && priceRevealRemainingSeconds !== undefined}
 			<p class="theme-text-muted text-sm">
 				{$messages.priceGame.revealRemaining}: {Math.ceil(priceRevealSecondsLeft)}

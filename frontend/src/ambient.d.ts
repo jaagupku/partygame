@@ -9,6 +9,7 @@ type EvaluationType =
 	| 'exact_number'
 	| 'closest_number'
 	| 'price_closeness'
+	| 'calorie_closeness'
 	| 'ordering_match'
 	| 'multi_select_weighted'
 	| 'map_distance'
@@ -421,7 +422,19 @@ type PriceReveal = {
 	captured_at: string;
 };
 type PriceResult = { player_id: string; player_name: string; answer: unknown; points: number };
+type CalorieCard = PriceCard & { basis: '100g' | '100ml' };
+type CalorieReveal = {
+	id: string;
+	kcal: number;
+	basis: '100g' | '100ml';
+	source_url: string;
+	captured_at: string;
+};
 type RuntimeStepState = {
+	calorie_mode?: 'guess' | 'compare' | null;
+	calorie_products?: CalorieCard[];
+	calorie_reveal?: CalorieReveal[];
+	calorie_results?: PriceResult[];
 	price_mode?: 'guess' | 'compare' | null;
 	price_products?: PriceCard[];
 	price_reveal?: PriceReveal[];
@@ -548,6 +561,10 @@ type GameStatSummary = {
 	round_count: number;
 	step_count: number;
 	summary: {
+		drawing?: Record<
+			string,
+			{ artist_points: number; votes: number; topic: number; criterion: number }
+		>;
 		scoreboard?: Array<{ player_id: string; name: string; score: number; place: number }>;
 		answers?: {
 			submitted_count?: number;
@@ -580,6 +597,7 @@ type GameStatSummaryList = {
 };
 
 type RuntimeSnapshotEvent = {
+	drawing_game?: DrawingGameView | null;
 	type_: 'runtime_snapshot';
 	revision: number;
 	lobby: RuntimeLobbyState;
@@ -621,6 +639,7 @@ type RuntimePatchEvent = {
 	base_revision: number;
 	revision: number;
 	changes: {
+		drawing_game?: DrawingGameView | null;
 		lobby?: Partial<RuntimeLobbyState>;
 		theme?: DefinitionTheme | null;
 		players?: Player[];
@@ -744,6 +763,7 @@ type PlayerReactionEvent = {
 };
 
 type HostGameState = Lobby & {
+	drawingGame?: DrawingGameView;
 	lastRevision: number;
 	theme?: DefinitionTheme | null;
 	activeItem?: RuntimeItemState;
@@ -777,6 +797,8 @@ type HostGameState = Lobby & {
 };
 
 type ControllerState = {
+	drawingGame?: DrawingGameView;
+	drawingAck?: DrawingAck;
 	runId?: string;
 	id: string;
 	players: Player[];
@@ -858,7 +880,15 @@ interface Window {
 	onYouTubeIframeAPIReady?: () => void;
 }
 
+type CalorieSettings = {
+	mode: 'guess' | 'compare' | 'mixed';
+	questions: number;
+	answer_seconds: number;
+	reveal_seconds: number;
+};
 type GameSetupSettings = {
+	drawing_settings?: DrawingSettings;
+	calorie_settings?: CalorieSettings | null;
 	game_type: string;
 	definition_id?: string;
 	host_enabled: boolean;
@@ -869,4 +899,69 @@ type GameSetupSettings = {
 		answer_seconds: number;
 		reveal_seconds: number;
 	} | null;
+};
+
+type DrawingSettings = {
+	writing_seconds: number;
+	drawing_seconds: number;
+	voting_seconds: number;
+	language: 'en' | 'et';
+};
+type DrawingText = { text: string; fallback: number | null };
+type MashupArtwork = {
+	id: string;
+	topic: DrawingText;
+	criterion?: DrawingText | null;
+	value: DrawingSubmission | null;
+	revision: number;
+	player_id?: string | null;
+	player_name?: string | null;
+	vote_count: number;
+	points: number;
+	own: boolean;
+};
+type MashupBallot = { drawing_id: string | null; topic: boolean; criterion: boolean };
+type MashupRevealedVote = { voter_id: string; voter_name: string; drawing_id: string };
+type MashupMatchup = {
+	id: string;
+	topic: DrawingText;
+	criterion: DrawingText;
+	drawings: MashupArtwork[];
+	can_commend_topic: boolean;
+	can_commend_criterion: boolean;
+	topic_author?: string | null;
+	criterion_author?: string | null;
+	topic_points: number;
+	criterion_points: number;
+	allocation?: 'votes' | 'uncontested' | 'no_votes' | 'empty' | null;
+	revealed_votes?: MashupRevealedVote[];
+};
+type DrawingGameView = {
+	phase: 'waiting' | 'writing' | 'drawing' | 'voting' | 'results' | 'finished';
+	phase_id: number;
+	deadline: number | null;
+	remaining_seconds: number | null;
+	server_time?: number | null;
+	reveal_duration?: number | null;
+	paused: boolean;
+	language: 'en' | 'et';
+	participant_ids: string[];
+	ready_ids: string[];
+	is_participant: boolean;
+	prompt?: { topic: string; criterion: string; revision: number } | null;
+	assignments: MashupArtwork[];
+	matchup?: MashupMatchup | null;
+	matchup_number: number;
+	matchup_count: number;
+	ballot?: MashupBallot | null;
+	gallery: MashupArtwork[];
+};
+type DrawingAck = {
+	type_: 'drawing_ack';
+	request_id: string;
+	run_id: string;
+	status: 'ok' | 'error';
+	revision?: number;
+	reason?: string;
+	view?: DrawingGameView | null;
 };

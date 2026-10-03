@@ -15,3 +15,5 @@ services:
     ports: !override ["127.0.0.1:${PRICE_E2E_PORT:-18080}:80"]
   price-scheduler:
     profiles: ["disabled-in-browser-tests"]
+  calorie-scheduler:
+    profiles: ["disabled-in-browser-tests"]

@@ -2,8 +2,8 @@
 
 Game types are launch choices, while game definitions are editable content packs.
 The catalog (`GET /api/v1/game-types`) lists stable IDs, localization keys,
-availability, and supported host modes. Trivia and Price Guessing are available; Price Guessing requires a usable
-product dataset. New frontend copy belongs in both languages in `i18n.ts`.
+availability, and supported host modes. Trivia, Price Guessing, and Calorie Guessing are available; the generated games require usable
+product datasets. New frontend copy belongs in both languages in `i18n.ts`.
 
 ## Preparation and play
 
@@ -92,3 +92,10 @@ Run `PRICE_E2E_URL=http://localhost pnpm --dir frontend exec playwright test
 lobby-continuation.spec.ts` against an existing local stack with Price Guessing
 content, or pass `lobby-continuation.spec.ts` to `scripts/test-price-browser.sh`
 for the isolated fixture stack.
+
+## Drawing Mashup
+
+Drawing Mashup uses a version-2 prepared session and a dedicated runtime for
+private assignments and player-authored content. Existing version-1 games retain
+their rounds/steps runtime. See [Drawing Mashup](drawing-game.md) for its protocol,
+scoring, deadline worker, and validation.

@@ -25,19 +25,19 @@
 </script>
 
 <svelte:head>
-	<title>{$messages.common.appName}</title>
+	<title>{$messages.home.title}</title>
 	<meta name="description" content={$messages.home.subtitle} />
-	<meta property="og:title" content={$messages.common.appName} />
+	<meta property="og:title" content={$messages.home.title} />
 	<meta property="og:description" content={$messages.home.subtitle} />
 	<meta property="og:site_name" content={$messages.common.appName} />
 	<meta property="og:type" content="website" />
 	<meta name="twitter:card" content="summary" />
-	<meta name="twitter:title" content={$messages.common.appName} />
+	<meta name="twitter:title" content={$messages.home.title} />
 	<meta name="twitter:description" content={$messages.home.subtitle} />
 </svelte:head>
 
 <div class="md:pt-8">
-	<h1 class="page-title">{$messages.common.appName}</h1>
+	<h1 class="page-title">{$messages.home.title}</h1>
 	<p class="page-subtitle">{$messages.home.subtitle}</p>
 
 	<div class="stack-lg">
@@ -60,7 +60,8 @@
 						<div class="card relative flex min-h-64 flex-col gap-4" class:playable-tile={available}>
 							<span
 								class="theme-soft-primary flex h-16 w-16 items-center justify-center rounded-2xl text-4xl"
-								aria-hidden="true">{game.id === 'trivia' ? '?' : '€'}</span
+								aria-hidden="true"
+								>{game.id === 'drawing_mashup' ? '✎' : game.id === 'trivia' ? '?' : '€'}</span
 							>
 							<h3 class="text-2xl font-extrabold">
 								{#if available}

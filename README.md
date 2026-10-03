@@ -153,3 +153,9 @@ round composition, and future dataset generators.
 
 [Price Guessing](docs/price-game.md) documents the playable modes, weekly product
 refresh, dataset migration, scheduler service, and validation.
+
+[Calorie Guessing](docs/calorie-game.md) covers Open Food Facts ingestion, calorie
+scoring, units, attribution, and validation.
+
+[Drawing Mashup](docs/drawing-game.md) documents the standalone prompt, drawing,
+voting, and gallery game.

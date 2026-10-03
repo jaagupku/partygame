@@ -74,6 +74,8 @@ async def test_catalog_and_legacy_request_defaults():
     assert [(entry.id, entry.availability) for entry in catalog] == [
         ("trivia", "available"),
         ("price_guessing", "available"),
+        ("calorie_guessing", "available"),
+        ("drawing_mashup", "available"),
     ]
     assert catalog[0].host_modes == ("hosted", "automatic")
     assert schemas.CreateGame().game_type == "trivia"
