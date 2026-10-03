@@ -68,6 +68,15 @@ export function applyHostPatch(state: HostGameState, event: RuntimePatchEvent): 
 		state.theme = changes.theme;
 	}
 	if (changes.lobby) {
+		if ('run_id' in changes.lobby) {
+			if (state.run_id !== changes.lobby.run_id) state.lastReaction = undefined;
+			state.run_id = changes.lobby.run_id;
+		}
+		if ('game_type' in changes.lobby) state.game_type = changes.lobby.game_type;
+		if ('definition_id' in changes.lobby) state.definition_id = changes.lobby.definition_id;
+		if ('definition_title' in changes.lobby)
+			state.definition_title = changes.lobby.definition_title;
+		if ('starter_id' in changes.lobby) state.starter_id = changes.lobby.starter_id;
 		if (changes.lobby.state !== undefined) {
 			state.state = changes.lobby.state;
 		}
@@ -178,6 +187,7 @@ export function applyControllerSnapshot(state: ControllerState, event: RuntimeSn
 		state.lastReaction = undefined;
 	}
 	state.runId = event.lobby.run_id;
+	state.gameType = event.lobby.game_type;
 	state.lastRevision = event.revision;
 	state.players = withHostFlags(event.players, event.lobby.host_id);
 	state.gameState = event.lobby.state;
@@ -239,6 +249,15 @@ export function applyControllerPatch(state: ControllerState, event: RuntimePatch
 		state.theme = changes.theme;
 	}
 	if (changes.lobby) {
+		if ('run_id' in changes.lobby) {
+			if (state.runId !== changes.lobby.run_id) {
+				state.answerResult = 'none';
+				state.submissionError = undefined;
+				state.lastReaction = undefined;
+			}
+			state.runId = changes.lobby.run_id;
+		}
+		if ('game_type' in changes.lobby) state.gameType = changes.lobby.game_type;
 		if (changes.lobby.state !== undefined) {
 			state.gameState = changes.lobby.state;
 		}

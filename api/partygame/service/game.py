@@ -13,7 +13,10 @@ from partygame.schemas.game_definition import (
     StepDefinition,
 )
 from partygame.service.calories.scoring import calorie_points, parse_calories
-from partygame.service.definitions import DefinitionProvider, get_default_definition_provider
+from partygame.service.definitions import (
+    DefinitionProvider,
+    get_default_definition_provider,
+)
 from partygame.service.game_sessions import load_session_definition
 from partygame.service.prices.scoring import parse_euros, price_points
 from partygame.service.runtime.end_game import (
@@ -59,9 +62,13 @@ class GameRuntimeService:
         archive_game_stats: bool = True,
     ):
         self.repo = repo
-        self.definition_provider = definition_provider or get_default_definition_provider()
+        self.definition_provider = (
+            definition_provider or get_default_definition_provider()
+        )
         self.timing = TimingState()
-        self.evaluation = EvaluationRuntime(repo, self.timing, get_step_state=self.get_step_state)
+        self.evaluation = EvaluationRuntime(
+            repo, self.timing, get_step_state=self.get_step_state
+        )
         self.end_game = EndGameRuntime(repo, self.timing)
         self.stats_archiver = (
             stats_archiver
@@ -87,20 +94,25 @@ class GameRuntimeService:
         self,
         lobby: schemas.Lobby,
     ) -> list[FlattenedStep]:
-        definition = await load_session_definition(self.repo, lobby, self.definition_provider)
+        definition = await load_session_definition(
+            self.repo, lobby, self.definition_provider
+        )
         visible_rounds: list[tuple[RoundDefinition, list[StepDefinition]]] = []
         for round_definition in definition.rounds:
             compatible_steps = [
                 step
                 for step in round_definition.steps
-                if lobby.host_enabled or self.evaluation.is_hostless_compatible_step(lobby, step)
+                if lobby.host_enabled
+                or self.evaluation.is_hostless_compatible_step(lobby, step)
             ]
             if compatible_steps:
                 visible_rounds.append((round_definition, compatible_steps))
 
         steps: list[FlattenedStep] = []
         total_rounds = len(visible_rounds)
-        for round_index, (round_definition, compatible_steps) in enumerate(visible_rounds):
+        for round_index, (round_definition, compatible_steps) in enumerate(
+            visible_rounds
+        ):
             for index, step in enumerate(compatible_steps):
                 steps.append(
                     FlattenedStep(
@@ -116,8 +128,12 @@ class GameRuntimeService:
     async def _flatten_steps(self, lobby: schemas.Lobby) -> list[StepDefinition]:
         return [item.step for item in await self._flatten_steps_with_metadata(lobby)]
 
-    async def get_definition_theme(self, lobby: schemas.Lobby) -> schemas.DefinitionTheme | None:
-        definition = await load_session_definition(self.repo, lobby, self.definition_provider)
+    async def get_definition_theme(
+        self, lobby: schemas.Lobby
+    ) -> schemas.DefinitionTheme | None:
+        definition = await load_session_definition(
+            self.repo, lobby, self.definition_provider
+        )
         return definition.theme
 
     async def get_current_step(self, lobby: schemas.Lobby) -> StepDefinition | None:
@@ -136,7 +152,9 @@ class GameRuntimeService:
     ) -> bool:
         return self.evaluation.is_hostless_auto_progress_step(lobby, step)
 
-    async def get_current_round(self, lobby: schemas.Lobby) -> schemas.RuntimeRoundState | None:
+    async def get_current_round(
+        self, lobby: schemas.Lobby
+    ) -> schemas.RuntimeRoundState | None:
         steps = await self._flatten_steps_with_metadata(lobby)
         if lobby.current_step >= len(steps):
             return None
@@ -149,8 +167,12 @@ class GameRuntimeService:
             return False
         return steps[lobby.current_step].is_round_end
 
-    async def start_game(self, lobby: schemas.Lobby) -> tuple[schemas.Lobby, StepDefinition | None]:
-        await self.end_game.initialize_end_game_state(lobby.id, auto_reveal=not lobby.host_enabled)
+    async def start_game(
+        self, lobby: schemas.Lobby
+    ) -> tuple[schemas.Lobby, StepDefinition | None]:
+        await self.end_game.initialize_end_game_state(
+            lobby.id, auto_reveal=not lobby.host_enabled
+        )
         if self.stats_archiver is not None:
             await self.stats_archiver.mark_started(lobby.id)
         await self.repo.set_lobby_fields(
@@ -173,7 +195,13 @@ class GameRuntimeService:
         await self.initialize_step_state(lobby, step)
         return lobby, step
 
-    async def initialize_step_state(self, lobby: schemas.Lobby, step: StepDefinition):
+    async def initialize_step_state(
+        self,
+        lobby: schemas.Lobby,
+        step: StepDefinition,
+        *,
+        price_transition: bool = False,
+    ):
         started_at = time()
         ends_at = None
         if step.timer.seconds is not None:
@@ -182,9 +210,15 @@ class GameRuntimeService:
         await self.repo.set_step_cache(
             lobby.id,
             {
+                "price_transition_started_at": started_at if price_transition else None,
+                "price_transition_ends_at": (
+                    started_at + 0.6 if price_transition else None
+                ),
                 "step_id": step.id,
                 "step_index": lobby.current_step,
-                "display_phase": "question_active",
+                "display_phase": (
+                    "price_transition" if price_transition else "question_active"
+                ),
                 "scoreboard_visible": False,
                 "media_paused": (
                     step.media.type_ == MediaType.VIDEO and not step.media.autoplay
@@ -206,7 +240,8 @@ class GameRuntimeService:
                 "buzzed_player_id": "",
                 "buzzer_opened_at": (
                     started_at
-                    if lobby.host_enabled and step.player_input.kind == PlayerInputKind.BUZZER
+                    if lobby.host_enabled
+                    and step.player_input.kind == PlayerInputKind.BUZZER
                     else None
                 ),
                 "buzz_reaction_seconds": None,
@@ -215,17 +250,21 @@ class GameRuntimeService:
                 "revealed_submission_value": None,
                 "revealed_answer_value": None,
                 "reviewed_player_ids": [],
-                "timer_started_at": started_at,
-                "timer_ends_at": ends_at,
+                "timer_started_at": None if price_transition else started_at,
+                "timer_ends_at": None if price_transition else ends_at,
                 "timer_remaining_seconds": (
-                    float(step.timer.seconds) if step.timer.seconds is not None else None
+                    float(step.timer.seconds)
+                    if step.timer.seconds is not None
+                    else None
                 ),
                 "review_step_index": "",
                 **self.timing.initial_reveal_state(step, started_at),
             },
         )
 
-    async def begin_round_intro(self, lobby: schemas.Lobby) -> schemas.RuntimeSnapshotEvent:
+    async def begin_round_intro(
+        self, lobby: schemas.Lobby
+    ) -> schemas.RuntimeSnapshotEvent:
         round_state = await self.get_current_round(lobby)
         if (
             round_state is not None
@@ -287,7 +326,9 @@ class GameRuntimeService:
         ):
             return False
         players = await self.repo.get_players(lobby.id)
-        if not any(player.id == player_id and player.id != lobby.host_id for player in players):
+        if not any(
+            player.id == player_id and player.id != lobby.host_id for player in players
+        ):
             return False
         ready_ids = set(state.get("price_ready_player_ids", []))
         if (player_id in ready_ids) == ready:
@@ -359,7 +400,11 @@ class GameRuntimeService:
         if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
             return [], False
         step = await self.get_current_step(lobby)
-        if step is None or player_id == lobby.host_id or lobby.phase != "question_active":
+        if (
+            step is None
+            or player_id == lobby.host_id
+            or lobby.phase != "question_active"
+        ):
             return [], False
 
         state = await self.get_step_state(lobby.id)
@@ -411,7 +456,10 @@ class GameRuntimeService:
             and parse_calories(value) is None
         ):
             return [], False
-        if step.evaluation.type_ == EvaluationType.PRICE_CLOSENESS and parse_euros(value) is None:
+        if (
+            step.evaluation.type_ == EvaluationType.PRICE_CLOSENESS
+            and parse_euros(value) is None
+        ):
             return [], False
         if (
             step.product_question
@@ -465,11 +513,15 @@ class GameRuntimeService:
 
         votes[player_id] = target_player_id
         await self.repo.set_step_cache(lobby.id, {"drawing_votes": votes})
-        if await self._all_drawing_voters_submitted(lobby, state | {"drawing_votes": votes}):
+        if await self._all_drawing_voters_submitted(
+            lobby, state | {"drawing_votes": votes}
+        ):
             return await self.close_step(lobby), True
         return [], True
 
-    async def set_buzzer_state(self, lobby: schemas.Lobby, active: bool) -> list[schemas.BaseEvent]:
+    async def set_buzzer_state(
+        self, lobby: schemas.Lobby, active: bool
+    ) -> list[schemas.BaseEvent]:
         if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
             return []
         step = await self.get_current_step(lobby)
@@ -492,7 +544,10 @@ class GameRuntimeService:
                 await self.repo.set_lobby_fields(lobby.id, phase="host_review")
                 lobby.phase = "host_review"
         await self.repo.set_step_cache(lobby.id, updates)
-        return [schemas.BuzzerStateEvent(active=active), await self.build_snapshot(lobby)]
+        return [
+            schemas.BuzzerStateEvent(active=active),
+            await self.build_snapshot(lobby),
+        ]
 
     async def reveal_submission(
         self,
@@ -510,7 +565,9 @@ class GameRuntimeService:
                     "revealed_submission_value": answers[player_id],
                 },
             )
-            submission = schemas.RevealedSubmission(player_id=player_id, value=answers[player_id])
+            submission = schemas.RevealedSubmission(
+                player_id=player_id, value=answers[player_id]
+            )
         else:
             await self.repo.set_step_cache(
                 lobby.id,
@@ -522,6 +579,8 @@ class GameRuntimeService:
         return schemas.RevealedSubmissionEvent(submission=submission)
 
     async def show_answer_reveal(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []
@@ -577,6 +636,8 @@ class GameRuntimeService:
         return [await self.build_snapshot(lobby)]
 
     async def show_question(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []
@@ -587,7 +648,11 @@ class GameRuntimeService:
         )
         return [await self.build_snapshot(lobby)]
 
-    async def show_previous_reveal(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+    async def show_previous_reveal(
+        self, lobby: schemas.Lobby
+    ) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         live_state = await self.get_step_state(lobby.id)
         source_index = self._review_step_index(live_state)
         if source_index is None:
@@ -596,13 +661,17 @@ class GameRuntimeService:
             source_index = lobby.current_step
 
         target_index = source_index - 1
-        if target_index < 0 or not await self._has_archived_step(lobby.id, target_index):
+        if target_index < 0 or not await self._has_archived_step(
+            lobby.id, target_index
+        ):
             return [await self.build_snapshot(lobby)]
 
         await self.repo.set_step_cache(lobby.id, {"review_step_index": target_index})
         return [await self.build_snapshot(lobby)]
 
     async def show_next_reveal(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         live_state = await self.get_step_state(lobby.id)
         review_index = self._review_step_index(live_state)
         if review_index is None:
@@ -766,7 +835,9 @@ class GameRuntimeService:
                 )
                 score_event = await self.update_score(
                     lobby,
-                    schemas.UpdateScoreEvent(player_id=event.player_id, add_score=points),
+                    schemas.UpdateScoreEvent(
+                        player_id=event.player_id, add_score=points
+                    ),
                 )
                 updates.update(self.timing.reveal_answer_state(step))
                 updates["display_phase"] = "answer_reveal"
@@ -816,7 +887,9 @@ class GameRuntimeService:
                 }
             },
         )
-        await self.repo.set_step_cache(lobby.id, {"reviewed_player_ids": reviewed_player_ids})
+        await self.repo.set_step_cache(
+            lobby.id, {"reviewed_player_ids": reviewed_player_ids}
+        )
         events.append(
             schemas.AnswerJudgedEvent(
                 player_id=event.player_id,
@@ -829,7 +902,9 @@ class GameRuntimeService:
 
         if event.accepted:
             points = (
-                step.evaluation.points if event.points_override is None else event.points_override
+                step.evaluation.points
+                if event.points_override is None
+                else event.points_override
             )
             score_event = await self.update_score(
                 lobby,
@@ -876,7 +951,9 @@ class GameRuntimeService:
                 else 0
             )
             for player_id, value in answers.items():
-                if self.evaluation.matches_exact_text_answer(value, accepted_answers, max_distance):
+                if self.evaluation.matches_exact_text_answer(
+                    value, accepted_answers, max_distance
+                ):
                     new_score = (
                         await self.repo.get_player_score(lobby.id, player_id)
                         + step.evaluation.points
@@ -907,7 +984,10 @@ class GameRuntimeService:
                         accepted_player_ids.add(player_id)
                         metric_updates[player_id]["correct_count"] = 1
                         metric_updates[player_id]["wrong_count"] = 0
-        elif evaluation_type in {EvaluationType.PRICE_CLOSENESS, EvaluationType.CALORIE_CLOSENESS}:
+        elif evaluation_type in {
+            EvaluationType.PRICE_CLOSENESS,
+            EvaluationType.CALORIE_CLOSENESS,
+        }:
             for player_id, value in answers.items():
                 delta = (
                     calorie_points
@@ -915,7 +995,9 @@ class GameRuntimeService:
                     else price_points
                 )(value, step.evaluation.answer)
                 if delta > 0:
-                    new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                    new_score = (
+                        await self.repo.get_player_score(lobby.id, player_id) + delta
+                    )
                     await self.repo.set_player_score(lobby.id, player_id, new_score)
                     updates[player_id] = new_score
                     accepted_player_ids.add(player_id)
@@ -949,7 +1031,9 @@ class GameRuntimeService:
                                 break
                     if delta <= 0:
                         continue
-                    new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                    new_score = (
+                        await self.repo.get_player_score(lobby.id, player_id) + delta
+                    )
                     await self.repo.set_player_score(lobby.id, player_id, new_score)
                     updates[player_id] = new_score
                     accepted_player_ids.add(player_id)
@@ -971,7 +1055,9 @@ class GameRuntimeService:
                         metric_updates[player_id]["wrong_count"] = 0
         elif evaluation_type == EvaluationType.MULTI_SELECT_WEIGHTED:
             answer = step.evaluation.answer
-            option_scores = answer.get("option_scores") if isinstance(answer, dict) else None
+            option_scores = (
+                answer.get("option_scores") if isinstance(answer, dict) else None
+            )
             if isinstance(option_scores, list):
                 score_by_option: dict[str, int] = {}
                 for entry in option_scores:
@@ -986,7 +1072,10 @@ class GameRuntimeService:
                         continue
                     delta = sum(score_by_option.get(option, 0) for option in set(value))
                     if delta > 0:
-                        new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                        new_score = (
+                            await self.repo.get_player_score(lobby.id, player_id)
+                            + delta
+                        )
                         await self.repo.set_player_score(lobby.id, player_id, new_score)
                         updates[player_id] = new_score
                         accepted_player_ids.add(player_id)
@@ -997,7 +1086,9 @@ class GameRuntimeService:
                 delta = self.evaluation.score_map_distance_answer(step, value)
                 if delta <= 0:
                     continue
-                new_score = await self.repo.get_player_score(lobby.id, player_id) + delta
+                new_score = (
+                    await self.repo.get_player_score(lobby.id, player_id) + delta
+                )
                 await self.repo.set_player_score(lobby.id, player_id, new_score)
                 updates[player_id] = new_score
                 accepted_player_ids.add(player_id)
@@ -1028,7 +1119,9 @@ class GameRuntimeService:
         ]
         return judged_events + [schemas.ScoresUpdatedEvent(updates=updates)]
 
-    async def evaluate_drawing_vote_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+    async def evaluate_drawing_vote_step(
+        self, lobby: schemas.Lobby
+    ) -> list[schemas.BaseEvent]:
         step = await self.get_current_step(lobby)
         if step is None or step.evaluation.type_ != EvaluationType.FAVORITE_VOTE:
             return [schemas.ScoresUpdatedEvent()]
@@ -1081,6 +1174,8 @@ class GameRuntimeService:
         return [schemas.ScoresUpdatedEvent(updates=updates)]
 
     async def close_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
             return []
         step = await self.get_current_step(lobby)
@@ -1128,25 +1223,35 @@ class GameRuntimeService:
             EvaluationType.MAP_DISTANCE,
         ):
             for auto_event in await self.evaluate_auto_step(lobby):
-                if isinstance(auto_event, schemas.ScoresUpdatedEvent) and not auto_event.updates:
+                if (
+                    isinstance(auto_event, schemas.ScoresUpdatedEvent)
+                    and not auto_event.updates
+                ):
                     continue
                 events.append(auto_event)
         elif evaluation_type == EvaluationType.FAVORITE_VOTE:
             for score_event in await self.evaluate_drawing_vote_step(lobby):
-                if isinstance(score_event, schemas.ScoresUpdatedEvent) and not score_event.updates:
+                if (
+                    isinstance(score_event, schemas.ScoresUpdatedEvent)
+                    and not score_event.updates
+                ):
                     continue
                 events.append(score_event)
         elif step.player_input.kind == PlayerInputKind.BUZZER:
             phase = (
                 "host_review"
-                if self.snapshots.pending_review_count(await self.get_step_state(lobby.id))
+                if self.snapshots.pending_review_count(
+                    await self.get_step_state(lobby.id)
+                )
                 else "step_complete"
             )
         else:
             phase = (
                 "host_review"
                 if step.evaluation.type_ == EvaluationType.HOST_JUDGED
-                and self.snapshots.pending_review_count(await self.get_step_state(lobby.id))
+                and self.snapshots.pending_review_count(
+                    await self.get_step_state(lobby.id)
+                )
                 else "step_complete"
             )
         await self.repo.set_lobby_fields(lobby.id, phase=phase)
@@ -1158,7 +1263,8 @@ class GameRuntimeService:
                 step_updates = {
                     "display_phase": "answer_reveal",
                     "scoreboard_visible": (
-                        not lobby.host_enabled and await self.is_current_step_round_end(lobby)
+                        not lobby.host_enabled
+                        and await self.is_current_step_round_end(lobby)
                     ),
                 } | self.timing.answer_reveal_updates(step)
                 if step.product_question is not None and not lobby.host_enabled:
@@ -1172,8 +1278,12 @@ class GameRuntimeService:
         return events
 
     async def advance_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
             return await self.show_next_reveal(lobby)
+        if lobby.game_type == "price_guessing" and lobby.phase != "step_complete":
+            return []
         await self._archive_current_step_reveal(lobby)
         next_step = lobby.current_step + 1
         await self.repo.set_step_cache(
@@ -1206,18 +1316,41 @@ class GameRuntimeService:
                 schemas.StepAdvancedEvent(step_index=next_step),
                 await self.build_snapshot(lobby),
             ]
-        await self.repo.set_lobby_fields(lobby.id, phase="question_active")
+        transitioning = lobby.game_type == "price_guessing"
+        lobby.phase = "price_transition" if transitioning else "question_active"
+        await self.repo.set_lobby_fields(lobby.id, phase=lobby.phase)
+        await self.initialize_step_state(lobby, step, price_transition=transitioning)
+        return [
+            schemas.StepAdvancedEvent(step_index=next_step),
+            await self.build_snapshot(lobby),
+        ]
+
+    async def finish_price_transition(self, lobby: schemas.Lobby) -> bool:
+        if lobby.game_type != "price_guessing" or lobby.phase != "price_transition":
+            return False
+        state = await self.get_step_state(lobby.id)
+        deadline = self.timing.to_float(state.get("price_transition_ends_at"))
+        if deadline is None or time() < deadline:
+            return False
+        step = await self.get_current_step(lobby)
+        if step is None:
+            return False
         lobby.phase = "question_active"
+        await self.repo.set_lobby_fields(lobby.id, phase=lobby.phase)
         await self.initialize_step_state(lobby, step)
-        return [schemas.StepAdvancedEvent(step_index=next_step), await self.build_snapshot(lobby)]
+        return True
 
     async def reset_current_step(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+        if lobby.phase == "price_transition":
+            return []
         if self._review_step_index(await self.get_step_state(lobby.id)) is not None:
             return []
         step = await self.get_current_step(lobby)
         if step is None:
             return []
-        if step.product_question and (await self.get_step_state(lobby.id)).get("evaluated"):
+        if step.product_question and (await self.get_step_state(lobby.id)).get(
+            "evaluated"
+        ):
             return []
         await self.repo.set_lobby_fields(lobby.id, phase="question_active")
         lobby.phase = "question_active"
@@ -1227,13 +1360,17 @@ class GameRuntimeService:
     async def reveal_end_game(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
         return await self.end_game.reveal_end_game(lobby, self.build_snapshot)
 
-    async def advance_end_game_stage(self, lobby: schemas.Lobby) -> list[schemas.BaseEvent]:
+    async def advance_end_game_stage(
+        self, lobby: schemas.Lobby
+    ) -> list[schemas.BaseEvent]:
         return await self.end_game.advance_end_game_stage(lobby, self.build_snapshot)
 
     async def toggle_end_game_autoplay(
         self, lobby: schemas.Lobby, enabled: bool
     ) -> list[schemas.BaseEvent]:
-        return await self.end_game.toggle_end_game_autoplay(lobby, enabled, self.build_snapshot)
+        return await self.end_game.toggle_end_game_autoplay(
+            lobby, enabled, self.build_snapshot
+        )
 
     async def record_player_reaction(
         self,
@@ -1276,7 +1413,11 @@ class GameRuntimeService:
         lobby_id: str,
         step_state: dict[str, Any] | None = None,
     ) -> list[str]:
-        state = step_state if step_state is not None else await self.get_step_state(lobby_id)
+        state = (
+            step_state
+            if step_state is not None
+            else await self.get_step_state(lobby_id)
+        )
         answers = state.get("answers", {})
         if not isinstance(answers, dict):
             answers = {}
@@ -1322,7 +1463,9 @@ class GameRuntimeService:
         voter_ids = {
             player.id
             for player in players
-            if player.id and player.id != lobby.host_id and player.id in answer_player_ids
+            if player.id
+            and player.id != lobby.host_id
+            and player.id in answer_player_ids
         }
         submitted_voter_ids = set(step_state.get("drawing_votes", {}).keys())
         return voter_ids <= submitted_voter_ids

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { presentationPortal } from '$lib/presentation/scope';
 	import { messages } from '$lib/i18n';
 
 	interface Props {
@@ -27,16 +28,6 @@
 	const hasLabel = $derived(Boolean(normalizedLabel));
 	const showInlineStatus = $derived(showInline && hasLabel && !connected);
 	const showStatusChip = $derived(showDisconnectedChip && hasLabel && !connected);
-
-	function portal(node: HTMLElement) {
-		document.body.appendChild(node);
-
-		return {
-			destroy() {
-				node.remove();
-			}
-		};
-	}
 </script>
 
 {#if showInlineStatus}
@@ -45,7 +36,7 @@
 
 {#if showStatusChip}
 	<div
-		use:portal
+		use:presentationPortal
 		class="theme-soft-danger fixed bottom-4 left-4 z-20 rounded-full border px-4 py-2 text-sm font-bold uppercase tracking-[0.16em] shadow-lg backdrop-blur"
 	>
 		{normalizedLabel}

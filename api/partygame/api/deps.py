@@ -13,8 +13,10 @@ from partygame.state.auth_models import UserRecord, UserRole
 
 async def get_redis() -> AsyncGenerator[Redis]:
     conn = get_connection()
-    yield conn
-    await conn.aclose()
+    try:
+        yield conn
+    finally:
+        await conn.aclose()
 
 
 async def get_current_user_optional(

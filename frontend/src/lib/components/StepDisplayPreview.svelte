@@ -55,6 +55,10 @@
 	let hasSeenSubmissionCount = $state(false);
 	let submissionPulseKey = $state(0);
 	let mapRevealMarkersVisible = $state(false);
+	let hasPriceTransition = $state(false);
+	$effect(() => {
+		if (step?.price_transition) hasPriceTransition = true;
+	});
 	let mapRevealTimer: number | null = null;
 
 	const stageLayout = $derived(layoutMode === 'host-stage');
@@ -279,6 +283,18 @@
 				heightClass="h-full"
 			/>
 		</section>
+	{:else if step?.price_mode}
+		<div class="question-stage-price" class:question-stage-enter={!hasPriceTransition}>
+			<QuestionCard
+				{step}
+				{revealedSubmission}
+				{revealedAnswer}
+				{buzzerActive}
+				{buzzedPlayerName}
+				{displayPhase}
+				variant={stageLayout ? 'stage' : 'default'}
+			/>
+		</div>
 	{:else}
 		{#key step?.id ?? 'empty-step'}
 			<div class="question-stage-enter">
@@ -308,7 +324,7 @@
 		</div>
 	{:else if !showingAnswerReveal && countdown > 0}
 		<div class="stage-footer grid gap-2">
-			<div class={`card w-full p-3 md:p-4 ${stageLayout ? '' : 'mx-auto max-w-3xl'}`}>
+			<div class={stageLayout ? 'stage-timer-panel' : 'card mx-auto w-full max-w-3xl p-3 md:p-4'}>
 				<Timer
 					{countdown}
 					totalDuration={step?.timer.seconds ?? countdown}
@@ -323,6 +339,16 @@
 </div>
 
 <style>
+	.stage-timer-panel {
+		padding-inline: clamp(0.5rem, 1.1vw, 1.25rem);
+	}
+
+	.question-stage-price {
+		height: 100%;
+		min-height: 0;
+		min-width: 0;
+		overflow: hidden;
+	}
 	.question-stage-enter {
 		height: 100%;
 		min-height: 0;

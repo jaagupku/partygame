@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" fill="none">
+<!-- Original department-store illustration. No external assets or fonts. -->
+<ellipse cx="359" cy="278" rx="312" ry="14" fill="#183e3a" opacity=".1"/>
+<path d="M98 96h524v177H98z" fill="#e5d6b4" stroke="#183e3a" stroke-width="4"/>
+<path d="M121 137h167v114H121zm311 0h167v114H432z" fill="#cfe0cd" stroke="#183e3a" stroke-width="4"/>
+<path d="M309 135h102v138H309z" fill="#17665b" stroke="#183e3a" stroke-width="4"/>
+<path d="M320 148h80v106h-80z" fill="#f8f1df"/><path d="M360 148v106" stroke="#17665b" stroke-width="4"/>
+<path d="M344 199v18m32-18v18" stroke="#183e3a" stroke-width="4" stroke-linecap="round"/>
+<path d="M80 68h560l13 47H67z" fill="#fffaf0" stroke="#183e3a" stroke-width="4"/>
+<path d="M91 68h40l-7 47H80zm80 0h40l-3 47h-42zm80 0h40l1 47h-42zm80 0h40l5 47h-42zm80 0h40l9 47h-42zm80 0h40l13 47h-42zm80 0h40l17 47h-42z" fill="#17665b"/>
+<path d="M67 115h586v9q-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0-21 22-42 0z" fill="#17665b"/>
+<rect x="259" y="14" width="202" height="49" rx="7" fill="#efbb45" stroke="#183e3a" stroke-width="4"/>
+<path d="M292 31h105m-105 14h68" stroke="#183e3a" stroke-width="6" stroke-linecap="round"/>
+<path d="m416 28 10 10-10 10" stroke="#183e3a" stroke-width="4"/>
+<path d="M132 225h145m165 0h145" stroke="#17665b" stroke-width="8"/>
+<rect x="143" y="178" width="39" height="44" rx="4" fill="#efbb45" stroke="#183e3a" stroke-width="3"/>
+<path d="M152 177v-9a10 10 0 0 1 20 0v9" stroke="#183e3a" stroke-width="3"/>
+<path d="m201 172 15-12 12 6 12-6 15 12-9 16-6-5v37h-24v-37l-6 5z" fill="#fffaf0" stroke="#183e3a" stroke-width="3"/>
+<rect x="454" y="164" width="56" height="40" rx="4" fill="#17665b" stroke="#183e3a" stroke-width="3"/>
+<path d="M482 205v16m-15 1h30m-36-51h26" stroke="#183e3a" stroke-width="3" stroke-linecap="round"/>
+<path d="M543 181h24v40h-24z" fill="#f8f1df" stroke="#183e3a" stroke-width="3"/>
+<path d="M539 181h32l-8-24h-16z" fill="#efbb45" stroke="#183e3a" stroke-width="3"/>
+<path d="m33 263 5-59h38l8 59z" fill="#efbb45" stroke="#183e3a" stroke-width="3"/>
+<path d="M47 205v-9a11 11 0 0 1 22 0v9" stroke="#183e3a" stroke-width="3"/>
+<path d="M652 274v-77m0 34q-35-5-29-31 31-2 29 31zm1-14q34-10 31-38-30 1-31 38z" fill="#17665b" stroke="#183e3a" stroke-width="3"/>
+<path d="m635 246 5 29h25l5-29z" fill="#c88562" stroke="#183e3a" stroke-width="3"/>
+<path d="m48 138 3 10 10 3-10 3-3 10-3-10-10-3 10-3zm623-84 3 10 10 3-10 3-3 10-3-10-10-3 10-3z" fill="#efbb45"/>
+</svg>

@@ -1,5 +1,8 @@
+import asyncio
 from collections import defaultdict
 from typing import Any
+
+from redis.asyncio.client import PubSub
 
 _display_connections: dict[str, set[Any]] = defaultdict(set)
 _player_connections: dict[str, dict[str, Any]] = defaultdict(dict)
@@ -39,4 +42,22 @@ def get_displays(game_id: str) -> list[Any]:
 def get_players(game_id: str, exclude: set[str] | None = None) -> list[Any]:
     exclude = exclude or set()
     players = _player_connections.get(game_id, {})
-    return [controller for player_id, controller in players.items() if player_id not in exclude]
+    return [
+        controller
+        for player_id, controller in players.items()
+        if player_id not in exclude
+    ]
+
+
+async def close_subscription(pubsub: PubSub | None, *tasks: asyncio.Task | None):
+    """Stop readers before returning their dedicated PubSub connection to the pool."""
+    pending = [task for task in tasks if task is not None]
+    for task in pending:
+        task.cancel()
+    try:
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+    finally:
+        # UNSUBSCRIBE alone keeps the connection checked out, even with no channels.
+        if pubsub is not None:
+            await pubsub.aclose()

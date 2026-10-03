@@ -19,7 +19,7 @@ export type DefinitionTheme = {
 	accent?: string | null;
 };
 
-type ResolvedPalette = {
+export type ResolvedPalette = {
 	background: string;
 	backgroundAlt: string;
 	backgroundWarm: string;
@@ -297,7 +297,7 @@ function semanticThemeVariables(palette: ResolvedPalette, mode: ThemeMode): Them
 	return variables;
 }
 
-function paletteThemeVariables(palette: ResolvedPalette, mode: ThemeMode): ThemeVariables {
+export function paletteThemeVariables(palette: ResolvedPalette, mode: ThemeMode): ThemeVariables {
 	return {
 		'--party-bg-a': palette.background,
 		'--party-bg-b': palette.backgroundAlt,

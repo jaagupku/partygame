@@ -145,7 +145,17 @@ test('answer, vote, reconnect and next-question animations keep stable slots', a
 		left: el.getBoundingClientRect().left,
 		padding: parseFloat(getComputedStyle(el).paddingLeft)
 	}));
-	expect(stage.left + stage.padding).toBeGreaterThanOrEqual(rail!.x + rail!.width);
+	expect(stage.left).toBe(rail!.x);
+	expect(stage.padding).toBe(0);
+	await expect(page.locator('.waiting-rail')).toHaveCSS('pointer-events', 'none');
+	const question = page.locator('.question-card');
+	const questionBefore = await question.boundingBox();
+	host.patch({ active_step: { ...host.step, id: 'next', input_enabled: false } });
+	await expect(page.locator('.waiting-avatar')).toHaveCount(0);
+	expect(await question.boundingBox()).toEqual(questionBefore);
+	host.patch({ active_step: { ...host.step, id: 'next', input_enabled: true } });
+	await expect(page.locator('.waiting-avatar')).toHaveCount(3);
+	expect(await question.boundingBox()).toEqual(questionBefore);
 	host.patch({ scoreboard_visible: true });
 	await expect(page.locator('aside')).toHaveCSS('opacity', '1');
 	await expect(a).toHaveCount(1);
@@ -159,6 +169,7 @@ test('large narrow display wraps circles and respects reduced motion', async ({ 
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	const host = await display(page, 30);
+	await expect(page.locator('.waiting-rail + section')).toHaveCSS('padding-left', '0px');
 	const avatars = page.locator('.waiting-avatar');
 	const boxes = await avatars.evaluateAll((els) =>
 		els.map((el) => {

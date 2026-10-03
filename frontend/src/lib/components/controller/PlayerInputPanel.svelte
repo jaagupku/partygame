@@ -2,6 +2,7 @@
 	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
 	import ProductCard from '$lib/components/prices/ProductCard.svelte';
 	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
+	import PriceTransition from '$lib/presentation/price/PriceTransition.svelte';
 	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
 	import { messages } from '$lib/i18n';
 	import { onMount } from 'svelte';
@@ -108,7 +109,9 @@
 	);
 	const canReviseAnswer = $derived(Boolean(productMode) || activeStep?.input_kind === 'radio');
 	const inputDisabled = $derived(
-		baseInputDisabled || (!canReviseAnswer && pendingSubmissionStepId === activeStep?.id)
+		baseInputDisabled ||
+			Boolean(activeStep?.price_transition) ||
+			(!canReviseAnswer && pendingSubmissionStepId === activeStep?.id)
 	);
 	const buzzerLockedOut = $derived(disabledBuzzerPlayerIds.includes(playerId));
 	const useNumberSlider = $derived(hasConfiguredNumberSlider(activeStep));
@@ -296,23 +299,40 @@
 </script>
 
 {#if activeStep && productMode}
-	<section class="card controller-compact-card stack-md">
+	<section
+		class="card controller-compact-card stack-md"
+		class:price-checkout-entry={Boolean(activeStep.price_mode)}
+	>
 		<h2 class="label-title text-2xl">{productCopy[productMode]}</h2>
 		{#if productMode === 'compare'}
 			<p>{productCopy.choose}</p>
 			<p class="theme-text-muted text-sm">{$messages.gameplay.canChangeChoice}</p>
-			<div class="grid gap-3 sm:grid-cols-2">
-				{#each products as product}
-					<button
-						class={`theme-surface rounded-xl border p-3 text-left ${selectedRadioOption === product.id ? 'ring-2 ring-sky-500' : ''}`}
-						disabled={inputDisabled || displayPhase === 'answer_reveal'}
-						onclick={() => submitRadioOption(product.id)}
-						aria-pressed={selectedRadioOption === product.id}><ProductCard {product} /></button
-					>
-				{/each}
-			</div>
+			<PriceTransition
+				{products}
+				stepId={activeStep.id}
+				transition={activeStep.price_transition}
+				phone
+			>
+				<div class="grid gap-3 sm:grid-cols-2">
+					{#each products as product}
+						<button
+							class={`theme-surface rounded-xl border p-3 text-left ${selectedRadioOption === product.id ? 'ring-2 ring-sky-500' : ''}`}
+							disabled={inputDisabled || displayPhase === 'answer_reveal'}
+							onclick={() => submitRadioOption(product.id)}
+							aria-pressed={selectedRadioOption === product.id}><ProductCard {product} /></button
+						>
+					{/each}
+				</div>
+			</PriceTransition>
 		{:else}
-			{#each products as product}<ProductCard {product} />{/each}
+			<PriceTransition
+				{products}
+				stepId={activeStep.id}
+				transition={activeStep.price_transition}
+				phone
+			>
+				{#each products as product}<ProductCard {product} />{/each}
+			</PriceTransition>
 			{#if displayPhase !== 'answer_reveal'}
 				<p class="theme-text-muted text-sm">{productCopy.submitHint}</p>
 				<label class="input-wrap"

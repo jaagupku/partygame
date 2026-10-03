@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { locale } from '$lib/i18n';
 import PriceGameSetup from './PriceGameSetup.svelte';
 import PriceReveal from './PriceReveal.svelte';
+import QuestionCard from '../QuestionCard.svelte';
+import { priceResultDelay, rankPriceResults } from './price-reveal';
 import PlayerInputPanel from '../controller/PlayerInputPanel.svelte';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
@@ -227,7 +229,7 @@ describe('price game', () => {
 		expect(screen.queryByRole('link')).toBeNull();
 		expect(screen.queryByText('Answers and points')).toBeNull();
 	});
-	it('renders recorded prices, source attribution and all player results', () => {
+	it('focuses the price, keeps attribution collapsed, and preserves rows on snapshots', async () => {
 		const value = step('guess');
 		value.price_reveal = [
 			{
@@ -242,12 +244,81 @@ describe('price game', () => {
 			{ player_id: 'p1', player_name: 'Alice', answer: '1.25', points: 1000 },
 			{ player_id: 'p2', player_name: 'Bob', answer: null, points: 0 }
 		];
-		render(PriceReveal, { step: value });
+		const view = render(PriceReveal, { step: value });
 		expect(screen.getAllByText('€1.25').length).toBe(2);
 		expect(screen.getByText('No answer')).toBeTruthy();
+		expect(view.container.querySelector('details')!.open).toBe(false);
+		const firstRow = view.container.querySelector('.price-result');
+		await view.rerender({
+			step: { ...value, price_results: value.price_results?.map((row) => ({ ...row })) }
+		});
+		expect(view.container.querySelector('.price-result')).toBe(firstRow);
+		view.container.querySelector('details')!.open = true;
 		expect(screen.getByRole('link', { name: 'View product' }).getAttribute('href')).toBe(
 			'https://www.rimi.ee/product'
 		);
 		expect(screen.getByText(/\+1000/)).toBeTruthy();
 	});
+});
+
+it('orders guesses by distance even when scores tie, preserving ties and placing missing answers last', () => {
+	const value = step('guess');
+	value.price_reveal = [
+		{
+			id: '0',
+			price_minor: 10000,
+			retailer: 'rimi',
+			source_url: 'https://www.rimi.ee/product',
+			captured_at: '2026-10-03T00:00:00Z'
+		}
+	];
+	const row = (id: string, answer: unknown, points = 0): PriceResult => ({
+		player_id: id,
+		player_name: id,
+		answer,
+		points
+	});
+	value.price_results = [
+		row('missing', null),
+		row('far', 1000),
+		row('near', 300),
+		row('under', 99, 990),
+		row('over', 101, 990),
+		row('exact', 100, 1000),
+		row('zero', 0)
+	];
+	expect(rankPriceResults(value).map((r) => r.player_id)).toEqual([
+		'exact',
+		'under',
+		'over',
+		'zero',
+		'near',
+		'far',
+		'missing'
+	]);
+	expect(value.price_results[0].player_id).toBe('missing');
+	value.price_mode = 'compare';
+	value.price_results = [row('missing', null), row('wrong', '0'), row('right', '1', 1000)];
+	expect(rankPriceResults(value).map((r) => r.player_id)).toEqual(['right', 'wrong', 'missing']);
+	expect(priceResultDelay(0, 50)).toBe(450);
+	expect(priceResultDelay(49, 50) + 220).toBeLessThan(2000);
+});
+
+it('moves the previous product out even when question-local card IDs are reused', async () => {
+	const cancel = vi.spyOn(globalThis, 'cancelAnimationFrame');
+	const first = step('guess');
+	const view = render(QuestionCard, { step: first, variant: 'stage' });
+	const next = {
+		...first,
+		id: 's2',
+		price_products: [{ ...cards[0], title: 'Next product' }],
+		price_transition: { id: 'run:s2', duration_ms: 600, elapsed_ms: 100 }
+	};
+	await view.rerender({ step: next, variant: 'stage' });
+	expect(view.container.querySelector('.outgoing')?.textContent).toContain('Milk 1l');
+	expect(view.container.querySelector('.incoming')?.textContent).toContain('Next product');
+	await view.rerender({ step: { ...next, price_transition: null }, variant: 'stage' });
+	expect(view.container.querySelector('.outgoing')).toBeNull();
+	expect(cancel).toHaveBeenCalled();
+	cancel.mockRestore();
 });

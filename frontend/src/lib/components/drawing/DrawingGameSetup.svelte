@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { presentationScope } from '$lib/presentation/scope';
+	import { resolvePresentation } from '$lib/presentation/registry';
+	import { primePresentationAudio } from '$lib/presentation/audio-driver';
+	import PresentationDecoration from '$lib/presentation/PresentationDecoration.svelte';
 	import { beginDisplayFullscreen } from '$lib/display-fullscreen';
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -40,6 +44,7 @@
 			host_enabled: false,
 			drawing_settings: options
 		};
+		let cancelAudio: (() => void) | undefined;
 		let cancelFullscreen: (() => void) | undefined;
 		let openedDisplay = false;
 		try {
@@ -47,6 +52,7 @@
 				await onsubmit(settings);
 				return;
 			}
+			if (resolvePresentation('drawing_mashup')?.audio) cancelAudio = primePresentationAudio();
 			cancelFullscreen = beginDisplayFullscreen();
 			const response = await fetch('/api/v1/lobby/create', {
 				method: 'POST',
@@ -60,57 +66,69 @@
 		} catch {
 			failed = true;
 		} finally {
-			if (!openedDisplay) cancelFullscreen?.();
+			if (!openedDisplay) {
+				cancelFullscreen?.();
+				cancelAudio?.();
+			}
 			busy = false;
 		}
 	}
 </script>
 
-<h1 class="page-title">{$messages.drawingMashup.title}</h1>
-<p class="page-subtitle">{$messages.drawingMashup.rules}</p>
-<form class="card stack-md mx-auto max-w-2xl" onsubmit={create}>
-	<p>{$messages.drawingMashup.minimum}</p>
-	<label class="stack-sm"
-		>{$messages.drawingMashup.writingSeconds}<input
-			class="input"
-			type="number"
-			min="30"
-			max="300"
-			required
-			bind:value={options.writing_seconds}
-		/></label
-	>
-	<label class="stack-sm"
-		>{$messages.drawingMashup.drawingSeconds}<input
-			class="input"
-			type="number"
-			min="30"
-			max="300"
-			required
-			bind:value={options.drawing_seconds}
-		/></label
-	>
-	<label class="stack-sm"
-		>{$messages.drawingMashup.votingSeconds}<input
-			class="input"
-			type="number"
-			min="10"
-			max="120"
-			required
-			bind:value={options.voting_seconds}
-		/></label
-	>
-	<label class="stack-sm"
-		>{$messages.drawingMashup.language}<select class="input" bind:value={options.language}
-			>{#each locales as language}<option value={language.code}>{language.label}</option
-				>{/each}</select
-		></label
-	>
-	{#if failed}<p role="alert">{$messages.drawingMashup.createFailed}</p>{/if}
-	<button class="btn btn-primary" type="submit" disabled={busy || !hydrated}
-		>{busy ? $messages.gameCatalog.creating : (submitLabel ?? $messages.common.createGame)}</button
-	>
-	{#if oncancel}<button class="btn btn-ghost" type="button" onclick={oncancel} disabled={busy}
-			>{$messages.common.cancel}</button
-		>{/if}
-</form>
+<div
+	style="display: contents"
+	use:presentationScope={{ gameType: 'drawing_mashup', screen: !onsubmit }}
+>
+	<PresentationDecoration gameType="drawing_mashup" />
+
+	<h1 class="page-title">{$messages.drawingMashup.title}</h1>
+	<p class="page-subtitle">{$messages.drawingMashup.rules}</p>
+	<form class="card stack-md mx-auto max-w-2xl" onsubmit={create}>
+		<p>{$messages.drawingMashup.minimum}</p>
+		<label class="stack-sm"
+			>{$messages.drawingMashup.writingSeconds}<input
+				class="input"
+				type="number"
+				min="30"
+				max="300"
+				required
+				bind:value={options.writing_seconds}
+			/></label
+		>
+		<label class="stack-sm"
+			>{$messages.drawingMashup.drawingSeconds}<input
+				class="input"
+				type="number"
+				min="30"
+				max="300"
+				required
+				bind:value={options.drawing_seconds}
+			/></label
+		>
+		<label class="stack-sm"
+			>{$messages.drawingMashup.votingSeconds}<input
+				class="input"
+				type="number"
+				min="10"
+				max="120"
+				required
+				bind:value={options.voting_seconds}
+			/></label
+		>
+		<label class="stack-sm"
+			>{$messages.drawingMashup.language}<select class="input" bind:value={options.language}
+				>{#each locales as language}<option value={language.code}>{language.label}</option
+					>{/each}</select
+			></label
+		>
+		{#if failed}<p role="alert">{$messages.drawingMashup.createFailed}</p>{/if}
+		<button class="btn btn-primary" type="submit" disabled={busy || !hydrated}
+			>{busy
+				? $messages.gameCatalog.creating
+				: (submitLabel ?? $messages.common.createGame)}</button
+		>
+		{#if oncancel}<button class="btn btn-ghost" type="button" onclick={oncancel} disabled={busy}
+				>{$messages.common.cancel}</button
+			>{/if}
+	</form>
+</div>

@@ -2,6 +2,7 @@ from time import time
 from typing import TYPE_CHECKING, Any
 
 from partygame import schemas
+from partygame.schemas.events import PriceTransitionState
 from partygame.schemas.game_definition import (
     MediaDefinition,
     PlayerInputKind,
@@ -96,7 +97,9 @@ class SnapshotBuilder:
                 review_step_index = None
         players = await self.repo.get_players(lobby.id)
         snapshot_revision = (
-            revision if revision is not None else await self.repo.get_state_revision(lobby.id)
+            revision
+            if revision is not None
+            else await self.repo.get_state_revision(lobby.id)
         )
 
         active_step = None
@@ -105,11 +108,17 @@ class SnapshotBuilder:
                 lobby,
                 step,
                 step_state,
-                input_enabled=(not reviewing_history and lobby.phase == "question_active"),
+                input_enabled=(
+                    not reviewing_history and lobby.phase == "question_active"
+                ),
             )
 
         active_item = None
-        if active_round is not None and lobby.phase == "round_intro" and not reviewing_history:
+        if (
+            active_round is not None
+            and lobby.phase == "round_intro"
+            and not reviewing_history
+        ):
             active_item = schemas.RuntimeRoundIntroItemState(
                 round=active_round,
                 duration_seconds=ROUND_INTRO_DURATION_SECONDS,
@@ -123,12 +132,18 @@ class SnapshotBuilder:
             review_step_index if review_step_index is not None else lobby.current_step
         ) > 0 and await self.runtime._has_archived_step(
             lobby.id,
-            (review_step_index if review_step_index is not None else lobby.current_step) - 1,
+            (review_step_index if review_step_index is not None else lobby.current_step)
+            - 1,
         )
+        if lobby.phase == "price_transition":
+            can_review_previous = False
         can_review_next = reviewing_history
         if reviewing_history:
             next_title = None
-            if review_step_index is not None and review_step_index + 1 < lobby.current_step:
+            if (
+                review_step_index is not None
+                and review_step_index + 1 < lobby.current_step
+            ):
                 archived_next = await self.runtime.get_archived_step_state(
                     lobby.id,
                     review_step_index + 1,
@@ -167,7 +182,9 @@ class SnapshotBuilder:
 
         revealed_answer = None
         if step_state.get("revealed_answer_value") not in (None, ""):
-            revealed_answer = schemas.RevealedAnswer(value=step_state.get("revealed_answer_value"))
+            revealed_answer = schemas.RevealedAnswer(
+                value=step_state.get("revealed_answer_value")
+            )
 
         host_answer = None
         if (
@@ -221,12 +238,18 @@ class SnapshotBuilder:
             can_review_next=can_review_next,
             display_phase=str(step_state.get("display_phase") or "question_active"),
             scoreboard_visible=bool(step_state.get("scoreboard_visible")),
-            buzzer_active=False if reviewing_history else bool(step_state.get("buzzer_active")),
+            buzzer_active=(
+                False if reviewing_history else bool(step_state.get("buzzer_active"))
+            ),
             buzzed_player_id=step_state.get("buzzed_player_id") or None,
-            disabled_buzzer_player_ids=list(step_state.get("disabled_buzzer_player_ids", [])),
+            disabled_buzzer_player_ids=list(
+                step_state.get("disabled_buzzer_player_ids", [])
+            ),
             submitted_player_ids=list(step_state.get("answers", {}).keys()),
             price_ready_player_ids=(
-                list(step_state.get("price_ready_player_ids", [])) if show_price_timer else []
+                list(step_state.get("price_ready_player_ids", []))
+                if show_price_timer
+                else []
             ),
             price_reveal_remaining_seconds=(
                 remaining_price_reveal_seconds(
@@ -235,7 +258,9 @@ class SnapshotBuilder:
                 if show_price_timer
                 else None
             ),
-            price_reveal_speed=price_reveal_speed(step_state) if show_price_timer else 1.0,
+            price_reveal_speed=(
+                price_reveal_speed(step_state) if show_price_timer else 1.0
+            ),
             submission_count=len(step_state.get("answers", {})),
             pending_review_count=pending_review_count,
             drawing_items=drawing_items,
@@ -268,7 +293,9 @@ class SnapshotBuilder:
         evaluation_type = await self.evaluation.resolve_evaluation_type(lobby, step)
         price = step.product_question
         calorie = step.calorie_question is not None
-        reveal_price = price is not None and step_state.get("display_phase") == "answer_reveal"
+        reveal_price = (
+            price is not None and step_state.get("display_phase") == "answer_reveal"
+        )
         price_results = []
         if reveal_price:
             answers = step_state.get("answers", {})
@@ -277,16 +304,35 @@ class SnapshotBuilder:
                     continue
                 value = answers.get(player.id)
                 points = (
-                    (calorie_points if calorie else price_points)(value, step.evaluation.answer)
+                    (calorie_points if calorie else price_points)(
+                        value, step.evaluation.answer
+                    )
                     if price.mode == "guess"
                     else 1000 if value == step.evaluation.answer else 0
                 )
                 price_results.append(
                     PriceResult(
-                        player_id=player.id, player_name=player.name, answer=value, points=points
+                        player_id=player.id,
+                        player_name=player.name,
+                        answer=value,
+                        points=points,
                     )
                 )
+        transition_started = self.timing.to_float(
+            step_state.get("price_transition_started_at")
+        )
+        transition = None
+        if (
+            lobby.game_type == "price_guessing"
+            and lobby.phase == "price_transition"
+            and transition_started is not None
+        ):
+            transition = PriceTransitionState(
+                id=f"{lobby.run_id or lobby.id}:{step.id}",
+                elapsed_ms=min(600.0, max(0.0, (time() - transition_started) * 1000)),
+            )
         return schemas.RuntimeStepState(
+            price_transition=transition,
             calorie_mode=price.mode if calorie else None,
             calorie_products=price.products if calorie else [],
             calorie_reveal=price.reveal if calorie and reveal_price else [],
@@ -314,7 +360,9 @@ class SnapshotBuilder:
             media=self._serialize_media(step.media, step_state),
             timer=schemas.RuntimeTimerState(
                 seconds=step.timer.seconds,
-                enforced=await self.evaluation.is_timer_effectively_enforced(lobby, step),
+                enforced=await self.evaluation.is_timer_effectively_enforced(
+                    lobby, step
+                ),
                 started_at=self.timing.to_float(step_state.get("timer_started_at")),
                 ends_at=self.timing.to_float(step_state.get("timer_ends_at")),
                 remaining_seconds=self.timing.remaining_timer_seconds(step_state),
@@ -335,7 +383,9 @@ class SnapshotBuilder:
             return step.evaluation.answer
         return None
 
-    async def _build_next_item(self, lobby: schemas.Lobby) -> schemas.RuntimeItemState | None:
+    async def _build_next_item(
+        self, lobby: schemas.Lobby
+    ) -> schemas.RuntimeItemState | None:
         steps = await self.runtime._flatten_steps_with_metadata(lobby)
         next_index = lobby.current_step + 1
         if next_index >= len(steps):
@@ -344,7 +394,10 @@ class SnapshotBuilder:
         current = steps[lobby.current_step] if lobby.current_step < len(steps) else None
         next_step = steps[next_index]
         next_round = self._runtime_round_state(next_step)
-        if current is not None and next_step.round_definition.id != current.round_definition.id:
+        if (
+            current is not None
+            and next_step.round_definition.id != current.round_definition.id
+        ):
             return schemas.RuntimeRoundIntroItemState(
                 round=next_round,
                 duration_seconds=ROUND_INTRO_DURATION_SECONDS,
@@ -370,6 +423,8 @@ class SnapshotBuilder:
         *,
         has_eligible_buzzer_players: bool,
     ) -> schemas.NextHostActionState | None:
+        if lobby.phase == "price_transition":
+            return schemas.NextHostActionState(kind="next_question", disabled=True)
         if lobby.phase == "finished":
             return None
 
@@ -427,7 +482,9 @@ class SnapshotBuilder:
         step_state: dict[str, Any],
         players: list[schemas.Player] | None = None,
     ) -> bool:
-        player_list = players if players is not None else await self.repo.get_players(lobby.id)
+        player_list = (
+            players if players is not None else await self.repo.get_players(lobby.id)
+        )
         disabled_player_ids = set(step_state.get("disabled_buzzer_player_ids", []))
         return any(
             player.id != lobby.host_id and player.id not in disabled_player_ids
@@ -500,7 +557,9 @@ class SnapshotBuilder:
                 player_id=player_id if reveal_authors else None,
                 player_name=player_names.get(player_id) if reveal_authors else None,
                 vote_count=vote_counts.get(player_id, 0) if reveal_authors else 0,
-                points_awarded=int(score_updates.get(player_id, 0) or 0) if reveal_authors else 0,
+                points_awarded=(
+                    int(score_updates.get(player_id, 0) or 0) if reveal_authors else 0
+                ),
             )
             for index, player_id in enumerate(order)
         ]
@@ -541,7 +600,9 @@ class SnapshotBuilder:
             src=media.src,
             paused=bool(step_state.get("media_paused")),
             volume=float(
-                1 if step_state.get("media_volume") is None else step_state.get("media_volume")
+                1
+                if step_state.get("media_volume") is None
+                else step_state.get("media_volume")
             ),
             reveal=str(media.reveal),
             loop=media.loop,
@@ -559,7 +620,9 @@ class SnapshotBuilder:
             zoom_origin_x=media.zoom_origin_x,
             zoom_origin_y=media.zoom_origin_y,
             reveal_state=str(step_state.get("media_reveal_state") or "idle"),
-            reveal_started_at=self.timing.to_float(step_state.get("media_reveal_started_at")),
+            reveal_started_at=self.timing.to_float(
+                step_state.get("media_reveal_started_at")
+            ),
             reveal_elapsed_seconds=self.timing.to_float(
                 step_state.get("media_reveal_elapsed_seconds")
             )
@@ -575,7 +638,9 @@ class SnapshotBuilder:
         buzzed_player_id = step_state.get("buzzed_player_id") or ""
         if buzzed_player_id:
             review_targets.add(buzzed_player_id)
-        return len([player_id for player_id in review_targets if player_id not in reviewed])
+        return len(
+            [player_id for player_id in review_targets if player_id not in reviewed]
+        )
 
     def _step_has_revealable_answer(self, step: StepDefinition) -> bool:
         answer = step.evaluation.answer

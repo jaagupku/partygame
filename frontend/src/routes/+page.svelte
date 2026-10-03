@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { presentationScope } from '$lib/presentation/scope';
+	import PresentationDecoration from '$lib/presentation/PresentationDecoration.svelte';
 	import { onMount } from 'svelte';
 	import { loadGameCatalog, type GameType } from '$lib/game-catalog';
 
@@ -57,9 +59,14 @@
 					{#each games as game (game.id)}
 						{@const copy = $messages.gameCatalog[game.localization_key]}
 						{@const available = game.availability === 'available'}
-						<div class="card relative flex min-h-64 flex-col gap-4" class:playable-tile={available}>
+						<div
+							use:presentationScope={{ gameType: game.id }}
+							class="card relative flex min-h-64 flex-col gap-4"
+							class:playable-tile={available}
+						>
+							<PresentationDecoration gameType={game.id} />
 							<span
-								class="theme-soft-primary flex h-16 w-16 items-center justify-center rounded-2xl text-4xl"
+								class="game-tile-icon theme-soft-primary flex h-16 w-16 items-center justify-center rounded-2xl text-4xl"
 								aria-hidden="true"
 								>{game.id === 'drawing_mashup' ? '✎' : game.id === 'trivia' ? '?' : '€'}</span
 							>

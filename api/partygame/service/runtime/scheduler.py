@@ -17,6 +17,7 @@ HOSTLESS_END_GAME_AUTOPLAY_DELAY_SECONDS = 4.5
 
 ScheduledTransitionKind = Literal[
     "round_intro",
+    "price_transition",
     "hostless_answer_reveal",
     "hostless_end_game_stage",
     "timer_expired",
@@ -37,6 +38,15 @@ class RuntimeTransitionScheduler:
         snapshot: schemas.RuntimeSnapshotEvent,
         runtime: GameRuntimeService,
     ) -> ScheduledTransition | None:
+        if lobby.game_type == "price_guessing" and lobby.phase == "price_transition":
+            state = await runtime.get_step_state(lobby.id)
+            deadline = runtime.timing.to_float(state.get("price_transition_ends_at"))
+            if deadline is not None:
+                return ScheduledTransition(
+                    "price_transition", max(0.0, deadline - time())
+                )
+            return None
+
         if snapshot.active_item and snapshot.active_item.type_ == "round_intro":
             return ScheduledTransition("round_intro", ROUND_INTRO_DURATION_SECONDS)
 
@@ -92,7 +102,8 @@ class RuntimeTransitionScheduler:
         if current_step is None:
             return None
         if not snapshot.active_step.timer.enforced and not (
-            not lobby.host_enabled and runtime.is_hostless_auto_progress_step(lobby, current_step)
+            not lobby.host_enabled
+            and runtime.is_hostless_auto_progress_step(lobby, current_step)
         ):
             return None
 

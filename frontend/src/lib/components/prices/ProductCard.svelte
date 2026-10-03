@@ -8,7 +8,10 @@
 	});
 </script>
 
-<div class="flex h-full min-w-0 flex-col items-center gap-3" class:product-card-stage={stage}>
+<div
+	class="product-card flex h-full min-w-0 flex-col items-center gap-3"
+	class:product-card-stage={stage}
+>
 	{#if failed}
 		<div
 			class="theme-surface-muted flex h-40 w-full items-center justify-center rounded-xl p-4 text-sm"

@@ -95,3 +95,77 @@ it('resets finale and answer feedback on a new run and ignores an older snapshot
 	expect(get(store).runId).toBe('new');
 	expect(get(store).lobbyPhase).toBe('waiting');
 });
+
+it('follows game type and run identity from snapshots and patches without accepting stale patches', () => {
+	const store = createControllerStore(
+		{
+			id: 'p1',
+			runId: 'r1',
+			gameType: 'trivia',
+			lastRevision: 1,
+			players: []
+		} as unknown as ControllerState,
+		vi.fn<() => void>()
+	);
+	const patch = (revision: number, game_type: string, run_id: string) =>
+		JSON.stringify({
+			type_: 'runtime_patch',
+			base_revision: revision,
+			revision: revision + 1,
+			changes: { lobby: { game_type, run_id } }
+		});
+	store.onMessage(patch(1, 'price_guessing', 'r2'));
+	expect(get(store)).toMatchObject({ gameType: 'price_guessing', runId: 'r2' });
+	store.onMessage(patch(2, 'price_guessing', 'r3'));
+	expect(get(store).runId).toBe('r3');
+	store.onMessage(patch(1, 'drawing_mashup', 'stale'));
+	expect(get(store).gameType).toBe('price_guessing');
+	store.onMessage(
+		JSON.stringify({
+			type_: 'runtime_snapshot',
+			revision: 4,
+			lobby: { game_type: 'calorie_guessing', run_id: 'r4' },
+			players: [],
+			submitted_player_ids: []
+		})
+	);
+	expect(get(store)).toMatchObject({ gameType: 'calorie_guessing', runId: 'r4' });
+});
+
+it('preserves price transition metadata in snapshots and clears it when the opening patch arrives', () => {
+	const store = createControllerStore(
+		{ id: 'p1', lastRevision: 0 } as ControllerState,
+		vi.fn<() => void>()
+	);
+	const transition = { id: 'run:step2', duration_ms: 600, elapsed_ms: 200 };
+	store.onMessage(
+		JSON.stringify({
+			type_: 'runtime_snapshot',
+			revision: 1,
+			lobby: { phase: 'price_transition' },
+			players: [],
+			active_step: { id: 'step2', price_transition: transition, input_enabled: false, timer: {} },
+			submitted_player_ids: []
+		})
+	);
+	expect(get(store).activeStep?.price_transition).toEqual(transition);
+	expect(get(store).lobbyPhase).toBe('price_transition');
+	store.onMessage(
+		JSON.stringify({
+			type_: 'runtime_patch',
+			base_revision: 1,
+			revision: 2,
+			changes: {
+				lobby: { phase: 'question_active' },
+				active_step: {
+					id: 'step2',
+					price_transition: null,
+					input_enabled: true,
+					timer: { started_at: 100, ends_at: 160 }
+				}
+			}
+		})
+	);
+	expect(get(store).activeStep?.price_transition).toBeNull();
+	expect(get(store).activeStep?.input_enabled).toBe(true);
+});

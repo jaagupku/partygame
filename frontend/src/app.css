@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@500;700;800&display=swap');
 @import 'tailwindcss';
+@import './lib/presentation/price/price.css';
 
 :root {
 	--party-bg-a: #f8fff1;
@@ -189,6 +190,23 @@
 
 	.page-panel-host-game {
 		@apply h-[calc(100vh-1rem)] max-w-[124rem] overflow-hidden p-2 md:h-[calc(100vh-1.5rem)] md:p-3 xl:h-[calc(100vh-2rem)] xl:p-4;
+	}
+
+	.app-shell-host-game:has(.host-stage) {
+		height: 100dvh;
+		min-height: 100dvh;
+		padding: 0;
+	}
+
+	.page-panel-host-game:has(.host-stage) {
+		height: 100%;
+		max-width: none;
+		padding: clamp(0.5rem, 1vw, 1.25rem);
+		border: 0;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		backdrop-filter: none;
 	}
 
 	.page-panel-controller {
@@ -460,5 +478,34 @@
 
 	.badge {
 		@apply rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide;
+	}
+}
+
+/* Opt-in hooks. Scoped variables reset at every nested presentation boundary. */
+[data-presentation] {
+	font-family: var(--presentation-font);
+	color: var(--party-ink);
+}
+[data-presentation] :is(h1, h2, h3, .page-title) {
+	font-family: var(--presentation-heading-font);
+}
+[data-presentation].card,
+[data-presentation] .card {
+	border-radius: var(--presentation-card-radius);
+	border-width: var(--presentation-border-width);
+	box-shadow: var(--presentation-card-shadow);
+}
+[data-presentation] :is(.input, .btn) {
+	border-width: var(--presentation-border-width);
+	transition:
+		background-color var(--presentation-transition),
+		border-color var(--presentation-transition);
+}
+[data-presentation] [data-presentation-illustration] {
+	border-radius: var(--presentation-illustration-radius);
+}
+@media (prefers-reduced-motion: reduce) {
+	[data-presentation] {
+		--presentation-transition: 0s;
 	}
 }

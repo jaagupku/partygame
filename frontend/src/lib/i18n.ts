@@ -181,6 +181,15 @@ const en = defineMessages({
 		pointsWord: 'points',
 		breadcrumb: 'Breadcrumb'
 	},
+	presentationAudio: {
+		title: 'Sound',
+		enable: 'Enable sound',
+		music: 'Music',
+		effects: 'Sound effects',
+		personal: 'Personal confirmations',
+		musicVolume: 'Music volume',
+		effectsVolume: 'Effects volume'
+	},
 	theme: {
 		appTheme: 'App theme',
 		gameTheme: 'Game theme',
@@ -241,6 +250,15 @@ const en = defineMessages({
 		selection:
 			'Products sold in Estonia are preferred, with international products added when needed.'
 	},
+	priceStore: {
+		welcome: 'Welcome to the department store',
+		departments: 'Choose your departments',
+		trip: 'Your shopping trip starts here.',
+		unknownPrice: 'Price to discover',
+		checkout: 'Checkout',
+		receipt: 'Your points receipt',
+		thanks: 'Thanks for shopping!'
+	},
 	priceGame: {
 		retailers: {
 			rimi: 'Rimi',
@@ -291,6 +309,8 @@ const en = defineMessages({
 		captured: 'Prices recorded',
 		noDataset: 'No product dataset yet',
 		actualPrice: 'Recorded regular price',
+		correctPrice: 'Correct price',
+		productDetails: 'Product details',
 		results: 'Answers and points',
 		noAnswer: 'No answer',
 		answer: 'Answer',
@@ -1347,6 +1367,15 @@ const et: Messages = {
 		pointsWord: 'punkti',
 		breadcrumb: 'Leivapuru'
 	},
+	presentationAudio: {
+		title: 'Heli',
+		enable: 'Luba heli',
+		music: 'Muusika',
+		effects: 'Heliefektid',
+		personal: 'Isiklikud kinnitused',
+		musicVolume: 'Muusika helitugevus',
+		effectsVolume: 'Efektide helitugevus'
+	},
 	theme: {
 		appTheme: 'Rakenduse teema',
 		gameTheme: 'Mängu teema',
@@ -1406,6 +1435,15 @@ const et: Messages = {
 		imageLicense: 'Piltide litsents (CC BY-SA)',
 		selection: 'Eelistatakse Eestis müüdavaid tooteid, vajadusel lisatakse rahvusvahelisi tooteid.'
 	},
+	priceStore: {
+		welcome: 'Tere tulemast kaubamajja',
+		departments: 'Vali oma osakonnad',
+		trip: 'Sinu osturetk algab siit.',
+		unknownPrice: 'Arvatav hind',
+		checkout: 'Kassa',
+		receipt: 'Sinu punktitšekk',
+		thanks: 'Aitäh ostlemast!'
+	},
 	priceGame: {
 		retailers: {
 			rimi: 'Rimi',
@@ -1457,6 +1495,8 @@ const et: Messages = {
 		captured: 'Hinnad salvestatud',
 		noDataset: 'Tooteandmed puuduvad',
 		actualPrice: 'Salvestatud tavahind',
+		correctPrice: 'Õige hind',
+		productDetails: 'Toote andmed',
 		results: 'Vastused ja punktid',
 		noAnswer: 'Vastus puudub',
 		answer: 'Vastus',

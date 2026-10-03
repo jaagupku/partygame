@@ -57,14 +57,15 @@ for (const category of ['Furniture', 'Antiques & vintage', 'Clothing']) {
 			).toHaveCount(1);
 			await cards.first().click();
 			await expect(phone.getByText('Answers and points', { exact: true })).toBeVisible();
+			await phone.getByText('Product details', { exact: true }).click();
 			await expect(phone.getByRole('link', { name: 'View product' })).toHaveCount(2);
 			await expect(
 				phone.getByText(
 					category === 'Furniture'
-						? /Tootemaailm ·/
+						? /Tootemaailm\s+·/
 						: category === 'Clothing'
-							? /Reserved ·/
-							: /E-antiik ·/
+							? /Reserved\s+·/
+							: /E-antiik\s+·/
 				)
 			).toBeVisible();
 			await phone.screenshot({ path: testInfo.outputPath('category-reveal.png'), fullPage: true });

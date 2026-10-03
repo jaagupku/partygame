@@ -5,13 +5,7 @@
 	import { messages } from '$lib/i18n';
 	import { waitingPlayers } from '$lib/waiting-players';
 
-	let {
-		gameState,
-		reservedWidth = $bindable(0)
-	}: {
-		gameState: HostGameState;
-		reservedWidth?: number;
-	} = $props();
+	let { gameState }: { gameState: HostGameState } = $props();
 	const waiting = $derived(waitingPlayers(gameState));
 	let phaseKey = $state('');
 	let slots = $state<string[]>([]);
@@ -32,9 +26,6 @@
 	const rows = $derived(Math.max(1, Math.floor((height + 8) / (size + 8))));
 	const columns = $derived(Math.max(1, Math.ceil(slots.length / rows)));
 	const width = $derived(columns * (size + 8) + 8);
-	$effect(() => {
-		reservedWidth = waiting.action ? width : 0;
-	});
 
 	onMount(() => {
 		const media = window.matchMedia('(prefers-reduced-motion: reduce)');

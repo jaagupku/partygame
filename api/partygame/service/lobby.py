@@ -23,7 +23,9 @@ from . import realtime
 log = logging.getLogger(__name__)
 
 
-async def get_player_ids(redis: Redis, game_id: str, withscores: bool = True) -> list[str]:
+async def get_player_ids(
+    redis: Redis, game_id: str, withscores: bool = True
+) -> list[str]:
     repo = GameStateRepository(redis)
     return await repo.get_player_ids(game_id, withscores=withscores)
 
@@ -57,7 +59,9 @@ async def create(
             lobby.id, "game_setup", {"settings": payload.model_dump(mode="json")}
         )
         await repo.set_component_state(
-            lobby.id, SESSION_COMPONENT_ID, {"snapshot": prepared.model_dump(mode="json")}
+            lobby.id,
+            SESSION_COMPONENT_ID,
+            {"snapshot": prepared.model_dump(mode="json")},
         )
         await repo.create_lobby(lobby)
         await repo.apply_game_ttl(lobby.id, settings.GAME_IDLE_TTL_SECONDS)
@@ -87,7 +91,12 @@ async def get_id_from_join_code(redis: Redis, join_code: str):
 
 class GameController:
     def __init__(
-        self, websocket: WebSocket, redis: Redis, lobby: schemas.Lobby, *, can_manage: bool = False
+        self,
+        websocket: WebSocket,
+        redis: Redis,
+        lobby: schemas.Lobby,
+        *,
+        can_manage: bool = False,
     ):
         self.can_manage = can_manage
         self.websocket = websocket
@@ -110,15 +119,16 @@ class GameController:
 
     async def disconnect(self):
         realtime.unregister_display(self.lobby.id, self)
-        if self.send_task is not None:
-            self.send_task.cancel()
-        if self.pubsub is not None:
-            await self.pubsub.unsubscribe(self.game_channel)
+        pubsub, send_task = self.pubsub, self.send_task
+        self.pubsub = self.send_task = None
+        await realtime.close_subscription(pubsub, send_task)
 
     async def publish_websocket(self):
         try:
             while True:
-                message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
+                message = await self.pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1
+                )
                 if message is None:
                     continue
                 if message["type"] == "message":
@@ -149,7 +159,11 @@ class GameController:
         players = [player_id for player_id in players if player_id]
         await asyncio.gather(
             *[
-                publish(self.redis, GameKeyFactory.player_channel(self.lobby.id, player_id), msg)
+                publish(
+                    self.redis,
+                    GameKeyFactory.player_channel(self.lobby.id, player_id),
+                    msg,
+                )
                 for player_id in players
                 if player_id != exclude
             ]
@@ -183,7 +197,9 @@ class GameController:
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:
             return
-        await remove_player(self.redis, lobby_id=self.lobby.id, player_id=event.player_id)
+        await remove_player(
+            self.redis, lobby_id=self.lobby.id, player_id=event.player_id
+        )
         await self.broadcast(event, [event.player_id])
         self.lobby = await get(self.redis, self.lobby.id)
         await self.send(event)
@@ -215,9 +231,9 @@ class GameController:
         await self.refresh_lobby()
         if "type_" not in msg:
             return
-        if msg["type_"] != Event.RESYNC_REQUEST and msg.get("run_id", self.lobby.id) != (
-            self.lobby.run_id or self.lobby.id
-        ):
+        if msg["type_"] != Event.RESYNC_REQUEST and msg.get(
+            "run_id", self.lobby.id
+        ) != (self.lobby.run_id or self.lobby.id):
             return
         match msg["type_"]:
             case Event.RESYNC_REQUEST:

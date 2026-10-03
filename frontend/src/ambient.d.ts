@@ -430,7 +430,9 @@ type CalorieReveal = {
 	source_url: string;
 	captured_at: string;
 };
+type PriceTransitionState = { id: string; duration_ms: number; elapsed_ms: number };
 type RuntimeStepState = {
+	price_transition?: PriceTransitionState | null;
 	calorie_mode?: 'guess' | 'compare' | null;
 	calorie_products?: CalorieCard[];
 	calorie_reveal?: CalorieReveal[];
@@ -797,6 +799,7 @@ type HostGameState = Lobby & {
 };
 
 type ControllerState = {
+	gameType?: string;
 	drawingGame?: DrawingGameView;
 	drawingAck?: DrawingAck;
 	runId?: string;

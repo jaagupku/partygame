@@ -2,6 +2,7 @@
 	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
 	import ProductCard from '$lib/components/prices/ProductCard.svelte';
 	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
+	import PriceTransition from '$lib/presentation/price/PriceTransition.svelte';
 	import { flip } from 'svelte/animate';
 	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
 	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
@@ -113,13 +114,20 @@
 		{#if productMode}
 			<div class:price-stage-content={stageVariant}>
 				<div class:price-stage-inner={stageVariant}>
-					<div
-						class={`grid gap-4 ${productMode === 'compare' ? 'sm:grid-cols-2' : ''}`}
-						class:price-stage-products={stageVariant}
-						class:price-stage-single={stageVariant && productMode === 'guess'}
-					>
-						{#each products as product}<ProductCard {product} stage={stageVariant} />{/each}
-					</div>
+					<PriceTransition {products} stepId={step.id} transition={step.price_transition}>
+						<div
+							class={`grid gap-4 ${productMode === 'compare' ? 'sm:grid-cols-2' : ''}`}
+							class:price-stage-products={stageVariant}
+							class:price-stage-single={stageVariant && productMode === 'guess'}
+						>
+							{#each products as product}{#if step.price_mode}<div class="product-display">
+										<ProductCard {product} stage={stageVariant} />
+										{#if step.price_mode && !showingAnswerReveal}<div class="price-shelf-label">
+												<span>{$messages.priceStore.unknownPrice}</span><strong>— €</strong>
+											</div>{/if}
+									</div>{:else}<ProductCard {product} stage={stageVariant} />{/if}{/each}
+						</div>
+					</PriceTransition>
 					{#if step.calorie_mode}<CalorieReveal {step} />{:else}<PriceReveal {step} />{/if}
 				</div>
 			</div>
@@ -251,16 +259,19 @@
 	}
 
 	.question-card-stage.question-card-price-stage {
+		/* Leave room for the product title, details, shelf label and spacing. */
+		--product-image-height: clamp(7rem, min(48dvh, calc(100cqh - 15rem)), 44rem);
 		grid-template-rows: auto minmax(0, 1fr);
 	}
 	.price-stage-content {
+		container-type: size;
 		display: flex;
 		min-height: 0;
 		overflow-y: auto;
 	}
 	.price-stage-inner {
 		width: 100%;
-		max-width: 76rem;
+		max-width: 96rem;
 		margin: auto;
 		padding-block: 1rem;
 	}
@@ -268,23 +279,23 @@
 		align-items: start;
 	}
 	.price-stage-single {
-		max-width: 38rem;
+		max-width: 52rem;
 		margin-inline: auto;
 	}
-	.question-card-price-reveal {
+	.question-card-stage.question-card-price-reveal {
 		--product-image-height: clamp(8rem, 18vh, 14rem);
 	}
 	@media (max-width: 639px) {
-		.question-card-price-stage {
+		.question-card-stage.question-card-price-stage {
 			--product-image-height: clamp(7rem, 18vh, 12rem);
 		}
 	}
 
 	.question-card-stage-shell {
 		position: relative;
-		border-radius: 1.5rem;
+		border-radius: 0;
 		border: 0;
-		background: color-mix(in srgb, var(--party-surface), transparent 52%);
+		background: transparent;
 		box-shadow: none;
 	}
 

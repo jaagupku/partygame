@@ -234,7 +234,14 @@ class RuntimeMediaState(BaseModel):
     reveal_duration_seconds: float | None = None
 
 
+class PriceTransitionState(BaseModel):
+    id: str
+    duration_ms: int = 600
+    elapsed_ms: float = 0
+
+
 class RuntimeStepState(BaseModel):
+    price_transition: PriceTransitionState | None = None
     calorie_mode: Literal["guess", "compare"] | None = None
     calorie_products: list[CalorieCard] = Field(default_factory=list)
     calorie_reveal: list[CalorieReveal] = Field(default_factory=list)

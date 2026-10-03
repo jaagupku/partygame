@@ -115,6 +115,9 @@ export function createGameStore(initialState: Lobby) {
 				});
 				break;
 			}
+			case 'start_game':
+				// The snapshot owns the state; recover if its delivery is missed.
+				return 'resync_required';
 			case 'runtime_snapshot': {
 				applySnapshot(messageData as RuntimeSnapshotEvent);
 				return 'snapshot_applied';

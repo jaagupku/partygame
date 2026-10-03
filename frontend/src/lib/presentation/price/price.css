@@ -1,0 +1,302 @@
+/* A fixed authored appearance. The scope boundary also protects nested quiz forms. */
+@scope ([data-presentation='price_guessing']) to ([data-presentation]:not([data-presentation='price_guessing'])) {
+	:scope {
+		color: var(--party-ink);
+		--store-corner-width: clamp(3rem, 7vw, 7rem);
+	}
+	:scope:is(body) {
+		background: repeating-linear-gradient(90deg, #183e3a04 0 1px, transparent 1px 48px), #f8f1df;
+	}
+	:scope.card {
+		background: #f8f1df;
+		border: 2px solid #17665b;
+		overflow: hidden;
+	}
+	:scope .game-tile-icon {
+		display: none;
+	}
+	:scope h1,
+	:scope h2,
+	:scope h3,
+	:scope .label-title {
+		font-weight: 900;
+		letter-spacing: -0.025em;
+	}
+	:scope .page-title {
+		color: #104c43;
+	}
+	:scope .btn-primary {
+		background: #17665b;
+		color: #fffdf7;
+		box-shadow: 0 3px 0 #104c43;
+	}
+	:scope .btn-accent {
+		background: #efbb45;
+		color: #183e3a;
+	}
+	:scope .btn:focus-visible,
+	:scope input:focus-visible,
+	:scope select:focus-visible {
+		outline: 3px solid #855900;
+		outline-offset: 3px;
+	}
+	:scope .store-eyebrow {
+		font-size: 0.8rem;
+		font-weight: 900;
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+		text-align: center;
+		color: #17665b;
+	}
+	:scope .store-window {
+		flex-shrink: 0;
+		border-bottom: 2px solid #17665b;
+		background: #f0e7cf;
+		border-radius: 0.4rem;
+	}
+	:scope .store-window img {
+		width: 100%;
+		height: 10rem;
+		object-fit: contain;
+	}
+	:scope .store-setup {
+		max-width: 60rem;
+		margin: auto;
+	}
+	:scope .store-setup > .store-window {
+		max-width: 38rem;
+		margin: 0 auto 1.5rem;
+		border: 0;
+		background: transparent;
+	}
+	:scope .store-setup > .store-window img {
+		height: clamp(8rem, 18vw, 14rem);
+	}
+	:scope .store-department {
+		background: #fffdf7;
+		border: 2px solid #b9c5b5;
+		border-left: 8px solid #b9c5b5;
+		font-weight: 800;
+	}
+	:scope .store-department:has(input:checked) {
+		border-color: #17665b;
+		background: #e7eee1;
+	}
+	:scope .store-department:has(input:disabled) {
+		opacity: 0.65;
+	}
+	:scope .store-department input {
+		width: 1.2rem;
+		height: 1.2rem;
+		accent-color: #17665b;
+	}
+	:scope .store-welcome {
+		text-align: center;
+		margin: 0.5rem auto 1rem;
+	}
+	:scope .store-welcome img {
+		width: min(32rem, 90%);
+		height: auto;
+		margin: auto;
+		max-height: 20vh;
+	}
+	:scope .store-corner {
+		position: fixed;
+		right: 1rem;
+		bottom: 11rem;
+		width: var(--store-corner-width);
+		opacity: 0.12;
+		pointer-events: none;
+		z-index: -1;
+	}
+	:scope .question-card-price-stage {
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+	}
+	:scope .question-card-price-stage .question-card-title-row {
+		border-bottom: 2px dashed #b9c5b5;
+		padding-bottom: 0.75rem;
+	}
+	:scope .question-card-points-badge {
+		background: #efbb45;
+		color: #183e3a;
+		border: 1px solid #855900;
+		border-radius: 0.35rem;
+	}
+	:scope .product-card img,
+	:scope .product-card > div {
+		border: 1px solid #ded9c8;
+		border-bottom: 8px solid #17665b;
+		border-radius: 0.5rem 0.5rem 0.15rem 0.15rem;
+		box-shadow: 0 5px 0 #e0d4b8;
+	}
+	:scope .product-card p {
+		overflow-wrap: anywhere;
+	}
+	:scope .price-stage-products > .product-display {
+		display: flex;
+		flex-direction: column;
+		align-self: stretch;
+		background: #f3eddf;
+		padding: 1rem;
+		border-radius: 0.5rem;
+		min-width: 0;
+		border: 1px solid #ded9c8;
+	}
+	:scope .product-display > .product-card {
+		flex: 1;
+		height: auto;
+	}
+	:scope .price-shelf-label {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin: 1rem 0 0;
+		padding: 0.5rem 1rem;
+		border: 1px solid #c6b68c;
+		border-left: 8px solid #efbb45;
+		background: #fffdf7;
+		font-weight: 800;
+	}
+	:scope .price-shelf-label strong {
+		font:
+			900 1.8rem ui-monospace,
+			monospace;
+		white-space: nowrap;
+	}
+	:scope .price-checkout-entry {
+		border-top: 7px solid #17665b;
+	}
+	:scope .price-checkout-entry input[inputmode='decimal'] {
+		font:
+			800 1.8rem ui-monospace,
+			monospace;
+		background: #fffdf7;
+		border: 2px solid #17665b;
+	}
+	:scope .price-checkout-entry button[aria-pressed='true'] {
+		outline: 3px solid #17665b;
+		outline-offset: -3px;
+		box-shadow: none;
+		background: #e7eee1;
+	}
+	:scope .store-final-receipt,
+	:scope .price-receipt,
+	:scope .scoreboard-card {
+		background: #fffdf7;
+		border-radius: 0.2rem;
+		border: 1px solid #c6b68c;
+		border-top: 4px solid #17665b;
+		border-bottom: 5px dashed #c6b68c;
+		padding: 1rem;
+		box-shadow: 0 5px 0 #183e3a0a;
+	}
+	:scope .price-checkout-label {
+		position: relative;
+		overflow: hidden;
+		background: #fff5d6;
+		border: 1px solid #c6b68c;
+		border-radius: 0.2rem;
+		animation: store-unfold 360ms ease-out both;
+		transform-origin: top;
+	}
+	:scope .price-checkout-label::after {
+		content: '';
+		pointer-events: none;
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(transparent 46%, #efbb4577 50%, transparent 54%);
+		animation: store-scan 650ms ease-out both;
+	}
+	:scope .price-amount {
+		font-family: ui-monospace, monospace;
+		color: #104c43;
+	}
+	:scope .price-receipt li,
+	:scope .scoreboard-card li {
+		border: 0;
+		border-bottom: 1px dashed #b9c5b5;
+		border-radius: 0;
+		background: transparent;
+		overflow-wrap: anywhere;
+	}
+	:scope .price-receipt li strong {
+		font-family: ui-monospace, monospace;
+	}
+	:scope .price-score-unit {
+		margin-inline-start: 0.3em;
+		display: inline;
+		font-size: 0.7em;
+	}
+	:scope .store-finale-thanks {
+		font-weight: 800;
+		color: #17665b;
+	}
+	:scope .finale-shell .podium {
+		background: #f0e7cf;
+		border: 2px solid #17665b;
+		border-top: 10px solid #17665b;
+	}
+	:scope .finale-shell .podium-card {
+		background: #fffdf7;
+		border: 1px solid #c6b68c;
+		border-bottom: 6px dashed #c6b68c;
+		border-radius: 0.25rem;
+		box-shadow: 0 8px 0 #183e3a12;
+	}
+	:scope .finale-shell .podium-card.place-1 {
+		background: #fff0bf;
+		border-top: 6px solid #efbb45;
+	}
+	:scope .finale-shell .stat-card {
+		background: #fffdf7;
+		border-bottom: 5px dashed #c6b68c;
+		border-radius: 0.25rem;
+	}
+	@media (max-width: 639px) {
+		:scope .store-window img {
+			height: 8rem;
+		}
+		:scope .store-welcome img {
+			max-height: 7rem;
+		}
+		:scope .price-receipt {
+			padding: 0.65rem;
+		}
+		:scope .price-stage-products > .product-display {
+			padding: 0.5rem;
+		}
+		:scope .price-shelf-label {
+			padding: 0.35rem 0.5rem;
+			font-size: 0.75rem;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		:scope *,
+		:scope *::before,
+		:scope *::after {
+			animation: none !important;
+			transition: none !important;
+		}
+	}
+}
+@keyframes store-unfold {
+	from {
+		opacity: 0.2;
+		transform: translateY(-8px) scaleY(0.94);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes store-scan {
+	from {
+		transform: translateY(-100%);
+	}
+	to {
+		transform: translateY(100%);
+	}
+}

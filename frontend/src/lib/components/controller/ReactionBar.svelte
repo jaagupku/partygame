@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { presentationPortal } from '$lib/presentation/scope';
 	import 'iconify-icon';
 	import { messages } from '$lib/i18n';
 	import { CONTROLLER_REACTIONS, type ReactionEmoji, type ReactionOption } from '$lib/reactions.js';
@@ -40,20 +41,15 @@
 			chooserOpen = false;
 		}
 	}
-
-	function viewportPortal(node: HTMLElement) {
-		document.body.appendChild(node);
-		return {
-			destroy() {
-				node.remove();
-			}
-		};
-	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-<section use:viewportPortal class="reaction-dock" aria-label={$messages.gameplay.reactionBarTitle}>
+<section
+	use:presentationPortal
+	class="reaction-dock"
+	aria-label={$messages.gameplay.reactionBarTitle}
+>
 	{#if chooserOpen}
 		<div class="reaction-menu" role="menu" aria-label={$messages.gameplay.chooseReaction}>
 			{#each CONTROLLER_REACTIONS as reaction}

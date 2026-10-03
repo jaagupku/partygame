@@ -19,7 +19,11 @@
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { get, type Writable } from 'svelte/store';
-	import { createSoundSystem } from '$lib/sound-system.js';
+	import { createPresentationSystem } from '$lib/presentation/system';
+	import { selectPresentation } from '$lib/presentation/registry';
+	import { presentationScope } from '$lib/presentation/scope';
+	import AudioControls from '$lib/presentation/AudioControls.svelte';
+	import PresentationDecoration from '$lib/presentation/PresentationDecoration.svelte';
 	import { definitionThemeStyle } from '$lib/theme';
 
 	const { data } = $props();
@@ -36,6 +40,7 @@
 		{
 			id: $player?.id || '',
 			runId: lobby().run_id ?? lobby().id,
+			gameType: lobby().game_type,
 			players: lobby().players,
 			lastRevision: 0,
 			theme: undefined,
@@ -82,8 +87,9 @@
 		},
 		onKick
 	);
-	const soundSystem = createSoundSystem('controller');
+	const soundSystem = createPresentationSystem('controller');
 
+	const presentation = $derived(selectPresentation($controller));
 	let isConnected = $state(false);
 	let customScore = $state(0);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
@@ -210,6 +216,13 @@
 		};
 	});
 
+	// Lobby changes may be the only update before a long answer countdown.
+	$effect(() => {
+		if (!isConnected || !($controller.gameState === 'waiting_for_players')) return;
+		const interval = window.setInterval(requestResync, RESYNC_RETRY_MS);
+		return () => clearInterval(interval);
+	});
+
 	onMount(() => {
 		if (!browser || !$player?.game_id || !$player?.id) {
 			return;
@@ -226,7 +239,10 @@
 						autosubmitPlayerDraft(message as CollectPlayerDraftsEvent);
 						return;
 					}
-					const resyncSnapshot = message.type_ === 'runtime_snapshot' && resyncPending;
+					const resyncSnapshot =
+						message.type_ === 'runtime_snapshot' &&
+						resyncPending &&
+						$controller.gameState !== 'waiting_for_players';
 					const result = controller.onMessage(data);
 					soundSystem.handleEvent(message, get(controller));
 					soundSystem.syncState(get(controller), { suppressCues: resyncSnapshot });
@@ -238,6 +254,7 @@
 				},
 				onStatusChange: (connected) => {
 					isConnected = connected;
+					soundSystem.setConnected(connected);
 					if (!connected) {
 						clearResyncPending();
 					}
@@ -552,6 +569,25 @@
 	>
 </svelte:head>
 
+<div
+	style="display: contents"
+	use:presentationScope={{
+		gameType: presentation.gameType,
+		variant: presentation.variant,
+		screen: true
+	}}
+></div>
+{#if presentation.profile}
+	{#if $controller.gameState === 'waiting_for_players'}
+		<AudioControls system={soundSystem} phone />
+	{/if}
+	<PresentationDecoration
+		gameType={presentation.gameType}
+		variant={presentation.variant}
+		surface="screen"
+	/>
+{/if}
+
 {#if !$controller.isHost && !gameFinished && $controller.lobbyPhase === 'question_active' && $controller.displayPhase !== 'answer_reveal' && $controller.activeStep}
 	<TimerTopBar timer={$controller.activeStep.timer} />
 {/if}
@@ -591,7 +627,10 @@
 {/if}
 
 {#if $controller.gameState === 'waiting_for_players'}
-	<div class="card mt-0 text-center" style={definitionThemeStyle($controller.theme)}>
+	<div
+		class="card mt-0 text-center"
+		style={presentation.profile ? undefined : definitionThemeStyle($controller.theme)}
+	>
 		<p class="text-xl font-bold">{$messages.gameplay.waitingForGameStart}</p>
 		{#if $controller.drawingGame}<p>{$messages.drawingMashup.minimum}</p>{/if}
 		{#if $controller.isHost}
@@ -617,7 +656,7 @@
 {:else}
 	<div
 		class={`controller-stack ${$controller.isHost ? 'controller-stack-host' : 'controller-stack-player'}`}
-		style={definitionThemeStyle($controller.theme)}
+		style={presentation.profile ? undefined : definitionThemeStyle($controller.theme)}
 	>
 		{#if !$controller.isHost && !$controller.endGame?.revealed && currentPlayerStanding}
 			<section class="controller-score-card card grid grid-cols-2 gap-2 p-2">
@@ -647,7 +686,11 @@
 		{/if}
 
 		{#if $controller.endGame?.revealed}
-			<FinaleControllerCard endGame={$controller.endGame} playerId={$controller.id} />
+			<FinaleControllerCard
+				gameType={presentation.gameType}
+				endGame={$controller.endGame}
+				playerId={$controller.id}
+			/>
 
 			{#if $controller.isHost}
 				<section class="card stack-md">

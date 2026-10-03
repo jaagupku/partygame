@@ -2,11 +2,12 @@
 	import { messages } from '$lib/i18n';
 
 	interface FinaleControllerCardProps {
+		gameType?: string;
 		endGame: EndGameState;
 		playerId: string;
 	}
 
-	let { endGame, playerId }: FinaleControllerCardProps = $props();
+	let { endGame, playerId, gameType }: FinaleControllerCardProps = $props();
 
 	const result = $derived(endGame.final_standings.find((entry) => entry.player_id === playerId));
 	const placeLabel = $derived.by(() => {
@@ -29,9 +30,12 @@
 	});
 </script>
 
-<section class="card stack-md text-center">
+<section
+	class="card stack-md text-center"
+	class:store-final-receipt={gameType === 'price_guessing'}
+>
 	<p class="theme-text-muted text-sm font-black uppercase tracking-[0.18em]">
-		{$messages.common.finalResult}
+		{gameType === 'price_guessing' ? $messages.priceStore.receipt : $messages.common.finalResult}
 	</p>
 	<h2 class="label-title text-3xl">{headline}</h2>
 	<p class="theme-text-muted text-lg">{placeLabel}</p>

@@ -23,8 +23,11 @@ async function start(
 	locale = 'en',
 	seconds = '60',
 	viewport = { width: 390, height: 844 },
-	revealSeconds = '4'
+	revealSeconds = '4',
+	extraNames: string[] = [],
+	dropStartup = false
 ) {
+	if (dropStartup) await dropStartupUpdates(page.context());
 	await page.addInitScript(() => localStorage.setItem('partygame-locale', JSON.stringify('en')));
 	await page.goto('/create?game=price_guessing');
 	await page.getByLabel('Question mode').selectOption(mode);
@@ -48,6 +51,7 @@ async function start(
 		hasTouch: true
 	});
 	contexts.push(context);
+	if (dropStartup) await dropStartupUpdates(context);
 	await context.addInitScript(
 		(value) => localStorage.setItem('partygame-locale', JSON.stringify(value)),
 		locale
@@ -64,9 +68,23 @@ async function start(
 		})
 	);
 	await phone.goto(`/play/${lobby.join_code}`);
+	const extraPhones: Page[] = [];
+	for (const name of extraNames) {
+		const extraContext = await browser.newContext({
+			baseURL: new URL(page.url()).origin,
+			viewport
+		});
+		contexts.push(extraContext);
+		await extraContext.addInitScript(() =>
+			localStorage.setItem('partygame-locale', JSON.stringify('en'))
+		);
+		const extra = await join(extraContext, lobby.join_code, name);
+		await extra.goto(`/play/${lobby.join_code}`);
+		extraPhones.push(extra);
+	}
 	await (host ?? phone).getByRole('button', { name: 'Start Game', exact: true }).click();
 	await expect(phone.locator(imageSelector)).not.toHaveCount(0, { timeout: 20_000 });
-	return { phone, host, contexts, frames };
+	return { phone, host, contexts, frames, extraPhones };
 }
 
 async function answer(phone: Page, locale = 'en') {
@@ -81,6 +99,7 @@ async function answer(phone: Page, locale = 'en') {
 			.locator('button')
 			.filter({ has: phone.locator(imageSelector) })
 			.first();
+		await expect(option).toBeEnabled();
 		await option.focus();
 		await phone.keyboard.press('Enter');
 	}
@@ -207,6 +226,7 @@ for (const mode of ['guess', 'compare', 'mixed'] as const) {
 				await expect(page.getByText('Answers and points', { exact: true })).toBeVisible();
 				await page.screenshot({ path: testInfo.outputPath('reveal.png') });
 				await phone.reload();
+				await phone.getByText('Product details', { exact: true }).click();
 				await expect(phone.getByRole('link', { name: 'View product' })).not.toHaveCount(0);
 				expect(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(
 					false
@@ -231,6 +251,7 @@ test('Estonian phone instructions and reveal', async ({ browser, page }) => {
 	try {
 		await answer(phone, 'et');
 		await expect(phone.getByText('Vastused ja punktid', { exact: true })).toBeVisible();
+		await phone.getByText('Toote andmed', { exact: true }).click();
 		await expect(phone.getByRole('link', { name: 'Vaata toodet' })).not.toHaveCount(0);
 	} finally {
 		for (const context of contexts) await context.close();
@@ -318,3 +339,253 @@ test('automatic price reveal Ready toggles the countdown speed', async ({ browse
 		for (const context of contexts) await context.close();
 	}
 });
+
+test('correct price leads a quick closest-first reveal on display and phone', async ({
+	browser,
+	page
+}, info) => {
+	const { phone, extraPhones, contexts } = await start(
+		browser,
+		page,
+		'guess',
+		true,
+		'en',
+		'60',
+		{ width: 390, height: 844 },
+		'4',
+		['Middle', 'Closest']
+	);
+	try {
+		for (const [index, device] of [phone, ...extraPhones].entries()) {
+			await device.locator('input[inputmode="decimal"]').fill(String(index * 0.5));
+			await device.getByRole('button', { name: 'Submit price', exact: true }).click();
+		}
+		for (const device of [page, phone]) {
+			const receipt = device.locator('.price-receipt');
+			await expect(receipt).toBeVisible();
+			const rows = receipt.locator('.price-result');
+			await expect(rows.locator('.price-result-player > p:first-child')).toHaveText([
+				'Closest',
+				'Middle',
+				'Test player'
+			]);
+			await expect(receipt.getByRole('link')).toHaveCount(0);
+			const price = receipt.locator('.price-amount');
+			const size = await price.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+			expect(size).toBeGreaterThanOrEqual(52);
+			const frames = await rows.evaluateAll((nodes) =>
+				nodes.map((node) => {
+					const animation = node.getAnimations()[0];
+					animation.pause();
+					animation.currentTime = 600;
+					const style = getComputedStyle(node);
+					return { opacity: Number(style.opacity), delay: parseFloat(style.animationDelay) };
+				})
+			);
+			expect(frames[0].opacity).toBeGreaterThan(0);
+			expect(frames[2].opacity).toBe(0);
+			expect(frames[0].delay).toBeLessThan(frames[1].delay);
+			expect(frames[1].delay).toBeLessThan(frames[2].delay);
+			await rows.evaluateAll((nodes) =>
+				nodes.forEach((node) => node.getAnimations().forEach((animation) => animation.finish()))
+			);
+			await receipt.screenshot({
+				path: info.outputPath(device === page ? 'price-first-display.png' : 'price-first-phone.png')
+			});
+		}
+		await phone.emulateMedia({ reducedMotion: 'reduce' });
+		await expect(phone.locator('.price-result').first()).toHaveCSS('animation-name', 'none');
+		await expect(phone.locator('.price-result').last()).toHaveCSS('opacity', '1');
+		await phone.reload();
+		await expect(phone.locator('.price-result-player > p:first-child')).toHaveText([
+			'Closest',
+			'Middle',
+			'Test player'
+		]);
+	} finally {
+		for (const context of contexts) await context.close();
+	}
+});
+
+for (const mode of ['guess', 'compare', 'mixed'] as const) {
+	test(`${mode} aisle transition finishes before the answer timer opens`, async ({
+		browser,
+		page
+	}, info) => {
+		const errors: string[] = [];
+		page.on('pageerror', (error) => errors.push(error.message));
+		const { phone, host, contexts, frames } = await start(browser, page, mode, true);
+		try {
+			await answer(phone);
+			await expect(page.locator('.price-receipt')).toBeVisible();
+			// Record even the short-lived phase without relying on polling during its 600 ms window.
+			for (const device of [page, phone])
+				await device.evaluate(() => {
+					const captures: {
+						id: string;
+						elapsed: string;
+						outgoing: number;
+						phone: boolean;
+						disabled: boolean;
+						transform: string;
+					}[] = [];
+					Object.assign(window, { aisleCaptures: captures });
+					const observer = new MutationObserver(() => {
+						const node = document.querySelector<HTMLElement>('[data-price-transition]');
+						if (!node || captures.length > 100) return;
+						captures.push({
+							id: node.dataset.priceTransition!,
+							elapsed: node.style.getPropertyValue('--travel-elapsed'),
+							outgoing: node.querySelectorAll('.outgoing .product-card').length,
+							phone: node.classList.contains('phone'),
+							disabled: [
+								...document.querySelectorAll<HTMLInputElement>(
+									'.controller-player-input input, .controller-player-input button[aria-pressed]'
+								)
+							].every((input) => input.disabled),
+							transform: getComputedStyle(node.querySelector('.incoming')!).transform
+						});
+					});
+					observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+				});
+			const nextQuestion = host!.getByRole('button', { name: /^Next question/ });
+			if (mode === 'compare') {
+				await nextQuestion.evaluate((button) => {
+					(button as HTMLButtonElement).click();
+					(button as HTMLButtonElement).click();
+				});
+			} else await nextQuestion.click();
+			if (mode === 'guess')
+				await page.screenshot({ path: info.outputPath('during-aisle.png'), animations: 'allow' });
+			await expect
+				.poll(() =>
+					frames.some((frame) => {
+						const step =
+							frame.active_step ??
+							(frame.changes as Record<string, unknown> | undefined)?.active_step;
+						return (step as RuntimeStepState | undefined)?.price_transition != null;
+					})
+				)
+				.toBe(true);
+			await expect(
+				phone
+					.locator('.controller-player-input input, .controller-player-input button[aria-pressed]')
+					.first()
+			).toBeEnabled();
+			const steps = frames
+				.map(
+					(frame) =>
+						(frame.active_step ??
+							(frame.changes as Record<string, unknown> | undefined)?.active_step) as
+							RuntimeStepState | undefined
+				)
+				.filter((step): step is RuntimeStepState => !!step);
+			const transition = steps.find((step) => step.price_transition)!;
+			expect(transition.price_transition!.duration_ms).toBe(600);
+			expect(transition.input_enabled).toBe(false);
+			expect(transition.timer.ends_at).toBeNull();
+			const opened = steps.find((step) => step.id === transition.id && step.input_enabled)!;
+			expect(opened.timer.ends_at! - opened.timer.started_at!).toBeCloseTo(60, 3);
+			for (const device of [page, phone]) {
+				const captures = await device.evaluate(
+					() =>
+						(
+							window as unknown as {
+								aisleCaptures: {
+									id: string;
+									outgoing: number;
+									phone: boolean;
+									disabled: boolean;
+									transform: string;
+								}[];
+							}
+						).aisleCaptures
+				);
+				expect(captures.length).toBeGreaterThan(0);
+				expect(new Set(captures.map((c) => c.id)).size).toBe(1);
+				if (device === page) expect(captures.some((c) => c.outgoing > 0)).toBe(true);
+				else {
+					expect(
+						captures.every(
+							(c) => c.phone && c.disabled && c.outgoing === 0 && c.transform === 'none'
+						)
+					).toBe(true);
+				}
+				await expect(device.locator('[data-price-transition]')).toHaveCount(0);
+				await expect(device.locator('.outgoing')).toHaveCount(0);
+			}
+			await page.screenshot({ path: info.outputPath('after-aisle.png') });
+			await phone.screenshot({ path: info.outputPath('after-aisle-phone.png'), fullPage: true });
+			await phone.reload();
+			await expect(
+				phone
+					.locator('.controller-player-input input, .controller-player-input button[aria-pressed]')
+					.first()
+			).toBeEnabled();
+			await expect(phone.locator('[data-price-transition]')).toHaveCount(0);
+			if (mode === 'guess') {
+				await answer(phone);
+				await expect(page.locator('.price-receipt')).toBeVisible();
+				await page.emulateMedia({ reducedMotion: 'reduce' });
+				await host!.getByRole('button', { name: /^Next question/ }).click();
+				await expect(page.locator('[data-price-transition]')).toHaveCount(1);
+				await expect(page.locator('[data-price-transition] > .incoming')).toHaveCSS(
+					'animation-name',
+					'none'
+				);
+				await phone.reload();
+				await expect(phone.locator('input[inputmode="decimal"]')).toBeEnabled();
+				await expect(phone.locator('[data-price-transition]')).toHaveCount(0);
+			}
+			expect(errors).toEqual([]);
+		} finally {
+			for (const context of contexts) await context.close();
+		}
+	});
+}
+
+// Lose both notification and initial full-state deliveries, including the first
+// recovery response. Every socket must recover without navigating or reconnecting.
+async function dropStartupUpdates(context: BrowserContext) {
+	await context.routeWebSocket('**/api/v1/game/**', (socket) => {
+		const server = socket.connectToServer();
+		let missed = 0;
+		server.onMessage((message) => {
+			const event = JSON.parse(String(message));
+			if (event.type_ === 'start_game') return;
+			if (event.type_ === 'runtime_snapshot' && event.lobby.state === 'running' && missed++ < 3)
+				return;
+			socket.send(message);
+		});
+	});
+}
+
+for (const hosted of [true, false]) {
+	test(`start recovers missed updates without reload (${hosted ? 'hosted' : 'automatic'})`, async ({
+		browser,
+		page
+	}) => {
+		const { phone, host, contexts } = await start(
+			browser,
+			page,
+			'guess',
+			hosted,
+			'en',
+			'60',
+			{ width: 390, height: 844 },
+			'4',
+			[],
+			true
+		);
+		try {
+			await expect(page.locator('.price-stage-products img')).toHaveCount(1, { timeout: 20_000 });
+			await expect(phone.locator('input[inputmode="decimal"]')).toBeEnabled();
+			if (host)
+				await expect(host.getByRole('button', { name: 'Start Game', exact: true })).toHaveCount(0);
+			await answer(phone);
+			await expect(phone.getByText('Answers and points', { exact: true })).toBeVisible();
+		} finally {
+			for (const context of contexts) await context.close();
+		}
+	});
+}

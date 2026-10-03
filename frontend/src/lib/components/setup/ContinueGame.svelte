@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { presentationScope } from '$lib/presentation/scope';
 	import DrawingGameSetup from '$lib/components/drawing/DrawingGameSetup.svelte';
 	import CalorieGameSetup from '$lib/components/calories/CalorieGameSetup.svelte';
 	import { messages } from '$lib/i18n';
@@ -125,40 +126,42 @@
 			{#if !setup.settings_complete && selected === setup.settings.game_type}<p role="status">
 					{$messages.continueGame.missingSettings}
 				</p>{/if}
-			{#key formKey}
-				{#if selected === 'drawing_mashup'}
-					<DrawingGameSetup
-						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
-						onsubmit={prepare}
-						oncancel={cancel}
-						submitLabel={$messages.continueGame.prepare}
-					/>
-				{:else if selected === 'calorie_guessing'}
-					<CalorieGameSetup
-						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
-						onsubmit={prepare}
-						oncancel={cancel}
-						submitLabel={$messages.continueGame.prepare}
-					/>
-				{:else if selected === 'price_guessing'}
-					<PriceGameSetup
-						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
-						onsubmit={prepare}
-						oncancel={cancel}
-						submitLabel={$messages.continueGame.prepare}
-					/>
-				{:else if selected === 'trivia'}
-					<TriviaGameSetup
-						initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
-						frozenTitle={setup.settings.game_type === 'trivia'
-							? (setup.definition_title ?? setup.settings.definition_id)
-							: undefined}
-						onsubmit={prepare}
-						oncancel={cancel}
-						submitLabel={$messages.continueGame.prepare}
-					/>
-				{/if}
-			{/key}
+			<div style="display: contents" use:presentationScope={{ gameType: selected }}>
+				{#key formKey}
+					{#if selected === 'drawing_mashup'}
+						<DrawingGameSetup
+							initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
+							onsubmit={prepare}
+							oncancel={cancel}
+							submitLabel={$messages.continueGame.prepare}
+						/>
+					{:else if selected === 'calorie_guessing'}
+						<CalorieGameSetup
+							initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
+							onsubmit={prepare}
+							oncancel={cancel}
+							submitLabel={$messages.continueGame.prepare}
+						/>
+					{:else if selected === 'price_guessing'}
+						<PriceGameSetup
+							initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
+							onsubmit={prepare}
+							oncancel={cancel}
+							submitLabel={$messages.continueGame.prepare}
+						/>
+					{:else if selected === 'trivia'}
+						<TriviaGameSetup
+							initialSettings={selected === setup.settings.game_type ? setup.settings : undefined}
+							frozenTitle={setup.settings.game_type === 'trivia'
+								? (setup.definition_title ?? setup.settings.definition_id)
+								: undefined}
+							onsubmit={prepare}
+							oncancel={cancel}
+							submitLabel={$messages.continueGame.prepare}
+						/>
+					{/if}
+				{/key}
+			</div>
 		{/if}
 		{#if error}<p role="alert">{$messages.continueGame[error]}</p>{/if}
 		{#if !selected || loading || failed}<button

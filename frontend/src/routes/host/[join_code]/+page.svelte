@@ -18,12 +18,17 @@
 	import { connectionLabel, messages, onOffLabel, pageTitle } from '$lib/i18n';
 	import { createQrCodeDataUrl } from '$lib/qr-code.js';
 	import { createReconnectingWebSocket } from '$lib/reconnecting-websocket.js';
-	import { createSoundSystem } from '$lib/sound-system.js';
+	import { createPresentationSystem } from '$lib/presentation/system';
+	import { selectPresentation } from '$lib/presentation/registry';
+	import { presentationScope } from '$lib/presentation/scope';
+	import AudioControls from '$lib/presentation/AudioControls.svelte';
+	import PresentationDecoration from '$lib/presentation/PresentationDecoration.svelte';
 	import { definitionThemeStyle } from '$lib/theme';
 
 	const { data } = $props();
 	const lobby = () => data.lobby;
 	const SAFETY_RESYNC_INTERVAL_MS = 120_000;
+	const RESYNC_RETRY_MS = 3_000;
 	const definitionTitle = () =>
 		$game.game_type === 'price_guessing'
 			? $messages.priceGame.title
@@ -33,11 +38,12 @@
 				$messages.definitions.untitledDefinition;
 
 	const game = createGameStore(lobby());
-	const soundSystem = createSoundSystem('host-display');
+	const soundSystem = createPresentationSystem('host-display');
+	const presentation = $derived(selectPresentation($game));
 	let isConnected = $state(false);
-	let waitingRailWidth = $state(0);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
+	let resyncRetryTimeoutId: number | null = null;
 	let resyncIntervalId = $state<number | null>(null);
 	let joinQrDataUrl = $state('');
 	const playerMap = $derived(new Map($game.players.map((player) => [player.id, player])));
@@ -118,6 +124,13 @@
 		});
 	});
 
+	// Lobby changes may be the only update before a long answer countdown.
+	$effect(() => {
+		if (!isConnected || !($game.state === 'waiting_for_players')) return;
+		const interval = window.setInterval(requestResync, RESYNC_RETRY_MS);
+		return () => clearInterval(interval);
+	});
+
 	onMount(() => {
 		if (!browser) {
 			return;
@@ -130,20 +143,24 @@
 			{
 				onMessage: (data) => {
 					const message = JSON.parse(data) as { type_: string };
-					const resyncSnapshot = message.type_ === 'runtime_snapshot' && resyncPending;
+					const resyncSnapshot =
+						message.type_ === 'runtime_snapshot' &&
+						resyncPending &&
+						$game.state !== 'waiting_for_players';
 					const result = game.onMessage(data);
 					soundSystem.handleEvent(message, get(game));
 					soundSystem.syncState(get(game), { suppressCues: resyncSnapshot });
 					if (result === 'resync_required') {
 						requestResync();
 					} else if (result === 'snapshot_applied') {
-						resyncPending = false;
+						clearResyncPending();
 					}
 				},
 				onStatusChange: (connected) => {
 					isConnected = connected;
+					soundSystem.setConnected(connected);
 					if (!connected) {
-						resyncPending = false;
+						clearResyncPending();
 					}
 				}
 			}
@@ -157,6 +174,7 @@
 			cleanupExpiredReactions();
 		}, 500);
 		return () => {
+			clearResyncPending();
 			if (resyncIntervalId !== null) {
 				clearInterval(resyncIntervalId);
 				resyncIntervalId = null;
@@ -173,6 +191,7 @@
 
 	onDestroy(() => {
 		exitDisplayFullscreen();
+		clearResyncPending();
 		if (resyncIntervalId !== null) {
 			clearInterval(resyncIntervalId);
 			resyncIntervalId = null;
@@ -199,6 +218,18 @@
 		);
 		if (sent) {
 			resyncPending = true;
+			resyncRetryTimeoutId = window.setTimeout(() => {
+				clearResyncPending();
+				if (isConnected) requestResync();
+			}, RESYNC_RETRY_MS);
+		}
+	}
+
+	function clearResyncPending() {
+		resyncPending = false;
+		if (resyncRetryTimeoutId !== null) {
+			clearTimeout(resyncRetryTimeoutId);
+			resyncRetryTimeoutId = null;
 		}
 	}
 
@@ -217,6 +248,25 @@
 <svelte:head>
 	<title>{pageTitle(`${definitionTitle()} | ${$messages.hostView.hostLobbyTitle}`)}</title>
 </svelte:head>
+
+<div
+	style="display: contents"
+	use:presentationScope={{
+		gameType: presentation.gameType,
+		variant: presentation.variant,
+		screen: true
+	}}
+></div>
+{#if presentation.profile}
+	{#if $game.state === 'waiting_for_players'}
+		<AudioControls system={soundSystem} />
+	{/if}
+	<PresentationDecoration
+		gameType={presentation.gameType}
+		variant={presentation.variant}
+		surface="screen"
+	/>
+{/if}
 
 {#if $game.state === 'waiting_for_players'}
 	<h1 class="page-title">{definitionTitle()}</h1>
@@ -299,15 +349,13 @@
 	<div
 		use:idleCursor
 		class="host-stage relative h-full min-h-0 overflow-hidden"
-		style={definitionThemeStyle($game.theme)}
+		style={presentation.profile ? undefined : definitionThemeStyle($game.theme)}
 	>
-		<WaitingPlayers gameState={$game} bind:reservedWidth={waitingRailWidth} />
-		<section
-			class="relative h-full min-w-0 min-h-0 mt0"
-			style:padding-left={`${waitingRailWidth}px`}
-		>
+		<WaitingPlayers gameState={$game} />
+		<section class="relative h-full min-w-0 min-h-0 mt0">
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
+					gameType={presentation.gameType}
 					drawingGame={$game.drawingGame}
 					lobbyId={lobby().id}
 					runId={$game.run_id ?? lobby().id}

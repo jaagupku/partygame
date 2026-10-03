@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StoreCelebration from '$lib/presentation/price/StoreCelebration.svelte';
 	import DrawingGallery from '$lib/components/drawing/DrawingGallery.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
@@ -7,6 +8,7 @@
 	import { messages } from '$lib/i18n';
 
 	interface FinaleDisplayProps {
+		gameType?: string;
 		drawingGame?: DrawingGameView;
 		lobbyId?: string;
 		runId?: string;
@@ -20,6 +22,7 @@
 	}
 
 	let {
+		gameType,
 		drawingGame,
 		lobbyId = '',
 		runId = '',
@@ -107,6 +110,9 @@
 	<header class="finale-header">
 		<div>
 			<h1 class="page-title text-left text-4xl md:text-5xl">{title}</h1>
+			{#if gameType === 'price_guessing'}<p class="store-finale-thanks">
+					{$messages.priceStore.thanks}
+				</p>{/if}
 			<p class="page-subtitle text-left text-base md:text-lg">
 				{stage === 'third_place'
 					? $messages.finale.thirdPlaceReveal
@@ -124,7 +130,9 @@
 
 	{#if stage === 'third_place' || stage === 'second_place' || stage === 'first_place'}
 		<section class="podium card">
-			<CelebrationBackground {stage} />
+			{#if gameType === 'price_guessing'}<StoreCelebration {stage} />{:else}<CelebrationBackground
+					{stage}
+				/>{/if}
 			<div class="podium-stack">
 				{#if visiblePodiumGroups.length === 0}
 					<p class="theme-text-muted text-lg">{$messages.finale.noFinalStandingsYet}</p>

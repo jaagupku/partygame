@@ -26,9 +26,8 @@ async def game_websocket_host(
     )
     server = GameController(websocket, redis, lobby, can_manage=can_manage)
 
-    await server.connect()
-    # Game Running
     try:
+        await server.connect()
         while True:
             msg = await websocket.receive_json()
             await server.process_input(msg)
@@ -49,7 +48,9 @@ async def game_websocket_controller(
     redis: Redis = Depends(deps.get_redis),
 ):
     if not await GameStateRepository(redis).verify_connection_token(
-        game_id, websocket.cookies.get(connection_cookie_name(game_id, player=True)), player_id
+        game_id,
+        websocket.cookies.get(connection_cookie_name(game_id, player=True)),
+        player_id,
     ):
         await websocket.close(code=1008)
         return
@@ -59,8 +60,8 @@ async def game_websocket_controller(
     client = ClientController(websocket, redis, lobby, player)
 
     log.warning(f"Player < {player.name} > connected.")
-    await client.connect()
     try:
+        await client.connect()
         while True:
             msg = await websocket.receive_json()
             await client.process_input(msg)

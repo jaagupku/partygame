@@ -46,7 +46,7 @@
 </script>
 
 <section
-	class={`card ${railVariant ? 'xl:sticky xl:top-6' : ''} ${
+	class={`scoreboard-card card ${railVariant ? 'xl:sticky xl:top-6' : ''} ${
 		overlayVariant ? 'flex h-full min-h-0 flex-col overflow-hidden' : ''
 	}`}
 >
@@ -113,9 +113,17 @@
 					class={`font-extrabold ${railVariant ? 'text-xl md:text-2xl' : 'text-2xl'}`}
 					style="color: var(--party-primary)"
 				>
-					{playerMap.get(playerId)?.score}
+					{playerMap.get(playerId)?.score}<span class="price-score-unit">
+						{$messages.common.pointsWord}</span
+					>
 				</div>
 			</li>
 		{/each}
 	</ol>
 </section>
+
+<style>
+	.price-score-unit {
+		display: none;
+	}
+</style>
