@@ -291,3 +291,50 @@ test('missing drawings retain work and award the lone artist 1000 points', async
 		await Promise.all(game.contexts.map((c) => c.close()));
 	}
 });
+
+test('main writing countdown is centered, animated, and respects reduced motion', async ({
+	browser,
+	page
+}) => {
+	const game = await room(browser, page, 3);
+	try {
+		const timer = page.locator('.prompt-countdown');
+		await expect(timer).toBeVisible();
+		await expect(game.pages[0].locator('.prompt-countdown')).toHaveCount(0);
+		await page.evaluate(async () => {
+			if (document.fullscreenElement) await document.exitFullscreen();
+		});
+		for (const viewport of [
+			{ width: 1920, height: 1080 },
+			{ width: 768, height: 600 },
+			{ width: 390, height: 844 }
+		]) {
+			await page.setViewportSize(viewport);
+			const stage = await page.locator('.writing-display').boundingBox();
+			const box = await timer.boundingBox();
+			expect(stage).not.toBeNull();
+			expect(box).not.toBeNull();
+			expect(Math.abs(box!.x + box!.width / 2 - stage!.x - stage!.width / 2)).toBeLessThan(3);
+			expect(Math.abs(box!.y + box!.height / 2 - stage!.y - stage!.height / 2)).toBeLessThan(3);
+			await expect(page.locator('.writing-status')).toBeInViewport();
+		}
+		await page.setViewportSize({ width: 1920, height: 1080 });
+		await expect.poll(() => page.locator('.flip-in').count()).toBeGreaterThan(0);
+		await expect.poll(() => page.locator('.digits.pulse').count(), { timeout: 12_000 }).toBe(1);
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		expect(
+			await page.locator('.digits').evaluate((node) => getComputedStyle(node).animationName)
+		).toBe('none');
+		expect(
+			await page
+				.locator('.flip-in')
+				.first()
+				.evaluate((node) => getComputedStyle(node).animationName)
+		).toBe('none');
+		await page.screenshot({ path: '/tmp/drawing-prompt-countdown.png' });
+		await finishPhase(game.pages[0]);
+		await expect(timer).toHaveCount(0);
+	} finally {
+		await Promise.all(game.contexts.map((context) => context.close()));
+	}
+});

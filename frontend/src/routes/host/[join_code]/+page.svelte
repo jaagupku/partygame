@@ -335,7 +335,7 @@
 					</div>
 				</section>
 			{:else if $game.drawingGame}
-				<DrawingStage view={$game.drawingGame} />
+				<DrawingStage view={$game.drawingGame} mainDisplay />
 			{:else if $game.activeItem?.type_ === 'round_intro'}
 				<RoundIntroOverlay round={$game.activeItem.round} persistent={true} />
 			{:else}
