@@ -40,6 +40,13 @@
 	const game = createGameStore(lobby());
 	const soundSystem = createPresentationSystem('host-display');
 	const presentation = $derived(selectPresentation($game));
+	const rosterTitle = $derived(
+		presentation.gameType === 'price_guessing'
+			? $messages.priceStore.shoppers
+			: presentation.gameType === 'calorie_guessing'
+				? $messages.calorieStudio.roster
+				: ''
+	);
 	let isConnected = $state(false);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
 	let resyncPending = $state(false);
@@ -260,91 +267,108 @@
 {#if presentation.profile}
 	{#if $game.state === 'waiting_for_players'}
 		<AudioControls system={soundSystem} />
+	{:else}
+		<PresentationDecoration
+			gameType={presentation.gameType}
+			variant={presentation.variant}
+			surface="screen"
+		/>
 	{/if}
-	<PresentationDecoration
-		gameType={presentation.gameType}
-		variant={presentation.variant}
-		surface="screen"
-	/>
 {/if}
 
 {#if $game.state === 'waiting_for_players'}
-	<h1 class="page-title">{definitionTitle()}</h1>
-	<p class="page-subtitle">
-		{$messages.hostView.joinCode}:
-		<span class="theme-text mt-2 block text-5xl font-black tracking-[0.28em] sm:text-6xl">
-			{$game.join_code}
-		</span>
-	</p>
-	{#if joinQrDataUrl}
-		<div
-			class="theme-surface mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg border p-4 shadow-sm"
-		>
-			<img
-				class="h-52 w-52 rounded-md bg-white p-2"
-				src={joinQrDataUrl}
-				alt={$messages.hostView.joinQrAlt}
-				width="208"
-				height="208"
-			/>
-			<p class="theme-text-muted max-w-64 text-center text-sm font-semibold">
-				{$messages.hostView.scanToJoin}
+	<!-- Styled games split the lobby; quiz keeps its single column (wrappers are display: contents). -->
+	<div class="lobby-layout" class:lobby-split={Boolean(presentation.profile)}>
+		<div class="lobby-join">
+			<h1 class="page-title">{definitionTitle()}</h1>
+			<p class="page-subtitle">
+				{$messages.hostView.joinCode}:
+				<span class="theme-text mt-2 block text-5xl font-black tracking-[0.28em] sm:text-6xl">
+					{$game.join_code}
+				</span>
 			</p>
+			{#if joinQrDataUrl}
+				<div
+					class="theme-surface mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg border p-4 shadow-sm"
+				>
+					<img
+						class="h-52 w-52 rounded-md bg-white p-2"
+						src={joinQrDataUrl}
+						alt={$messages.hostView.joinQrAlt}
+						width="208"
+						height="208"
+					/>
+					<p class="theme-text-muted max-w-64 text-center text-sm font-semibold">
+						{$messages.hostView.scanToJoin}
+					</p>
+				</div>
+			{/if}
+			<p class="page-subtitle mt-2">
+				{$messages.hostView.hostMode}:
+				<span class="font-bold">{onOffLabel($game.host_enabled)}</span>
+			</p>
+			<p class="page-subtitle mt-2">{$messages.hostView.useHostController}</p>
+			<GameConnectionStatus
+				connected={isConnected}
+				connectionLabel={connectionLabel(isConnected)}
+				showInline={false}
+				showDisconnectedChip={true}
+			/>
 		</div>
-	{/if}
-	<p class="page-subtitle mt-2">
-		{$messages.hostView.hostMode}: <span class="font-bold">{onOffLabel($game.host_enabled)}</span>
-	</p>
-	<p class="page-subtitle mt-2">{$messages.hostView.useHostController}</p>
-	<GameConnectionStatus
-		connected={isConnected}
-		connectionLabel={connectionLabel(isConnected)}
-		showInline={false}
-		showDisconnectedChip={true}
-	/>
 
-	{#if $game.players.length > 0}
-		<ul class="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-4">
-			{#each $game.players as player}
-				<li>
-					<button
-						type="button"
-						class="grid w-24 justify-items-center gap-2 text-center transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500"
-						disabled={!data.canManage || !$game.host_enabled}
-						onclick={() => setHost(player.id)}
-						aria-label={`${player.name}${player.isHost ? `, ${$messages.common.host}` : ''}`}
-					>
-						<Avatar
-							name={player.name}
-							avatarKind={player.avatar_kind}
-							avatarPresetKey={player.avatar_preset_key}
-							avatarUrl={player.avatar_url}
-							sizeClass="h-16 w-16"
-						/>
-						<span
-							class="theme-text flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight"
-						>
-							{#if player.status === 'disconnected'}
-								<iconify-icon
-									class="theme-text-muted shrink-0 text-base"
-									icon="fluent:plug-disconnected-16-filled"
-									title={$messages.common.disconnected}
-								></iconify-icon>
-							{/if}
-							<span class="truncate">{player.name}</span>
-						</span>
-						{#if player.isHost}
-							<span
-								class="theme-soft-primary -mt-1 rounded-full border px-2 py-0.5 text-xs font-extrabold uppercase"
+		<div class="lobby-room">
+			{#if presentation.profile}
+				<PresentationDecoration
+					gameType={presentation.gameType}
+					variant={presentation.variant}
+					surface="screen"
+				/>
+				{#if rosterTitle}<h2 class="lobby-roster-title">{rosterTitle}</h2>{/if}
+			{/if}
+			{#if $game.players.length > 0}
+				<ul class="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-4">
+					{#each $game.players as player}
+						<li>
+							<button
+								type="button"
+								class="grid w-24 justify-items-center gap-2 text-center transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500"
+								disabled={!data.canManage || !$game.host_enabled}
+								onclick={() => setHost(player.id)}
+								aria-label={`${player.name}${player.isHost ? `, ${$messages.common.host}` : ''}`}
 							>
-								{$messages.common.host}
-							</span>
-						{/if}
-					</button>
-				</li>
-			{/each}
-		</ul>
-	{/if}
+								<Avatar
+									name={player.name}
+									avatarKind={player.avatar_kind}
+									avatarPresetKey={player.avatar_preset_key}
+									avatarUrl={player.avatar_url}
+									sizeClass="h-16 w-16"
+								/>
+								<span
+									class="theme-text flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight"
+								>
+									{#if player.status === 'disconnected'}
+										<iconify-icon
+											class="theme-text-muted shrink-0 text-base"
+											icon="fluent:plug-disconnected-16-filled"
+											title={$messages.common.disconnected}
+										></iconify-icon>
+									{/if}
+									<span class="truncate">{player.name}</span>
+								</span>
+								{#if player.isHost}
+									<span
+										class="theme-soft-primary -mt-1 rounded-full border px-2 py-0.5 text-xs font-extrabold uppercase"
+									>
+										{$messages.common.host}
+									</span>
+								{/if}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	</div>
 {:else}
 	<div
 		use:idleCursor
@@ -430,6 +454,37 @@
 {/if}
 
 <style>
+	.lobby-layout,
+	.lobby-join,
+	.lobby-room {
+		display: contents;
+	}
+	.lobby-split {
+		display: grid;
+		align-items: center;
+		gap: clamp(1.5rem, 3vw, 3rem);
+		width: min(100%, 96rem);
+		min-height: 100%;
+		margin-inline: auto;
+	}
+	.lobby-split .lobby-join,
+	.lobby-split .lobby-room {
+		display: grid;
+		justify-items: center;
+		align-content: center;
+		gap: 0.5rem;
+		min-width: 0;
+	}
+	.lobby-roster-title {
+		margin-top: 0.5rem;
+		font-size: clamp(1.25rem, 2vw, 1.75rem);
+		font-weight: 900;
+	}
+	@media (min-width: 1024px) {
+		.lobby-split {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+		}
+	}
 	.host-stage:global([data-cursor-idle]),
 	.host-stage:global([data-cursor-idle]) :global(*) {
 		cursor: none !important;

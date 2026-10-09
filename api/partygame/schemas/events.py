@@ -234,9 +234,13 @@ class RuntimeMediaState(BaseModel):
     reveal_duration_seconds: float | None = None
 
 
+# Server-timed aisle sweep before each later Price Guessing question opens.
+PRICE_TRANSITION_MS = 600
+
+
 class PriceTransitionState(BaseModel):
     id: str
-    duration_ms: int = 600
+    duration_ms: int = PRICE_TRANSITION_MS
     elapsed_ms: float = 0
 
 

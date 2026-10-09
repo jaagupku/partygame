@@ -584,7 +584,7 @@
 	<PresentationDecoration
 		gameType={presentation.gameType}
 		variant={presentation.variant}
-		surface="screen"
+		surface="controller"
 	/>
 {/if}
 
@@ -826,7 +826,11 @@
 			/>
 
 			{#if $controller.activeStep?.price_mode || $controller.activeStep?.calorie_mode}
-				<QuestionCard step={$controller.activeStep} displayPhase={$controller.displayPhase} />
+				<QuestionCard
+					step={$controller.activeStep}
+					displayPhase={$controller.displayPhase}
+					showCoach={false}
+				/>
 			{/if}
 
 			{#if !['price_guessing', 'calorie_guessing'].includes(lobby().game_type ?? 'trivia')}

@@ -40,7 +40,8 @@
 		outline: 3px solid #855900;
 		outline-offset: 3px;
 	}
-	:scope .store-eyebrow {
+	:scope .store-eyebrow,
+	:scope .price-receipt .guess-reveal-label {
 		font-size: 0.8rem;
 		font-weight: 900;
 		letter-spacing: 0.15em;
@@ -99,6 +100,22 @@
 		height: auto;
 		margin: auto;
 		max-height: 20vh;
+	}
+	:scope .lobby-room .store-welcome img {
+		width: min(40rem, 100%);
+		max-height: 32vh;
+	}
+	:scope .lobby-room > ul {
+		width: min(100%, 44rem);
+		padding: 1rem 1rem 0.75rem;
+		border-bottom: 8px solid #17665b;
+		background: linear-gradient(transparent 70%, #f0e7cf 70%);
+	}
+	:scope .lobby-roster-title {
+		font-family: var(--presentation-heading-font);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: #17665b;
 	}
 	:scope .store-corner {
 		position: fixed;
@@ -166,6 +183,27 @@
 			monospace;
 		white-space: nowrap;
 	}
+	:scope .choice-card {
+		padding: 1rem;
+		border-radius: 0.5rem;
+		background: #f3eddf;
+	}
+	:scope .choice-tray {
+		border-bottom: 4px solid #17665b;
+	}
+	:scope .choice-ribbon {
+		border-radius: 0.2rem;
+		background: #efbb45;
+		color: #183e3a;
+		font-family: var(--presentation-heading-font);
+		font-size: 1.15rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+	:scope .choice-value strong {
+		font-family: var(--presentation-heading-font);
+		color: #104c43;
+	}
 	:scope .price-checkout-entry {
 		border-top: 7px solid #17665b;
 	}
@@ -193,7 +231,7 @@
 		padding: 1rem;
 		box-shadow: 0 5px 0 #183e3a0a;
 	}
-	:scope .price-checkout-label {
+	:scope .price-receipt .guess-reveal-value {
 		position: relative;
 		overflow: hidden;
 		background: #fff5d6;
@@ -202,7 +240,7 @@
 		animation: store-unfold 360ms ease-out both;
 		transform-origin: top;
 	}
-	:scope .price-checkout-label::after {
+	:scope .price-receipt .guess-reveal-value::after {
 		content: '';
 		pointer-events: none;
 		position: absolute;
@@ -210,8 +248,13 @@
 		background: linear-gradient(transparent 46%, #efbb4577 50%, transparent 54%);
 		animation: store-scan 650ms ease-out both;
 	}
-	:scope .price-amount {
-		font-family: ui-monospace, monospace;
+	:scope .label-title {
+		font-family: var(--presentation-heading-font);
+	}
+	:scope .price-receipt .guess-reveal-amount {
+		font-family: var(--presentation-heading-font);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.01em;
 		color: #104c43;
 	}
 	:scope .price-receipt li,
@@ -229,6 +272,23 @@
 		margin-inline-start: 0.3em;
 		display: inline;
 		font-size: 0.7em;
+	}
+	/* The shared place colours belong on the cards, not on the full-width podium row. */
+	:scope .finale-shell .podium-row {
+		background: transparent;
+		box-shadow: none;
+	}
+	@media (min-width: 1024px) {
+		:scope .finale-shell .podium-card.place-1 {
+			width: min(100%, 22rem);
+		}
+		:scope .finale-shell .podium-card.place-1 .avatar-shell {
+			width: 10rem;
+			height: 10rem;
+		}
+		:scope .finale-shell .podium-card.place-1 .podium-score {
+			font-size: 1.25rem;
+		}
 	}
 	:scope .store-finale-thanks {
 		font-weight: 800;
@@ -272,6 +332,25 @@
 			padding: 0.35rem 0.5rem;
 			font-size: 0.75rem;
 		}
+	}
+	/* Phone answer verdicts use the authored palette instead of generic green/red. */
+	:scope .answer-result-border.answer-result-border-correct {
+		border-color: #17665b;
+		box-shadow: inset 0 0 28px #17665b55;
+	}
+	:scope .answer-result-border.answer-result-border-wrong {
+		border-color: #b63f32;
+		box-shadow: inset 0 0 28px #b63f3255;
+	}
+	:scope .answer-result-toast.answer-result-toast-correct {
+		border: 2px solid #17665b;
+		background: #e3f1ec;
+		color: #104c43;
+	}
+	:scope .answer-result-toast.answer-result-toast-wrong {
+		border: 2px solid #b63f32;
+		background: #fbe9e5;
+		color: #8e2d23;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		:scope *,

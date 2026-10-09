@@ -221,9 +221,30 @@ for (const mode of ['guess', 'compare', 'mixed'] as const) {
 						phone.getByRole('button', { name: 'Submit price', exact: true })
 					).toBeDisabled();
 				}
+				// Reduced motion shows the final choice placement without travel.
+				if (mode === 'compare' && hosted) await page.emulateMedia({ reducedMotion: 'reduce' });
 				await answer(phone);
 				await expect(phone.getByText('Answers and points', { exact: true })).toBeVisible();
 				await expect(page.getByText('Answers and points', { exact: true })).toBeVisible();
+				if (mode === 'compare') {
+					// Avatars travel to their chosen product before the winner is marked.
+					const choice = page.locator('.choice-reveal');
+					await expect(choice).toBeVisible();
+					await expect(choice.locator('.choice-player')).not.toHaveCount(0);
+					if (hosted) {
+						await expect(page.locator('.choice-reveal.choice-revealed')).toBeVisible({
+							timeout: 1000
+						});
+					} else {
+						await page.screenshot({ path: testInfo.outputPath('choice-moving.png') });
+					}
+					await expect(choice.locator('.choice-correct .choice-ribbon')).toHaveText(
+						'More expensive'
+					);
+					await expect(choice.locator('.choice-option')).toHaveCount(2);
+					await expect(choice.locator('.choice-wrong')).toHaveCount(1);
+					await expect(phone.locator('.guess-reveal-correct')).toContainText('More expensive');
+				}
 				await page.screenshot({ path: testInfo.outputPath('reveal.png') });
 				await phone.reload();
 				await phone.getByText('Product details', { exact: true }).click();
@@ -363,14 +384,14 @@ test('correct price leads a quick closest-first reveal on display and phone', as
 		for (const device of [page, phone]) {
 			const receipt = device.locator('.price-receipt');
 			await expect(receipt).toBeVisible();
-			const rows = receipt.locator('.price-result');
-			await expect(rows.locator('.price-result-player > p:first-child')).toHaveText([
+			const rows = receipt.locator('.guess-result');
+			await expect(rows.locator('.guess-result-player > p:first-child')).toHaveText([
 				'Closest',
 				'Middle',
 				'Test player'
 			]);
 			await expect(receipt.getByRole('link')).toHaveCount(0);
-			const price = receipt.locator('.price-amount');
+			const price = receipt.locator('.guess-reveal-amount');
 			const size = await price.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 			expect(size).toBeGreaterThanOrEqual(52);
 			const frames = await rows.evaluateAll((nodes) =>
@@ -394,10 +415,10 @@ test('correct price leads a quick closest-first reveal on display and phone', as
 			});
 		}
 		await phone.emulateMedia({ reducedMotion: 'reduce' });
-		await expect(phone.locator('.price-result').first()).toHaveCSS('animation-name', 'none');
-		await expect(phone.locator('.price-result').last()).toHaveCSS('opacity', '1');
+		await expect(phone.locator('.guess-result').first()).toHaveCSS('animation-name', 'none');
+		await expect(phone.locator('.guess-result').last()).toHaveCSS('opacity', '1');
 		await phone.reload();
-		await expect(phone.locator('.price-result-player > p:first-child')).toHaveText([
+		await expect(phone.locator('.guess-result-player > p:first-child')).toHaveText([
 			'Closest',
 			'Middle',
 			'Test player'

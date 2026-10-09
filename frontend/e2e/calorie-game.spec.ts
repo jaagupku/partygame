@@ -139,10 +139,39 @@ for (const mode of ['guess', 'compare', 'mixed'] as const) {
 						phone.getByRole('button', { name: 'Submit guess', exact: true })
 					).toBeDisabled();
 				}
+				// Reduced motion shows the final choice placement without travel.
+				if (mode === 'compare' && hosted) await page.emulateMedia({ reducedMotion: 'reduce' });
 				await answer(phone);
 				await expect(phone.getByText('Answers and points', { exact: true })).toBeVisible();
 				await expect(page.getByText('Answers and points', { exact: true })).toBeVisible();
+				if (mode === 'compare') {
+					// Avatars travel to their chosen product before the winner is marked.
+					const choice = page.locator('.choice-reveal');
+					await expect(choice).toBeVisible();
+					await expect(choice.locator('.choice-player')).not.toHaveCount(0);
+					if (hosted) {
+						await expect(page.locator('.choice-reveal.choice-revealed')).toBeVisible({
+							timeout: 1000
+						});
+					} else {
+						await page.screenshot({ path: testInfo.outputPath('choice-moving.png') });
+					}
+					await expect(choice.locator('.choice-correct .choice-ribbon')).toHaveText(
+						'More calories'
+					);
+					await expect(choice.locator('.choice-option')).toHaveCount(2);
+					await expect(choice.locator('.choice-wrong')).toHaveCount(1);
+					await expect(phone.locator('.guess-reveal-correct')).toContainText('More calories');
+				}
 				await page.screenshot({ path: testInfo.outputPath('reveal.png') });
+				await page.evaluate(async () => {
+					if (document.fullscreenElement) await document.exitFullscreen();
+				});
+				await page.setViewportSize({ width: 1280, height: 720 });
+				const result = await page.locator('.calorie-reveal .guess-result').first().boundingBox();
+				expect(result!.y + result!.height).toBeLessThan(720);
+				await page.screenshot({ path: testInfo.outputPath('reveal-1280.png') });
+
 				await phone.reload();
 				await expect(phone.getByRole('link', { name: 'View product' })).not.toHaveCount(0);
 				expect(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(

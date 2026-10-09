@@ -1,5 +1,6 @@
 import type { Component } from 'svelte';
 import { pricePresentation } from './price/profile';
+import { caloriePresentation } from './calorie/profile';
 import { writable } from 'svelte/store';
 import type { ResolvedPalette } from '$lib/theme';
 
@@ -13,8 +14,10 @@ export type Appearance = {
 	colorScheme?: 'light' | 'dark';
 	/** CSS custom properties, e.g. --presentation-font, --presentation-card-radius. */
 	tokens?: Record<`--${string}`, string>;
-	Decoration?: Component<{ variant: string; surface: 'screen' | 'preview' }>;
+	Decoration?: Component<{ variant: string; surface: DecorationSurface }>;
 };
+/** Full display screens, phone controllers, or individual homepage/setup previews. */
+export type DecorationSurface = 'screen' | 'controller' | 'preview';
 export type AudioAsset = { src: string; prominent?: boolean };
 export type PresentationProfile = {
 	gameType: PresentationGame;
@@ -30,16 +33,19 @@ export type PresentationProfile = {
 
 const profiles = new Map<string, PresentationProfile>();
 export const presentationRevision = writable(0);
-export function registerPresentation(profile: PresentationProfile) {
+/** `replace` lets tests swap a registered profile; the returned cleanup restores it. */
+export function registerPresentation(profile: PresentationProfile, { replace = false } = {}) {
 	if (!['price_guessing', 'calorie_guessing', 'drawing_mashup'].includes(profile.gameType)) {
 		throw new Error('Only standalone game presentations can be registered');
 	}
-	if (profiles.has(profile.gameType))
-		throw new Error(`Presentation already registered: ${profile.gameType}`);
+	const previous = profiles.get(profile.gameType);
+	if (previous && !replace) throw new Error(`Presentation already registered: ${profile.gameType}`);
 	profiles.set(profile.gameType, profile);
 	presentationRevision.update((n) => n + 1);
 	return () => {
-		profiles.delete(profile.gameType);
+		if (profiles.get(profile.gameType) !== profile) return;
+		if (previous) profiles.set(profile.gameType, previous);
+		else profiles.delete(profile.gameType);
 		presentationRevision.update((n) => n + 1);
 	};
 }
@@ -58,3 +64,4 @@ export function selectPresentation(state: PresentationState) {
 }
 // Profiles use type-only registry imports to avoid side-effect cycles.
 registerPresentation(pricePresentation);
+registerPresentation(caloriePresentation);

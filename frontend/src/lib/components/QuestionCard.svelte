@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Coach from '$lib/presentation/calorie/Coach.svelte';
 	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
 	import ProductCard from '$lib/components/prices/ProductCard.svelte';
 	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
@@ -25,6 +26,11 @@
 		buzzedPlayerName?: string;
 		displayPhase?: string;
 		variant?: 'default' | 'stage';
+		showCoach?: boolean;
+		/** Players for avatars in the animated choice reveal. */
+		players?: Player[];
+		/** Main display only: compare reveals move avatars to the chosen product. */
+		choiceReveal?: boolean;
 	}
 
 	let {
@@ -34,6 +40,9 @@
 		buzzerActive = false,
 		buzzedPlayerName,
 		displayPhase = 'question_active',
+		showCoach = true,
+		players = [],
+		choiceReveal = false,
 		variant = 'default'
 	}: QuestionCardProps = $props();
 
@@ -46,6 +55,13 @@
 	);
 	const stageVariant = $derived(variant === 'stage');
 	const showingAnswerReveal = $derived(displayPhase === 'answer_reveal');
+	// Animate only a reveal that follows this card showing the question, never a reconnect or review.
+	let questionSeenFor = $state<string>();
+	$effect(() => {
+		if (step && !showingAnswerReveal) questionSeenFor = step.id;
+	});
+	const choiceActive = $derived(choiceReveal && productMode === 'compare' && showingAnswerReveal);
+	const animateChoice = $derived(questionSeenFor === step?.id);
 	const optionRevealStep = $derived(isOptionRevealStep(step));
 	const optionStates = $derived.by(() =>
 		step && optionRevealStep ? buildRevealedOptionStates(step, revealedAnswer) : []
@@ -98,6 +114,11 @@
 >
 	{#if step}
 		<div class="question-card-title-row">
+			<!-- During the reveal, CalorieReveal shows the coach's reaction instead. -->
+			{#if step.calorie_mode && showCoach && !showingAnswerReveal && !stageVariant}<Coach
+					compact
+					pose="thinking"
+				/>{/if}
 			<h3
 				class={`question-card-step-title ${
 					stageVariant
@@ -114,8 +135,15 @@
 		{#if productMode}
 			<div class:price-stage-content={stageVariant}>
 				<div class:price-stage-inner={stageVariant}>
+					{#if step.calorie_mode && showCoach && !showingAnswerReveal && stageVariant}<aside
+							class="studio-coach-aside"
+						>
+							<Coach pose="thinking" />
+						</aside>{/if}
 					<PriceTransition {products} stepId={step.id} transition={step.price_transition}>
+						<!-- Stays mounted during a choice reveal so the next aisle sweep keeps these cards. -->
 						<div
+							hidden={choiceActive}
 							class={`grid gap-4 ${productMode === 'compare' ? 'sm:grid-cols-2' : ''}`}
 							class:price-stage-products={stageVariant}
 							class:price-stage-single={stageVariant && productMode === 'guess'}
@@ -128,7 +156,18 @@
 									</div>{:else}<ProductCard {product} stage={stageVariant} />{/if}{/each}
 						</div>
 					</PriceTransition>
-					{#if step.calorie_mode}<CalorieReveal {step} />{:else}<PriceReveal {step} />{/if}
+					{#if step.calorie_mode}<CalorieReveal
+							{step}
+							{showCoach}
+							{players}
+							choice={choiceActive}
+							animate={animateChoice}
+						/>{:else}<PriceReveal
+							{step}
+							{players}
+							choice={choiceActive}
+							animate={animateChoice}
+						/>{/if}
 				</div>
 			</div>
 		{/if}

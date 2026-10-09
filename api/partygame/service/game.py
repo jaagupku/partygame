@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from partygame import schemas
 from partygame.core.config import settings
+from partygame.schemas.events import PRICE_TRANSITION_MS
 from partygame.schemas.game_definition import (
     EvaluationType,
     MediaType,
@@ -212,7 +213,9 @@ class GameRuntimeService:
             {
                 "price_transition_started_at": started_at if price_transition else None,
                 "price_transition_ends_at": (
-                    started_at + 0.6 if price_transition else None
+                    started_at + PRICE_TRANSITION_MS / 1000
+                    if price_transition
+                    else None
                 ),
                 "step_id": step.id,
                 "step_index": lobby.current_step,

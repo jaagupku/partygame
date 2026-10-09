@@ -27,7 +27,7 @@
 		/>
 	{/if}
 	<p class="text-center text-lg font-bold leading-snug">{product.title}</p>
-	{#if 'basis' in product}<p class="font-bold">
+	{#if 'basis' in product}<p class="nutrition-basis font-bold">
 			{$messages.calorieGame[product.basis === '100ml' ? 'per100ml' : 'per100g']}
 		</p>{/if}
 	{#if product.detail && !product.title.includes(product.detail)}<p

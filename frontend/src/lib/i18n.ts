@@ -235,6 +235,8 @@ const en = defineMessages({
 		choose: 'Choose the product with more calories for the displayed quantity',
 		invalidPrice: 'Enter a non-negative whole number of kcal.',
 		actualPrice: 'Recorded calories',
+		correctCalories: 'Correct calories',
+		moreCalories: 'More calories',
 		captured: 'Nutrition recorded',
 		revealTime: 'Correct calorie reveal time',
 		unavailable:
@@ -250,6 +252,18 @@ const en = defineMessages({
 		selection:
 			'Products sold in Estonia are preferred, with international products added when needed.'
 	},
+	calorieStudio: {
+		welcome: 'Welcome to the studio',
+		roster: "Today's class",
+		prepare: 'Get your class ready',
+		close: 'Great guesses!',
+		partial: 'Good guess. You were in range!',
+		encourage: 'Every guess is practice. Keep going!',
+		complete: 'Class complete. Nicely done!',
+		champion: 'Top of the class!',
+		podium: 'Strong finish. Great work!',
+		keepTraining: 'Class complete. Every guess is practice!'
+	},
 	priceStore: {
 		welcome: 'Welcome to the department store',
 		departments: 'Choose your departments',
@@ -257,7 +271,8 @@ const en = defineMessages({
 		unknownPrice: 'Price to discover',
 		checkout: 'Checkout',
 		receipt: 'Your points receipt',
-		thanks: 'Thanks for shopping!'
+		thanks: 'Thanks for shopping!',
+		shoppers: 'Shoppers'
 	},
 	priceGame: {
 		retailers: {
@@ -310,6 +325,7 @@ const en = defineMessages({
 		noDataset: 'No product dataset yet',
 		actualPrice: 'Recorded regular price',
 		correctPrice: 'Correct price',
+		moreExpensive: 'More expensive',
 		productDetails: 'Product details',
 		results: 'Answers and points',
 		noAnswer: 'No answer',
@@ -1422,6 +1438,8 @@ const et: Messages = {
 		choose: 'Vali toode, milles on näidatud koguse kohta rohkem kaloreid',
 		invalidPrice: 'Sisesta mittenegatiivne täisarv kaloreid.',
 		actualPrice: 'Salvestatud kalorid',
+		correctCalories: 'Õige kalorite arv',
+		moreCalories: 'Rohkem kaloreid',
 		captured: 'Toitumisandmed salvestatud',
 		revealTime: 'Õige kalorihulga näitamise aeg',
 		unavailable:
@@ -1435,6 +1453,18 @@ const et: Messages = {
 		imageLicense: 'Piltide litsents (CC BY-SA)',
 		selection: 'Eelistatakse Eestis müüdavaid tooteid, vajadusel lisatakse rahvusvahelisi tooteid.'
 	},
+	calorieStudio: {
+		welcome: 'Tere tulemast stuudiosse',
+		roster: 'Tänane rühm',
+		prepare: 'Pane mängutund valmis',
+		close: 'Väga täpsed pakkumised!',
+		partial: 'Hea pakkumine. Olid lähedal!',
+		encourage: 'Iga pakkumine õpetab. Jätka samas vaimus!',
+		complete: 'Mängutund läbi. Tubli töö!',
+		champion: 'Klassi parim!',
+		podium: 'Tugev lõpp. Tubli töö!',
+		keepTraining: 'Mängutund läbi. Iga pakkumine on harjutus!'
+	},
 	priceStore: {
 		welcome: 'Tere tulemast kaubamajja',
 		departments: 'Vali oma osakonnad',
@@ -1442,7 +1472,8 @@ const et: Messages = {
 		unknownPrice: 'Arvatav hind',
 		checkout: 'Kassa',
 		receipt: 'Sinu punktitšekk',
-		thanks: 'Aitäh ostlemast!'
+		thanks: 'Aitäh ostlemast!',
+		shoppers: 'Ostjad'
 	},
 	priceGame: {
 		retailers: {
@@ -1496,6 +1527,7 @@ const et: Messages = {
 		noDataset: 'Tooteandmed puuduvad',
 		actualPrice: 'Salvestatud tavahind',
 		correctPrice: 'Õige hind',
+		moreExpensive: 'Kallim',
 		productDetails: 'Toote andmed',
 		results: 'Vastused ja punktid',
 		noAnswer: 'Vastus puudub',

@@ -292,6 +292,8 @@
 				{buzzerActive}
 				{buzzedPlayerName}
 				{displayPhase}
+				{players}
+				choiceReveal
 				variant={stageLayout ? 'stage' : 'default'}
 			/>
 		</div>
@@ -305,6 +307,8 @@
 					{buzzerActive}
 					{buzzedPlayerName}
 					{displayPhase}
+					{players}
+					choiceReveal
 					variant={stageLayout ? 'stage' : 'default'}
 				/>
 			</div>

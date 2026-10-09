@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
+	import { calorieFinaleReaction } from '$lib/presentation/calorie/reaction';
 
 	interface FinaleControllerCardProps {
 		gameType?: string;
@@ -37,6 +38,9 @@
 	<p class="theme-text-muted text-sm font-black uppercase tracking-[0.18em]">
 		{gameType === 'price_guessing' ? $messages.priceStore.receipt : $messages.common.finalResult}
 	</p>
+	{#if gameType === 'calorie_guessing'}<p class="font-bold">
+			{$messages.calorieStudio[calorieFinaleReaction(result?.place)]}
+		</p>{/if}
 	<h2 class="label-title text-3xl">{headline}</h2>
 	<p class="theme-text-muted text-lg">{placeLabel}</p>
 	{#if result}

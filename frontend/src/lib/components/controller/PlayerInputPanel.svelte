@@ -358,9 +358,11 @@
 		{#if hasSubmitted && displayPhase !== 'answer_reveal'}<p role="status">
 				{$messages.gameplay.answerSubmitted}
 			</p>{/if}
-		{#if activeStep.calorie_mode}<CalorieReveal step={activeStep} />{:else}<PriceReveal
+		{#if activeStep.calorie_mode}<CalorieReveal
 				step={activeStep}
-			/>{/if}
+				{playerId}
+				showCoach={false}
+			/>{:else}<PriceReveal step={activeStep} />{/if}
 		{#if showPriceReady && displayPhase === 'answer_reveal' && priceRevealRemainingSeconds !== undefined}
 			<p class="theme-text-muted text-sm">
 				{$messages.priceGame.revealRemaining}: {Math.ceil(priceRevealSecondsLeft)}

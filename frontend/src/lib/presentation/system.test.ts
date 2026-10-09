@@ -30,19 +30,22 @@ afterEach(() => {
 function setup(surface: 'controller' | 'host-display') {
 	play.mockImplementation(() => ({ volume: vi.fn(), stop: vi.fn() }));
 	cleanups.push(
-		registerPresentation({
-			gameType: 'calorie_guessing',
-			appearance: { palette: {} },
-			audio: {
-				music: 'music',
-				effects: {
-					buzz: { src: 'buzz' },
-					submissionReceived: { src: 'accepted' },
-					answerReveal: { src: 'reveal' },
-					timerWarning: { src: 'tick' }
+		registerPresentation(
+			{
+				gameType: 'drawing_mashup',
+				appearance: { palette: {} },
+				audio: {
+					music: 'music',
+					effects: {
+						buzz: { src: 'buzz' },
+						submissionReceived: { src: 'accepted' },
+						answerReveal: { src: 'reveal' },
+						timerWarning: { src: 'tick' }
+					}
 				}
-			}
-		})
+			},
+			{ replace: true }
+		)
 	);
 	const system = createPresentationSystem(surface);
 	cleanups.push(system.dispose);
@@ -52,7 +55,7 @@ function setup(surface: 'controller' | 'host-display') {
 function state(overrides = {}): ControllerState {
 	return {
 		id: 'self',
-		gameType: 'calorie_guessing',
+		gameType: 'drawing_mashup',
 		runId: 'one',
 		gameState: 'running',
 		hasSubmitted: false,

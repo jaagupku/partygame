@@ -1,0 +1,466 @@
+/* Authored studio colors are fixed across application and OS theme changes. */
+@scope ([data-presentation='calorie_guessing']) to ([data-presentation]:not([data-presentation='calorie_guessing'])) {
+	:scope {
+		color: var(--party-ink);
+	}
+	:scope:is(body) {
+		background:
+			radial-gradient(circle at 0 0, #37c3b518 0 16%, transparent 16.2%),
+			repeating-linear-gradient(135deg, #65439905 0 2px, transparent 2px 32px), #fff4df;
+	}
+	:scope.card {
+		background: #fff4df;
+		border: 2px solid #654399;
+		overflow: hidden;
+	}
+	:scope .game-tile-icon {
+		display: none;
+	}
+	:scope h1,
+	:scope h2,
+	:scope h3,
+	:scope .label-title {
+		font-weight: 900;
+		letter-spacing: -0.02em;
+	}
+	:scope .page-title {
+		color: #4c2c7c;
+	}
+	:scope .btn-primary {
+		background: #654399;
+		color: #ffffff;
+		box-shadow: 0 4px 0 #4c2c7c;
+	}
+	:scope .btn-accent {
+		background: #37c3b5;
+		color: #34234e;
+	}
+	:scope .btn:focus-visible,
+	:scope input:focus-visible,
+	:scope select:focus-visible,
+	:scope button:focus-visible {
+		outline: 3px solid #126c65;
+		outline-offset: 3px;
+	}
+	:scope .studio-illustration {
+		border-radius: 1.2rem;
+		background: #ede0f3;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+	:scope .studio-illustration img {
+		width: 100%;
+		height: 10rem;
+		object-fit: contain;
+	}
+	:scope .studio-setup {
+		max-width: 60rem;
+		margin: auto;
+	}
+	:scope .studio-setup > .studio-illustration {
+		max-width: 38rem;
+		margin: 0 auto 1.25rem;
+	}
+	:scope .studio-setup > .studio-illustration img {
+		height: clamp(9rem, 20vw, 14rem);
+	}
+	:scope .studio-setup .card {
+		border-top: 8px solid #ed806d;
+		background: #fffbf2;
+	}
+	:scope .studio-eyebrow {
+		color: #4c2c7c;
+		font-weight: 900;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		text-align: center;
+		font-size: 0.8rem;
+		margin: 0.5rem 0;
+	}
+	:scope .studio-welcome {
+		width: min(32rem, 100%);
+		margin: 0 auto 1rem;
+		background: transparent;
+	}
+	:scope .studio-welcome img {
+		height: clamp(7rem, 17vh, 12rem);
+	}
+	:scope .lobby-room .studio-welcome {
+		width: min(40rem, 100%);
+	}
+	:scope .lobby-room .studio-welcome img {
+		height: clamp(10rem, 30vh, 20rem);
+	}
+	:scope .lobby-room > ul {
+		width: min(100%, 44rem);
+		padding: 1rem;
+		border-radius: 1.25rem;
+		background: #ede0f3;
+		border-bottom: 8px solid #37c3b5;
+	}
+	:scope .lobby-roster-title {
+		color: #4c2c7c;
+	}
+	:scope .studio-coach {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		min-width: 0;
+	}
+	:scope .studio-coach img {
+		width: 6rem;
+		height: 6.5rem;
+		object-fit: contain;
+		flex-shrink: 0;
+		animation: coach-arrive 350ms ease-out both;
+	}
+	:scope .studio-coach p {
+		color: #4c2c7c;
+		font-size: 1rem;
+		font-weight: 800;
+		max-width: 28rem;
+	}
+	:scope .studio-coach-compact img {
+		width: 3.7rem;
+		height: 4rem;
+	}
+	:scope .question-card-title-row > .studio-coach {
+		flex-shrink: 0;
+	}
+	:scope .question-card-title-row .question-card-step-title {
+		flex: 1;
+	}
+	/* On the display, the coach leads the class beside the products while players answer. */
+	:scope .price-stage-inner:has(> .studio-coach-aside) {
+		display: grid;
+		grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr);
+		align-items: center;
+		gap: clamp(1rem, 2vw, 2.5rem);
+	}
+	:scope .studio-coach-aside .studio-coach img {
+		width: 100%;
+		height: auto;
+		max-height: min(18rem, 40dvh);
+	}
+
+	:scope .question-card-stage-shell {
+		border-top: 6px solid #37c3b5;
+		border-radius: 1.5rem;
+		background: #fffbf2;
+	}
+	:scope .question-card-points-badge {
+		background: #ede0f3;
+		color: #4c2c7c;
+		border: 2px solid #b8a9c6;
+		border-radius: 2rem;
+	}
+	:scope .price-stage-products {
+		align-items: stretch;
+	}
+	:scope .price-stage-products > .product-card {
+		background: #ede0f3;
+		border: 2px solid #b8a9c6;
+		border-bottom: 8px solid #37c3b5;
+		border-radius: 1.25rem;
+		padding: 0.8rem;
+		height: auto;
+	}
+	:scope .product-card img {
+		border-radius: 0.8rem;
+		border: 1px solid #b8a9c6;
+	}
+	:scope .product-card p {
+		overflow-wrap: anywhere;
+	}
+	:scope .product-card .nutrition-basis {
+		margin-top: auto;
+		padding: 0.35rem 0.85rem;
+		border-radius: 2rem;
+		background: #d6f3eb;
+		color: #24564d;
+		font-size: clamp(0.85rem, 1.2vw, 1.2rem);
+		text-align: center;
+	}
+	:scope .controller-compact-card {
+		border-top: 6px solid #ed806d;
+	}
+	:scope button:has(.product-card) {
+		border: 2px solid #b8a9c6;
+		background: #fffbf2;
+		border-bottom: 6px solid #37c3b5;
+		border-radius: 1.25rem;
+	}
+	:scope button[aria-pressed='true']:has(.product-card) {
+		outline: 3px solid #654399;
+		outline-offset: -3px;
+		box-shadow: none;
+		background: #ede0f3;
+	}
+	:scope .timer-panel {
+		background: #ede0f3;
+		border: 2px solid #654399;
+		border-radius: 1rem;
+		box-shadow: 0 4px 0 #65439918;
+	}
+	:scope .timer-panel .timer-time {
+		color: #4c2c7c;
+		font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+		font-variant-numeric: tabular-nums;
+	}
+	:scope .timer-bar {
+		background: #126c65;
+	}
+	/* Interval clock: a ring that empties with the remaining time. */
+	:scope .timer-panel .timer-dot {
+		display: none;
+	}
+	:scope .timer-panel .timer-count::before {
+		content: '';
+		width: 2.6rem;
+		height: 2.6rem;
+		border-radius: 50%;
+		background: conic-gradient(#126c65 var(--timer-progress, 100%), #fffbf2 0);
+		-webkit-mask: radial-gradient(circle, transparent 52%, #000 54%);
+		mask: radial-gradient(circle, transparent 52%, #000 54%);
+		box-shadow: inset 0 0 0 2px #65439933;
+	}
+	:scope .timer-panel-warning .timer-count::before {
+		background: conic-gradient(#a15c16 var(--timer-progress, 100%), #fffbf2 0);
+	}
+	:scope .timer-panel-danger .timer-count::before {
+		background: conic-gradient(#b33832 var(--timer-progress, 100%), #fffbf2 0);
+	}
+	:scope .timer-panel-warning .timer-bar {
+		background: #a15c16;
+	}
+	:scope .timer-panel-danger .timer-bar {
+		background: #b33832;
+	}
+	:scope .choice-card {
+		padding: 0.8rem;
+		border: 2px solid #b8a9c6;
+		border-bottom: 8px solid #37c3b5;
+		border-radius: 1.25rem;
+		background: #ede0f3;
+	}
+	:scope .choice-tray {
+		border-radius: 1rem;
+		background: #fff4df;
+	}
+	:scope .choice-ribbon {
+		background: #4c2c7c;
+		color: #ffffff;
+	}
+	:scope .choice-value strong {
+		color: #4c2c7c;
+	}
+	:scope .calorie-reveal {
+		border-top: 4px solid #ed806d;
+		padding-top: 0.75rem;
+	}
+	:scope .calorie-reveal .guess-reveal-value {
+		background: #ede0f3;
+		border: 2px solid #b8a9c6;
+		border-radius: 1.25rem;
+		text-align: center;
+		animation: studio-value-in 320ms ease-out both;
+	}
+	:scope .calorie-reveal .guess-reveal-amount {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items: baseline;
+		gap: 0.4rem 0.75rem;
+		color: #4c2c7c;
+	}
+	:scope .calorie-reveal .guess-reveal-amount strong {
+		font-size: clamp(3.25rem, 7vw, 7rem);
+		line-height: 1.1;
+		font-variant-numeric: tabular-nums;
+	}
+	:scope .calorie-reveal .guess-reveal-unit {
+		font-size: 1.1rem;
+	}
+	:scope .calorie-reveal .guess-result {
+		border-bottom: 1px solid #b8a9c6;
+		overflow-wrap: anywhere;
+	}
+	:scope .scoreboard-card {
+		background: #fffbf2;
+		border: 2px solid #b8a9c6;
+		border-top: 8px solid #37c3b5;
+	}
+	:scope .price-score-unit {
+		display: inline;
+		margin-inline-start: 0.3em;
+		font-size: 0.65em;
+	}
+	:scope .finale-shell .podium {
+		background: #ede0f3;
+		border: 2px solid #654399;
+		border-bottom: 10px solid #37c3b5;
+	}
+	:scope .finale-shell .podium-card {
+		background: #fffbf2;
+		border: 2px solid #b8a9c6;
+		border-top: 8px solid #37c3b5;
+		box-shadow: 0 6px 0 #65439918;
+	}
+	:scope .finale-shell .podium-card.place-1 {
+		border-top-color: #ed806d;
+		background: #fff0e5;
+	}
+	:scope .finale-shell .stat-card {
+		background: #fffbf2;
+		border: 2px solid #b8a9c6;
+		border-top: 8px solid #ed806d;
+	}
+
+	:scope .finale-shell .podium-row {
+		background: transparent;
+		box-shadow: none;
+	}
+	:scope .finale-shell .podium-coach {
+		position: relative;
+		z-index: 1;
+		margin-bottom: 1rem;
+	}
+	:scope .finale-shell .podium-coach p {
+		font-size: clamp(1rem, 1.8vw, 1.6rem);
+	}
+	@media (min-width: 1024px) {
+		:scope .finale-shell .podium-coach {
+			position: absolute;
+			left: clamp(1rem, 4vw, 4rem);
+			bottom: clamp(1rem, 4vh, 3rem);
+			flex-direction: column;
+			margin: 0;
+		}
+		:scope .finale-shell .podium-coach img {
+			width: clamp(9rem, 14vw, 16rem);
+			height: auto;
+		}
+		:scope .finale-shell .podium-card.place-1 {
+			width: min(100%, 22rem);
+		}
+		:scope .finale-shell .podium-card.place-1 .avatar-shell {
+			width: 10rem;
+			height: 10rem;
+		}
+		:scope .finale-shell .podium-card.place-1 .podium-score {
+			font-size: 1.25rem;
+		}
+	}
+	:scope .finale-shell .podium-name {
+		overflow-wrap: anywhere;
+	}
+	@media (min-width: 640px) and (max-height: 850px) {
+		:scope .host-stage .question-card-price-reveal .product-card {
+			display: grid;
+			grid-template-columns: 5rem minmax(0, 1fr);
+			gap: 0.3rem 0.75rem;
+			align-items: center;
+		}
+		:scope .host-stage .question-card-price-reveal .product-card img,
+		:scope .host-stage .question-card-price-reveal .product-card > div {
+			grid-column: 1;
+			grid-row: 1 / span 3;
+			width: 5rem;
+			height: 5rem;
+		}
+		:scope .host-stage .question-card-price-reveal .product-card > p {
+			grid-column: 2;
+			margin: 0;
+			font-size: 1rem;
+		}
+		:scope .host-stage .calorie-reveal .studio-coach img {
+			width: 3rem;
+			height: 3.25rem;
+		}
+		:scope .host-stage .calorie-reveal {
+			gap: 0.65rem;
+		}
+	}
+	@media (max-width: 1023px) {
+		:scope .price-stage-inner:has(> .studio-coach-aside) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		:scope .studio-coach-aside .studio-coach img {
+			width: 4.5rem;
+			max-height: none;
+		}
+	}
+	@media (max-width: 639px) {
+		:scope .studio-illustration img {
+			height: 8rem;
+		}
+		:scope .studio-welcome img {
+			height: 7rem;
+		}
+		:scope .studio-coach img {
+			width: 4rem;
+			height: 4.4rem;
+		}
+		:scope .studio-coach-compact img {
+			width: 2.7rem;
+			height: 3rem;
+		}
+		:scope .studio-coach p {
+			font-size: 0.9rem;
+		}
+		:scope .price-stage-products > .product-card {
+			padding: 0.5rem;
+		}
+		:scope .question-card-title-row {
+			flex-wrap: wrap;
+		}
+	}
+	/* Phone answer verdicts use the authored palette instead of generic green/red. */
+	:scope .answer-result-border.answer-result-border-correct {
+		border-color: #37c3b5;
+		box-shadow: inset 0 0 28px #37c3b566;
+	}
+	:scope .answer-result-border.answer-result-border-wrong {
+		border-color: #b33832;
+		box-shadow: inset 0 0 28px #b3383255;
+	}
+	:scope .answer-result-toast.answer-result-toast-correct {
+		border: 2px solid #37c3b5;
+		background: #d6f3eb;
+		color: #24564d;
+	}
+	:scope .answer-result-toast.answer-result-toast-wrong {
+		border: 2px solid #b33832;
+		background: #fbe7e4;
+		color: #872921;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		:scope *,
+		:scope *::before,
+		:scope *::after {
+			animation: none !important;
+			transition: none !important;
+		}
+	}
+}
+@keyframes coach-arrive {
+	from {
+		opacity: 0.5;
+		transform: translateY(4px) rotate(-4deg);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes studio-value-in {
+	from {
+		opacity: 0.4;
+		transform: scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}

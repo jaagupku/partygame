@@ -112,11 +112,12 @@
 </script>
 
 <div
-	style="display: contents"
+	class="studio-setup"
 	use:presentationScope={{ gameType: 'calorie_guessing', screen: !onsubmit }}
 >
-	<PresentationDecoration gameType="calorie_guessing" />
+	{#if !onsubmit}<PresentationDecoration gameType="calorie_guessing" />{/if}
 
+	<p class="studio-eyebrow">{$messages.calorieStudio.prepare}</p>
 	<h1 class="page-title">{copy.title}</h1>
 	<p class="page-subtitle">{copy.subtitle}</p>
 	<p class="mb-4 theme-text-muted">{copy.selection}</p>

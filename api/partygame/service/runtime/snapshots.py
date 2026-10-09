@@ -2,7 +2,7 @@ from time import time
 from typing import TYPE_CHECKING, Any
 
 from partygame import schemas
-from partygame.schemas.events import PriceTransitionState
+from partygame.schemas.events import PRICE_TRANSITION_MS, PriceTransitionState
 from partygame.schemas.game_definition import (
     MediaDefinition,
     PlayerInputKind,
@@ -329,7 +329,9 @@ class SnapshotBuilder:
         ):
             transition = PriceTransitionState(
                 id=f"{lobby.run_id or lobby.id}:{step.id}",
-                elapsed_ms=min(600.0, max(0.0, (time() - transition_started) * 1000)),
+                elapsed_ms=min(
+                    PRICE_TRANSITION_MS, max(0.0, (time() - transition_started) * 1000)
+                ),
             )
         return schemas.RuntimeStepState(
             price_transition=transition,

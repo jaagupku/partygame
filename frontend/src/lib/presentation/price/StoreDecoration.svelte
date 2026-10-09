@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
-	let { variant, surface }: { variant: string; surface: 'screen' | 'preview' } = $props();
+	import type { DecorationSurface } from '../registry';
+	let { variant, surface }: { variant: string; surface: DecorationSurface } = $props();
 </script>
 
 {#if surface === 'preview'}

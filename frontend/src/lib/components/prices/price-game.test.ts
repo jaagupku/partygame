@@ -4,7 +4,8 @@ import { locale } from '$lib/i18n';
 import PriceGameSetup from './PriceGameSetup.svelte';
 import PriceReveal from './PriceReveal.svelte';
 import QuestionCard from '../QuestionCard.svelte';
-import { priceResultDelay, rankPriceResults } from './price-reveal';
+import { rankPriceResults } from './price-reveal';
+import { resultDelay } from '../guessing/guess-reveal';
 import PlayerInputPanel from '../controller/PlayerInputPanel.svelte';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
@@ -248,11 +249,11 @@ describe('price game', () => {
 		expect(screen.getAllByText('€1.25').length).toBe(2);
 		expect(screen.getByText('No answer')).toBeTruthy();
 		expect(view.container.querySelector('details')!.open).toBe(false);
-		const firstRow = view.container.querySelector('.price-result');
+		const firstRow = view.container.querySelector('.guess-result');
 		await view.rerender({
 			step: { ...value, price_results: value.price_results?.map((row) => ({ ...row })) }
 		});
-		expect(view.container.querySelector('.price-result')).toBe(firstRow);
+		expect(view.container.querySelector('.guess-result')).toBe(firstRow);
 		view.container.querySelector('details')!.open = true;
 		expect(screen.getByRole('link', { name: 'View product' }).getAttribute('href')).toBe(
 			'https://www.rimi.ee/product'
@@ -300,8 +301,8 @@ it('orders guesses by distance even when scores tie, preserving ties and placing
 	value.price_mode = 'compare';
 	value.price_results = [row('missing', null), row('wrong', '0'), row('right', '1', 1000)];
 	expect(rankPriceResults(value).map((r) => r.player_id)).toEqual(['right', 'wrong', 'missing']);
-	expect(priceResultDelay(0, 50)).toBe(450);
-	expect(priceResultDelay(49, 50) + 220).toBeLessThan(2000);
+	expect(resultDelay(0, 50)).toBe(450);
+	expect(resultDelay(49, 50) + 220).toBeLessThan(2000);
 });
 
 it('moves the previous product out even when question-local card IDs are reused', async () => {

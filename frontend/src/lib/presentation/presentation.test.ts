@@ -9,7 +9,7 @@ import {
 import { presentationScope, presentationPortal } from './scope';
 const cleanups: (() => void)[] = [];
 const profile: PresentationProfile = {
-	gameType: 'calorie_guessing',
+	gameType: 'drawing_mashup',
 	appearance: { palette: { primary: '#123456' } },
 	variants: {
 		receipt: { appearance: { palette: { primary: '#654321' }, colorScheme: 'dark' } }
@@ -28,13 +28,13 @@ describe('presentation scopes', () => {
 		expect(resolvePresentation('unknown')).toBeUndefined();
 		const node = document.createElement('div');
 		node.style.setProperty('--party-primary', 'purple');
-		const scope = presentationScope(node, { gameType: 'calorie_guessing' });
+		const scope = presentationScope(node, { gameType: 'unknown' });
 		cleanups.push(scope.destroy);
 		expect(node.style.getPropertyValue('--party-primary')).toBe('purple');
-		cleanups.push(registerPresentation(profile));
+		cleanups.push(registerPresentation(profile, { replace: true }));
 		expect(
 			selectPresentation({
-				gameType: 'calorie_guessing',
+				gameType: 'drawing_mashup',
 				runId: 'r2',
 				gameState: 'running'
 			} as ControllerState)
@@ -43,17 +43,26 @@ describe('presentation scopes', () => {
 			selectPresentation({ game_type: 'trivia', run_id: 'r3' } as HostGameState).profile
 		).toBeUndefined();
 	});
+	it('rejects duplicates unless a test replaces a profile, then restores the original', () => {
+		const original = resolvePresentation('price_guessing');
+		const fake = { ...profile, gameType: 'price_guessing' as const };
+		expect(() => registerPresentation(fake)).toThrow('already registered');
+		const restore = registerPresentation(fake, { replace: true });
+		expect(resolvePresentation('price_guessing')).toBe(fake);
+		restore();
+		expect(resolvePresentation('price_guessing')).toBe(original);
+	});
 	it('keeps authored screen and variant styles fixed while neutral scopes follow the app preference', async () => {
-		cleanups.push(registerPresentation(profile));
+		cleanups.push(registerPresentation(profile, { replace: true }));
 		appColorMode.set('light');
 		const marker = document.createElement('div');
 		const card = document.createElement('div');
 		document.body.append(marker, card);
-		const screen = presentationScope(marker, { gameType: 'calorie_guessing', screen: true });
+		const screen = presentationScope(marker, { gameType: 'drawing_mashup', screen: true });
 		cleanups.push(screen.destroy);
 		expect(document.body.style.getPropertyValue('--party-primary')).toBe('#123456');
 		expect(document.body.style.getPropertyValue('--party-soft-primary-bg')).toContain('#123456');
-		const nested = presentationScope(card, { gameType: 'calorie_guessing', variant: 'receipt' });
+		const nested = presentationScope(card, { gameType: 'drawing_mashup', variant: 'receipt' });
 		cleanups.push(nested.destroy);
 		const control = document.createElement('button');
 		card.append(control);

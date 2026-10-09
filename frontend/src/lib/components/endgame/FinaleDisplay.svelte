@@ -1,4 +1,7 @@
 <script lang="ts">
+	import Coach from '$lib/presentation/calorie/Coach.svelte';
+	import StudioCelebration from '$lib/presentation/calorie/StudioCelebration.svelte';
+	import { calorieStageReaction } from '$lib/presentation/calorie/reaction';
 	import StoreCelebration from '$lib/presentation/price/StoreCelebration.svelte';
 	import DrawingGallery from '$lib/components/drawing/DrawingGallery.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -36,6 +39,8 @@
 	}: FinaleDisplayProps = $props();
 
 	const stage = $derived(endGame.sequence_stage || 'third_place');
+	const coachReaction = $derived(calorieStageReaction(stage));
+	const podiumStage = $derived(['third_place', 'second_place', 'first_place'].includes(stage));
 	const statWinnerNames = (card: EndGameStatCard) =>
 		card.winner_player_ids.map((playerId) => playerMap.get(playerId)?.name ?? playerId).join(', ');
 	const highlights = $derived.by(() => {
@@ -125,14 +130,27 @@
 								: $messages.finale.fullScoreboard}
 			</p>
 		</div>
+		{#if gameType === 'calorie_guessing' && !podiumStage}<Coach
+				pose="celebrate"
+				compact
+				message={$messages.calorieStudio[coachReaction]}
+			/>{/if}
 		<GameConnectionStatus {connected} {connectionLabel} showInline={false} {showDisconnectedChip} />
 	</header>
 
-	{#if stage === 'third_place' || stage === 'second_place' || stage === 'first_place'}
+	{#if podiumStage}
 		<section class="podium card">
-			{#if gameType === 'price_guessing'}<StoreCelebration {stage} />{:else}<CelebrationBackground
+			{#if gameType === 'calorie_guessing'}<div class="podium-coach">
+					<Coach
+						pose={coachReaction === 'podium' ? 'reveal' : 'celebrate'}
+						message={$messages.calorieStudio[coachReaction]}
+					/>
+				</div>{/if}
+			{#if gameType === 'price_guessing'}<StoreCelebration
 					{stage}
-				/>{/if}
+				/>{:else if gameType === 'calorie_guessing'}<StudioCelebration
+					{stage}
+				/>{:else}<CelebrationBackground {stage} />{/if}
 			<div class="podium-stack">
 				{#if visiblePodiumGroups.length === 0}
 					<p class="theme-text-muted text-lg">{$messages.finale.noFinalStandingsYet}</p>

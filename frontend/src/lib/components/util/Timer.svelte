@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Tween } from 'svelte/motion';
+	import { messages } from '$lib/i18n';
 	import { linear as easing } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 
@@ -93,12 +94,13 @@
 		timerUrgent ? 'timer-urgent' : ''
 	} ${timerExpired ? 'timer-expired' : ''}`}
 	role="timer"
-	aria-label={`Time remaining: ${formattedTime}`}
+	aria-label={`${$messages.timer.timeRemaining}: ${formattedTime}`}
+	style:--timer-progress={`${progressPercent}%`}
 >
 	<div class="flex items-center justify-between gap-4">
 		<div class="min-w-0">
 			<p class={`text-[0.65rem] font-black uppercase tracking-[0.2em] ${toneClasses.label}`}>
-				Time remaining
+				{$messages.timer.timeRemaining}
 			</p>
 			<p class={`mt-1 font-black leading-none tracking-[-0.04em] ${toneClasses.time}`}>
 				{formattedTime}

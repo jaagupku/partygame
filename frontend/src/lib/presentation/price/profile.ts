@@ -27,7 +27,7 @@ export const pricePresentation: PresentationProfile = {
 		},
 		tokens: {
 			'--presentation-heading-font':
-				"'Arial Narrow', 'Liberation Sans Narrow', 'Nunito', sans-serif",
+				"'Barlow Condensed', 'Arial Narrow', 'Liberation Sans Narrow', 'Nunito', sans-serif",
 			'--presentation-font': "'Nunito', system-ui, sans-serif",
 			'--presentation-card-radius': '0.8rem',
 			'--presentation-border-width': '2px',
