@@ -1,5 +1,17 @@
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+/** Fixed server stage lengths before each vote; the vote keeps its full configured time. */
+export const INTRO_SECONDS = { showcase: 4, criterion_reveal: 2 } as const;
+export type IntroPhase = keyof typeof INTRO_SECONDS;
+export const isIntroPhase = (phase: string): phase is IntroPhase => phase in INTRO_SECONDS;
+
+/** Seconds left in the current stage, measured on the server clock so screens agree. */
+export function serverRemaining(view: DrawingGameView): number {
+	if (view.paused) return view.remaining_seconds ?? 0;
+	if (view.deadline == null) return 0;
+	return Math.max(0, view.deadline - (view.server_time ?? Date.now() / 1000));
+}
+
 export function revealElapsed(view: DrawingGameView): number {
 	if (view.reveal_duration == null || view.server_time == null) return Infinity;
 	const remaining = view.paused
@@ -35,4 +47,20 @@ export function voteStartsAt(index: number, count: number, duration: number): nu
 	const batchSize = Math.max(1, Math.ceil(count / 12));
 	const waves = Math.ceil(count / batchSize);
 	return 1.5 + (Math.floor(index / batchSize) / Math.max(1, waves)) * (duration - 10 - 0.35);
+}
+
+/**
+ * Which drawing players should be on, from the whole-second countdown: the drawing phase
+ * budgets `drawing_seconds` per drawing. Null outside a paced drawing phase.
+ */
+export function drawingSegment(
+	view: DrawingGameView,
+	secondsLeft: number
+): { index: number; count: number; into: number } | null {
+	const count = view.drawing_count ?? 0;
+	const each = view.drawing_seconds ?? 0;
+	if (view.phase !== 'drawing' || count < 1 || each <= 0) return null;
+	const elapsed = count * each - secondsLeft;
+	const index = clamp(Math.floor(elapsed / each), 0, count - 1);
+	return { index, count, into: elapsed - index * each };
 }

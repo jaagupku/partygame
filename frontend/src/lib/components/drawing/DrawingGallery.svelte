@@ -100,14 +100,12 @@
 	.gallery-image {
 		flex-shrink: 0;
 		width: 100%;
-		aspect-ratio: 4 / 3;
-		max-height: 55dvh;
 		min-height: 0;
 	}
+	/* Each drawing keeps its own shape (landscape or portrait) within the height budget. */
 	.gallery-image :global(canvas) {
-		width: 100%;
-		height: 100%;
-		object-fit: contain;
+		width: min(100%, calc(55dvh * var(--drawing-aspect, 4 / 3)));
+		margin-inline: auto;
 	}
 	@media (max-width: 760px) {
 		.gallery-card {

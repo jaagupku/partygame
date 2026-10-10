@@ -92,6 +92,26 @@ describe('waiting players', () => {
 		s.host_enabled = true;
 		expect(ids(s)).toEqual([]);
 	});
+	it('tracks Drawing Mashup players the server is still waiting for', () => {
+		const s = state();
+		const view = { phase: 'writing', phase_id: 1, waiting_ids: ['a', 'c'] } as DrawingGameView;
+		s.drawingGame = view;
+		s.activeStep = undefined;
+		expect(waitingPlayers(s).action).toBe('write');
+		expect(ids(s)).toEqual(['a', 'c']);
+		s.players[3].status = 'disconnected';
+		expect(ids(s)).toEqual(['a']);
+		const key = waitingPlayers(s).key;
+		s.drawingGame = { ...view, phase: 'drawing', phase_id: 2 };
+		expect(waitingPlayers(s).action).toBe('draw');
+		expect(waitingPlayers(s).key).not.toBe(key);
+		s.drawingGame = { ...view, phase: 'voting', phase_id: 3 };
+		expect(waitingPlayers(s).action).toBe('vote');
+		for (const phase of ['showcase', 'criterion_reveal', 'results', 'finished'] as const) {
+			s.drawingGame = { ...view, phase };
+			expect(ids(s)).toEqual([]);
+		}
+	});
 	it('hides inactive, historical, intro and finished phases', () => {
 		for (const overrides of [
 			{ reviewingHistory: true },

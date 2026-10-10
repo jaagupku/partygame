@@ -35,7 +35,7 @@ describe('prompt countdown', () => {
 		expect(screen.getByRole('timer').textContent).toContain('0s');
 	});
 
-	it('uses the prominent timer only on the main display during writing', async () => {
+	it('uses the prominent timer only on the main display while writing and drawing', async () => {
 		const view: DrawingGameView = {
 			phase: 'writing',
 			phase_id: 1,
@@ -55,7 +55,20 @@ describe('prompt countdown', () => {
 		expect(screen.container.querySelector('.prompt-countdown')).toBeNull();
 		await screen.rerender({ view, mainDisplay: true });
 		expect(screen.container.querySelector('.prompt-countdown')).not.toBeNull();
-		await screen.rerender({ view: { ...view, phase: 'drawing' }, mainDisplay: true });
+		const drawing: DrawingGameView = {
+			...view,
+			phase: 'drawing',
+			phase_id: 2,
+			deadline: Date.now() / 1000 + 55,
+			drawing_count: 2,
+			drawing_seconds: 60
+		};
+		await screen.rerender({ view: drawing, mainDisplay: true });
+		expect(screen.container.querySelector('.prompt-countdown')).not.toBeNull();
+		expect(screen.getByText('Time to move on to drawing 2!')).toBeTruthy();
+		await screen.rerender({ view: { ...drawing, deadline: Date.now() / 1000 + 95 } });
+		expect(screen.getByText('Drawing 1 of 2')).toBeTruthy();
+		await screen.rerender({ view: { ...view, phase: 'voting' }, mainDisplay: true });
 		expect(screen.container.querySelector('.prompt-countdown')).toBeNull();
 	});
 });

@@ -1,6 +1,7 @@
 import type { Component } from 'svelte';
 import { pricePresentation } from './price/profile';
 import { caloriePresentation } from './calorie/profile';
+import { drawingPresentation } from './drawing/profile';
 import { writable } from 'svelte/store';
 import type { ResolvedPalette } from '$lib/theme';
 
@@ -65,3 +66,4 @@ export function selectPresentation(state: PresentationState) {
 // Profiles use type-only registry imports to avoid side-effect cycles.
 registerPresentation(pricePresentation);
 registerPresentation(caloriePresentation);
+registerPresentation(drawingPresentation);

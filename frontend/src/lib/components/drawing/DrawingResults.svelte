@@ -4,7 +4,16 @@
 	import { messages } from '$lib/i18n';
 	import { revealElapsed, revealStep, voteStartsAt } from './reveal';
 
-	let { view }: { view: DrawingGameView } = $props();
+	let {
+		view,
+		oncue,
+		fit = false
+	}: {
+		view: DrawingGameView;
+		oncue?: (name: string, key: string) => void;
+		/** Shared display: shrink the artwork so the whole reveal fits without scrolling. */
+		fit?: boolean;
+	} = $props();
 	let elapsed = $state(0);
 	let reducedMotion = $state(false);
 	const matchup = $derived(view.matchup!);
@@ -49,6 +58,17 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
+	// Milestone sounds follow stages reached live; a reload into a later stage stays quiet.
+	let lastStage: string | undefined;
+	$effect(() => {
+		const stage = step.stage;
+		if (lastStage && stage !== lastStage && !view.paused) {
+			if (stage === 'revealVotes' || stage === 'revealPoints' || stage === 'revealBonuses')
+				oncue?.(stage, `${view.phase_id}:${stage}`);
+		}
+		lastStage = stage;
+	});
+
 	onMount(() => {
 		const query = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const update = () => (reducedMotion = query.matches);
@@ -58,7 +78,12 @@
 	});
 </script>
 
-<div class="results stack-md" class:reduced-motion={reducedMotion} data-reveal-stage={step.stage}>
+<div
+	class="results stack-md"
+	class:fit
+	class:reduced-motion={reducedMotion}
+	data-reveal-stage={step.stage}
+>
 	<div class="reveal-heading">
 		<p class="reveal-label" role="status" aria-live="polite" aria-atomic="true">
 			{$messages.drawingMashup[step.stage]}
@@ -71,7 +96,7 @@
 			</span>
 		{/if}
 	</div>
-	<div class="grid gap-4 md:grid-cols-3">
+	<div class="artworks" style:--columns={Math.max(1, matchup.drawings.length)}>
 		{#each matchup.drawings as artwork, i (artwork.id)}
 			{@const artworkVotes = votes.filter((vote) => vote.drawing_id === artwork.id)}
 			{@const arrived = artworkVotes.filter((vote) => elapsed >= vote.startsAt + 0.35)}
@@ -86,7 +111,7 @@
 					<span class="art-letter">{String.fromCharCode(65 + i)}</span>
 					<strong class="artist-name">{artwork.player_name}</strong>
 				</div>
-				<DrawingDisplay drawing={artwork.value} />
+				<div class="art-frame"><DrawingDisplay drawing={artwork.value} /></div>
 				<div class="vote-heading">
 					<span
 						>{$messages.drawingMashup.voteCount(legacy ? artwork.vote_count : arrived.length)}</span
@@ -161,6 +186,52 @@
 <style>
 	.results {
 		min-width: 0;
+	}
+	.artworks {
+		display: grid;
+		gap: 1rem;
+	}
+	@media (min-width: 768px) {
+		.artworks {
+			grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+		}
+	}
+	.art-frame :global(.drawing-display) {
+		width: min(100%, calc(55dvh * var(--drawing-aspect, 4 / 3)));
+		margin-inline: auto;
+	}
+	.fit {
+		flex: 1 1 0;
+		min-height: 0;
+	}
+	.fit .artworks {
+		gap: 0.75rem;
+		flex: 1 1 0;
+		min-height: 0;
+		grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+		grid-template-rows: minmax(0, 1fr);
+	}
+	.fit .artwork {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		min-height: 0;
+		padding: 0.5rem;
+	}
+	.fit .point-total {
+		margin: 0;
+		font-size: clamp(1.5rem, 2.2vw, 2.4rem);
+	}
+	.fit .art-frame {
+		flex: 1 1 0;
+		min-height: 5rem;
+		container-type: size;
+		display: grid;
+		align-content: center;
+	}
+	.fit .art-frame :global(.drawing-display) {
+		width: min(100cqw, calc(100cqh * var(--drawing-aspect, 4 / 3)));
+		margin-inline: auto;
 	}
 	.reveal-heading,
 	.artist-heading,

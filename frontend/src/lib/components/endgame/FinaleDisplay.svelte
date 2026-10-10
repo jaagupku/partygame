@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Coach from '$lib/presentation/calorie/Coach.svelte';
 	import StudioCelebration from '$lib/presentation/calorie/StudioCelebration.svelte';
+	import SketchCelebration from '$lib/presentation/drawing/SketchCelebration.svelte';
 	import { calorieStageReaction } from '$lib/presentation/calorie/reaction';
 	import StoreCelebration from '$lib/presentation/price/StoreCelebration.svelte';
 	import DrawingGallery from '$lib/components/drawing/DrawingGallery.svelte';
@@ -149,6 +150,8 @@
 			{#if gameType === 'price_guessing'}<StoreCelebration
 					{stage}
 				/>{:else if gameType === 'calorie_guessing'}<StudioCelebration
+					{stage}
+				/>{:else if gameType === 'drawing_mashup'}<SketchCelebration
 					{stage}
 				/>{:else}<CelebrationBackground {stage} />{/if}
 			<div class="podium-stack">

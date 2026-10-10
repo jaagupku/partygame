@@ -60,7 +60,8 @@ class MashupRevealedVote(BaseModel):
 class MashupMatchup(BaseModel):
     id: str
     topic: DrawingText
-    criterion: DrawingText
+    # Withheld during the showcase so phones cannot read it before the reveal.
+    criterion: DrawingText | None = None
     drawings: list[MashupArtwork] = Field(default_factory=list)
     can_commend_topic: bool = False
     can_commend_criterion: bool = False
@@ -73,7 +74,16 @@ class MashupMatchup(BaseModel):
 
 
 class DrawingGameView(BaseModel):
-    phase: Literal["waiting", "writing", "drawing", "voting", "results", "finished"] = "waiting"
+    phase: Literal[
+        "waiting",
+        "writing",
+        "drawing",
+        "showcase",
+        "criterion_reveal",
+        "voting",
+        "results",
+        "finished",
+    ] = "waiting"
     phase_id: int = 0
     deadline: float | None = None
     remaining_seconds: float | None = None
@@ -83,7 +93,12 @@ class DrawingGameView(BaseModel):
     language: Literal["en", "et"] = "en"
     participant_ids: list[str] = Field(default_factory=list)
     ready_ids: list[str] = Field(default_factory=list)
+    # Players whose action still holds the phase open; artists never vote on their matchup.
+    waiting_ids: list[str] = Field(default_factory=list)
     is_participant: bool = False
+    # Drawing phase pacing: each player has this many drawings, each budgeted this long.
+    drawing_count: int = 0
+    drawing_seconds: int | None = None
     prompt: dict[str, Any] | None = None
     assignments: list[MashupArtwork] = Field(default_factory=list)
     matchup: MashupMatchup | None = None

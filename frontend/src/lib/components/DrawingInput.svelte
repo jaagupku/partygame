@@ -3,9 +3,9 @@
 	import { onDestroy, untrack } from 'svelte';
 	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
 	import {
-		DRAWING_CANVAS_HEIGHT,
-		DRAWING_CANVAS_WIDTH,
 		DRAWING_COLORS,
+		drawingCanvasSize,
+		type DrawingOrientation,
 		encodeDrawingSubmission,
 		decodeDrawingSubmission,
 		simplifyDrawingPoints
@@ -22,6 +22,7 @@
 		onSubmit: (drawing: DrawingSubmission) => void;
 		initialDrawing?: DrawingSubmission | null;
 		onChange?: (drawing: DrawingSubmission | null) => void;
+		orientation?: DrawingOrientation;
 	}
 
 	let {
@@ -32,8 +33,10 @@
 		submitPosition = 'bottom',
 		onSubmit,
 		initialDrawing = null,
-		onChange
+		onChange,
+		orientation = 'landscape'
 	}: DrawingInputProps = $props();
+	const canvasSize = $derived(drawingCanvasSize(orientation));
 	let canvas: HTMLCanvasElement;
 	let selectedColor = $state('#0f172a');
 	let eraserEnabled = $state(false);
@@ -189,11 +192,11 @@
 	}
 
 	function buildSubmission(): DrawingSubmission {
-		return encodeDrawingSubmission(strokes);
+		return encodeDrawingSubmission(strokes, { orientation });
 	}
 
 	function buildPreviewSubmission(): DrawingSubmission {
-		return encodeDrawingSubmission(strokes, { simplify: false });
+		return encodeDrawingSubmission(strokes, { simplify: false, orientation });
 	}
 
 	export function getDraftSubmission(): DrawingSubmission | undefined {
@@ -222,13 +225,13 @@
 			{$messages.gameplay.submitDrawing}
 		</button>
 	{/if}
-	<div class="drawing-input-shell">
-		<DrawingDisplay drawing={submission} className="drawing-input-display" />
+	<div class="drawing-input-shell" class:portrait={orientation === 'portrait'}>
+		<DrawingDisplay drawing={submission} {orientation} className="drawing-input-display" />
 		<canvas
 			bind:this={canvas}
 			class="drawing-input-canvas"
-			width={DRAWING_CANVAS_WIDTH}
-			height={DRAWING_CANVAS_HEIGHT}
+			width={canvasSize.w}
+			height={canvasSize.h}
 			onpointerdown={beginStroke}
 			onpointermove={continueStroke}
 			onpointerup={endStroke}
@@ -395,11 +398,19 @@
 
 	.drawing-input-shell {
 		position: relative;
+		align-self: center;
+		width: 100%;
 		overflow: hidden;
 		border-radius: 0.9rem;
 		border: 1px solid rgb(203 213 225);
 		background: #ffffff;
 		touch-action: none;
+	}
+
+	/* Portrait keeps the tools below the canvas within one screen. */
+	.drawing-input-shell.portrait {
+		width: min(100%, calc((100dvh - 20rem) * 3 / 4));
+		min-width: min(100%, 15rem);
 	}
 
 	.drawing-input-canvas {
@@ -497,8 +508,15 @@
 			gap: 0.5rem;
 		}
 
+		/* The canvas is width-bound on phones, so it bleeds through the surrounding card
+		   padding (centred overflow); a small gutter keeps strokes clear of edge swipes. */
 		.drawing-input-shell {
+			width: calc(100vw - 0.75rem);
 			border-radius: 0.75rem;
+		}
+
+		.drawing-input-shell.portrait {
+			width: min(calc(100vw - 0.75rem), calc((100dvh - 16rem) * 3 / 4));
 		}
 
 		.drawing-color {

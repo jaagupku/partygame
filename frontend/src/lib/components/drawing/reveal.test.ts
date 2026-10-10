@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import DrawingResults from './DrawingResults.svelte';
-import { revealElapsed, revealStep, voteStartsAt } from './reveal';
+import { drawingSegment, revealElapsed, revealStep, voteStartsAt } from './reveal';
 import { locale } from '$lib/i18n';
 
 function view(elapsed = 0): DrawingGameView {
@@ -91,6 +91,20 @@ describe('drawing reveal timeline', () => {
 		expect(new Set(starts).size).toBeLessThanOrEqual(12);
 		expect(starts[0]).toBe(1.5);
 		expect(starts.at(-1)! + 0.35).toBeLessThan(9.5);
+	});
+	it('paces drawings from the countdown, one budget per drawing', () => {
+		const pacing = {
+			...view(),
+			phase: 'drawing',
+			drawing_count: 3,
+			drawing_seconds: 60
+		} as DrawingGameView;
+		expect(drawingSegment(pacing, 180)).toEqual({ index: 0, count: 3, into: 0 });
+		expect(drawingSegment(pacing, 121)).toEqual({ index: 0, count: 3, into: 59 });
+		expect(drawingSegment(pacing, 115)).toEqual({ index: 1, count: 3, into: 5 });
+		expect(drawingSegment(pacing, 0)).toEqual({ index: 2, count: 3, into: 60 });
+		expect(drawingSegment({ ...pacing, phase: 'voting' }, 30)).toBeNull();
+		expect(drawingSegment({ ...pacing, drawing_count: 0 }, 30)).toBeNull();
 	});
 });
 

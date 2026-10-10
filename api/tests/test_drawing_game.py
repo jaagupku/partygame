@@ -114,13 +114,30 @@ async def draw_phase(room):
     return await room[2].load(room[1])
 
 
-async def vote_phase(room):
+async def showcase_phase(room):
     state = await draw_phase(room)
     for aid, art in state["artworks"].items():
         await act(room, art["owner"], "draw", assignment_id=aid, value=valid_drawing())
     for p in state["roster"]:
         await act(room, p, "ready")
     return await room[2].load(room[1])
+
+
+async def vote_phase(room):
+    await showcase_phase(room)
+    # The organizer skips the showcase and criterion reveal.
+    await act(room, "p0", "advance")
+    await act(room, "p0", "advance")
+    state = await room[2].load(room[1])
+    assert state["phase"] == "voting"
+    return state
+
+
+def projections(snapshot):
+    """Every wire projection: display, each controller and the raw private views."""
+    yield public_runtime_snapshot(snapshot).model_dump_json()
+    for player_id in snapshot.drawing_private:
+        yield public_runtime_snapshot(snapshot, viewer_player_id=player_id).model_dump_json()
 
 
 @pytest.mark.asyncio
@@ -238,13 +255,16 @@ async def test_missing_drawings_and_no_votes(room):
         room, state["artworks"][aid]["owner"], "draw", assignment_id=aid, value=valid_drawing()
     )
     await act(room, "p0", "advance")
-    assert (await runtime.load(lobby))["phase"] == "voting"
-    await act(room, "p0", "advance")
+    # A single artwork still gets the introduction before its vote.
+    for phase in ("showcase", "criterion_reveal", "voting"):
+        assert (await runtime.load(lobby))["phase"] == phase
+        await act(room, "p0", "advance")
     state = await runtime.load(lobby)
     assert state["matchups"][0]["result"]["points"] == {aid: 1000}
     assert state["matchups"][0]["result"]["reveal_duration"] == 12
     await act(room, "p0", "advance")
     state = await runtime.load(lobby)
+    # An empty matchup skips the introduction.
     assert state["phase"] == "results"
     assert state["matchups"][1]["result"]["allocation"] == "empty"
     assert state["matchups"][1]["result"]["reveal_duration"] == 12
@@ -439,6 +459,35 @@ async def test_concurrent_readiness_closes_vote_once(room):
 
 
 @pytest.mark.asyncio
+async def test_waiting_players_and_drawing_pacing(room):
+    _, lobby, runtime = room
+    roster = [f"p{i}" for i in range(5)]
+    await act(room, "p0", "prompt", topic="Topic", criterion="Criterion")
+    await act(room, "p0", "ready")
+    view = public_runtime_snapshot(await runtime.snapshot(lobby)).drawing_game
+    assert view.waiting_ids == roster[1:]
+    assert view.drawing_count == 0 and view.drawing_seconds is None
+    await act(room, "p0", "advance")
+    view = public_runtime_snapshot(await runtime.snapshot(lobby)).drawing_game
+    assert view.waiting_ids == roster
+    assert (view.drawing_count, view.drawing_seconds) == (3, 90)
+
+
+@pytest.mark.asyncio
+async def test_waiting_voters_exclude_artists(room):
+    _, lobby, runtime = room
+    roster = [f"p{i}" for i in range(5)]
+    state = await vote_phase(room)
+    artists = runtime.matchup_artists(state)
+    voter = next(p for p in roster if p not in artists)
+    await act(room, voter, "ready")
+    view = public_runtime_snapshot(await runtime.snapshot(lobby)).drawing_game
+    assert view.waiting_ids == [p for p in roster if p not in artists and p != voter]
+    await act(room, "p0", "advance")
+    assert public_runtime_snapshot(await runtime.snapshot(lobby)).drawing_game.waiting_ids == []
+
+
+@pytest.mark.asyncio
 async def test_gallery_is_unavailable_before_finish_or_without_credentials(room):
     repo, _, _ = room
     state = await draw_phase(room)
@@ -467,10 +516,16 @@ async def test_invalid_artwork_preserves_previous_draft(room):
         {"w": 512, "h": 384, "s": []},
         {"w": 512, "h": 384, "s": [[0, 8, {}, [1, 1]]]},
         valid_drawing() | {"padding": "x" * 240_000},
+        # Portrait points are bounded by the portrait size, and only the two orientations exist.
+        {"w": 384, "h": 512, "s": [[0, 8, 0, [500, 10, 10, 10]]]},
+        {"w": 400, "h": 400, "s": [[0, 8, 0, [10, 10, 20, 20]]]},
     ):
         with pytest.raises(DrawingError, match="invalid_drawing"):
             await act(room, art["owner"], "draw", assignment_id=aid, revision=1, value=invalid)
     assert (await runtime.load(lobby))["artworks"][aid]["value"] == valid_drawing()
+    portrait = {"w": 384, "h": 512, "s": [[0, 8, 0, [10, 500, 380, 20]]]}
+    await act(room, art["owner"], "draw", assignment_id=aid, revision=1, value=portrait)
+    assert (await runtime.load(lobby))["artworks"][aid]["value"] == portrait
 
 
 @pytest.mark.asyncio
@@ -597,3 +652,122 @@ async def test_background_worker_restores_deadline_and_discards_old_run_events(r
     assert len(restored["artworks"]) == 15
     assert await repo.redis.zscore("drawing_mashup:due", "g1:old-run") is None
     assert await repo.redis.zscore("drawing_mashup:due", "deleted:gone") is None
+
+
+@pytest.mark.asyncio
+async def test_matchup_introduction_sequence_and_criterion_privacy(room, monkeypatch):
+    _, lobby, runtime = room
+    clock = {"now": 1000.0}
+    monkeypatch.setattr("partygame.service.drawing.runtime.time", lambda: clock["now"])
+    state = await showcase_phase(room)
+    match = state["matchups"][0]
+    criterion = state["prompts"][match["criterion_author"]]["criterion"]
+    assert state["reveal_flow"] == 1
+    assert state["phase"] == "showcase"
+    assert state["deadline"] == 1004
+    assert all(criterion not in payload for payload in projections(await runtime.snapshot(lobby)))
+    for viewer in (None, *state["roster"]):
+        view = runtime.view(state, viewer)
+        assert view.matchup.criterion is None
+        assert view.matchup.topic.text == match["topic"]["text"]
+        assert len(view.matchup.drawings) == len(match["drawings"])
+        assert not view.matchup.can_commend_topic and not view.matchup.can_commend_criterion
+        assert view.ballot is None
+    outsider = next(
+        p
+        for p in state["roster"]
+        if p not in {state["artworks"][a]["owner"] for a in match["drawings"]}
+    )
+    for phase in ("showcase", "criterion_reveal"):
+        for action, kwargs in (
+            ("ballot", {"matchup_id": match["id"], "ballot": {"drawing_id": match["drawings"][0]}}),
+            ("ballot", {"matchup_id": match["id"], "ballot": {"topic": True}}),
+            ("ready", {}),
+        ):
+            with pytest.raises(DrawingError, match="closed"):
+                await act(room, outsider, action, **kwargs)
+        assert (await runtime.load(lobby))["ballots"] == {}
+        if phase == "showcase":
+            clock["now"] = 1004
+            await runtime.tick(lobby)
+            state = await runtime.load(lobby)
+            assert state["phase"] == "criterion_reveal"
+            assert state["deadline"] == 1006
+            for viewer in (None, *state["roster"]):
+                assert runtime.view(state, viewer).matchup.criterion.text == criterion
+                assert not runtime.view(state, viewer).matchup.can_commend_criterion
+    clock["now"] = 1006
+    await runtime.tick(lobby)
+    state = await runtime.load(lobby)
+    # The introduction does not consume any voting time.
+    assert state["phase"] == "voting"
+    assert state["deadline"] == 1006 + state["options"]["voting_seconds"]
+    assert runtime.view(state, outsider).matchup.can_commend_topic == (
+        match["topic_author"] != outsider
+    )
+    await act(
+        room,
+        outsider,
+        "ballot",
+        matchup_id=match["id"],
+        ballot={"drawing_id": match["drawings"][0]},
+    )
+    while (await runtime.load(lobby))["phase"] != "results":
+        await act(room, "p0", "advance")
+    await act(room, "p0", "advance")
+    state = await runtime.load(lobby)
+    # The next matchup starts again from its showcase, criterion hidden.
+    assert state["matchup_index"] == 1
+    assert state["phase"] == "showcase"
+    assert runtime.view(state).matchup.criterion is None
+    assert sum(state["scores"].values()) >= 1000
+
+
+@pytest.mark.asyncio
+async def test_introduction_pause_resume_and_stale_phase(room, monkeypatch):
+    _, lobby, runtime = room
+    clock = {"now": 1000.0}
+    monkeypatch.setattr("partygame.service.drawing.runtime.time", lambda: clock["now"])
+    state = await showcase_phase(room)
+    showcase_id = state["phase_id"]
+    clock["now"] = 1001
+    await act(room, "p0", "pause")
+    clock["now"] = 1100
+    await runtime.tick(lobby)
+    paused = await runtime.load(lobby)
+    assert paused["phase"] == "showcase"
+    assert runtime.view(paused).remaining_seconds == 3
+    await act(room, "p0", "resume")
+    assert (await runtime.load(lobby))["deadline"] == 1103
+    clock["now"] = 1103
+    await runtime.tick(lobby)
+    state = await runtime.load(lobby)
+    assert state["phase"] == "criterion_reveal"
+    assert state["phase_id"] == showcase_id + 1
+    clock["now"] = 1104
+    await act(room, "p0", "pause")
+    clock["now"] = 1200
+    await act(room, "p0", "resume")
+    assert (await runtime.load(lobby))["deadline"] == 1201
+    stale = DrawingCommand(
+        action="advance", request_id="old", run_id=lobby.run_id, phase_id=showcase_id
+    )
+    with pytest.raises(DrawingError, match="stale"):
+        await runtime.command(lobby, "p0", stale)
+
+
+@pytest.mark.asyncio
+async def test_legacy_runs_without_reveal_flow_vote_directly(room):
+    _, lobby, runtime = room
+    state = await draw_phase(room)
+    del state["reveal_flow"]
+    for art in state["artworks"].values():
+        art["value"] = valid_drawing()
+    await runtime.commit(lobby, state)
+    await act(room, "p0", "advance")
+    state = await runtime.load(lobby)
+    assert state["phase"] == "voting"
+    assert runtime.view(state).matchup.criterion is not None
+    await act(room, "p0", "advance")
+    await act(room, "p0", "advance")
+    assert (await runtime.load(lobby))["phase"] == "voting"

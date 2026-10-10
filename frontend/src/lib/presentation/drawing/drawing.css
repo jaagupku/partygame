@@ -1,0 +1,269 @@
+/* Authored sketchbook/judging colors stay fixed across application and OS theme changes. */
+@scope ([data-presentation='drawing_mashup']) to ([data-presentation]:not([data-presentation='drawing_mashup'])) {
+	:scope {
+		color: var(--party-ink);
+	}
+	:scope:is(body) {
+		background:
+			linear-gradient(90deg, transparent 3.2rem, #f26b5b40 3.2rem 3.3rem, transparent 3.3rem),
+			repeating-linear-gradient(0deg, #2a4a9b14 0 1px, transparent 1px 2rem), #fbfaf5;
+		transition: background-color 600ms ease-out;
+	}
+	:scope[data-presentation-variant='judging']:is(body) {
+		background: #3b1470;
+	}
+	:scope.card {
+		background: repeating-linear-gradient(0deg, #2a4a9b10 0 1px, transparent 1px 1.6rem), #ffffff;
+		border: 2px solid #1d2b53;
+		box-shadow: 3px 4px 0 #1d2b5320;
+		overflow: hidden;
+	}
+	:scope .game-tile-icon {
+		display: none;
+	}
+	:scope h1,
+	:scope h2,
+	:scope .page-title,
+	:scope .drawing-phase-title,
+	:scope .lobby-roster-title {
+		font-family: var(--presentation-heading-font);
+		font-weight: 700;
+		letter-spacing: 0;
+	}
+	:scope .page-title {
+		color: #1d2b53;
+		font-size: clamp(2.6rem, 6vw, 4rem);
+	}
+	:scope .drawing-phase-title {
+		font-size: clamp(2rem, 3.6vw, 3rem);
+		line-height: 1;
+	}
+	:scope .btn-primary {
+		background: #2a4a9b;
+		color: #ffffff;
+		box-shadow: 2px 3px 0 #1d2b53;
+	}
+	:scope .btn-accent {
+		background: #f26b5b;
+		color: #1d2b53;
+	}
+	:scope .btn:focus-visible,
+	:scope input:focus-visible,
+	:scope select:focus-visible,
+	:scope textarea:focus-visible,
+	:scope button:focus-visible {
+		outline: 3px solid #f26b5b;
+		outline-offset: 3px;
+	}
+	:scope .sketch-illustration {
+		flex-shrink: 0;
+		margin: -0.25rem -0.25rem 0;
+	}
+	:scope.card .sketch-illustration {
+		border-bottom: 2px dashed #c3cadb;
+	}
+	:scope .lobby-room > ul {
+		position: relative;
+		width: min(100%, 44rem);
+		padding: 1.25rem 1rem 1rem;
+		border: 2px solid #1d2b53;
+		border-radius: 0.5rem;
+		background: #ffffff;
+		box-shadow: 3px 4px 0 #1d2b5320;
+	}
+	/* Taped cards: the roster, artworks, prompts and gallery pages. */
+	:scope .lobby-room > ul::before,
+	:scope .drawing-artwork::before,
+	:scope .gallery-card::before,
+	:scope .drawing-stage.writing-display .writing-status::before {
+		content: '';
+		position: absolute;
+		top: -0.7rem;
+		left: 50%;
+		width: 5.5rem;
+		height: 1.4rem;
+		background: #f26b5b8c;
+		transform: translateX(-50%) rotate(-3deg);
+		pointer-events: none;
+	}
+	:scope .lobby-roster-title {
+		color: #f26b5b;
+		font-size: clamp(2rem, 3vw, 2.6rem);
+	}
+
+	/* Writing: the existing countdown on a sketchbook prompt card. */
+	:scope .drawing-stage.writing-display .writing-status {
+		position: relative;
+		justify-self: center;
+		width: min(100%, 36rem);
+		padding: 1.25rem 1.5rem 1rem;
+		border: 2px solid #1d2b53;
+		border-radius: 0.5rem;
+		background: #ffffff;
+		box-shadow: 3px 4px 0 #1d2b5320;
+	}
+
+	/* Showcase and judging share one layout; only the framing changes. */
+	:scope .drawing-stage .card,
+	:scope .drawing-criterion,
+	:scope .drawing-phase-title {
+		transition:
+			background-color 500ms ease-out,
+			border-color 500ms ease-out,
+			box-shadow 500ms ease-out,
+			color 500ms ease-out;
+	}
+	:scope .drawing-artwork {
+		position: relative;
+		overflow: visible;
+		background: #ffffff;
+		color: #1d2b53;
+		border: 2px solid #1d2b53;
+		box-shadow: 3px 4px 0 #1d2b5320;
+	}
+	:scope .drawing-artwork .drawing-display {
+		border: 1px solid #c3cadb;
+	}
+	:scope .drawing-topic h3 {
+		color: #1d2b53;
+	}
+	:scope .drawing-criterion-sealed {
+		border-color: #2a4a9b;
+		background: #ffffff;
+	}
+
+	/* Drawing on phones: quiet framing, the canvas keeps all its space. */
+	:scope .drawing-input-shell {
+		border: 2px solid #1d2b53;
+		border-radius: 0.5rem;
+		box-shadow: 3px 4px 0 #1d2b5320;
+	}
+
+	/* Judging stage: saturated purple and yellow with bold lettering. */
+	:scope[data-presentation-variant='judging'] {
+		& .drawing-phase-title,
+		& h2,
+		& .page-title {
+			color: #ffd23f;
+			text-transform: uppercase;
+			letter-spacing: 0.02em;
+		}
+		/* Border widths match the sketchbook so nothing moves during the transformation. */
+		& .card {
+			background: #4a1d86;
+			color: #fffbea;
+			border-color: #ffd23f;
+			box-shadow:
+				0 0 0 2px #ffd23f,
+				0 10px 30px #12002b66;
+		}
+		/* Artwork itself keeps its paper; only the frame turns gold. */
+		& .drawing-artwork {
+			background: #fffdf7;
+			color: #2a0b52;
+			border-color: #ffd23f;
+			box-shadow:
+				0 0 0 3px #ffd23f,
+				0 0 0 7px #2a0b52,
+				0 14px 40px #12002b80;
+		}
+		& .drawing-artwork::before {
+			background: #ffd23fcc;
+		}
+		& .drawing-topic h3 {
+			color: #fffbea;
+		}
+		& .drawing-criterion {
+			background: #ffd23f;
+			color: #2a0b52;
+			border-color: #2a0b52;
+			border-style: solid;
+			box-shadow: 4px 5px 0 #12002b;
+		}
+		& .drawing-criterion-text {
+			font-family: 'Barlow Condensed', 'Nunito', sans-serif;
+			font-weight: 800;
+			font-size: clamp(1.3rem, 2.4vw, 2.1rem);
+		}
+		& .drawing-twist-burst {
+			background: #ff7a59;
+			color: #2a0b52;
+			border-color: #2a0b52;
+		}
+		& .drawing-intro-progress > span {
+			background: #ffd23f;
+		}
+		& .btn-primary {
+			background: #ffd23f;
+			color: #2a0b52;
+			box-shadow: 0 4px 0 #b88a00;
+		}
+		& .btn-ghost {
+			color: #fffbea;
+			border-color: #a283e0;
+		}
+		& .drawing-choice.selected {
+			border-color: #ffd23f;
+		}
+		& .theme-text-muted {
+			color: #e4d7ff;
+		}
+		& .winner-label {
+			color: #ffd23f;
+		}
+	}
+
+	/* Finale and gallery: a sketchbook of the players' work. */
+	:scope .finale-shell .podium {
+		background: #ffffff;
+		border: 2px solid #1d2b53;
+		box-shadow: 4px 5px 0 #1d2b5320;
+	}
+	:scope .finale-shell .podium-card {
+		background: #ffffff;
+		border: 2px solid #1d2b53;
+		box-shadow: 3px 4px 0 #1d2b5320;
+	}
+	:scope .finale-shell .podium-card.place-1 {
+		background: #fff3c4;
+		border-color: #f26b5b;
+	}
+	:scope .finale-shell .podium-row {
+		background: transparent;
+		box-shadow: none;
+	}
+	:scope .finale-shell .stat-card {
+		background: #ffffff;
+		border: 2px solid #1d2b53;
+		border-top: 8px solid #f26b5b;
+	}
+	:scope .scoreboard-card {
+		background: #ffffff;
+		border: 2px solid #1d2b53;
+	}
+	:scope .gallery-card {
+		position: relative;
+		overflow: visible;
+		border-top: 10px dotted #1d2b53;
+	}
+	:scope .gallery-card h2 {
+		font-size: 1.8rem;
+	}
+	/* The photo frame hugs the drawing so portrait and landscape both read as prints. */
+	:scope .gallery-image canvas {
+		box-sizing: border-box;
+		padding: 0.4rem;
+		border: 2px solid #c3cadb;
+		background: #ffffff;
+		object-fit: contain;
+		transform: rotate(-0.6deg);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		:scope:is(body),
+		:scope .drawing-stage .card,
+		:scope .drawing-criterion,
+		:scope .drawing-phase-title {
+			transition: none;
+		}
+	}
+}

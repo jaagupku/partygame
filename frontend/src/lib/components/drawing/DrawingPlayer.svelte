@@ -5,6 +5,7 @@
 	import DrawingCountdown from './DrawingCountdown.svelte';
 	import DrawingStage from './DrawingStage.svelte';
 	import { drawingText } from './helpers';
+	import { isIntroPhase } from './reveal';
 	import { messages } from '$lib/i18n';
 	import { getDrawingLimitUsage } from '$lib/drawing-limits';
 	let {
@@ -253,6 +254,9 @@
 		command(action);
 		confirmAdvance = false;
 	}
+	function commend(kind: 'topic' | 'criterion') {
+		update('ballot', { ...ballot, [kind]: !ballot[kind] });
+	}
 	function viewportPortal(node: HTMLElement) {
 		document.body.appendChild(node);
 		return {
@@ -263,20 +267,45 @@
 	}
 </script>
 
+{#snippet thumb(kind: 'topic' | 'criterion')}
+	{@const label =
+		kind === 'topic'
+			? $messages.drawingMashup.commendTopic
+			: $messages.drawingMashup.commendCriterion}
+	<button
+		type="button"
+		class="thumb"
+		class:on={ballot[kind]}
+		aria-pressed={ballot[kind]}
+		aria-label={label}
+		title={label}
+		disabled={view.paused}
+		onclick={() => commend(kind)}
+		><svg viewBox="-1 -1 26 26" aria-hidden="true"
+			><path
+				d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"
+			/></svg
+		></button
+	>
+{/snippet}
+
 <section class="card stack-md" data-drawing-phase={view.phase_id}>
-	{#if view.phase === 'results'}<DrawingStage {view} />
+	<!-- Voting controls stay unavailable until the criterion reveal has finished. -->
+	{#if view.phase === 'results' || isIntroPhase(view.phase)}<DrawingStage {view} />
 	{:else if cannotVote}
 		<p role="status">{$messages.drawingMashup.cannotVote}</p>
 	{:else}
-		<div class="flex flex-wrap justify-between gap-2">
-			<strong>{$messages.drawingMashup[view.phase as 'writing' | 'drawing' | 'voting']}</strong
-			><span
-				>{view.paused
-					? $messages.drawingMashup.paused
-					: `${$messages.drawingMashup.progress}: ${view.ready_ids.length}/${view.participant_ids.length}`}</span
-			>
-		</div>
-		<DrawingCountdown {view} />
+		<!-- Drawing keeps only the clock, queue and topic above the canvas. -->
+		{#if view.phase !== 'drawing'}
+			<div class="flex flex-wrap justify-between gap-2">
+				<strong>{$messages.drawingMashup[view.phase as 'writing' | 'voting']}</strong><span
+					>{view.paused
+						? $messages.drawingMashup.paused
+						: `${$messages.drawingMashup.progress}: ${view.ready_ids.length}/${view.participant_ids.length}`}</span
+				>
+			</div>
+			<DrawingCountdown {view} />
+		{/if}
 		{#if view.phase === 'writing'}
 			<label class="stack-sm"
 				>{$messages.drawingMashup.topic}<textarea
@@ -299,19 +328,22 @@
 			>
 			<p class="theme-text-muted">{$messages.drawingMashup.criterionHelp}</p>
 		{:else if view.phase === 'drawing'}
-			<p>{$messages.drawingMashup.drawHelp}</p>
-			<nav class="flex gap-2" aria-label={$messages.drawingMashup.queue}>
-				{#each view.assignments as art, i}<button
-						class={`btn ${selected === i ? 'btn-primary' : 'btn-ghost'}`}
-						aria-pressed={selected === i}
-						onclick={() => (selected = i)}>{i + 1} {drafts[art.id]?.value ? '✓' : ''}</button
-					>{/each}
-			</nav>
+			<div class="draw-bar">
+				<nav class="flex gap-2" aria-label={$messages.drawingMashup.queue}>
+					{#each view.assignments as art, i}<button
+							class={`btn ${selected === i ? 'btn-primary' : 'btn-ghost'}`}
+							aria-pressed={selected === i}
+							onclick={() => (selected = i)}>{i + 1} {drafts[art.id]?.value ? '✓' : ''}</button
+						>{/each}
+				</nav>
+				<DrawingCountdown {view} current={selected} />
+			</div>
 			{#if active}<h3 class="text-xl font-bold">
 					{drawingText(active.topic, 'topic', view.language)}
 				</h3>
 				{#key `${phaseKey}:${active.id}:${canvasVersion}`}<DrawingInput
 						{disabled}
+						orientation="portrait"
 						initialDrawing={drafts[active.id]?.value as DrawingSubmission | null}
 						showSubmit={false}
 						onSubmit={() => {}}
@@ -319,44 +351,47 @@
 					/>{/key}
 			{/if}
 		{:else if view.phase === 'voting' && view.matchup}
-			<h3 class="text-2xl font-bold">{drawingText(view.matchup.topic, 'topic', view.language)}</h3>
-			<p class="text-xl">
-				<strong>{$messages.drawingMashup.criterion}:</strong>
-				{drawingText(view.matchup.criterion, 'criterion', view.language)}
-			</p>
+			<div class="commend-row">
+				<h3 class="text-2xl font-bold">
+					{drawingText(view.matchup.topic, 'topic', view.language)}
+				</h3>
+				{#if view.matchup.can_commend_topic}{@render thumb('topic')}{/if}
+			</div>
+			<div class="commend-row">
+				<p class="text-xl">
+					<strong>{$messages.drawingMashup.criterion}:</strong>
+					{drawingText(view.matchup.criterion, 'criterion', view.language)}
+				</p>
+				{#if view.matchup.can_commend_criterion}{@render thumb('criterion')}{/if}
+			</div>
 			<p>{$messages.drawingMashup.voteHelp}</p>
-			{#each view.matchup.drawings as art, i}<button
-					class={`card drawing-choice ${ballot.drawing_id === art.id ? 'selected' : ''}`}
-					disabled={view.paused || art.own}
-					aria-pressed={ballot.drawing_id === art.id}
-					onclick={() => update('ballot', { ...ballot, drawing_id: art.id })}
-					><strong
-						>{String.fromCharCode(65 + i)}
-						{art.own ? `· ${$messages.drawingMashup.own}` : ''}</strong
-					><DrawingDisplay drawing={art.value} /></button
-				>{/each}
+			<div class="drawing-choices stack-md" class:has-choice={ballot.drawing_id !== null}>
+				{#each view.matchup.drawings as art, i}
+					{@const chosen = ballot.drawing_id === art.id}
+					<button
+						class="card drawing-choice"
+						class:selected={chosen}
+						disabled={view.paused || art.own}
+						aria-pressed={chosen}
+						onclick={() => update('ballot', { ...ballot, drawing_id: art.id })}
+						><span class="choice-heading"
+							><strong
+								>{String.fromCharCode(65 + i)}
+								{art.own ? `· ${$messages.drawingMashup.own}` : ''}</strong
+							>{#if chosen}<span class="choice-badge"
+									><span aria-hidden="true">✓</span>
+									{$messages.drawingMashup.selectedChoice}</span
+								>{/if}</span
+						><DrawingDisplay drawing={art.value} /></button
+					>
+				{/each}
+			</div>
 			<button
 				class="btn btn-ghost"
 				aria-pressed={ballot.drawing_id === null}
 				disabled={view.paused}
 				onclick={() => update('ballot', { ...ballot, drawing_id: null })}
 				>{$messages.drawingMashup.abstain}</button
-			>
-			<label class="commend"
-				><input
-					type="checkbox"
-					checked={ballot.topic}
-					disabled={view.paused || !view.matchup.can_commend_topic}
-					onchange={(e) => update('ballot', { ...ballot, topic: e.currentTarget.checked })}
-				/>{$messages.drawingMashup.commendTopic}</label
-			>
-			<label class="commend"
-				><input
-					type="checkbox"
-					checked={ballot.criterion}
-					disabled={view.paused || !view.matchup.can_commend_criterion}
-					onchange={(e) => update('ballot', { ...ballot, criterion: e.currentTarget.checked })}
-				/>{$messages.drawingMashup.commendCriterion}</label
 			>
 		{/if}
 		<p role="status" class="theme-text-muted">
@@ -474,25 +509,112 @@
 	.organizer-close:hover {
 		background: var(--party-soft-surface);
 	}
+	/* Portrait drawings stay within one phone screen. */
+	.drawing-choice :global(.drawing-display) {
+		width: min(100%, calc(55dvh * var(--drawing-aspect, 4 / 3)));
+		margin-inline: auto;
+	}
+	.draw-bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem 0.75rem;
+	}
 	.drawing-choice {
+		position: relative;
+		display: grid;
+		gap: 0.5rem;
 		width: 100%;
 		text-align: left;
-		border: 3px solid transparent;
+		border: 3px solid var(--party-border);
+		transition:
+			border-color 150ms ease-out,
+			box-shadow 150ms ease-out,
+			opacity 150ms ease-out;
 	}
 	.drawing-choice.selected {
-		border-color: var(--color-primary, #6366f1);
+		border-color: var(--party-primary);
+		background: var(--party-soft-primary-bg);
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--party-primary) 35%, transparent);
+	}
+	/* Once a drawing is picked, the others step back so the choice reads at a glance. */
+	.has-choice .drawing-choice:not(.selected) {
+		opacity: 0.6;
 	}
 	.drawing-choice:disabled {
 		opacity: 0.55;
 	}
-	.commend {
+	.choice-heading {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		min-height: 3rem;
+		justify-content: space-between;
+		gap: 0.5rem;
+		min-height: 2rem;
 	}
-	.commend input {
-		width: 1.25rem;
-		height: 1.25rem;
+	.choice-badge {
+		border-radius: 999px;
+		padding: 0.25rem 0.75rem;
+		background: var(--party-primary);
+		color: var(--party-surface-strong);
+		font-size: 0.9rem;
+		font-weight: 800;
+	}
+	.commend-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+	.commend-row > :first-child {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.thumb {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 3rem;
+		height: 3rem;
+		border: 2px solid var(--party-border);
+		border-radius: 999px;
+		background: transparent;
+		color: var(--party-ink);
+		transition:
+			background-color 150ms ease-out,
+			border-color 150ms ease-out,
+			transform 150ms ease-out;
+	}
+	.thumb svg {
+		width: 1.6rem;
+		height: 1.6rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.7;
+		stroke-linejoin: round;
+	}
+	.thumb.on {
+		border-color: var(--party-success);
+		background: color-mix(in srgb, var(--party-success) 16%, transparent);
+		color: var(--party-success);
+	}
+	.thumb.on svg {
+		fill: currentColor;
+	}
+	.thumb:active:not(:disabled) {
+		transform: scale(0.92);
+	}
+	.thumb:disabled {
+		opacity: 0.55;
+	}
+	.thumb:focus-visible {
+		outline: 2px solid var(--party-primary);
+		outline-offset: 3px;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.drawing-choice,
+		.thumb {
+			transition: none;
+		}
 	}
 </style>

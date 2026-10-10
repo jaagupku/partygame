@@ -45,7 +45,9 @@
 			? $messages.priceStore.shoppers
 			: presentation.gameType === 'calorie_guessing'
 				? $messages.calorieStudio.roster
-				: ''
+				: presentation.gameType === 'drawing_mashup'
+					? $messages.drawingSketchbook.roster
+					: ''
 	);
 	let isConnected = $state(false);
 	let socket: ReturnType<typeof createReconnectingWebSocket> | null = null;
@@ -407,7 +409,11 @@
 					</div>
 				</section>
 			{:else if $game.drawingGame}
-				<DrawingStage view={$game.drawingGame} mainDisplay />
+				<DrawingStage
+					view={$game.drawingGame}
+					mainDisplay
+					oncue={(name, key) => soundSystem.handleCue(name, `${presentation.runId}:${key}`)}
+				/>
 			{:else if $game.activeItem?.type_ === 'round_intro'}
 				<RoundIntroOverlay round={$game.activeItem.round} persistent={true} />
 			{:else}

@@ -2,8 +2,9 @@
 	import { onDestroy, onMount } from 'svelte';
 	import {
 		decodeDrawingSubmission,
-		DRAWING_CANVAS_HEIGHT,
-		DRAWING_CANVAS_WIDTH
+		drawingCanvasSize,
+		isDrawingCanvasSize,
+		type DrawingOrientation
 	} from '$lib/drawing-codec.js';
 
 	interface DrawingDisplayProps {
@@ -12,6 +13,8 @@
 		animate?: boolean;
 		durationMs?: number;
 		replayKey?: string;
+		/** Shape of the blank canvas; a drawing always shows in its own orientation. */
+		orientation?: DrawingOrientation;
 	}
 
 	let {
@@ -19,8 +22,10 @@
 		className = '',
 		animate = false,
 		durationMs = 1500,
-		replayKey = ''
+		replayKey = '',
+		orientation = 'landscape'
 	}: DrawingDisplayProps = $props();
+	const size = $derived(getSubmission(drawing) ?? drawingCanvasSize(orientation));
 	let canvas: HTMLCanvasElement;
 	let animationFrame: number | null = null;
 
@@ -43,7 +48,7 @@
 			return null;
 		}
 		const candidate = value as Partial<DrawingSubmission>;
-		if (candidate.w !== DRAWING_CANVAS_WIDTH || candidate.h !== DRAWING_CANVAS_HEIGHT) {
+		if (!isDrawingCanvasSize(candidate.w, candidate.h)) {
 			return null;
 		}
 		if (!Array.isArray(candidate.s)) {
@@ -93,9 +98,10 @@
 		if (!context) {
 			return;
 		}
-		context.clearRect(0, 0, DRAWING_CANVAS_WIDTH, DRAWING_CANVAS_HEIGHT);
+		const { w: width, h: height } = size;
+		context.clearRect(0, 0, width, height);
 		context.fillStyle = '#ffffff';
-		context.fillRect(0, 0, DRAWING_CANVAS_WIDTH, DRAWING_CANVAS_HEIGHT);
+		context.fillRect(0, 0, width, height);
 		const submission = getSubmission(drawing);
 		if (!submission) {
 			return;
@@ -126,25 +132,19 @@
 			context.lineJoin = 'round';
 			context.beginPath();
 			const firstPoint = stroke.points[0];
-			context.moveTo(firstPoint.x * DRAWING_CANVAS_WIDTH, firstPoint.y * DRAWING_CANVAS_HEIGHT);
+			context.moveTo(firstPoint.x * width, firstPoint.y * height);
 			if (pointCount === 1 || visibleUnits <= 1) {
 				if (visibleUnits < 1) {
 					context.restore();
 					continue;
 				}
-				context.arc(
-					firstPoint.x * DRAWING_CANVAS_WIDTH,
-					firstPoint.y * DRAWING_CANVAS_HEIGHT,
-					stroke.size / 2,
-					0,
-					Math.PI * 2
-				);
+				context.arc(firstPoint.x * width, firstPoint.y * height, stroke.size / 2, 0, Math.PI * 2);
 				context.fill();
 			} else {
 				const fullPointCount = Math.min(pointCount - 1, Math.max(0, Math.floor(visibleUnits) - 1));
 				for (let index = 1; index <= fullPointCount; index += 1) {
 					const point = stroke.points[index];
-					context.lineTo(point.x * DRAWING_CANVAS_WIDTH, point.y * DRAWING_CANVAS_HEIGHT);
+					context.lineTo(point.x * width, point.y * height);
 				}
 				const partialIndex = fullPointCount + 1;
 				const partialProgress = visibleUnits - Math.floor(visibleUnits);
@@ -152,10 +152,8 @@
 					const previousPoint = stroke.points[partialIndex - 1];
 					const nextPoint = stroke.points[partialIndex];
 					context.lineTo(
-						(previousPoint.x + (nextPoint.x - previousPoint.x) * partialProgress) *
-							DRAWING_CANVAS_WIDTH,
-						(previousPoint.y + (nextPoint.y - previousPoint.y) * partialProgress) *
-							DRAWING_CANVAS_HEIGHT
+						(previousPoint.x + (nextPoint.x - previousPoint.x) * partialProgress) * width,
+						(previousPoint.y + (nextPoint.y - previousPoint.y) * partialProgress) * height
 					);
 				}
 				context.stroke();
@@ -168,8 +166,9 @@
 <canvas
 	bind:this={canvas}
 	class={`drawing-display ${className}`}
-	width={DRAWING_CANVAS_WIDTH}
-	height={DRAWING_CANVAS_HEIGHT}
+	width={size.w}
+	height={size.h}
+	style:--drawing-aspect={size.w / size.h}
 	aria-hidden="true"
 ></canvas>
 
@@ -177,7 +176,7 @@
 	.drawing-display {
 		display: block;
 		width: 100%;
-		aspect-ratio: 4 / 3;
+		aspect-ratio: var(--drawing-aspect);
 		border-radius: 0.75rem;
 		background: #ffffff;
 	}

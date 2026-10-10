@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	decodeDrawingSubmission,
 	encodeDrawingSubmission,
+	isDrawingCanvasSize,
 	simplifyDrawingPoints
 } from './drawing-codec';
 
@@ -83,5 +84,22 @@ describe('drawing codec', () => {
 			{ x: 0.5, y: 0.5 },
 			{ x: 1, y: 1 }
 		]);
+	});
+	it('round-trips portrait drawings in their own coordinate space', () => {
+		const stroke = {
+			color: '#0f172a',
+			size: 8,
+			eraser: false,
+			points: [
+				{ x: 0.25, y: 0.75 },
+				{ x: 1, y: 0.5 }
+			]
+		};
+		const portrait = encodeDrawingSubmission([stroke], { orientation: 'portrait' });
+		expect([portrait.w, portrait.h]).toEqual([384, 512]);
+		expect(portrait.s[0][3]).toEqual([96, 384, 384, 256]);
+		expect(decodeDrawingSubmission(portrait)[0].points).toEqual(stroke.points);
+		expect(isDrawingCanvasSize(384, 512)).toBe(true);
+		expect(isDrawingCanvasSize(512, 512)).toBe(false);
 	});
 });

@@ -658,7 +658,8 @@
 		class={`controller-stack ${$controller.isHost ? 'controller-stack-host' : 'controller-stack-player'}`}
 		style={presentation.profile ? undefined : definitionThemeStyle($controller.theme)}
 	>
-		{#if !$controller.isHost && !$controller.endGame?.revealed && currentPlayerStanding}
+		<!-- While drawing, the canvas needs the room more than the standings do. -->
+		{#if !$controller.isHost && !$controller.endGame?.revealed && currentPlayerStanding && !($controller.drawingGame?.is_participant && $controller.drawingGame.phase === 'drawing')}
 			<section class="controller-score-card card grid grid-cols-2 gap-2 p-2">
 				<div class="theme-surface-muted rounded-lg border px-2 py-1.5 text-center">
 					<p class="theme-text-muted text-[0.65rem] font-black uppercase tracking-[0.12em]">

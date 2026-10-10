@@ -104,8 +104,9 @@ type DrawingStroke = {
 type CompactDrawingStroke = [number, number, 0 | 1, number[]];
 
 type DrawingSubmission = {
-	w: 512;
-	h: 384;
+	/** Landscape 512×384, or the same canvas turned portrait (Drawing Mashup). */
+	w: 512 | 384;
+	h: 384 | 512;
 	s: CompactDrawingStroke[];
 };
 
@@ -928,7 +929,8 @@ type MashupRevealedVote = { voter_id: string; voter_name: string; drawing_id: st
 type MashupMatchup = {
 	id: string;
 	topic: DrawingText;
-	criterion: DrawingText;
+	/** Withheld by the server until the criterion reveal. */
+	criterion: DrawingText | null;
 	drawings: MashupArtwork[];
 	can_commend_topic: boolean;
 	can_commend_criterion: boolean;
@@ -940,7 +942,15 @@ type MashupMatchup = {
 	revealed_votes?: MashupRevealedVote[];
 };
 type DrawingGameView = {
-	phase: 'waiting' | 'writing' | 'drawing' | 'voting' | 'results' | 'finished';
+	phase:
+		| 'waiting'
+		| 'writing'
+		| 'drawing'
+		| 'showcase'
+		| 'criterion_reveal'
+		| 'voting'
+		| 'results'
+		| 'finished';
 	phase_id: number;
 	deadline: number | null;
 	remaining_seconds: number | null;
@@ -950,7 +960,12 @@ type DrawingGameView = {
 	language: 'en' | 'et';
 	participant_ids: string[];
 	ready_ids: string[];
+	/** Players whose action still holds the phase open (artists never vote on their matchup). */
+	waiting_ids?: string[];
 	is_participant: boolean;
+	/** Drawing phase pacing: drawings per player, each budgeted `drawing_seconds`. */
+	drawing_count?: number;
+	drawing_seconds?: number | null;
 	prompt?: { topic: string; criterion: string; revision: number } | null;
 	assignments: MashupArtwork[];
 	matchup?: MashupMatchup | null;

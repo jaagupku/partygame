@@ -1,5 +1,20 @@
 export const DRAWING_CANVAS_WIDTH = 512;
 export const DRAWING_CANVAS_HEIGHT = 384;
+/** Classic questions draw landscape; Drawing Mashup turns the same canvas portrait. */
+export type DrawingOrientation = 'landscape' | 'portrait';
+
+export function drawingCanvasSize(orientation: DrawingOrientation = 'landscape') {
+	return orientation === 'portrait'
+		? ({ w: DRAWING_CANVAS_HEIGHT, h: DRAWING_CANVAS_WIDTH } as const)
+		: ({ w: DRAWING_CANVAS_WIDTH, h: DRAWING_CANVAS_HEIGHT } as const);
+}
+
+export function isDrawingCanvasSize(w: unknown, h: unknown): boolean {
+	return (
+		(w === DRAWING_CANVAS_WIDTH && h === DRAWING_CANVAS_HEIGHT) ||
+		(w === DRAWING_CANVAS_HEIGHT && h === DRAWING_CANVAS_WIDTH)
+	);
+}
 export const DRAWING_COLORS = [
 	'#0f172a',
 	'#ef4444',
@@ -71,11 +86,15 @@ export function simplifyDrawingPoints(
 
 export function encodeDrawingSubmission(
 	strokes: DrawingStroke[],
-	{ simplify = true }: { simplify?: boolean } = {}
+	{
+		simplify = true,
+		orientation = 'landscape'
+	}: { simplify?: boolean; orientation?: DrawingOrientation } = {}
 ): DrawingSubmission {
+	const { w, h } = drawingCanvasSize(orientation);
 	return {
-		w: DRAWING_CANVAS_WIDTH,
-		h: DRAWING_CANVAS_HEIGHT,
+		w,
+		h,
 		s: strokes.map((stroke) => [
 			Math.max(
 				0,
@@ -84,8 +103,8 @@ export function encodeDrawingSubmission(
 			stroke.size,
 			stroke.eraser ? 1 : 0,
 			(simplify ? simplifyDrawingPoints(stroke.points) : stroke.points).flatMap((point) => [
-				Math.round(point.x * DRAWING_CANVAS_WIDTH),
-				Math.round(point.y * DRAWING_CANVAS_HEIGHT)
+				Math.round(point.x * w),
+				Math.round(point.y * h)
 			])
 		])
 	};
@@ -97,8 +116,8 @@ export function decodeDrawingSubmission(drawing: DrawingSubmission): DrawingStro
 		size,
 		eraser: eraser === 1,
 		points: Array.from({ length: Math.floor(coordinates.length / 2) }, (_, index) => ({
-			x: (coordinates[index * 2] ?? 0) / DRAWING_CANVAS_WIDTH,
-			y: (coordinates[index * 2 + 1] ?? 0) / DRAWING_CANVAS_HEIGHT
+			x: (coordinates[index * 2] ?? 0) / drawing.w,
+			y: (coordinates[index * 2 + 1] ?? 0) / drawing.h
 		}))
 	}));
 }

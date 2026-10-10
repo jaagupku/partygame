@@ -1,4 +1,10 @@
-export type WaitingAction = 'answer' | 'vote' | 'buzzer' | 'ready' | 'continue';
+export type WaitingAction = 'answer' | 'vote' | 'buzzer' | 'ready' | 'continue' | 'write' | 'draw';
+
+const DRAWING_ACTIONS: Partial<Record<DrawingGameView['phase'], WaitingAction>> = {
+	writing: 'write',
+	drawing: 'draw',
+	voting: 'vote'
+};
 
 export function waitingPlayers(state: HostGameState): {
 	key: string;
@@ -7,6 +13,17 @@ export function waitingPlayers(state: HostGameState): {
 } {
 	const step = state.activeStep;
 	const empty = { key: '', players: [] };
+	const drawing = state.drawingGame;
+	if (drawing) {
+		const action = DRAWING_ACTIONS[drawing.phase];
+		if (state.state !== 'running' || state.endGame || !action) return empty;
+		const waiting = new Set(drawing.waiting_ids ?? []);
+		return {
+			key: `${state.run_id ?? state.id}:drawing:${drawing.phase_id}`,
+			action,
+			players: state.players.filter((p) => waiting.has(p.id) && p.status === 'connected')
+		};
+	}
 	if (
 		state.state !== 'running' ||
 		state.reviewingHistory ||

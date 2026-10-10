@@ -27,6 +27,11 @@ HOSTLESS_AUTO_EVALUATION_TYPES = {
 
 DRAWING_CANVAS_WIDTH = 512
 DRAWING_CANVAS_HEIGHT = 384
+# Landscape for classic questions; Drawing Mashup draws on the same canvas turned portrait.
+DRAWING_CANVAS_SIZES = {
+    (DRAWING_CANVAS_WIDTH, DRAWING_CANVAS_HEIGHT),
+    (DRAWING_CANVAS_HEIGHT, DRAWING_CANVAS_WIDTH),
+}
 MAX_DRAWING_STROKES = 320
 MAX_DRAWING_POINTS = 6_400
 MAX_DRAWING_PAYLOAD_CHARS = 240_000
@@ -429,7 +434,8 @@ class EvaluationRuntime:
             return False
         if len(str(value)) > MAX_DRAWING_PAYLOAD_CHARS:
             return False
-        if value.get("w") != DRAWING_CANVAS_WIDTH or value.get("h") != DRAWING_CANVAS_HEIGHT:
+        width, height = value.get("w"), value.get("h")
+        if (width, height) not in DRAWING_CANVAS_SIZES:
             return False
         strokes = value.get("s")
         if not isinstance(strokes, list) or not strokes or len(strokes) > MAX_DRAWING_STROKES:
@@ -455,7 +461,7 @@ class EvaluationRuntime:
             for index, coordinate in enumerate(points):
                 if not isinstance(coordinate, int | float):
                     return False
-                maximum = DRAWING_CANVAS_WIDTH if index % 2 == 0 else DRAWING_CANVAS_HEIGHT
+                maximum = width if index % 2 == 0 else height
                 if coordinate < 0 or coordinate > maximum:
                     return False
         return True

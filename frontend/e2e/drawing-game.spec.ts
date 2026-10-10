@@ -72,6 +72,12 @@ async function finishPhase(page: Page) {
 		.not.toBe(phase);
 }
 
+async function organizer(page: Page, action: 'Pause' | 'Resume') {
+	await page.getByRole('button', { name: 'Organizer controls', exact: true }).click();
+	await page.getByRole('button', { name: action, exact: true }).click();
+	await page.getByRole('button', { name: 'Close', exact: true }).click();
+}
+
 async function draw(page: Page) {
 	const canvas = page.locator('canvas.drawing-input-canvas');
 	const box = await canvas.boundingBox();
@@ -97,16 +103,31 @@ for (const count of [3, 5]) {
 					.getByLabel('Voting criterion', { exact: true })
 					.fill(`Surprise criterion ${i}`);
 				await game.pages[i].getByRole('button', { name: 'Done', exact: true }).click();
+				if (i === 0) await expect(page.locator('.waiting-avatar')).toHaveCount(count - 1);
 			}
 			const drawings = count < 5 ? 2 : 3;
+			// The shared display keeps the drawing clock, pacing and unfinished artists on screen.
+			await expect(page.locator('.writing-display .prompt-countdown')).toBeVisible();
+			await expect(page.getByText(`Drawing 1 of ${drawings}`, { exact: true })).toBeVisible();
+			await expect(page.locator('.waiting-avatar')).toHaveCount(count);
+			await page.screenshot({ path: info.outputPath('drawing-display.png') });
 			for (let i = 0; i < count; i++) {
 				const phone = game.pages[i];
-				await expect(phone.getByText('Time to draw', { exact: true })).toBeVisible();
+				await expect(phone.getByRole('navigation', { name: 'Your drawings' })).toBeVisible();
 				const snapshot = game.snapshots[i].at(-1) as unknown as {
 					drawing_game: { assignments: { topic: { text: string }; criterion: null }[] };
 					drawing_private: object;
 				};
 				expect(snapshot.drawing_private).toEqual({});
+				if (i === 0) {
+					// Portrait canvas, nearly edge to edge, with the tools still on the first screen.
+					await expect(phone.locator('.controller-score-card')).toHaveCount(0);
+					const shell = (await phone.locator('.drawing-input-shell').boundingBox())!;
+					expect(shell.height).toBeGreaterThan(shell.width);
+					expect(shell.width).toBeGreaterThan(360);
+					await expect(phone.locator('.drawing-tool-actions')).toBeInViewport();
+					await phone.screenshot({ path: info.outputPath('phone-drawing.png') });
+				}
 				expect(snapshot.drawing_game.assignments).toHaveLength(drawings);
 				expect(
 					snapshot.drawing_game.assignments.every(
@@ -131,6 +152,25 @@ for (const count of [3, 5]) {
 				await phone.getByRole('button', { name: 'Done', exact: true }).click();
 			}
 			for (let topic = 0; topic < count; topic++) {
+				if (topic === 0) {
+					// Showcase: topic and artwork, criterion sealed, no ballot anywhere.
+					await expect(page.locator('[data-drawing-stage="showcase"]')).toBeVisible();
+					await expect(page.locator('.drawing-criterion-sealed')).toBeVisible();
+					await expect(page.locator('.drawing-artwork canvas').first()).toBeVisible();
+					const showcase = (
+						game.snapshots[0].at(-1) as unknown as { drawing_game: DrawingGameView }
+					).drawing_game;
+					if (showcase.phase === 'showcase') expect(showcase.matchup!.criterion).toBeNull();
+					for (const phone of game.pages)
+						await expect(phone.locator('button.drawing-choice')).toHaveCount(0);
+					await page.screenshot({ path: info.outputPath('showcase.png') });
+					await expect(page.locator('.drawing-twist')).toBeVisible();
+					await expect(page.locator('body')).toHaveAttribute(
+						'data-presentation-variant',
+						'judging'
+					);
+					await page.screenshot({ path: info.outputPath('criterion-reveal.png') });
+				}
 				const voters = [];
 				for (const phone of game.pages) {
 					const blocked = phone.getByText("You can't vote right now", { exact: true });
@@ -147,10 +187,15 @@ for (const count of [3, 5]) {
 						.locator('button.drawing-choice:not(:disabled)')
 						.nth(index % drawings)
 						.click();
+					await expect(phone.locator('button.drawing-choice.selected')).toHaveCount(1);
 					for (const label of ['Commend the topic (+10)', 'Commend the criterion (+10)']) {
-						const input = phone.getByLabel(label, { exact: true });
-						if (await input.isEnabled()) await input.check();
+						const thumb = phone.getByRole('button', { name: label, exact: true });
+						if (await thumb.count()) {
+							await thumb.click();
+							await expect(thumb).toHaveAttribute('aria-pressed', 'true');
+						}
 					}
+					if (index === 0) await phone.screenshot({ path: info.outputPath('phone-voting.png') });
 					await phone.getByRole('button', { name: 'Done', exact: true }).click();
 				}
 				await expect(page.getByText('Topic results', { exact: true })).toBeVisible();
@@ -172,6 +217,9 @@ for (const count of [3, 5]) {
 					await game.pages[0].getByRole('button', { name: 'Resume', exact: true }).click();
 					await game.pages[0].getByRole('button', { name: 'Close', exact: true }).click();
 					await expect(reveal).toHaveAttribute('data-reveal-stage', 'revealSummary');
+					// Every card fits on the shared display, which cannot scroll.
+					for (const box of await page.locator('.results .artwork, .results .bonus').all())
+						await expect(box).toBeInViewport({ ratio: 1 });
 					await expect(game.pages[1].locator('[data-reveal-stage]')).toHaveAttribute(
 						'data-reveal-stage',
 						'revealSummary'
@@ -212,6 +260,8 @@ for (const count of [3, 5]) {
 			const gallery = page.getByRole('complementary', { name: 'Drawing gallery' });
 			await expect(gallery).toBeVisible({ timeout: 35_000 });
 			await expect(gallery.locator('canvas')).toBeVisible();
+			const print = (await gallery.locator('canvas').boundingBox())!;
+			expect(print.height).toBeGreaterThan(print.width);
 			const scoreboardBox = await page
 				.getByRole('heading', { name: 'Full final scoreboard', exact: true })
 				.boundingBox();
@@ -264,7 +314,7 @@ test('missing drawings retain work and award the lone artist 1000 points', async
 	try {
 		await finishPhase(game.pages[0]);
 		for (const phone of game.pages)
-			await expect(phone.getByText('Time to draw', { exact: true })).toBeVisible();
+			await expect(phone.getByRole('navigation', { name: 'Your drawings' })).toBeVisible();
 		const phone = game.pages[0];
 		// Save both assignments but deliberately never mark this player done.
 		await draw(phone);
@@ -276,6 +326,28 @@ test('missing drawings retain work and award the lone artist 1000 points', async
 		await draw(phone);
 		await finishPhase(phone);
 		for (let topic = 0; topic < 3; topic++) {
+			if (topic === 0) {
+				// Pause and refresh hold each introduction stage on every screen.
+				for (const stage of ['showcase', 'criterion_reveal']) {
+					await expect(phone.locator(`[data-drawing-stage="${stage}"]`)).toBeVisible();
+					await organizer(phone, 'Pause');
+					await phone.reload();
+					await expect(phone.locator(`[data-drawing-stage="${stage}"]`)).toBeVisible();
+					await expect(phone.locator('.drawing-stage-paused')).toBeVisible();
+					await expect(
+						page.locator(`[data-drawing-stage="${stage}"].drawing-stage-paused`)
+					).toBeVisible();
+					await expect(phone.locator('button.drawing-choice')).toHaveCount(0);
+					await expect(phone.locator('.drawing-criterion-sealed')).toHaveCount(
+						stage === 'showcase' ? 1 : 0
+					);
+					await organizer(phone, 'Resume');
+					await finishPhase(phone);
+				}
+			}
+			for (const stage of ['showcase', 'criterion_reveal'])
+				if (await phone.locator(`[data-drawing-stage="${stage}"]`).count())
+					await finishPhase(phone);
 			if (
 				await phone
 					.getByText('Vote on the surprise criterion', { exact: true })
@@ -333,7 +405,9 @@ test('main writing countdown is centered, animated, and respects reduced motion'
 		).toBe('none');
 		await page.screenshot({ path: '/tmp/drawing-prompt-countdown.png' });
 		await finishPhase(game.pages[0]);
-		await expect(timer).toHaveCount(0);
+		// The drawing phase keeps the same prominent clock, with drawing pacing below it.
+		await expect(timer).toBeVisible();
+		await expect(page.getByText('Drawing 1 of 2', { exact: true })).toBeVisible();
 	} finally {
 		await Promise.all(game.contexts.map((context) => context.close()));
 	}

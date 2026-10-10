@@ -24,6 +24,11 @@ from partygame.state import GameKeyFactory, GameStateRepository
 COMPONENT = "drawing_mashup"
 DUE_KEY = "drawing_mashup:due"
 FINAL_STAGES = ("third_place", "second_place", "first_place", "stats", "scoreboard")
+# Runs started with this marker preview each matchup before voting; older runs vote directly.
+REVEAL_FLOW = 1
+SHOWCASE_SECONDS = 4
+CRITERION_REVEAL_SECONDS = 2
+INTRO_PHASES = ("showcase", "criterion_reveal")
 
 
 class DrawingError(ValueError):
@@ -101,6 +106,7 @@ class DrawingRuntime:
         now = time()
         state = {
             "run_id": lobby.run_id or lobby.id,
+            "reveal_flow": REVEAL_FLOW,
             "seed": prepared.seed,
             "options": prepared.settings.model_dump(),
             "phase": "writing",
@@ -153,7 +159,7 @@ class DrawingRuntime:
                 self.advance(state)
             await self.commit(lobby, state)
             return 0
-        if state["paused"] or time() >= state["deadline"]:
+        if state["paused"] or time() >= state["deadline"] or state["phase"] in INTRO_PHASES:
             raise DrawingError("closed")
         if actor in state["ready"] and action != "ballot":
             if action == "ready":
@@ -210,15 +216,23 @@ class DrawingRuntime:
             ):
                 raise DrawingError("incomplete")
             state["ready"].append(actor)
-            required = set(state["roster"])
-            if state["phase"] == "voting":
-                required -= self.matchup_artists(state)
-            if set(state["ready"]) >= required:
+            if set(state["ready"]) >= self.required(state):
                 self.advance(state)
         else:
             raise DrawingError("stale")
         await self.commit(lobby, state, publish=action not in {"prompt", "draw", "ballot"})
         return revision
+
+    def required(self, state):
+        """Players who must be ready before the current phase closes early."""
+        required = set(state["roster"])
+        if state["phase"] == "voting":
+            required -= self.matchup_artists(state)
+        return required
+
+    @staticmethod
+    def drawing_count(state):
+        return 2 if len(state["roster"]) <= 4 else 3
 
     @staticmethod
     def update_draft(target, values, expected):
@@ -241,16 +255,21 @@ class DrawingRuntime:
         if phase == "writing":
             self.match(state)
             state["phase"] = "drawing"
-            count = 2 if len(state["roster"]) <= 4 else 3
+            count = self.drawing_count(state)
             state["deadline"] = time() + count * state["options"]["drawing_seconds"]
         elif phase == "drawing":
+            self.open_matchup(state)
+        elif phase == "showcase":
+            state["phase"] = "criterion_reveal"
+            state["deadline"] = time() + CRITERION_REVEAL_SECONDS
+        elif phase == "criterion_reveal":
             self.open_vote(state)
         elif phase == "voting":
             self.open_results(state)
         elif phase == "results":
             state["matchup_index"] += 1
             if state["matchup_index"] < len(state["matchups"]):
-                self.open_vote(state)
+                self.open_matchup(state)
             else:
                 state["phase"] = "finished"
                 state["finished_at"] = time()
@@ -307,13 +326,21 @@ class DrawingRuntime:
             if state["artworks"][aid]["value"]
         }
 
-    def open_vote(self, state):
+    def open_matchup(self, state):
+        """Empty matchups go straight to results; others preview before the full vote."""
         state["ballots"] = {}
-        state["phase"] = "voting"
-        state["deadline"] = time() + state["options"]["voting_seconds"]
         matchup = state["matchups"][state["matchup_index"]]
         if not any(state["artworks"][aid]["value"] for aid in matchup["drawings"]):
             self.open_results(state)
+        elif state.get("reveal_flow"):
+            state["phase"] = "showcase"
+            state["deadline"] = time() + SHOWCASE_SECONDS
+        else:
+            self.open_vote(state)
+
+    def open_vote(self, state):
+        state["phase"] = "voting"
+        state["deadline"] = time() + state["options"]["voting_seconds"]
 
     def open_results(self, state):
         self.score(state)
@@ -391,6 +418,14 @@ class DrawingRuntime:
             matchup_number=min(state["matchup_index"] + 1, len(state["matchups"])),
             matchup_count=len(state["matchups"]),
         )
+        if state["phase"] in {"writing", "drawing", "voting"}:
+            required = self.required(state)
+            view.waiting_ids = [
+                p for p in state["roster"] if p in required and p not in state["ready"]
+            ]
+        if state["phase"] == "drawing":
+            view.drawing_count = self.drawing_count(state)
+            view.drawing_seconds = state["options"]["drawing_seconds"]
         if viewer in state["roster"]:
             if state["phase"] == "writing":
                 view.prompt = state["prompts"][viewer]
@@ -406,25 +441,26 @@ class DrawingRuntime:
                     if viewer in state["ballots"]
                     else None
                 )
-        if state["phase"] in {"voting", "results"}:
+        if state["phase"] in {*INTRO_PHASES, "voting", "results"}:
             matchup = state["matchups"][state["matchup_index"]]
             result = matchup["result"] or {}
             reveal = state["phase"] == "results"
+            # The criterion stays off the wire until its reveal; commendations open with voting.
+            hidden = state["phase"] == "showcase"
+            commend = viewer in state["roster"] and state["phase"] in {"voting", "results"}
             if reveal:
                 view.reveal_duration = result.get("reveal_duration")
             view.matchup = MashupMatchup(
                 id=matchup["id"],
                 topic=matchup["topic"],
-                criterion=matchup["criterion"],
+                criterion=None if hidden else matchup["criterion"],
                 drawings=[
                     self.artwork(state, aid, viewer=viewer, reveal=reveal, result=result)
                     for aid in matchup["drawings"]
                     if state["artworks"][aid]["value"]
                 ],
-                can_commend_topic=viewer in state["roster"]
-                and matchup["topic_author"] not in (None, viewer),
-                can_commend_criterion=viewer in state["roster"]
-                and matchup["criterion_author"] not in (None, viewer),
+                can_commend_topic=commend and matchup["topic_author"] not in (None, viewer),
+                can_commend_criterion=commend and matchup["criterion_author"] not in (None, viewer),
                 topic_author=(
                     state["roster"][matchup["topic_author"]]["name"]
                     if reveal and matchup["topic_author"]

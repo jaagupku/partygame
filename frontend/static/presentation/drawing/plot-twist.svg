@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240">
+  <!-- Original comic plot-twist burst for the judging stage. -->
+  <path d="M160 10 L184 62 L238 30 L222 88 L300 84 L246 124 L310 168 L234 164 L250 228 L190 184 L160 236 L132 184 L70 226 L90 164 L12 170 L76 124 L20 82 L98 88 L82 28 L136 62 Z"
+        fill="#ffd23f" stroke="#2a0b52" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M160 46 L176 82 L214 62 L204 100 L256 98 L218 124 L262 154 L210 152 L220 196 L180 166 L160 200 L140 166 L98 194 L112 152 L58 156 L102 124 L62 98 L114 100 L104 62 L144 82 Z"
+        fill="#ff7a59" opacity="0.9"/>
+  <g fill="#2a0b52" stroke="#2a0b52" stroke-linejoin="round">
+    <path d="M126 82 h22 l-4 66 h-14 z" stroke-width="4"/>
+    <circle cx="137" cy="166" r="10"/>
+    <path d="M176 92 c0 -20 40 -20 40 4 c0 18 -20 18 -20 36 v8 h-14 v-12 c0 -18 18 -18 18 -32 c0 -10 -12 -10 -12 0 z" stroke-width="4"/>
+    <circle cx="189" cy="166" r="10"/>
+  </g>
+</svg>

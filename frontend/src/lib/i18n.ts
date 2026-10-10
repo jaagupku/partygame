@@ -42,6 +42,12 @@ const en = defineMessages({
 		drawing: 'Time to draw',
 		voting: 'Vote on the surprise criterion',
 		results: 'Topic results',
+		showcase: 'Meet the artwork',
+		criterionReveal: 'Plot twist!',
+		criterionSecret: 'The criterion arrives in a moment…',
+		plotTwist: 'Plot twist!',
+		votingSoon: 'Voting opens soon',
+		introProgress: 'Until voting opens',
 		finished: 'Gallery',
 		topic: 'Drawing topic',
 		criterion: 'Voting criterion',
@@ -59,13 +65,16 @@ const en = defineMessages({
 		drawHelp:
 			'Move between your drawings. Your unfinished work is saved and submitted when time runs out. The voting criterion is a surprise.',
 		criterionHidden: 'The criterion will be revealed during voting.',
+		drawingOf: (n: number, total: number) => `Drawing ${n} of ${total}`,
+		moveOn: (n: number) => `Time to move on to drawing ${n}!`,
+		selectedChoice: 'Your pick',
 		commendTopic: 'Commend the topic (+10)',
 		commendCriterion: 'Commend the criterion (+10)',
 		abstain: 'Abstain',
 		own: 'Your drawing',
 		cannotVote: "You can't vote right now",
 		voteHelp:
-			'Choose a drawing, optionally commend the writing, then tap Done. You can change your ballot until voting closes.',
+			'Choose a drawing, optionally give the topic or criterion a thumbs up, then tap Done. You can change your ballot until voting closes.',
 		pause: 'Pause',
 		resume: 'Resume',
 		paused: 'Game paused',
@@ -251,6 +260,12 @@ const en = defineMessages({
 		imageLicense: 'Image license (CC BY-SA)',
 		selection:
 			'Products sold in Estonia are preferred, with international products added when needed.'
+	},
+	drawingSketchbook: {
+		welcome: 'Open the sketchbook',
+		roster: 'Artists',
+		gallery: 'Our sketchbook',
+		judging: "Judges' table"
 	},
 	calorieStudio: {
 		welcome: 'Welcome to the studio',
@@ -519,7 +534,9 @@ const en = defineMessages({
 			vote: (name: string) => `Waiting for ${name} to vote`,
 			buzzer: (name: string) => `Waiting for ${name} to buzz`,
 			ready: (name: string) => `Waiting for ${name} to be ready`,
-			continue: (name: string) => `Waiting for ${name} to continue`
+			continue: (name: string) => `Waiting for ${name} to continue`,
+			write: (name: string) => `Waiting for ${name} to write prompts`,
+			draw: (name: string) => `Waiting for ${name} to finish drawing`
 		},
 		hostControllerTitle: 'Host Controller',
 		playerControllerTitle: 'Player Controller',
@@ -1244,6 +1261,12 @@ const et: Messages = {
 		drawing: 'Joonistamise aeg',
 		voting: 'Hääleta üllatuskriteeriumi järgi',
 		results: 'Teema tulemused',
+		showcase: 'Vaata teoseid',
+		criterionReveal: 'Ootamatu pööre!',
+		criterionSecret: 'Kriteerium selgub kohe…',
+		plotTwist: 'Ootamatu pööre!',
+		votingSoon: 'Hääletus algab kohe',
+		introProgress: 'Hääletuse alguseni',
 		finished: 'Galerii',
 		topic: 'Joonistamise teema',
 		criterion: 'Hindamiskriteerium',
@@ -1261,13 +1284,16 @@ const et: Messages = {
 		drawHelp:
 			'Liigu oma piltide vahel. Pooleliolev töö salvestatakse ja esitatakse aja lõppedes. Hindamiskriteerium on üllatus.',
 		criterionHidden: 'Kriteerium selgub hääletamisel.',
+		drawingOf: (n: number, total: number) => `Joonistus ${n}/${total}`,
+		moveOn: (n: number) => `Aeg minna edasi ${n}. joonistuse juurde!`,
+		selectedChoice: 'Sinu valik',
 		commendTopic: 'Kiida teemat (+10)',
 		commendCriterion: 'Kiida kriteeriumi (+10)',
 		abstain: 'Jätan hääletamata',
 		own: 'Sinu joonistus',
 		cannotVote: 'Sa ei saa praegu hääletada',
 		voteHelp:
-			'Vali pilt, soovi korral kiida kirjutatut ja vajuta Valmis. Häält saab muuta hääletamise lõpuni.',
+			'Vali pilt, soovi korral anna teemale või kriteeriumile pöial püsti ja vajuta Valmis. Häält saab muuta hääletamise lõpuni.',
 		pause: 'Peata',
 		resume: 'Jätka',
 		paused: 'Mäng on peatatud',
@@ -1452,6 +1478,12 @@ const et: Messages = {
 		dataset: 'Laadi andmestik alla (ODbL)',
 		imageLicense: 'Piltide litsents (CC BY-SA)',
 		selection: 'Eelistatakse Eestis müüdavaid tooteid, vajadusel lisatakse rahvusvahelisi tooteid.'
+	},
+	drawingSketchbook: {
+		welcome: 'Ava visandivihik',
+		roster: 'Kunstnikud',
+		gallery: 'Meie visandivihik',
+		judging: 'Žürii laud'
 	},
 	calorieStudio: {
 		welcome: 'Tere tulemast stuudiosse',
@@ -1718,7 +1750,9 @@ const et: Messages = {
 			vote: (name: string) => `Ootame mängija ${name} häält`,
 			buzzer: (name: string) => `Ootame mängija ${name} nupuvajutust`,
 			ready: (name: string) => `Ootame, et ${name} oleks valmis`,
-			continue: (name: string) => `Ootame, et ${name} jätkaks`
+			continue: (name: string) => `Ootame, et ${name} jätkaks`,
+			write: (name: string) => `Ootame, et ${name} kirjutaks ülesanded`,
+			draw: (name: string) => `Ootame, et ${name} joonistamise lõpetaks`
 		},
 		hostControllerTitle: 'Mängujuhi kontroller',
 		playerControllerTitle: 'Mängija kontroller',
