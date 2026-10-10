@@ -97,6 +97,15 @@ for bar in range(16):
             tone(music, at + offset, melody[(bar + k) % 8], 0.35, 0.055, wrap=True)
 save("studio-loop", music)
 
+# Count-up: after the 0.5 s reveal sting, ticks follow the ease-in (value = t^3 over
+# 1.2 s), then the number lands.
+count = canvas(2.3)
+for k in range(17):
+    tone(count, 0.5 + 1.2 * (k / 16) ** (1 / 3), 69 + k, 0.05, 0.07 + 0.004 * k)
+for midi in [81, 86]:
+    tone(count, 1.7, midi, 0.5, 0.15)
+save("count", count)
+
 for name, seconds, notes in [
     ("whistle", 0.36, [(0, 86), (0.15, 88)]),
     ("interval", 0.12, [(0, 74)]),

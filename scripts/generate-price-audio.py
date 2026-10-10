@@ -117,6 +117,15 @@ for bar in range(16):
         noise(music, at + offset * beat, 0.09, 0.028, bar + 100)
 save("store-loop", music)
 
+# Count-up: after the 0.5 s reveal sting, ticks follow the ease-in (value = t^3 over
+# 1.2 s), then the price lands.
+count = canvas(2.3)
+for k in range(17):
+    note(count, 0.5 + 1.2 * (k / 16) ** (1 / 3), 72 + k, 0.05, 0.07 + 0.004 * k)
+for pitch in [84, 88]:
+    note(count, 1.7, pitch, 0.55, 0.15)
+save("count", count)
+
 for name, length in [
     ("bag", 0.45),
     ("tick", 0.11),
