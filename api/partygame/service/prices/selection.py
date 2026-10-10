@@ -5,7 +5,7 @@ from collections import Counter
 
 from partygame.schemas.price_game import PriceProduct
 
-GENERATOR_VERSION = "price-v3"
+GENERATOR_VERSION = "price-v4"
 LOCAL_GROCERY_BRANDS = re.compile(
     r"\b(alma|tere|valio|kalev|põltsamaa|salvest|rakvere|maks & moorits|"
     r"saaremaa|farmi|leibur|eesti pagar|a. le coq|saku|rimi)\b",
@@ -69,22 +69,34 @@ def select_varied(bundles: list[list[PriceProduct]], count: int, usage: Counter)
     return selected
 
 
+def mode_lag(totals, placed, kind, previous_kind):
+    """Keep guesses and comparisons evenly spread: the kind furthest behind its share goes next."""
+    return placed[kind] / totals[kind], kind == previous_kind
+
+
 def sequence_varied(indices, selected):
-    """Minimize category overlap with the preceding question, including both cards."""
+    """Interleave question kinds, then minimize category overlap with the preceding question."""
     remaining = list(indices)
     order = []
     previous = set()
+    previous_kind = None
+    totals = Counter(len(selected[i]) for i in remaining)
+    placed = Counter()
     while remaining:
         keys = {i: {category_key(p) for p in selected[i]} for i in remaining}
         counts = Counter(key for values in keys.values() for key in values)
         index = min(
             range(len(remaining)),
             key=lambda j: (
+                mode_lag(totals, placed, len(selected[remaining[j]]), previous_kind),
                 len(keys[remaining[j]] & previous),
-                -sum(counts[key] for key in keys[remaining[j]]),
+                # Averaged so two-card comparisons are not favoured over single guesses.
+                -sum(counts[key] for key in keys[remaining[j]]) / len(keys[remaining[j]]),
             ),
         )
         item = remaining.pop(index)
         order.append(item)
         previous = keys[item]
+        previous_kind = len(selected[item])
+        placed[previous_kind] += 1
     return order

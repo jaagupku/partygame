@@ -18,8 +18,9 @@ from partygame.schemas.game_definition import (
 )
 from partygame.schemas.game_session import DatasetSnapshot, RoundBundle, SourceMetadata
 from partygame.service.prices.matching import maximum_pairs
+from partygame.service.prices.selection import mode_lag
 
-GENERATOR_VERSION = "calories-v1"
+GENERATOR_VERSION = "calories-v2"
 
 
 class InsufficientCalorieData(ValueError):
@@ -97,7 +98,23 @@ def select(settings, products, rng):
         usage[item.category] += 1
         pool.remove(item)
     rng.shuffle(selected)
-    return selected
+    return interleave_modes(selected)
+
+
+def interleave_modes(selected):
+    """Spread guesses and comparisons evenly, keeping the shuffled order within each kind."""
+    queues = {kind: [b for b in selected if len(b) == kind] for kind in (1, 2)}
+    totals = {kind: len(queue) for kind, queue in queues.items()}
+    order = []
+    previous = None
+    while len(order) < len(selected):
+        kind = min(
+            (kind for kind in queues if queues[kind]),
+            key=lambda kind: mode_lag(totals, Counter(len(b) for b in order), kind, previous),
+        )
+        order.append(queues[kind].pop(0))
+        previous = kind
+    return order
 
 
 class CalorieGenerator:

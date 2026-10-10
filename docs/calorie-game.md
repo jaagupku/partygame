@@ -7,7 +7,8 @@ kcal per 100 ml. Comparisons always use the same basis and distinct rounded
 values. Values describe the product as sold, not prepared servings.
 
 Setup supports 5/10/15/20 questions, 15/30/45/60-second answers, 4/6/8/10/15-second
-automatic reveals, and automatic or hosted progression. Defaults are mixed,
+automatic reveals, and automatic or hosted progression. Mixed games (`calories-v2`)
+interleave guesses and comparisons evenly. Defaults are mixed,
 10 questions, 30-second answers, 4-second reveals, automatic. Ready toggles speed
 up automatic reveals by 15% per ready player. Host-paced reveals advance manually.
 

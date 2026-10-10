@@ -115,6 +115,9 @@ def test_generation(mode):
         sum(s.calorie_question.mode == "compare" for s in steps)
         == {"guess": 0, "compare": 20, "mixed": 10}[mode]
     )
+    if mode == "mixed":
+        modes = "".join(s.calorie_question.mode[0] for s in steps)
+        assert "ggg" not in modes and "ccc" not in modes
     urls = [p.source_url for s in steps for p in s.calorie_question.reveal]
     assert len(urls) == len(set(urls))
     assert all(int(url.rsplit("/", 1)[1]) < 1000000000048 for url in urls)

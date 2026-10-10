@@ -34,7 +34,8 @@
 			title: step.calorie_products?.find((p) => p.id === item.id)?.title,
 			value: new Intl.NumberFormat($locale).format(item.kcal),
 			unit: $messages.calorieGame[item.basis === '100ml' ? 'per100ml' : 'per100g'],
-			correct: item.id === winner
+			correct: item.id === winner,
+			...(compare ? {} : { amount: item.kcal, format: new Intl.NumberFormat($locale).format })
 		}))
 	);
 	const choiceMs = $derived(
@@ -98,6 +99,7 @@
 				delayOffset={choice && compare && animate ? choiceMs : 0}
 				{results}
 				{answer}
+				{animate}
 			/>
 			<ul class="calorie-product-details">
 				{#each step.calorie_reveal as item}

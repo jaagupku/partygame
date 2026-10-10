@@ -19,7 +19,9 @@ Release tails wrap across the loop boundary. The generator reports duration,
 peak amplitude, RMS and the endpoint discontinuity; it rejects clipping.
 
 `whistle` opens a round; `interval` warns near the deadline; `stop` closes it.
-`reveal`, `milestone` and `stage` accompany shared reveals. `complete` celebrates
+`reveal`, `milestone` and `stage` accompany shared reveals. `count` follows
+`reveal` on calorie guesses: accelerating ticks match the number counting up over
+1.2 s. `complete` celebrates
 the winner. Only `confirm` plays on phones, after their own accepted submission.
 The shared presentation engine owns mute/volume preferences, autoplay activation,
 cue deduplication, ducking, pause/disconnection/visibility fades and cleanup.

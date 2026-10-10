@@ -63,3 +63,13 @@ export function choiceRevealMs(results: PriceResult[], productIds: string[]): nu
 		CHOICE_INTRO_MS + (movers - 1) * choiceStepMs(movers) + choiceHopMs(movers) + CHOICE_OUTRO_MS
 	);
 }
+
+/** The correct number holds at zero under the reveal sting, then counts up. */
+export const COUNT_UP_DELAY_MS = 500;
+export const COUNT_UP_MS = 1200;
+
+/** Ease-in (t³), matching the generated `count` sound's accelerating ticks. */
+export function countUpValue(target: number, elapsedMs: number): number {
+	const t = Math.min(1, Math.max(0, (elapsedMs - COUNT_UP_DELAY_MS) / COUNT_UP_MS));
+	return Math.round(target * t ** 3);
+}

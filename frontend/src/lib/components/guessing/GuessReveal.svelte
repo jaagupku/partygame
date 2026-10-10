@@ -1,23 +1,37 @@
 <script lang="ts">
 	import { messages } from '$lib/i18n';
-	import { resultDelay } from './guess-reveal';
+	import CountUp from './CountUp.svelte';
+	import { COUNT_UP_DELAY_MS, COUNT_UP_MS, resultDelay } from './guess-reveal';
 	let {
 		values,
 		label,
 		results,
 		answer,
 		winnerLabel = '',
-		delayOffset = 0
+		delayOffset = 0,
+		animate = false
 	}: {
 		/** Empty when another component already shows the correct values. */
-		values: { title?: string; value: string; unit?: string; correct?: boolean }[];
+		values: {
+			title?: string;
+			value: string;
+			unit?: string;
+			correct?: boolean;
+			/** A numeric correct value counts up from zero on a live reveal. */
+			amount?: number;
+			format?: (amount: number) => string;
+		}[];
 		label: string;
 		results: PriceResult[];
 		answer: (value: unknown) => string;
 		winnerLabel?: string;
 		delayOffset?: number;
+		animate?: boolean;
 	} = $props();
 	const hasWinner = $derived(values.some((item) => item.correct));
+	const counting = $derived(animate && values.some((item) => item.amount !== undefined));
+	// Rankings wait for the number to land so they never spoil it.
+	const rowsOffset = $derived(delayOffset + (counting ? COUNT_UP_DELAY_MS + COUNT_UP_MS - 450 : 0));
 </script>
 
 {#if values.length}<div class="guess-reveal-values" class:comparison={values.length > 1}>
@@ -35,9 +49,13 @@
 				{/if}
 				<p class="guess-reveal-label">{label}</p>
 				<p class="guess-reveal-amount">
-					<strong>{item.value}</strong>{#if item.unit}{' '}<span class="guess-reveal-unit"
-							>{item.unit}</span
-						>{/if}
+					<strong
+						>{#if item.amount !== undefined && item.format}<CountUp
+								value={item.amount}
+								format={item.format}
+								{animate}
+							/>{:else}{item.value}{/if}</strong
+					>{#if item.unit}{' '}<span class="guess-reveal-unit">{item.unit}</span>{/if}
 				</p>
 			</div>
 		{/each}
@@ -47,7 +65,7 @@
 	{#each results as result, index (result.player_id)}
 		<li
 			class="guess-result"
-			style:--reveal-delay={`${delayOffset + resultDelay(index, results.length)}ms`}
+			style:--reveal-delay={`${rowsOffset + resultDelay(index, results.length)}ms`}
 		>
 			<span class="guess-result-rank" aria-hidden="true">{index + 1}</span>
 			<div class="guess-result-player">
@@ -81,6 +99,7 @@
 		line-height: 1.15;
 		letter-spacing: -0.06em;
 		overflow-wrap: anywhere;
+		font-variant-numeric: tabular-nums;
 	}
 	.guess-reveal-other {
 		opacity: 0.6;

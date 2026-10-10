@@ -398,7 +398,8 @@ test('correct price leads a quick closest-first reveal on display and phone', as
 				nodes.map((node) => {
 					const animation = node.getAnimations()[0];
 					animation.pause();
-					animation.currentTime = 600;
+					// Rows wait for the price to count up (0.5 s hold + 1.2 s count), then stagger.
+					animation.currentTime = 1850;
 					const style = getComputedStyle(node);
 					return { opacity: Number(style.opacity), delay: parseFloat(style.animationDelay) };
 				})

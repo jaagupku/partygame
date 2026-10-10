@@ -41,6 +41,17 @@ describe('department store presentation', () => {
 			selectPresentation(state({ endGame: { revealed: true, sequence_stage: 'first_place' } }))
 		).toMatchObject({ variant: 'finale', cues: [{ name: 'checkoutVictory', key: 'winner' }] });
 	});
+	it('ticks under a counting guess reveal only, once per step', () => {
+		expect(selectPresentation(state()).cues).toEqual([]);
+		expect(selectPresentation(state({ displayPhase: 'answer_reveal' })).cues).toEqual([
+			{ name: 'countUp', key: 'item:count-up' }
+		]);
+		const compare = state({
+			displayPhase: 'answer_reveal',
+			activeStep: { id: 'pair', price_mode: 'compare' }
+		});
+		expect(selectPresentation(compare).cues).toEqual([]);
+	});
 	it('never maps room submission sounds, confirms only accepted personal actions with stable keys', () => {
 		expect(pricePresentation.audio?.effects?.submissionReceived).toBeUndefined();
 		expect(selectPresentation(state({ submissionCount: 4 })).cues).toEqual([]);

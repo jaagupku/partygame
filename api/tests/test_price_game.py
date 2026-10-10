@@ -115,6 +115,9 @@ def test_generator_balances_unique_questions(mode, product_range, count):
     assert len(urls) == len(set(urls))
     if mode == "mixed":
         assert sum(step.price_question.mode == "guess" for step in steps) == (count + 1) // 2
+        # Kinds are interleaved through the session rather than grouped.
+        modes = "".join(step.price_question.mode[0] for step in steps)
+        assert "ggg" not in modes and "ccc" not in modes
     if product_range == "both":
         appearances = [p.retailer for step in steps for p in step.price_question.reveal]
         assert abs(appearances.count("rimi") - appearances.count("klick")) <= 1

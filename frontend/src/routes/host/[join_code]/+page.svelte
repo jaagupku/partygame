@@ -3,6 +3,7 @@
 	import 'iconify-icon';
 	import { exitDisplayFullscreen } from '$lib/display-fullscreen';
 	import { idleCursor } from '$lib/idle-cursor';
+	import { screenWakeLock } from '$lib/screen-wake-lock';
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -374,6 +375,7 @@
 {:else}
 	<div
 		use:idleCursor
+		use:screenWakeLock
 		class="host-stage relative h-full min-h-0 overflow-hidden"
 		style={presentation.profile ? undefined : definitionThemeStyle($game.theme)}
 	>

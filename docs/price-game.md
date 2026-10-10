@@ -132,7 +132,7 @@ those fixtures create and drop tables. Never point it at development or producti
 
 ## Selection and publication quality
 
-Generator `price-v3` pairs across all selected categories and retailers. The
+Generator `price-v4` pairs across all selected categories and retailers. The
 higher price must be 1.1–3 times the lower price. Cross-category pairs are
 preferred whenever they leave enough matching capacity to complete the game;
 same-category comparisons remain valid. Maximum matching prevents greedy pair
@@ -143,7 +143,8 @@ both cards in comparisons, and avoids adjacent category overlap where possible.
 Existing familiar-product preferences remain editorial rules, not popularity
 claims. Products never repeat within a session; retailer plus product ID is the
 identity. Seeded ordering determines ties and card positions. Mixed games retain
-ceil(n/2) guesses and floor(n/2) comparisons. Availability computes the same unique
+ceil(n/2) guesses and floor(n/2) comparisons, interleaved evenly through the
+session (the kind furthest behind its share goes next) before category spacing. Availability computes the same unique
 product and maximum-pair capacity conditions as session creation.
 
 Klick categories come from the product's JSON-LD breadcrumb trail. Pages without

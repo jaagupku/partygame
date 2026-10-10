@@ -20,6 +20,8 @@ applies the user's separate music/effects levels and ducks music under prominent
 - `tick`: final countdown seconds.
 - `register`: round closure, quiet mechanical click.
 - `scan`: actual-price reveal, short ascending scanner phrase.
+- `count`: price-guess reveal count-up; 0.5 s lead-in under `scan`, then ticks that
+  accelerate with the number's ease-in over 1.2 s and land on the price.
 - `receipt`: standings and final-results transitions.
 - `chime`: podium transitions.
 - `victory`: first-place reveal, checkout melody resolving to C major.

@@ -63,6 +63,13 @@
 		onSubmitDrawingVote
 	}: PlayerInputPanelProps = $props();
 
+	// The correct number counts up only on a reveal that follows the live question.
+	let questionSeenFor = $state<string>();
+	$effect(() => {
+		if (activeStep && displayPhase !== 'answer_reveal') questionSeenFor = activeStep.id;
+	});
+	const animateReveal = $derived(mode === 'live' && questionSeenFor === activeStep?.id);
+
 	let answerValue = $state<string | number>('');
 	let orderingItems = $state<string[]>([]);
 	let selectedRadioOption = $state<string | null>(null);
@@ -362,7 +369,8 @@
 				step={activeStep}
 				{playerId}
 				showCoach={false}
-			/>{:else}<PriceReveal step={activeStep} />{/if}
+				animate={animateReveal}
+			/>{:else}<PriceReveal step={activeStep} animate={animateReveal} />{/if}
 		{#if showPriceReady && displayPhase === 'answer_reveal' && priceRevealRemainingSeconds !== undefined}
 			<p class="theme-text-muted text-sm">
 				{$messages.priceGame.revealRemaining}: {Math.ceil(priceRevealSecondsLeft)}

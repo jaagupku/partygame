@@ -43,6 +43,7 @@ export const pricePresentation: PresentationProfile = {
 			timerWarning: asset('tick'),
 			stepClosed: asset('register'),
 			answerReveal: asset('scan', true),
+			countUp: asset('count'),
 			scoreboardShown: asset('receipt', true),
 			finaleReveal: asset('receipt', true),
 			finaleStage: asset('chime'),
@@ -63,6 +64,9 @@ export const pricePresentation: PresentationProfile = {
 		const cues = [];
 		if (state.endGame?.revealed && state.endGame.sequence_stage === 'first_place')
 			cues.push({ name: 'checkoutVictory', key: 'winner' });
+		// Ticks under the guessed price counting up; the asset leads in under `scan`.
+		if (state.displayPhase === 'answer_reveal' && state.activeStep?.price_mode === 'guess')
+			cues.push({ name: 'countUp', key: `${state.activeStep.id}:count-up` });
 		// Only public acknowledgement of this phone's action, never a draft or room count.
 		if ('gameState' in state && state.hasSubmitted && state.activeStep?.price_mode)
 			cues.push({

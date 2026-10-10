@@ -234,7 +234,6 @@
 	.choice-reveal {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		align-items: end;
 		gap: 1rem clamp(1rem, 4vw, 4rem);
 	}
 	.choice-lineup {
@@ -261,9 +260,13 @@
 		max-width: 6rem;
 		visibility: hidden;
 	}
+	/* Options share tray and card rows, so shelf lines and card tops align across options
+	   whatever the length of each product's description. */
 	.choice-option {
+		grid-row: span 2;
 		display: grid;
-		gap: 0.75rem;
+		grid-template-rows: subgrid;
+		row-gap: 0.75rem;
 		min-width: 0;
 		transition:
 			opacity 300ms ease-out,
@@ -274,6 +277,7 @@
 		filter: saturate(0.4);
 	}
 	.choice-tray {
+		align-self: end;
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
@@ -307,8 +311,12 @@
 		animation: choice-bounce 420ms ease-out;
 	}
 	.choice-card {
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: 0.5rem;
+	}
+	.choice-card > :global(.product-card) {
+		height: auto;
 	}
 	.choice-ribbon,
 	.choice-value {
@@ -331,7 +339,9 @@
 		font-weight: 900;
 		white-space: nowrap;
 	}
+	/* Prices line up along the bottom of the cards. */
 	.choice-value {
+		margin-top: auto;
 		text-align: center;
 		font-variant-numeric: tabular-nums;
 	}

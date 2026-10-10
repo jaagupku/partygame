@@ -45,6 +45,17 @@ describe('retro studio presentation', () => {
 			cues: [{ name: 'classComplete', key: 'class-complete' }]
 		});
 	});
+	it('ticks under a counting guess reveal only, once per step', () => {
+		expect(selectPresentation(state()).cues).toEqual([]);
+		expect(selectPresentation(state({ displayPhase: 'answer_reveal' })).cues).toEqual([
+			{ name: 'countUp', key: 'item:count-up' }
+		]);
+		const compare = state({
+			displayPhase: 'answer_reveal',
+			activeStep: { id: 'pair', calorie_mode: 'compare' }
+		});
+		expect(selectPresentation(compare).cues).toEqual([]);
+	});
 	it('never maps room submission sounds, confirms only accepted personal actions with stable keys', () => {
 		expect(caloriePresentation.audio?.effects?.submissionReceived).toBeUndefined();
 		expect(selectPresentation(state({ submissionCount: 4 })).cues).toEqual([]);

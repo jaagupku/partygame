@@ -24,7 +24,8 @@
 			id: item.id,
 			title: step.price_products?.find((p) => p.id === item.id)?.title,
 			value: euro(item.price_minor),
-			correct: item.id === winner
+			correct: item.id === winner,
+			...(compare ? {} : { amount: item.price_minor, format: euro })
 		}))
 	);
 	const euro = (minor: number) =>
@@ -62,6 +63,7 @@
 					: 0}
 				{results}
 				{answer}
+				{animate}
 			/>
 			<details class="price-product-details">
 				<summary>{$messages.priceGame.productDetails}</summary>

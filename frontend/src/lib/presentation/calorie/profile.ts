@@ -42,6 +42,7 @@ export const caloriePresentation: PresentationProfile = {
 			timerWarning: asset('interval'),
 			stepClosed: asset('stop'),
 			answerReveal: asset('reveal', true),
+			countUp: asset('count'),
 			scoreboardShown: asset('milestone', true),
 			finaleReveal: asset('milestone', true),
 			finaleStage: asset('stage'),
@@ -61,6 +62,9 @@ export const caloriePresentation: PresentationProfile = {
 		const cues = [];
 		if (state.endGame?.revealed && state.endGame.sequence_stage === 'first_place')
 			cues.push({ name: 'classComplete', key: 'class-complete' });
+		// Ticks under the calorie count climbing; the asset leads in under `reveal`.
+		if (state.displayPhase === 'answer_reveal' && state.activeStep?.calorie_mode === 'guess')
+			cues.push({ name: 'countUp', key: `${state.activeStep.id}:count-up` });
 		if ('gameState' in state && state.hasSubmitted && state.activeStep?.calorie_mode)
 			cues.push({
 				name: 'calorieAccepted',
