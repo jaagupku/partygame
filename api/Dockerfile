@@ -1,4 +1,4 @@
-FROM python:3.14 AS dependencies
+FROM python:3.15 AS dependencies
 
 # Install Poetry using the official installer (recommended for CI)
 ENV POETRY_HOME=/opt/poetry \
@@ -32,7 +32,7 @@ EXPOSE 8000
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn partygame:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/partygame"]
 
 # The runtime image, used to just run the code provided its virtual environment
-FROM python:3.14-slim AS runtime
+FROM python:3.15-slim AS runtime
 RUN apt-get -y update && \
     apt-get -y install curl && \
     rm -rf /var/lib/apt/lists/*
