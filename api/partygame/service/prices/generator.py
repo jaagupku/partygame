@@ -20,6 +20,7 @@ from partygame.schemas.price_game import (
 from partygame.service.prices.matching import maximum_pairs
 from partygame.service.prices.selection import (
     GENERATOR_VERSION,
+    familiar,
     record_usage,
     select_varied,
     sequence_varied,
@@ -66,6 +67,8 @@ def select_pairs(products, graph, count, usage):
     """Prefer cross-category pairs without reducing remaining matching capacity."""
     active = set(range(len(products)))
     selected = []
+    # Every candidate edge is re-ranked for each selected pair; familiarity never changes.
+    familiar_flags = [familiar(product) for product in products]
 
     def matching(vertices):
         indices = sorted(vertices)
@@ -82,7 +85,7 @@ def select_pairs(products, graph, count, usage):
 
         def rank(edge):
             bundle = [products[i] for i in edge]
-            variety = variety_rank(bundle, usage)
+            variety = variety_rank(bundle, usage, sum(familiar_flags[i] for i in edge))
             return (
                 variety[:2],
                 bundle[0].product_range == bundle[1].product_range,
