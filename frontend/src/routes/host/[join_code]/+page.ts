@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
+import { encodeDefinitionIdForPath } from '#lib/definition-paths.js';
 
 export const ssr = false;
 export const csr = true;

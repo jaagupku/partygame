@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { beginDisplayFullscreen } from '$lib/display-fullscreen';
+	import { beginDisplayFullscreen } from '#lib/display-fullscreen.js';
 	import { goto } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
-	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
-	import { loadGameCatalog, type GameType } from '$lib/game-catalog';
-	import { messages } from '$lib/i18n';
+	import { encodeDefinitionIdForPath } from '#lib/definition-paths.js';
+	import { loadGameCatalog, type GameType } from '#lib/game-catalog.js';
+	import { messages } from '#lib/i18n.js';
 	const {
 		initialSettings,
 		frozenTitle,

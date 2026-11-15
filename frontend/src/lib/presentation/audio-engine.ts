@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import type { SoundSurface } from '$lib/sound-policy';
+import type { SoundSurface } from '#lib/sound-policy.js';
 import type { AudioSettings } from './audio-settings';
 import type { AudioDriver, AudioVoice } from './audio-driver';
 import type { PresentationProfile } from './registry';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { definitionThemeStyle, normalizeDefinitionTheme } from '$lib/theme.js';
+import { definitionThemeStyle, normalizeDefinitionTheme } from '#lib/theme.js';
 
 describe('definition theme helpers', () => {
 	it('defaults missing definition theme to the party system palette', () => {

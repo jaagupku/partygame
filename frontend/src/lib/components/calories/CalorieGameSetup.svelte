@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { presentationScope } from '$lib/presentation/scope';
-	import { resolvePresentation } from '$lib/presentation/registry';
-	import { primePresentationAudio } from '$lib/presentation/audio-driver';
-	import PresentationDecoration from '$lib/presentation/PresentationDecoration.svelte';
-	import { beginDisplayFullscreen } from '$lib/display-fullscreen';
+	import { presentationScope } from '#lib/presentation/scope.js';
+	import { resolvePresentation } from '#lib/presentation/registry.js';
+	import { primePresentationAudio } from '#lib/presentation/audio-driver.js';
+	import PresentationDecoration from '#lib/presentation/PresentationDecoration.svelte';
+	import { beginDisplayFullscreen } from '#lib/display-fullscreen.js';
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { messages, locale } from '$lib/i18n';
+	import { messages, locale } from '#lib/i18n.js';
 	import CalorieAttribution from './CalorieAttribution.svelte';
 	const copy = $derived({ ...$messages.priceGame, ...$messages.calorieGame });
 	const {

@@ -3,7 +3,7 @@ import { pricePresentation } from './price/profile';
 import { caloriePresentation } from './calorie/profile';
 import { drawingPresentation } from './drawing/profile';
 import { writable } from 'svelte/store';
-import type { ResolvedPalette } from '$lib/theme';
+import type { ResolvedPalette } from '#lib/theme.js';
 
 export type PresentationGame = 'price_guessing' | 'calorie_guessing' | 'drawing_mashup';
 export type PresentationState = HostGameState | ControllerState;

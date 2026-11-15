@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
-	import { calorieFinaleReaction } from '$lib/presentation/calorie/reaction';
+	import { messages } from '#lib/i18n.js';
+	import { calorieFinaleReaction } from '#lib/presentation/calorie/reaction.js';
 
 	interface FinaleControllerCardProps {
 		gameType?: string;

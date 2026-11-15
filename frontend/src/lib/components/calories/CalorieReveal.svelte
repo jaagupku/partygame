@@ -3,9 +3,9 @@
 	import ChoiceReveal from '../guessing/ChoiceReveal.svelte';
 	import GuessReveal from '../guessing/GuessReveal.svelte';
 	import { choiceRevealMs, choiceWinner, rankGuessResults } from '../guessing/guess-reveal';
-	import Coach from '$lib/presentation/calorie/Coach.svelte';
-	import { calorieReaction } from '$lib/presentation/calorie/reaction';
-	import { messages, locale } from '$lib/i18n';
+	import Coach from '#lib/presentation/calorie/Coach.svelte';
+	import { calorieReaction } from '#lib/presentation/calorie/reaction.js';
+	import { messages, locale } from '#lib/i18n.js';
 	import CalorieAttribution from './CalorieAttribution.svelte';
 	let {
 		step,

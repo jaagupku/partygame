@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { messages, pageTitle } from '$lib/i18n';
+	import { messages, pageTitle } from '#lib/i18n.js';
 </script>
 
 <svelte:head>

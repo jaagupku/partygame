@@ -1,14 +1,14 @@
 <script lang="ts">
 	import 'leaflet/dist/leaflet.css';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
-	import { DEFAULT_AVATAR_PRESET_KEY, getAvatarSrc } from '$lib/avatar-presets';
+	import { DEFAULT_AVATAR_PRESET_KEY, getAvatarSrc } from '#lib/avatar-presets.js';
 	import {
 		clampMapPointToBounds,
 		DEFAULT_MAP_CONFIG
-	} from '$lib/components/definition-editor/helpers';
-	import { getMapTileLayerDefinition } from '$lib/map-layers';
-	import { buildMapRevealFitTarget, revealFitKey } from '$lib/map-reveal-fit';
+	} from '#lib/components/definition-editor/helpers.js';
+	import { getMapTileLayerDefinition } from '#lib/map-layers.js';
+	import { buildMapRevealFitTarget, revealFitKey } from '#lib/map-reveal-fit.js';
 
 	type LeafletModule = typeof import('leaflet');
 	type MapEditorMode = 'author' | 'player' | 'reveal' | 'custom';
@@ -322,7 +322,7 @@
 					attribution: definition.attribution
 				});
 			} else {
-				const { createOpenFreeMapLayer } = await import('$lib/openfreemap-layer');
+				const { createOpenFreeMapLayer } = await import('#lib/openfreemap-layer.js');
 				// A layer switch or teardown may have happened while loading MapLibre.
 				if (generation !== baseLayerGeneration || map !== currentMap) {
 					return;

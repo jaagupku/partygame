@@ -1,7 +1,7 @@
 import { get, writable } from 'svelte/store';
-import { createSoundSystem } from '$lib/sound-system';
-import { createSoundDetector, type RuntimeEvent } from '$lib/sound-detector';
-import type { SoundSurface } from '$lib/sound-policy';
+import { createSoundSystem } from '#lib/sound-system.js';
+import { createSoundDetector, type RuntimeEvent } from '#lib/sound-detector.js';
+import type { SoundSurface } from '#lib/sound-policy.js';
 import { createBrowserAudioDriver } from './audio-driver';
 import { deviceAudioSettings } from './audio-settings';
 import { createPresentationAudio } from './audio-engine';

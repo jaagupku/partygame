@@ -1,6 +1,6 @@
-import { createBrowserSoundPlayer } from '$lib/sound-player.js';
-import { createSoundRuntime, type SoundSurface } from '$lib/sound-runtime.js';
-import { getSoundSettingsStore } from '$lib/sound-settings.js';
+import { createBrowserSoundPlayer } from '#lib/sound-player.js';
+import { createSoundRuntime, type SoundSurface } from '#lib/sound-runtime.js';
+import { getSoundSettingsStore } from '#lib/sound-settings.js';
 import { get } from 'svelte/store';
 
 export function createSoundSystem(surface: SoundSurface) {

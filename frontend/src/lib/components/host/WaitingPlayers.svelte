@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { messages } from '$lib/i18n';
-	import { waitingPlayers } from '$lib/waiting-players';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { messages } from '#lib/i18n.js';
+	import { waitingPlayers } from '#lib/waiting-players.js';
 
 	let { gameState }: { gameState: HostGameState } = $props();
 	const waiting = $derived(waitingPlayers(gameState));

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import type { StepTemplateDefinition, StepTemplateId } from './helpers';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import { modalPortal } from './modalPortal';
 
 	type Props = {

@@ -5,7 +5,7 @@
 		drawingCanvasSize,
 		isDrawingCanvasSize,
 		type DrawingOrientation
-	} from '$lib/drawing-codec.js';
+	} from '#lib/drawing-codec.js';
 
 	interface DrawingDisplayProps {
 		drawing: unknown;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import type { EvaluationPresentation } from './helpers';
 	import EditorSectionCard from './EditorSectionCard.svelte';
 	import EvaluationAnswerEditor from './EvaluationAnswerEditor.svelte';

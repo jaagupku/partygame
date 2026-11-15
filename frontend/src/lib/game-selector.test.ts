@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from '../routes/+page.svelte';
 import Create from '../routes/create/+page.svelte';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 
 const { goto, page } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -10,7 +10,7 @@ const { goto, page } = vi.hoisted(() => ({
 }));
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('$app/state', () => ({ page }));
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 const catalog = [
 	{

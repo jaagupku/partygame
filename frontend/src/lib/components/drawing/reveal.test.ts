@@ -3,7 +3,7 @@ import { cleanup, render } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import DrawingResults from './DrawingResults.svelte';
 import { drawingSegment, revealElapsed, revealStep, voteStartsAt } from './reveal';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 
 function view(elapsed = 0): DrawingGameView {
 	return {

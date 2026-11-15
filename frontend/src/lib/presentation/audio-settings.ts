@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { SoundSurface } from '$lib/sound-policy';
+import type { SoundSurface } from '#lib/sound-policy.js';
 export type AudioSettings = {
 	musicEnabled: boolean;
 	effectsEnabled: boolean;

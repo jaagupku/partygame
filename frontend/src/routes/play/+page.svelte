@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
@@ -9,12 +9,12 @@
 		getAvatarPreset,
 		normalizePlayerProfile,
 		type AvatarSelectionKind
-	} from '$lib/avatar-presets.js';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import AvatarCropEditor from '$lib/components/AvatarCropEditor.svelte';
-	import { createLocalStorageStore } from '$lib/local-storage-store.js';
-	import { messages } from '$lib/i18n';
-	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
+	} from '#lib/avatar-presets.js';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import AvatarCropEditor from '#lib/components/AvatarCropEditor.svelte';
+	import { createLocalStorageStore } from '#lib/local-storage-store.js';
+	import { messages } from '#lib/i18n.js';
+	import { showErrorToast, showSuccessToast } from '#lib/toast-store.js';
 	import { onDestroy, onMount } from 'svelte';
 
 	function randomPresetKey() {

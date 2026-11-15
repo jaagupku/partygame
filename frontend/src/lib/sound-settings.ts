@@ -4,7 +4,7 @@ import {
 	DEFAULT_SOUND_SETTINGS,
 	type SoundSettings,
 	type SoundSurface
-} from '$lib/sound-policy.js';
+} from '#lib/sound-policy.js';
 
 const stores = new Map<SoundSurface, ReturnType<typeof writable<SoundSettings>>>();
 

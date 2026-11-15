@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatPhaseLabel, messages } from '$lib/i18n';
+	import { formatPhaseLabel, messages } from '#lib/i18n.js';
 
 	interface HostControlsPanelProps {
 		activeStep?: RuntimeStepState;

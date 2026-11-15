@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
-	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
-	import OrderingList from '$lib/components/OrderingList.svelte';
+	import { messages } from '#lib/i18n.js';
+	import MapPointEditor from '#lib/components/MapPointEditor.svelte';
+	import OrderingList from '#lib/components/OrderingList.svelte';
 	import {
 		buildDefaultMapDistanceAnswer,
 		DEFAULT_MAP_CONFIG,

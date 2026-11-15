@@ -2,12 +2,12 @@ import { render } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
-import { loadYouTubeIframeApi } from '$lib/media/youtube.js';
+import YouTubePlayer from '#lib/components/YouTubePlayer.svelte';
+import { loadYouTubeIframeApi } from '#lib/media/youtube.js';
 
-vi.mock('$lib/media/youtube.js', async () => {
+vi.mock('#lib/media/youtube.js', async () => {
 	const actual =
-		await vi.importActual<typeof import('$lib/media/youtube.js')>('$lib/media/youtube.js');
+		await vi.importActual<typeof import('#lib/media/youtube.js')>('#lib/media/youtube.js');
 	return {
 		...actual,
 		loadYouTubeIframeApi: vi.fn()

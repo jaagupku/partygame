@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tween } from 'svelte/motion';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import { linear as easing } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 

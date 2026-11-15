@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 
 	goto('/');
 </script>

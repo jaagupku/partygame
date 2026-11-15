@@ -1,6 +1,6 @@
 import { cleanup, render } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 import QuestionCard from '../QuestionCard.svelte';
 import CalorieReveal from '../calories/CalorieReveal.svelte';
 import ChoiceReveal from './ChoiceReveal.svelte';

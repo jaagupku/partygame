@@ -1,17 +1,17 @@
 <script lang="ts">
-	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
-	import ProductCard from '$lib/components/prices/ProductCard.svelte';
-	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
-	import PriceTransition from '$lib/presentation/price/PriceTransition.svelte';
-	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
-	import { messages } from '$lib/i18n';
+	import CalorieReveal from '#lib/components/calories/CalorieReveal.svelte';
+	import ProductCard from '#lib/components/prices/ProductCard.svelte';
+	import PriceReveal from '#lib/components/prices/PriceReveal.svelte';
+	import PriceTransition from '#lib/presentation/price/PriceTransition.svelte';
+	import { getDrawingVoteRubric } from '#lib/drawing-vote.js';
+	import { messages } from '#lib/i18n.js';
 	import { onMount } from 'svelte';
-	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
-	import DrawingInput from '$lib/components/DrawingInput.svelte';
-	import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
-	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
-	import OrderingList from '$lib/components/OrderingList.svelte';
-	import { showErrorToast } from '$lib/toast-store';
+	import DrawingDisplay from '#lib/components/DrawingDisplay.svelte';
+	import DrawingInput from '#lib/components/DrawingInput.svelte';
+	import { triggerBuzzerHapticPulse } from '#lib/haptics.js';
+	import MapPointEditor from '#lib/components/MapPointEditor.svelte';
+	import OrderingList from '#lib/components/OrderingList.svelte';
+	import { showErrorToast } from '#lib/toast-store.js';
 
 	interface PlayerInputPanelProps {
 		activeStep?: RuntimeStepState;

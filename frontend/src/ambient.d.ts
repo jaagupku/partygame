@@ -539,7 +539,7 @@ type EndGameStatCard = {
 	description?: string;
 	emoji?: string;
 	headline?: string;
-	reaction_key?: import('$lib/reactions').ReactionId;
+	reaction_key?: import('#lib/reactions.js').ReactionId;
 };
 
 type EndGameState = {

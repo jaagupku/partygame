@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 
 	type Props = {
 		step: StepDefinition;

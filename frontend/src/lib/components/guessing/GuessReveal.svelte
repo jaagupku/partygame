@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import CountUp from './CountUp.svelte';
 	import { COUNT_UP_DELAY_MS, COUNT_UP_MS, resultDelay } from './guess-reveal';
 	let {

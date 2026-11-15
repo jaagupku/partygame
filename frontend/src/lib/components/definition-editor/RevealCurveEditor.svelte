@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { DEFAULT_REVEAL_CURVE, normalizeRevealCurve } from '$lib/media/image-reveal';
-	import { messages } from '$lib/i18n';
+	import { DEFAULT_REVEAL_CURVE, normalizeRevealCurve } from '#lib/media/image-reveal.js';
+	import { messages } from '#lib/i18n.js';
 
 	type CurveKey = 'blur_reveal_curve' | 'blur_circle_reveal_curve' | 'zoom_reveal_curve';
 

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { page } from '$app/state';
 
-	import { loadCurrentUser } from '$lib/auth-store';
-	import AppHeader from '$lib/components/AppHeader.svelte';
-	import ToastContainer from '$lib/components/ToastContainer.svelte';
-	import { locale, pageTitle } from '$lib/i18n';
+	import { loadCurrentUser } from '#lib/auth-store.js';
+	import AppHeader from '#lib/components/AppHeader.svelte';
+	import ToastContainer from '#lib/components/ToastContainer.svelte';
+	import { locale, pageTitle } from '#lib/i18n.js';
 	import '../app.css';
 
 	let { children } = $props();

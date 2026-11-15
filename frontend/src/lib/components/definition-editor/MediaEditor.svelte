@@ -1,6 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import { getYouTubeMedia } from '$lib/media/youtube.js';
+	import { getYouTubeMedia } from '#lib/media/youtube.js';
 	import {
 		DEFAULT_BLUR_CIRCLE_START_SIZE,
 		DEFAULT_IMAGE_BLUR_AMOUNT,
@@ -9,8 +9,8 @@
 		DEFAULT_ZOOM_OUT_START,
 		getBlurCircleRadius,
 		getScaledImageBlurAmount
-	} from '$lib/media/image-reveal';
-	import { messages } from '$lib/i18n';
+	} from '#lib/media/image-reveal.js';
+	import { messages } from '#lib/i18n.js';
 	import BlurCircleRevealControls from './BlurCircleRevealControls.svelte';
 	import { IMAGE_REVEALS, MEDIA_TYPES } from './helpers';
 	import RevealCurveEditor from './RevealCurveEditor.svelte';

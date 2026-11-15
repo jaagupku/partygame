@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { presentationPortal } from '$lib/presentation/scope';
+	import { presentationPortal } from '#lib/presentation/scope.js';
 	import 'iconify-icon';
-	import { messages } from '$lib/i18n';
-	import { CONTROLLER_REACTIONS, type ReactionEmoji, type ReactionOption } from '$lib/reactions.js';
+	import { messages } from '#lib/i18n.js';
+	import { CONTROLLER_REACTIONS, type ReactionEmoji, type ReactionOption } from '#lib/reactions.js';
 
 	interface ReactionBarProps {
 		connected: boolean;

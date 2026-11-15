@@ -1,21 +1,21 @@
-import { browser } from '$app/environment';
-import answerRevealWav from '$lib/assets/sounds/answer-reveal.wav';
-import buzzerArmedWav from '$lib/assets/sounds/buzzer-armed.wav';
-import buzzerOgg from '$lib/assets/sounds/buzzer.ogg';
-import correctWav from '$lib/assets/sounds/correct.wav';
-import finaleRevealWav from '$lib/assets/sounds/finale-reveal.wav';
-import finaleStageOgg from '$lib/assets/sounds/finale-stage.ogg';
-import pendingReviewClearedWav from '$lib/assets/sounds/pending-review-cleared.wav';
-import scoreboardShownOgg from '$lib/assets/sounds/scoreboard-shown.ogg';
-import stepClosedWav from '$lib/assets/sounds/step-closed.wav';
-import stepOpenOgg from '$lib/assets/sounds/step-open.ogg';
-import submissionReceivedOgg from '$lib/assets/sounds/submission-received.ogg';
-import timerWarningWav from '$lib/assets/sounds/timer-warning.wav';
-import winnerPodiumOgg from '$lib/assets/sounds/winner-podium.ogg';
-import wrongWav from '$lib/assets/sounds/wrong.wav';
+import { browser } from '$app/env';
+import answerRevealWav from '#lib/assets/sounds/answer-reveal.wav';
+import buzzerArmedWav from '#lib/assets/sounds/buzzer-armed.wav';
+import buzzerOgg from '#lib/assets/sounds/buzzer.ogg';
+import correctWav from '#lib/assets/sounds/correct.wav';
+import finaleRevealWav from '#lib/assets/sounds/finale-reveal.wav';
+import finaleStageOgg from '#lib/assets/sounds/finale-stage.ogg';
+import pendingReviewClearedWav from '#lib/assets/sounds/pending-review-cleared.wav';
+import scoreboardShownOgg from '#lib/assets/sounds/scoreboard-shown.ogg';
+import stepClosedWav from '#lib/assets/sounds/step-closed.wav';
+import stepOpenOgg from '#lib/assets/sounds/step-open.ogg';
+import submissionReceivedOgg from '#lib/assets/sounds/submission-received.ogg';
+import timerWarningWav from '#lib/assets/sounds/timer-warning.wav';
+import winnerPodiumOgg from '#lib/assets/sounds/winner-podium.ogg';
+import wrongWav from '#lib/assets/sounds/wrong.wav';
 
-import type { SoundCue, SoundPlayer } from '$lib/sound-runtime.js';
-import type { SoundSurface } from '$lib/sound-policy.js';
+import type { SoundCue, SoundPlayer } from '#lib/sound-runtime.js';
+import type { SoundSurface } from '#lib/sound-policy.js';
 
 interface PlayerOptions {
 	enabled?: boolean;

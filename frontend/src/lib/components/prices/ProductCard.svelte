@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	let { product, stage = false }: { product: PriceCard | CalorieCard; stage?: boolean } = $props();
 	let failed = $state(false);
 	$effect(() => {

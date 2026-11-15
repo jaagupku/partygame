@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { normalizedVolume } from '$lib/media/playback.js';
-	import { getYouTubeMedia } from '$lib/media/youtube.js';
-	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
+	import { normalizedVolume } from '#lib/media/playback.js';
+	import { getYouTubeMedia } from '#lib/media/youtube.js';
+	import YouTubePlayer from '#lib/components/YouTubePlayer.svelte';
 
 	interface VideoQuestionMediaProps {
 		step: RuntimeStepState;

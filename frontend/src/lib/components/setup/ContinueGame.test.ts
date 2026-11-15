@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import ContinueGame from './ContinueGame.svelte';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 const catalog = [
 	{ id: 'price_guessing', localization_key: 'priceGuessing', availability: 'available' }

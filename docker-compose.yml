@@ -87,7 +87,6 @@ services:
       - ./frontend/src:/app/src:ro
       - ./frontend/static:/app/static:ro
       - ./frontend/vite.config.ts:/app/vite.config.ts:ro
-      - ./frontend/svelte.config.js:/app/svelte.config.js:ro
       - ./frontend/tsconfig.json:/app/tsconfig.json:ro
       - ./frontend/vitest.config.ts:/app/vitest.config.ts:ro
       - ./frontend/.prettierrc:/app/.prettierrc:ro

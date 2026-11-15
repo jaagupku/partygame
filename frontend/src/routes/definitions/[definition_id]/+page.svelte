@@ -1,6 +1,6 @@
 <script lang="ts">
-	import DefinitionEditor from '$lib/components/definition-editor/DefinitionEditor.svelte';
-	import { messages } from '$lib/i18n';
+	import DefinitionEditor from '#lib/components/definition-editor/DefinitionEditor.svelte';
+	import { messages } from '#lib/i18n.js';
 
 	const { data } = $props();
 </script>

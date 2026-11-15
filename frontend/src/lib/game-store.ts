@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { applyHostPatch, applyHostSnapshot } from '$lib/runtime-sync.js';
+import { applyHostPatch, applyHostSnapshot } from '#lib/runtime-sync.js';
 
 export function createGameStore(initialState: Lobby) {
 	const initial: HostGameState = {

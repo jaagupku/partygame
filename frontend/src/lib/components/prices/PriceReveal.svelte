@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { locale, messages } from '$lib/i18n';
+	import { locale, messages } from '#lib/i18n.js';
 	import ChoiceReveal from '../guessing/ChoiceReveal.svelte';
 	import GuessReveal from '../guessing/GuessReveal.svelte';
 	import { choiceRevealMs, choiceWinner } from '../guessing/guess-reveal';

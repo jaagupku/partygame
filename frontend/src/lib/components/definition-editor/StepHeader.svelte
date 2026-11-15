@@ -1,6 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import type { StepHealthIssue } from './helpers';
 	import type { FlatStepItem, StepHeaderAction } from './types';
 
