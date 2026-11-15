@@ -56,19 +56,14 @@ def public_runtime_snapshot(
     *,
     viewer_player_id: str | None = None,
 ) -> schemas.RuntimeSnapshotEvent:
-    submissions = (
-        snapshot.submissions if _should_reveal_public_submissions(snapshot) else []
-    )
+    submissions = snapshot.submissions if _should_reveal_public_submissions(snapshot) else []
     own_drawing_id = None
     if viewer_player_id and viewer_player_id in snapshot.drawing_owner_ids:
         own_drawing_id = f"drawing:{snapshot.drawing_owner_ids.index(viewer_player_id)}"
     return snapshot.model_copy(
         update={
             "drawing_game": (
-                (
-                    snapshot.drawing_private.get(viewer_player_id)
-                    or snapshot.drawing_game
-                )
+                (snapshot.drawing_private.get(viewer_player_id) or snapshot.drawing_game)
                 if viewer_player_id
                 else snapshot.drawing_game
             ),
@@ -163,9 +158,7 @@ async def get(redis: Redis, game_id: str, player_id: str):
 
 
 class ClientController:
-    def __init__(
-        self, websocket: WebSocket, redis: Redis, lobby: Lobby, player: Player
-    ):
+    def __init__(self, websocket: WebSocket, redis: Redis, lobby: Lobby, player: Player):
         self.websocket = websocket
         self.redis = redis
         self.repo = GameStateRepository(redis)
@@ -261,14 +254,10 @@ class ClientController:
         if viewer_patch is not None:
             await self._safe_send("controller patch send", self.send(viewer_patch))
         if public_patch is not None:
-            await self._safe_send(
-                "display patch publish", self.publish_display(public_patch)
-            )
+            await self._safe_send("display patch publish", self.publish_display(public_patch))
         await self._safe_send(
             "player patch broadcast",
-            self._broadcast_runtime_patch(
-                before_snapshot, after_snapshot, exclude=self.player.id
-            ),
+            self._broadcast_runtime_patch(before_snapshot, after_snapshot, exclude=self.player.id),
         )
 
     async def _emit_runtime_state(
@@ -280,12 +269,8 @@ class ClientController:
         if before_snapshot is None:
             snapshot = await self.runtime.build_snapshot(self.lobby)
             await self._safe_send("controller snapshot send", self.send(snapshot))
-            await self._safe_send(
-                "local snapshot fanout", self.send_local_snapshot(snapshot)
-            )
-            await self._safe_send(
-                "display snapshot publish", self.publish_display(snapshot)
-            )
+            await self._safe_send("local snapshot fanout", self.send_local_snapshot(snapshot))
+            await self._safe_send("display snapshot publish", self.publish_display(snapshot))
             await self._safe_send(
                 "snapshot player broadcast",
                 self.broadcast(snapshot, exclude=self.player.id),
@@ -307,12 +292,8 @@ class ClientController:
         snapshot = await self.runtime.build_snapshot(self.lobby, revision=next_revision)
         if force_snapshot:
             await self._safe_send("controller snapshot send", self.send(snapshot))
-            await self._safe_send(
-                "local snapshot fanout", self.send_local_snapshot(snapshot)
-            )
-            await self._safe_send(
-                "display snapshot publish", self.publish_display(snapshot)
-            )
+            await self._safe_send("local snapshot fanout", self.send_local_snapshot(snapshot))
+            await self._safe_send("display snapshot publish", self.publish_display(snapshot))
             await self._safe_send(
                 "snapshot player broadcast",
                 self.broadcast(snapshot, exclude=self.player.id),
@@ -329,12 +310,8 @@ class ClientController:
         before_snapshot: schemas.RuntimeSnapshotEvent,
         after_snapshot: schemas.RuntimeSnapshotEvent,
     ) -> bool:
-        before_round_id = (
-            before_snapshot.active_round.id if before_snapshot.active_round else None
-        )
-        after_round_id = (
-            after_snapshot.active_round.id if after_snapshot.active_round else None
-        )
+        before_round_id = before_snapshot.active_round.id if before_snapshot.active_round else None
+        after_round_id = after_snapshot.active_round.id if after_snapshot.active_round else None
         return (
             after_snapshot.lobby.phase == "question_active"
             and after_round_id is not None
@@ -396,9 +373,7 @@ class ClientController:
         await self.refresh_lobby()
         realtime.register_player(self.lobby.id, self.player.id, self)
         self.player.status = ConnectionStatus.CONNECTED
-        await self.repo.set_player_status(
-            self.lobby.id, self.player.id, self.player.status
-        )
+        await self.repo.set_player_status(self.lobby.id, self.player.id, self.player.status)
         await refresh_idle_ttl(self.repo, self.lobby)
         await publish(
             self.redis,
@@ -428,22 +403,17 @@ class ClientController:
         await self.refresh_lobby()
 
         if self.lobby.game_type == "drawing_mashup" and any(
-            other.player.id == self.player.id
-            for other in realtime.get_players(self.lobby.id)
+            other.player.id == self.player.id for other in realtime.get_players(self.lobby.id)
         ):
             return
         self.player.status = ConnectionStatus.DISCONNECTED
-        await self.repo.set_player_status(
-            self.lobby.id, self.player.id, self.player.status
-        )
+        await self.repo.set_player_status(self.lobby.id, self.player.id, self.player.status)
         connected_players = await self.repo.count_connected_players(self.lobby.id)
         if self.lobby.phase != "finished":
             # Both active and abandoned lobbies keep the standard idle TTL;
             # the count check makes the zero-connected branch explicit.
             _ = connected_players
-            await self.repo.apply_game_ttl(
-                self.lobby.id, settings.GAME_IDLE_TTL_SECONDS
-            )
+            await self.repo.apply_game_ttl(self.lobby.id, settings.GAME_IDLE_TTL_SECONDS)
         await publish(
             self.redis,
             self.display_channel,
@@ -457,9 +427,7 @@ class ClientController:
     async def publish_websocket(self):
         try:
             while True:
-                message = await self.pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1
-                )
+                message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
                 if message is None:
                     continue
                 if message["type"] == "message":
@@ -674,8 +642,7 @@ class ClientController:
                 and await self.can_control_hostless_info_slide()
             )
             or (
-                msg.get("type_")
-                in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}
+                msg.get("type_") in {Event.PLAYER_INPUT_SUBMITTED, Event.DRAWING_VOTE_SUBMITTED}
                 and not self.lobby.host_enabled
             )
         ):
@@ -688,10 +655,7 @@ class ClientController:
             await publish(self.redis, self.command_channel, msg)
 
     def _can_send_reactions(self) -> bool:
-        return (
-            self.lobby.state == schemas.GameState.RUNNING
-            or self.lobby.phase == "finished"
-        )
+        return self.lobby.state == schemas.GameState.RUNNING or self.lobby.phase == "finished"
 
     def _allow_reaction_now(self) -> bool:
         now = time()
@@ -722,9 +686,7 @@ class ClientController:
             await self.refresh_lobby()
             if not self._matches_run(msg) or not self._can_send_reactions():
                 return
-            await self.runtime.record_player_reaction(
-                self.lobby, event.player_id, event.reaction
-            )
+            await self.runtime.record_player_reaction(self.lobby, event.player_id, event.reaction)
             await self.relay_event(event)
 
     async def start_game(self):
@@ -810,9 +772,7 @@ class ClientController:
         event = schemas.CollectPlayerDraftsEvent(step_id=step.id, reason=reason)
         if self.player.id in player_ids:
             await self.send(event)
-            player_ids = [
-                player_id for player_id in player_ids if player_id != self.player.id
-            ]
+            player_ids = [player_id for player_id in player_ids if player_id != self.player.id]
         await self._safe_send(
             "draft collection broadcast", self.broadcast(event, players=player_ids)
         )
@@ -957,9 +917,7 @@ class ClientController:
                 if await self.runtime.set_price_reveal_ready(
                     self.lobby, self.player.id, payload.step_id, payload.ready
                 ):
-                    await self._emit_runtime_state(
-                        before_snapshot, force_snapshot=False
-                    )
+                    await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
             case Event.PLAYER_INPUT_SUBMITTED:
                 payload = schemas.PlayerInputSubmittedEvent.model_validate(
@@ -973,9 +931,7 @@ class ClientController:
                 )
                 await self._relay_non_snapshot_events(events)
                 if handled:
-                    await self._emit_runtime_state(
-                        before_snapshot, force_snapshot=False
-                    )
+                    await self._emit_runtime_state(before_snapshot, force_snapshot=False)
                 else:
                     await self._send_submission_rejected(payload, before_snapshot)
 
@@ -991,16 +947,12 @@ class ClientController:
                 )
                 await self._relay_non_snapshot_events(events)
                 if handled:
-                    await self._emit_runtime_state(
-                        before_snapshot, force_snapshot=False
-                    )
+                    await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
             case Event.BUZZER_STATE:
                 buzzer_state = schemas.BuzzerStateEvent.model_validate(data)
                 before_snapshot = await self.runtime.build_snapshot(self.lobby)
-                events = await self.runtime.set_buzzer_state(
-                    self.lobby, buzzer_state.active
-                )
+                events = await self.runtime.set_buzzer_state(self.lobby, buzzer_state.active)
                 await self._relay_non_snapshot_events(events)
                 await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
@@ -1036,9 +988,7 @@ class ClientController:
                     if data.get("submission")
                     else data.get("player_id")
                 )
-                reveal_event = await self.runtime.reveal_submission(
-                    self.lobby, player_id
-                )
+                reveal_event = await self.runtime.reveal_submission(self.lobby, player_id)
                 await self.relay_event(reveal_event)
                 await self._emit_runtime_state(before_snapshot, force_snapshot=False)
 
@@ -1135,23 +1085,17 @@ class ClientController:
             return
         if transition.kind == "timer_expired":
             self.timer_task = asyncio.create_task(
-                self._expire_timer(
-                    transition.delay_seconds, self.lobby.run_id or self.lobby.id
-                )
+                self._expire_timer(transition.delay_seconds, self.lobby.run_id or self.lobby.id)
             )
 
-    async def _finish_price_transition(
-        self, delay: float, expected_run: str, expected_step: int
-    ):
+    async def _finish_price_transition(self, delay: float, expected_run: str, expected_step: int):
         await asyncio.sleep(delay)
         async with self.repo.mutation_lock(self.lobby.id):
             lobby = await self.repo.get_lobby_meta(self.lobby.id)
             if lobby is None:
                 return
             self.lobby = lobby
-            if (
-                lobby.run_id or lobby.id
-            ) != expected_run or lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             before = await self.runtime.build_snapshot(lobby)
             if await self.runtime.finish_price_transition(lobby):
@@ -1168,26 +1112,18 @@ class ClientController:
             if lobby is None:
                 return
             self.lobby = lobby
-            if (
-                lobby.run_id or lobby.id
-            ) != expected_run or lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "round_intro":
                 return
             before_snapshot = await self.runtime.build_snapshot(self.lobby)
-            snapshot = await self.runtime.open_current_step_after_round_intro(
-                self.lobby
-            )
+            snapshot = await self.runtime.open_current_step_after_round_intro(self.lobby)
             if snapshot is None:
                 return
-            snapshot = await self._emit_runtime_state(
-                before_snapshot, force_snapshot=True
-            )
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
 
-    async def _advance_hostless_reveal(
-        self, delay: float, expected_run: str | None = None
-    ):
+    async def _advance_hostless_reveal(self, delay: float, expected_run: str | None = None):
         expected_step = self.lobby.current_step
         expected_run = expected_run or self.lobby.run_id or self.lobby.id
         await asyncio.sleep(delay)
@@ -1196,9 +1132,7 @@ class ClientController:
             if lobby is None:
                 return
             self.lobby = lobby
-            if (
-                lobby.run_id or lobby.id
-            ) != expected_run or lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "step_complete":
                 return
@@ -1224,14 +1158,10 @@ class ClientController:
                     await self.relay_event(event)
             after_snapshot = await self.runtime.build_snapshot(self.lobby)
             await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-            snapshot = await self._emit_runtime_state(
-                before_snapshot, force_snapshot=True
-            )
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)
 
-    async def _advance_hostless_end_game_stage(
-        self, delay: float, expected_run: str | None = None
-    ):
+    async def _advance_hostless_end_game_stage(self, delay: float, expected_run: str | None = None):
         expected_step = self.lobby.current_step
         expected_run = expected_run or self.lobby.run_id or self.lobby.id
         await asyncio.sleep(delay)
@@ -1240,9 +1170,7 @@ class ClientController:
             if lobby is None:
                 return
             self.lobby = lobby
-            if (
-                lobby.run_id or lobby.id
-            ) != expected_run or lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "finished":
                 return
@@ -1260,9 +1188,7 @@ class ClientController:
             for event in events:
                 if not isinstance(event, schemas.RuntimeSnapshotEvent):
                     await self.relay_event(event)
-            snapshot = await self._emit_runtime_state(
-                before_snapshot, force_snapshot=False
-            )
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=False)
             await self.sync_host_runtime_state(snapshot)
 
     async def _expire_timer(self, delay: float, expected_run: str | None = None):
@@ -1278,9 +1204,7 @@ class ClientController:
             if lobby is None:
                 return
             self.lobby = lobby
-            if (
-                lobby.run_id or lobby.id
-            ) != expected_run or lobby.current_step != expected_step:
+            if (lobby.run_id or lobby.id) != expected_run or lobby.current_step != expected_step:
                 return
             if self.lobby.phase != "question_active":
                 return
@@ -1291,7 +1215,5 @@ class ClientController:
                     await self.relay_event(event)
             after_snapshot = await self.runtime.build_snapshot(self.lobby)
             await self._begin_round_intro_if_needed(before_snapshot, after_snapshot)
-            snapshot = await self._emit_runtime_state(
-                before_snapshot, force_snapshot=True
-            )
+            snapshot = await self._emit_runtime_state(before_snapshot, force_snapshot=True)
             await self.sync_host_runtime_state(snapshot)

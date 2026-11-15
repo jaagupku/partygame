@@ -42,11 +42,7 @@ def get_displays(game_id: str) -> list[Any]:
 def get_players(game_id: str, exclude: set[str] | None = None) -> list[Any]:
     exclude = exclude or set()
     players = _player_connections.get(game_id, {})
-    return [
-        controller
-        for player_id, controller in players.items()
-        if player_id not in exclude
-    ]
+    return [controller for player_id, controller in players.items() if player_id not in exclude]
 
 
 async def close_subscription(pubsub: PubSub | None, *tasks: asyncio.Task | None):
