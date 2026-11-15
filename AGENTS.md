@@ -89,7 +89,7 @@ poetry run mypy .
 
 Notes:
 
-- The backend targets Python `3.14`.
+- The backend targets Python `3.15`.
 - Websocket support depends on Uvicorn standard extras, which are already declared in `pyproject.toml`.
 - The app seeds demo media from `api/media_seed/` on startup when files are present.
 
