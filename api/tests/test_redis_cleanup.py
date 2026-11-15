@@ -31,9 +31,7 @@ class NoIOConnection(Connection):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["display", "player"])
-async def test_repeated_websocket_connections_return_pubsub_to_small_pool(
-    kind, monkeypatch
-):
+async def test_repeated_websocket_connections_return_pubsub_to_small_pool(kind, monkeypatch):
     if url := os.environ.get("REDIS_CLEANUP_TEST_URL"):
         pool = ConnectionPool.from_url(url, max_connections=2)
     else:
@@ -61,9 +59,7 @@ async def test_repeated_websocket_connections_return_pubsub_to_small_pool(
             assert reader.done()
             assert subscription.connection is None
             assert not pool._in_use_connections
-            assert (
-                await redis.ping()
-            )  # Scheduler/commands can immediately borrow again.
+            assert await redis.ping()  # Scheduler/commands can immediately borrow again.
         assert not realtime.get_displays(lobby.id)
         assert not realtime.get_players(lobby.id)
     finally:
@@ -122,17 +118,13 @@ async def test_endpoint_cleans_up_partial_connect(kind, cancelled, monkeypatch):
         asyncio.CancelledError() if cancelled else RuntimeError("sync failed")
     )
     monkeypatch.setattr(endpoints, "GameController", lambda *args, **kwargs: controller)
-    monkeypatch.setattr(
-        endpoints, "ClientController", lambda *args, **kwargs: controller
-    )
+    monkeypatch.setattr(endpoints, "ClientController", lambda *args, **kwargs: controller)
     monkeypatch.setattr(endpoints.service.lobby, "get", AsyncMock(return_value=lobby))
     monkeypatch.setattr(endpoints.service.player, "get", AsyncMock(return_value=player))
     monkeypatch.setattr(
         endpoints,
         "GameStateRepository",
-        lambda redis: SimpleNamespace(
-            verify_connection_token=AsyncMock(return_value=True)
-        ),
+        lambda redis: SimpleNamespace(verify_connection_token=AsyncMock(return_value=True)),
     )
     socket = AsyncMock()
     socket.cookies = {}

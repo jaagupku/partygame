@@ -42,9 +42,7 @@ async def setup(hosted=True):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("hosted", [True, False])
-async def test_price_transition_preserves_full_answer_time_and_recovers(
-    monkeypatch, hosted
-):
+async def test_price_transition_preserves_full_answer_time_and_recovers(monkeypatch, hosted):
     now = [1000.0]
     for module in ["game", "runtime.snapshots", "runtime.scheduler", "runtime.timing"]:
         monkeypatch.setattr(f"partygame.service.{module}.time", lambda: now[0])
@@ -78,10 +76,7 @@ async def test_price_transition_preserves_full_answer_time_and_recovers(
     now[0] += 0.25
     recovered = GameRuntimeService(repo, AsyncMock(), archive_game_stats=False)
     snapshot2 = await recovered.build_snapshot(lobby)
-    assert (
-        snapshot2.active_step.price_transition.id
-        == snapshot.active_step.price_transition.id
-    )
+    assert snapshot2.active_step.price_transition.id == snapshot.active_step.price_transition.id
     assert snapshot2.active_step.price_transition.elapsed_ms == pytest.approx(250)
     scheduled = await RuntimeTransitionScheduler().next_transition(
         lobby=lobby, snapshot=snapshot2, runtime=recovered
@@ -93,9 +88,8 @@ async def test_price_transition_preserves_full_answer_time_and_recovers(
     opened = await recovered.build_snapshot(lobby)
     assert opened.active_step.input_enabled
     assert opened.active_step.price_transition is None
-    assert (
-        opened.active_step.timer.ends_at - opened.active_step.timer.started_at
-        == pytest.approx(opened.active_step.timer.seconds)
+    assert opened.active_step.timer.ends_at - opened.active_step.timer.started_at == pytest.approx(
+        opened.active_step.timer.seconds
     )
     assert opened.active_step.timer.started_at == now[0]
     now[0] += 0.1

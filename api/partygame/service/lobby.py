@@ -23,9 +23,7 @@ from . import realtime
 log = logging.getLogger(__name__)
 
 
-async def get_player_ids(
-    redis: Redis, game_id: str, withscores: bool = True
-) -> list[str]:
+async def get_player_ids(redis: Redis, game_id: str, withscores: bool = True) -> list[str]:
     repo = GameStateRepository(redis)
     return await repo.get_player_ids(game_id, withscores=withscores)
 
@@ -126,9 +124,7 @@ class GameController:
     async def publish_websocket(self):
         try:
             while True:
-                message = await self.pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1
-                )
+                message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
                 if message is None:
                     continue
                 if message["type"] == "message":
@@ -197,9 +193,7 @@ class GameController:
     async def kick_player(self, event: schemas.KickPlayerEvent):
         if self.lobby.host_id == event.player_id:
             return
-        await remove_player(
-            self.redis, lobby_id=self.lobby.id, player_id=event.player_id
-        )
+        await remove_player(self.redis, lobby_id=self.lobby.id, player_id=event.player_id)
         await self.broadcast(event, [event.player_id])
         self.lobby = await get(self.redis, self.lobby.id)
         await self.send(event)
@@ -231,9 +225,9 @@ class GameController:
         await self.refresh_lobby()
         if "type_" not in msg:
             return
-        if msg["type_"] != Event.RESYNC_REQUEST and msg.get(
-            "run_id", self.lobby.id
-        ) != (self.lobby.run_id or self.lobby.id):
+        if msg["type_"] != Event.RESYNC_REQUEST and msg.get("run_id", self.lobby.id) != (
+            self.lobby.run_id or self.lobby.id
+        ):
             return
         match msg["type_"]:
             case Event.RESYNC_REQUEST:
