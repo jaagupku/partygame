@@ -143,7 +143,7 @@ Configured hooks include:
 ## Notes
 
 - Prefer `pnpm` for frontend work because the repo uses `pnpm-lock.yaml`
-- The backend targets Python `3.14`
+- The backend targets Python `3.15`
 - Demo media can be seeded from `api/media_seed/` when files are present
 
 For more implementation details and workflow expectations, see [`AGENTS.md`](/home/jaagup/theority/partygame/AGENTS.md)
