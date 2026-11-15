@@ -45,11 +45,16 @@ def familiar(product: PriceProduct) -> bool:
     return any(word in product.category.casefold() for word in HOUSEHOLD_ELECTRONICS)
 
 
-def variety_rank(bundle, usage):
-    """Count both cards; a large source must not crowd out smaller categories."""
+def variety_rank(bundle, usage, familiar_count: int | None = None):
+    """Count both cards; a large source must not crowd out smaller categories.
+
+    Callers ranking many bundles can pass a precomputed ``familiar_count``.
+    """
     ranges = [usage[p.product_range] for p in bundle]
     categories = [usage[category_key(p)] for p in bundle]
-    return max(ranges), sum(ranges), max(categories), sum(categories), -sum(map(familiar, bundle))
+    if familiar_count is None:
+        familiar_count = sum(map(familiar, bundle))
+    return max(ranges), sum(ranges), max(categories), sum(categories), -familiar_count
 
 
 def record_usage(bundle, usage):
