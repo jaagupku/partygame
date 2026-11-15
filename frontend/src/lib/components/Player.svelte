@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { messages } from '$lib/i18n';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { messages } from '#lib/i18n.js';
 
 	interface PlayerComponentProps {
 		player: Player;

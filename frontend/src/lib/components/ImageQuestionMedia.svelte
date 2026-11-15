@@ -11,7 +11,7 @@
 		createRevealProgressTracker,
 		mapRevealProgress,
 		getScaledImageBlurAmount
-	} from '$lib/media/image-reveal';
+	} from '#lib/media/image-reveal.js';
 
 	interface ImageQuestionMediaProps {
 		step: RuntimeStepState;

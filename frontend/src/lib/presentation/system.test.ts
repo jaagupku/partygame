@@ -11,7 +11,7 @@ const { play, activate, dispose, legacySync, legacyEvent } = vi.hoisted(() => ({
 vi.mock('./audio-driver', () => ({
 	createBrowserAudioDriver: () => ({ activate, play, dispose })
 }));
-vi.mock('$lib/sound-system', () => ({
+vi.mock('#lib/sound-system.js', () => ({
 	createSoundSystem: () => ({
 		syncState: legacySync,
 		handleEvent: legacyEvent,

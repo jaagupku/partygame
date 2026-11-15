@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
 	import { onDestroy, untrack } from 'svelte';
-	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
+	import DrawingDisplay from '#lib/components/DrawingDisplay.svelte';
 	import {
 		DRAWING_COLORS,
 		drawingCanvasSize,
@@ -9,9 +9,9 @@
 		encodeDrawingSubmission,
 		decodeDrawingSubmission,
 		simplifyDrawingPoints
-	} from '$lib/drawing-codec.js';
-	import { DRAWING_LIMITS, getDrawingLimitUsage } from '$lib/drawing-limits.js';
-	import { messages } from '$lib/i18n';
+	} from '#lib/drawing-codec.js';
+	import { DRAWING_LIMITS, getDrawingLimitUsage } from '#lib/drawing-limits.js';
+	import { messages } from '#lib/i18n.js';
 
 	interface DrawingInputProps {
 		disabled: boolean;

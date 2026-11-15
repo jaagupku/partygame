@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getAvatarSrc } from '$lib/avatar-presets.js';
-	import { messages } from '$lib/i18n';
+	import { getAvatarSrc } from '#lib/avatar-presets.js';
+	import { messages } from '#lib/i18n.js';
 
 	interface AvatarProps {
 		name: string;

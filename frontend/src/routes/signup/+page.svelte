@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { currentUser } from '$lib/auth-store';
-	import { messages } from '$lib/i18n';
-	import { showErrorToast } from '$lib/toast-store';
+	import { currentUser } from '#lib/auth-store.js';
+	import { messages } from '#lib/i18n.js';
+	import { showErrorToast } from '#lib/toast-store.js';
 
 	let displayName = $state('');
 	let email = $state('');

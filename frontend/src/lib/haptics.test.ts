@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { triggerBuzzerHapticPulse } from '$lib/haptics.js';
+import { triggerBuzzerHapticPulse } from '#lib/haptics.js';
 
 describe('triggerBuzzerHapticPulse', () => {
 	afterEach(() => {

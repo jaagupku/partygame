@@ -3,7 +3,7 @@ import { tick } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ImageQuestionMedia from './ImageQuestionMedia.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 afterEach(() => {
 	cleanup();

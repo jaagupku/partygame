@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { DEFAULT_BLUR_CIRCLE_START_SIZE } from '$lib/media/image-reveal';
-	import { messages } from '$lib/i18n';
+	import { DEFAULT_BLUR_CIRCLE_START_SIZE } from '#lib/media/image-reveal.js';
+	import { messages } from '#lib/i18n.js';
 
 	type Props = {
 		media: ImageMediaDefinition;

@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { applyControllerPatch, applyControllerSnapshot } from '$lib/runtime-sync.js';
+import { applyControllerPatch, applyControllerSnapshot } from '#lib/runtime-sync.js';
 
 export function createControllerStore(initialState: ControllerState, onKick: CallableFunction) {
 	const controller = writable(initialState);

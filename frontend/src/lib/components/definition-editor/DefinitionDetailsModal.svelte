@@ -1,6 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import {
 		DEFINITION_THEME_MODES,
 		THEME_PALETTES,
@@ -9,7 +9,7 @@
 		type DefinitionTheme,
 		type DefinitionThemeMode,
 		type ThemePaletteId
-	} from '$lib/theme';
+	} from '#lib/theme.js';
 	import { modalPortal } from './modalPortal';
 
 	type Props = {

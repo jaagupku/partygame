@@ -1,4 +1,4 @@
-import { getMessages } from '$lib/i18n';
+import { getMessages } from '#lib/i18n.js';
 
 export function drawingText(
 	value: DrawingText | null | undefined,

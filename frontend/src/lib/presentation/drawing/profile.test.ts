@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolvePresentation, selectPresentation } from '../registry';
 import { presentationVariables } from '../scope';
-import { appColorMode } from '$lib/theme';
+import { appColorMode } from '#lib/theme.js';
 import { drawingPresentation } from './profile';
 
 const drawing = (phase: DrawingGameView['phase'], changes: Partial<DrawingGameView> = {}) =>

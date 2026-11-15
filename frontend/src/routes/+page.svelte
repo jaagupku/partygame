@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { presentationScope } from '$lib/presentation/scope';
-	import PresentationDecoration from '$lib/presentation/PresentationDecoration.svelte';
+	import { presentationScope } from '#lib/presentation/scope.js';
+	import PresentationDecoration from '#lib/presentation/PresentationDecoration.svelte';
 	import { onMount } from 'svelte';
-	import { loadGameCatalog, type GameType } from '$lib/game-catalog';
+	import { loadGameCatalog, type GameType } from '#lib/game-catalog.js';
 
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	let games = $state<GameType[]>([]);
 	let loading = $state(true);
 	let failed = $state(false);

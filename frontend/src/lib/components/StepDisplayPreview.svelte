@@ -1,13 +1,17 @@
 <script lang="ts">
-	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
-	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
-	import MapPointEditor from '$lib/components/MapPointEditor.svelte';
-	import QuestionCard from '$lib/components/QuestionCard.svelte';
-	import Timer from '$lib/components/util/Timer.svelte';
-	import { DEFAULT_AVATAR_PRESET_KEY } from '$lib/avatar-presets';
-	import { getDrawingVoteRubric } from '$lib/drawing-vote.js';
-	import { messages } from '$lib/i18n';
-	import { formatRevealValue, isOptionRevealStep, isOrderingRevealStep } from '$lib/reveal-format';
+	import GameConnectionStatus from '#lib/components/GameConnectionStatus.svelte';
+	import DrawingDisplay from '#lib/components/DrawingDisplay.svelte';
+	import MapPointEditor from '#lib/components/MapPointEditor.svelte';
+	import QuestionCard from '#lib/components/QuestionCard.svelte';
+	import Timer from '#lib/components/util/Timer.svelte';
+	import { DEFAULT_AVATAR_PRESET_KEY } from '#lib/avatar-presets.js';
+	import { getDrawingVoteRubric } from '#lib/drawing-vote.js';
+	import { messages } from '#lib/i18n.js';
+	import {
+		formatRevealValue,
+		isOptionRevealStep,
+		isOrderingRevealStep
+	} from '#lib/reveal-format.js';
 	import { onDestroy } from 'svelte';
 
 	interface StepDisplayPreviewProps {

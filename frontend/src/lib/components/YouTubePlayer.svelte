@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte';
-	import type { YouTubeMedia } from '$lib/media/youtube.js';
-	import { loadYouTubeIframeApi } from '$lib/media/youtube.js';
+	import type { YouTubeMedia } from '#lib/media/youtube.js';
+	import { loadYouTubeIframeApi } from '#lib/media/youtube.js';
 
 	interface YouTubePlayerProps {
 		media: YouTubeMedia | null;

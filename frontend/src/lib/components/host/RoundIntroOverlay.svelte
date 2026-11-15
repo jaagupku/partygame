@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { messages } from '$lib/i18n';
+	import { browser } from '$app/env';
+	import { messages } from '#lib/i18n.js';
 	import { tick } from 'svelte';
 
 	interface RoundIntroOverlayProps {

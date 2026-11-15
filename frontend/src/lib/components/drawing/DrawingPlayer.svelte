@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import DrawingInput from '$lib/components/DrawingInput.svelte';
-	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
+	import DrawingInput from '#lib/components/DrawingInput.svelte';
+	import DrawingDisplay from '#lib/components/DrawingDisplay.svelte';
 	import DrawingCountdown from './DrawingCountdown.svelte';
 	import DrawingStage from './DrawingStage.svelte';
 	import { drawingText } from './helpers';
 	import { isIntroPhase } from './reveal';
-	import { messages } from '$lib/i18n';
-	import { getDrawingLimitUsage } from '$lib/drawing-limits';
+	import { messages } from '#lib/i18n.js';
+	import { getDrawingLimitUsage } from '#lib/drawing-limits.js';
 	let {
 		view,
 		ack,

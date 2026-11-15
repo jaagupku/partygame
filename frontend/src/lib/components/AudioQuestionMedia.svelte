@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { normalizedVolume } from '$lib/media/playback.js';
+	import { normalizedVolume } from '#lib/media/playback.js';
 
 	interface AudioQuestionMediaProps {
 		src: string;

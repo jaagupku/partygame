@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack, type Snippet } from 'svelte';
-	import ProductCard from '$lib/components/prices/ProductCard.svelte';
+	import ProductCard from '#lib/components/prices/ProductCard.svelte';
 	import { createPriceTransitionClock } from './transition-clock';
 	let {
 		products,

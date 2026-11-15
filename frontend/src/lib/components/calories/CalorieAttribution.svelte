@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	let { download = false }: { download?: boolean } = $props();
 </script>
 

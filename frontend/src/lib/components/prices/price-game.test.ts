@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 import PriceGameSetup from './PriceGameSetup.svelte';
 import PriceReveal from './PriceReveal.svelte';
 import QuestionCard from '../QuestionCard.svelte';
@@ -10,7 +10,7 @@ import PlayerInputPanel from '../controller/PlayerInputPanel.svelte';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 const modes = ['guess', 'compare', 'mixed'];
 const ranges = ['groceries', 'electronics', 'furniture', 'antiques', 'clothing'];
 const selections = Array.from({ length: 2 ** ranges.length - 1 }, (_, i) =>

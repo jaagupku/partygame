@@ -1,22 +1,22 @@
 <script lang="ts">
-	import Coach from '$lib/presentation/calorie/Coach.svelte';
-	import CalorieReveal from '$lib/components/calories/CalorieReveal.svelte';
-	import ProductCard from '$lib/components/prices/ProductCard.svelte';
-	import PriceReveal from '$lib/components/prices/PriceReveal.svelte';
-	import PriceTransition from '$lib/presentation/price/PriceTransition.svelte';
+	import Coach from '#lib/presentation/calorie/Coach.svelte';
+	import CalorieReveal from '#lib/components/calories/CalorieReveal.svelte';
+	import ProductCard from '#lib/components/prices/ProductCard.svelte';
+	import PriceReveal from '#lib/components/prices/PriceReveal.svelte';
+	import PriceTransition from '#lib/presentation/price/PriceTransition.svelte';
 	import { flip } from 'svelte/animate';
-	import ImageQuestionMedia from '$lib/components/ImageQuestionMedia.svelte';
-	import AudioQuestionMedia from '$lib/components/AudioQuestionMedia.svelte';
-	import StepBodyMarkdown from '$lib/components/markdown/StepBodyMarkdown.svelte';
-	import VideoQuestionMedia from '$lib/components/VideoQuestionMedia.svelte';
-	import { messages } from '$lib/i18n';
+	import ImageQuestionMedia from '#lib/components/ImageQuestionMedia.svelte';
+	import AudioQuestionMedia from '#lib/components/AudioQuestionMedia.svelte';
+	import StepBodyMarkdown from '#lib/components/markdown/StepBodyMarkdown.svelte';
+	import VideoQuestionMedia from '#lib/components/VideoQuestionMedia.svelte';
+	import { messages } from '#lib/i18n.js';
 	import {
 		buildOrderingRevealItems,
 		buildRevealedOptionStates,
 		formatRevealValue,
 		isOrderingRevealStep,
 		isOptionRevealStep
-	} from '$lib/reveal-format';
+	} from '#lib/reveal-format.js';
 
 	interface QuestionCardProps {
 		step?: RuntimeStepState;

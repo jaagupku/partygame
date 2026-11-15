@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
-	import { formatRevealValue } from '$lib/reveal-format';
+	import { messages } from '#lib/i18n.js';
+	import { formatRevealValue } from '#lib/reveal-format.js';
 
 	interface HostReviewQueueProps {
 		activeStep?: RuntimeStepState;

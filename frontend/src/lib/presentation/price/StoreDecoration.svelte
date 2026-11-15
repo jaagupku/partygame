@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import type { DecorationSurface } from '../registry';
 	let { variant, surface }: { variant: string; surface: DecorationSurface } = $props();
 </script>

@@ -1,4 +1,4 @@
-import type { SoundCue } from '$lib/sound-detector.js';
+import type { SoundCue } from '#lib/sound-detector.js';
 
 export type SoundSurface = 'host-display' | 'controller';
 

@@ -3,7 +3,7 @@ import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MapPointEditor from './MapPointEditor.svelte';
 import StepDisplayPreview from './StepDisplayPreview.svelte';
-import { createOpenFreeMapLayer } from '$lib/openfreemap-layer';
+import { createOpenFreeMapLayer } from '#lib/openfreemap-layer.js';
 import { DEFAULT_MAP_CONFIG } from './definition-editor/helpers';
 
 vi.hoisted(() => {
@@ -12,9 +12,9 @@ vi.hoisted(() => {
 		.mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
 });
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
-vi.mock('$lib/openfreemap-layer', async () => {
+vi.mock('#lib/openfreemap-layer.js', async () => {
 	const leaflet = await import('leaflet');
 	return {
 		createOpenFreeMapLayer: vi.fn(() => {

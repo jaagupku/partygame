@@ -1,5 +1,10 @@
 import { get } from 'svelte/store';
-import { appColorMode, paletteThemeVariables, resolveThemeMode, THEME_PALETTES } from '$lib/theme';
+import {
+	appColorMode,
+	paletteThemeVariables,
+	resolveThemeMode,
+	THEME_PALETTES
+} from '#lib/theme.js';
 import { presentationRevision, resolvePresentation } from './registry';
 
 export type ScopeSelection = { gameType?: string | null; variant?: string; screen?: boolean };

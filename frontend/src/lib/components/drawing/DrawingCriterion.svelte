@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import { drawingText } from './helpers';
 	let { view }: { view: DrawingGameView } = $props();
 	// The server sends no criterion during the showcase, so the sealed card cannot leak it.

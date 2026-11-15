@@ -1,15 +1,15 @@
 <script lang="ts">
-	import Coach from '$lib/presentation/calorie/Coach.svelte';
-	import StudioCelebration from '$lib/presentation/calorie/StudioCelebration.svelte';
-	import SketchCelebration from '$lib/presentation/drawing/SketchCelebration.svelte';
-	import { calorieStageReaction } from '$lib/presentation/calorie/reaction';
-	import StoreCelebration from '$lib/presentation/price/StoreCelebration.svelte';
-	import DrawingGallery from '$lib/components/drawing/DrawingGallery.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import GameConnectionStatus from '$lib/components/GameConnectionStatus.svelte';
-	import CelebrationBackground from '$lib/components/endgame/CelebrationBackground.svelte';
-	import Scoreboard from '$lib/components/host/Scoreboard.svelte';
-	import { messages } from '$lib/i18n';
+	import Coach from '#lib/presentation/calorie/Coach.svelte';
+	import StudioCelebration from '#lib/presentation/calorie/StudioCelebration.svelte';
+	import SketchCelebration from '#lib/presentation/drawing/SketchCelebration.svelte';
+	import { calorieStageReaction } from '#lib/presentation/calorie/reaction.js';
+	import StoreCelebration from '#lib/presentation/price/StoreCelebration.svelte';
+	import DrawingGallery from '#lib/components/drawing/DrawingGallery.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import GameConnectionStatus from '#lib/components/GameConnectionStatus.svelte';
+	import CelebrationBackground from '#lib/components/endgame/CelebrationBackground.svelte';
+	import Scoreboard from '#lib/components/host/Scoreboard.svelte';
+	import { messages } from '#lib/i18n.js';
 
 	interface FinaleDisplayProps {
 		gameType?: string;

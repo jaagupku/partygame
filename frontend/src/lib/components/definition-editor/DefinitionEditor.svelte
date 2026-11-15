@@ -2,11 +2,11 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { tick } from 'svelte';
-	import { authLoaded, currentUser } from '$lib/auth-store';
-	import { downloadBlob } from '$lib/browser-download.js';
-	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
-	import { canEditDefinitionForUser } from '$lib/definition-permissions.js';
-	import { readErrorDetail } from '$lib/http-errors.js';
+	import { authLoaded, currentUser } from '#lib/auth-store.js';
+	import { downloadBlob } from '#lib/browser-download.js';
+	import { encodeDefinitionIdForPath } from '#lib/definition-paths.js';
+	import { canEditDefinitionForUser } from '#lib/definition-permissions.js';
+	import { readErrorDetail } from '#lib/http-errors.js';
 	import DefinitionConfirmModal from './DefinitionConfirmModal.svelte';
 	import DefinitionDetailsModal from './DefinitionDetailsModal.svelte';
 	import DefinitionEditorToolbar from './DefinitionEditorToolbar.svelte';
@@ -16,9 +16,9 @@
 	import DefinitionStepEditor from './DefinitionStepEditor.svelte';
 	import DefinitionStepSorter from './DefinitionStepSorter.svelte';
 	import DefinitionStepTemplateModal from './DefinitionStepTemplateModal.svelte';
-	import { messages } from '$lib/i18n';
-	import { normalizeDefinitionTheme } from '$lib/theme';
-	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
+	import { messages } from '#lib/i18n.js';
+	import { normalizeDefinitionTheme } from '#lib/theme.js';
+	import { showErrorToast, showSuccessToast } from '#lib/toast-store.js';
 	import {
 		createDefinitionHistoryState,
 		getUndoEntry,

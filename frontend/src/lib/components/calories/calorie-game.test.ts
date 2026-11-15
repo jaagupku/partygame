@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 import CalorieGameSetup from './CalorieGameSetup.svelte';
 import CalorieReveal from './CalorieReveal.svelte';
 import QuestionCard from '../QuestionCard.svelte';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 beforeEach(() => {
 	locale.set('en');
 	goto.mockReset();

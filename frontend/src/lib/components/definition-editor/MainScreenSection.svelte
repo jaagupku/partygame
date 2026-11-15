@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import EditorSectionCard from './EditorSectionCard.svelte';
 	import MarkdownBodyEditor from './MarkdownBodyEditor.svelte';
 	import MediaEditor from './MediaEditor.svelte';

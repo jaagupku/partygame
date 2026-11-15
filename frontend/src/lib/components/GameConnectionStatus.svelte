@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { presentationPortal } from '$lib/presentation/scope';
-	import { messages } from '$lib/i18n';
+	import { presentationPortal } from '#lib/presentation/scope.js';
+	import { messages } from '#lib/i18n.js';
 
 	interface Props {
 		connected?: boolean | null;

@@ -5,12 +5,12 @@ import {
 	type RuntimeEvent,
 	type RuntimeLikeState,
 	type SoundCue
-} from '$lib/sound-detector.js';
-import { createSoundPolicy, type SoundSurface } from '$lib/sound-policy.js';
-import { getSoundSettingsStore } from '$lib/sound-settings.js';
+} from '#lib/sound-detector.js';
+import { createSoundPolicy, type SoundSurface } from '#lib/sound-policy.js';
+import { getSoundSettingsStore } from '#lib/sound-settings.js';
 
-export type { SoundCue } from '$lib/sound-detector.js';
-export type { SoundSurface } from '$lib/sound-policy.js';
+export type { SoundCue } from '#lib/sound-detector.js';
+export type { SoundSurface } from '#lib/sound-policy.js';
 
 export interface SoundPlayer {
 	play(cue: SoundCue): void;

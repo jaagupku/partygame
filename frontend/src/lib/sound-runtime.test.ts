@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createSoundRuntime, type SoundCue, type SoundPlayer } from '$lib/sound-runtime.js';
-import { getSoundSettingsStore } from '$lib/sound-settings.js';
+import { createSoundRuntime, type SoundCue, type SoundPlayer } from '#lib/sound-runtime.js';
+import { getSoundSettingsStore } from '#lib/sound-settings.js';
 
 function createMockPlayer() {
 	const calls: SoundCue[] = [];

@@ -3,9 +3,9 @@ import { render, fireEvent, cleanup } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import DrawingPlayer from './DrawingPlayer.svelte';
 import DrawingGallery from './DrawingGallery.svelte';
-import DrawingInput from '$lib/components/DrawingInput.svelte';
+import DrawingInput from '#lib/components/DrawingInput.svelte';
 import { drawingText } from './helpers';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 
 const view = (): DrawingGameView => ({
 	phase: 'writing',

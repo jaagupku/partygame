@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import { getRadioCorrectOption, type CheckboxOptionScore } from './helpers';
 
 	type Props = {

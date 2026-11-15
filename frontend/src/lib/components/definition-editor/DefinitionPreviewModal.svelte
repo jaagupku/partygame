@@ -1,6 +1,6 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import EditorPreviewPane from './EditorPreviewPane.svelte';
 	import { modalPortal } from './modalPortal';
 

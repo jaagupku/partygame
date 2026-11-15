@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PlayerInputPanel from './PlayerInputPanel.svelte';
 
-vi.mock('$lib/haptics.js', () => ({ triggerBuzzerHapticPulse: vi.fn() }));
+vi.mock('#lib/haptics.js', () => ({ triggerBuzzerHapticPulse: vi.fn() }));
 
 afterEach(cleanup);
 

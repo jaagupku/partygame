@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { currentUser } from '$lib/auth-store';
-	import { downloadBlob } from '$lib/browser-download.js';
-	import { encodeDefinitionIdForPath } from '$lib/definition-paths.js';
-	import { canEditDefinitionForUser } from '$lib/definition-permissions.js';
-	import { readErrorDetail } from '$lib/http-errors.js';
-	import { messages } from '$lib/i18n';
-	import { showErrorToast, showSuccessToast } from '$lib/toast-store';
+	import { currentUser } from '#lib/auth-store.js';
+	import { downloadBlob } from '#lib/browser-download.js';
+	import { encodeDefinitionIdForPath } from '#lib/definition-paths.js';
+	import { canEditDefinitionForUser } from '#lib/definition-permissions.js';
+	import { readErrorDetail } from '#lib/http-errors.js';
+	import { messages } from '#lib/i18n.js';
+	import { showErrorToast, showSuccessToast } from '#lib/toast-store.js';
 
 	let definitions = $state<DefinitionSummary[]>([]);
 	let loading = $state(false);

@@ -4,7 +4,7 @@ import {
 	buildOrderingRevealItems,
 	buildRevealedOptionStates,
 	formatRevealValue
-} from '$lib/reveal-format.js';
+} from '#lib/reveal-format.js';
 
 function optionStep(overrides: Partial<RuntimeStepState> = {}): RuntimeStepState {
 	return {

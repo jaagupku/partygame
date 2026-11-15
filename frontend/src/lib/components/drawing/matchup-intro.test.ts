@@ -5,7 +5,7 @@ import DrawingPlayer from './DrawingPlayer.svelte';
 import DrawingResults from './DrawingResults.svelte';
 import DrawingStage from './DrawingStage.svelte';
 import { INTRO_SECONDS, isIntroPhase, serverRemaining } from './reveal';
-import { locale } from '$lib/i18n';
+import { locale } from '#lib/i18n.js';
 
 const artwork = (id: string): MashupArtwork => ({
 	id,

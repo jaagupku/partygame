@@ -1,4 +1,4 @@
-import { getMessages, formatSeconds } from '$lib/i18n';
+import { getMessages, formatSeconds } from '#lib/i18n.js';
 import type { FlatStepItem } from './types';
 
 export type InputKindPresentation = {

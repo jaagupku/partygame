@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { presentationScope } from '$lib/presentation/scope';
-	import DrawingGameSetup from '$lib/components/drawing/DrawingGameSetup.svelte';
-	import CalorieGameSetup from '$lib/components/calories/CalorieGameSetup.svelte';
-	import { messages } from '$lib/i18n';
-	import { loadGameCatalog, type GameType } from '$lib/game-catalog';
+	import { presentationScope } from '#lib/presentation/scope.js';
+	import DrawingGameSetup from '#lib/components/drawing/DrawingGameSetup.svelte';
+	import CalorieGameSetup from '#lib/components/calories/CalorieGameSetup.svelte';
+	import { messages } from '#lib/i18n.js';
+	import { loadGameCatalog, type GameType } from '#lib/game-catalog.js';
 	import TriviaGameSetup from './TriviaGameSetup.svelte';
-	import PriceGameSetup from '$lib/components/prices/PriceGameSetup.svelte';
+	import PriceGameSetup from '#lib/components/prices/PriceGameSetup.svelte';
 	const { lobbyId, onprepared }: { lobbyId: string; onprepared: () => void } = $props();
 	type Setup = {
 		run_id: string;

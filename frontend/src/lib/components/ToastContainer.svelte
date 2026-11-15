@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
-	import { dismissToast, toasts } from '$lib/toast-store';
+	import { messages } from '#lib/i18n.js';
+	import { dismissToast, toasts } from '#lib/toast-store.js';
 </script>
 
 {#if $toasts.length > 0}

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import ProductCard from '$lib/components/prices/ProductCard.svelte';
-	import { messages } from '$lib/i18n';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import ProductCard from '#lib/components/prices/ProductCard.svelte';
+	import { messages } from '#lib/i18n.js';
 	import {
 		CHOICE_INTRO_MS,
 		choiceHopMs,

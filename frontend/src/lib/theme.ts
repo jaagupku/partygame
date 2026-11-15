@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { writable } from 'svelte/store';
 
 export const APP_COLOR_MODES = ['light', 'dark', 'system'] as const;

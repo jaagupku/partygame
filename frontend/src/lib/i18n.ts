@@ -1,6 +1,6 @@
 import { get, derived } from 'svelte/store';
 
-import { createLocalStorageStore } from '$lib/local-storage-store';
+import { createLocalStorageStore } from '#lib/local-storage-store.js';
 
 export const locales = [
 	{ code: 'en', label: 'English' },

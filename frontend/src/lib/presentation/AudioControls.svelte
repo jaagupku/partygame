@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import type { PresentationSystem } from './system';
 	let { system, phone = false }: { system: PresentationSystem; phone?: boolean } = $props();
 	const settings = $derived(system.settings);

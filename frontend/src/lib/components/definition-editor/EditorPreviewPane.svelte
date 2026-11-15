@@ -1,9 +1,9 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import PlayerInputPanel from '$lib/components/controller/PlayerInputPanel.svelte';
-	import StepDisplayPreview from '$lib/components/StepDisplayPreview.svelte';
-	import { messages } from '$lib/i18n';
-	import { definitionThemeStyle, type DefinitionTheme } from '$lib/theme';
+	import PlayerInputPanel from '#lib/components/controller/PlayerInputPanel.svelte';
+	import StepDisplayPreview from '#lib/components/StepDisplayPreview.svelte';
+	import { messages } from '#lib/i18n.js';
+	import { definitionThemeStyle, type DefinitionTheme } from '#lib/theme.js';
 
 	type PreviewMode = 'display' | 'controller';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import 'iconify-icon';
-	import { appColorMode, type AppColorMode } from '$lib/theme';
-	import { messages } from '$lib/i18n';
+	import { appColorMode, type AppColorMode } from '#lib/theme.js';
+	import { messages } from '#lib/i18n.js';
 
 	const modes: { value: AppColorMode; icon: string }[] = [
 		{ value: 'light', icon: 'fluent:weather-sunny-16-filled' },

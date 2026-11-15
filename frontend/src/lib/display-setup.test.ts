@@ -12,8 +12,8 @@ const { goto, begin, cancel } = vi.hoisted(() => ({
 	cancel: vi.fn()
 }));
 vi.mock('$app/navigation', () => ({ goto }));
-vi.mock('$lib/display-fullscreen', () => ({ beginDisplayFullscreen: begin }));
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('#lib/display-fullscreen.js', () => ({ beginDisplayFullscreen: begin }));
+vi.mock('$app/env', () => ({ browser: true }));
 let creationFails = false;
 beforeEach(() => {
 	vi.clearAllMocks();

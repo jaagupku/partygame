@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 
 	let { seconds, paused }: { seconds: number; paused: boolean } = $props();
 	let previous = $state(untrack(() => seconds));

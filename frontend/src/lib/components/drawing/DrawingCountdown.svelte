@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { messages } from '$lib/i18n';
+	import { messages } from '#lib/i18n.js';
 	import { drawingSegment } from './reveal';
 	let {
 		view,

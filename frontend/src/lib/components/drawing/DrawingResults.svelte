@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import DrawingDisplay from '$lib/components/DrawingDisplay.svelte';
-	import { messages } from '$lib/i18n';
+	import DrawingDisplay from '#lib/components/DrawingDisplay.svelte';
+	import { messages } from '#lib/i18n.js';
 	import { revealElapsed, revealStep, voteStartsAt } from './reveal';
 
 	let {

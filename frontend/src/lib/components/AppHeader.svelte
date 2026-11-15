@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { currentUser, logout } from '$lib/auth-store';
-	import { locale, locales, messages } from '$lib/i18n';
+	import { currentUser, logout } from '#lib/auth-store.js';
+	import { locale, locales, messages } from '#lib/i18n.js';
 	import ThemeModeToggle from './ThemeModeToggle.svelte';
 
 	type BreadcrumbItem = {
