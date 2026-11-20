@@ -49,7 +49,7 @@
 		opacity: 0.75;
 	}
 	.drawing-criterion-text {
-		font-size: clamp(1.15rem, 2.4vw, 2rem);
+		font-size: clamp(1.15rem, calc(2.4 * var(--stage-vw)), 2rem);
 		line-height: 1.2;
 		overflow-wrap: anywhere;
 	}
@@ -102,6 +102,26 @@
 		text-transform: uppercase;
 		transform: rotate(-4deg);
 		animation: drawing-burst 480ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+	}
+	/* The TV stage: the criterion is the twist everyone watches for. */
+	:global(.game-stage) .drawing-criterion {
+		min-height: 9rem;
+		padding: 1rem 1.5rem;
+	}
+	:global(.game-stage) .drawing-criterion-label {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .drawing-criterion-text {
+		font-size: var(--tv-subtitle);
+	}
+	:global(.game-stage) .drawing-criterion-sealed .drawing-criterion-text,
+	:global(.game-stage) .drawing-twist-burst {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .drawing-criterion-seal {
+		width: 3.5rem;
+		height: 3.5rem;
+		font-size: 2rem;
 	}
 	@keyframes drawing-seal-wobble {
 		50% {

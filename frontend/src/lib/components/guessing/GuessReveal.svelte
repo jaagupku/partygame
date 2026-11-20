@@ -60,7 +60,7 @@
 			</div>
 		{/each}
 	</div>{/if}
-<h3 class="text-lg font-bold">{$messages.priceGame.results}</h3>
+<h3 class="guess-results-title text-lg font-bold">{$messages.priceGame.results}</h3>
 <ol class="guess-result-list">
 	{#each results as result, index (result.player_id)}
 		<li
@@ -94,7 +94,7 @@
 		margin-bottom: 0.5rem;
 	}
 	.guess-reveal-amount {
-		font-size: clamp(3.25rem, 7vw, 7rem);
+		font-size: clamp(3.25rem, calc(7 * var(--stage-vw)), 7rem);
 		font-weight: 900;
 		line-height: 1.15;
 		letter-spacing: -0.06em;
@@ -164,6 +164,66 @@
 			align-items: center;
 			gap: 1rem;
 		}
+	}
+	/* The TV stage: the receipt is a narrow column read from across the room. */
+	:global(.game-stage) .comparison {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	:global(.game-stage) .guess-reveal-value {
+		padding: 1rem 1.25rem;
+	}
+	:global(.game-stage) .guess-reveal-title,
+	:global(.game-stage) .guess-reveal-winner {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .guess-reveal-amount {
+		font-size: 6.5rem;
+		line-height: 1.05;
+	}
+	:global(.game-stage) .guess-reveal-unit {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .guess-results-title {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .guess-result {
+		gap: 1rem;
+		padding: 0.6rem 0;
+		font-size: var(--tv-body);
+		line-height: 1.2;
+	}
+	:global(.game-stage) .guess-result-rank {
+		flex-basis: 2rem;
+	}
+	:global(.game-stage) .guess-result-player {
+		display: grid;
+		/* Long compare answers (product titles) must not push the player's name out. */
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		align-items: baseline;
+		gap: 1rem;
+	}
+	:global(.game-stage) .guess-result-answer {
+		text-align: end;
+	}
+	:global(.game-stage) .guess-result-player p {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	:global(.game-stage) .guess-result-points {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .guess-result-points span,
+	:global(.game-stage) .guess-reveal-label {
+		font-size: var(--tv-caption);
+	}
+	/* A crowd keeps every row on screen with tighter rows. */
+	:global(.game-stage) .guess-result-list:has(> li:nth-child(11)) .guess-result {
+		padding: 0.2rem 0;
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .guess-result-list:has(> li:nth-child(11)) .guess-result-points {
+		font-size: var(--tv-caption);
 	}
 	@keyframes guess-answer-in {
 		from {

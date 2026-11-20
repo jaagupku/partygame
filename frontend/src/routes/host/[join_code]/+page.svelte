@@ -24,6 +24,7 @@
 	import { presentationScope } from '#lib/presentation/scope.js';
 	import AudioControls from '#lib/presentation/AudioControls.svelte';
 	import PresentationDecoration from '#lib/presentation/PresentationDecoration.svelte';
+	import GameStage from '#lib/stage/GameStage.svelte';
 	import { definitionThemeStyle } from '#lib/theme.js';
 
 	const { data } = $props();
@@ -267,32 +268,22 @@
 		screen: true
 	}}
 ></div>
-{#if presentation.profile}
-	{#if $game.state === 'waiting_for_players'}
-		<AudioControls system={soundSystem} />
-	{:else}
-		<PresentationDecoration
-			gameType={presentation.gameType}
-			variant={presentation.variant}
-			surface="screen"
-		/>
-	{/if}
-{/if}
-
-{#if $game.state === 'waiting_for_players'}
+{#snippet lobbyScreen()}
 	<!-- Styled games split the lobby; quiz keeps its single column (wrappers are display: contents). -->
 	<div class="lobby-layout" class:lobby-split={Boolean(presentation.profile)}>
 		<div class="lobby-join">
 			<h1 class="page-title">{definitionTitle()}</h1>
 			<p class="page-subtitle">
 				{$messages.hostView.joinCode}:
-				<span class="theme-text mt-2 block text-5xl font-black tracking-[0.28em] sm:text-6xl">
+				<span
+					class="lobby-join-code theme-text mt-2 block text-5xl font-black tracking-[0.28em] sm:text-6xl"
+				>
 					{$game.join_code}
 				</span>
 			</p>
 			{#if joinQrDataUrl}
 				<div
-					class="theme-surface mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg border p-4 shadow-sm"
+					class="lobby-qr theme-surface mx-auto mt-6 grid w-fit justify-items-center gap-3 rounded-lg border p-4 shadow-sm"
 				>
 					<img
 						class="h-52 w-52 rounded-md bg-white p-2"
@@ -301,7 +292,7 @@
 						width="208"
 						height="208"
 					/>
-					<p class="theme-text-muted max-w-64 text-center text-sm font-semibold">
+					<p class="lobby-qr-caption theme-text-muted max-w-64 text-center text-sm font-semibold">
 						{$messages.hostView.scanToJoin}
 					</p>
 				</div>
@@ -334,7 +325,7 @@
 						<li>
 							<button
 								type="button"
-								class="grid w-24 justify-items-center gap-2 text-center transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500"
+								class="lobby-player grid w-24 justify-items-center gap-2 text-center transition hover:-translate-y-0.5 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500"
 								disabled={!data.canManage || !$game.host_enabled}
 								onclick={() => setHost(player.id)}
 								aria-label={`${player.name}${player.isHost ? `, ${$messages.common.host}` : ''}`}
@@ -347,7 +338,7 @@
 									sizeClass="h-16 w-16"
 								/>
 								<span
-									class="theme-text flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight"
+									class="lobby-player-name theme-text flex max-w-full items-center justify-center gap-1 text-sm font-black leading-tight"
 								>
 									{#if player.status === 'disconnected'}
 										<iconify-icon
@@ -360,7 +351,7 @@
 								</span>
 								{#if player.isHost}
 									<span
-										class="theme-soft-primary -mt-1 rounded-full border px-2 py-0.5 text-xs font-extrabold uppercase"
+										class="lobby-player-host theme-soft-primary -mt-1 rounded-full border px-2 py-0.5 text-xs font-extrabold uppercase"
 									>
 										{$messages.common.host}
 									</span>
@@ -372,14 +363,16 @@
 			{/if}
 		</div>
 	</div>
-{:else}
+{/snippet}
+
+{#snippet gameScreen()}
 	<div
 		use:idleCursor
 		use:screenWakeLock
 		class="host-stage relative h-full min-h-0 overflow-hidden"
 		style={presentation.profile ? undefined : definitionThemeStyle($game.theme)}
 	>
-		<WaitingPlayers gameState={$game} />
+		<WaitingPlayers gameState={$game} large={Boolean(presentation.profile)} />
 		<section class="relative h-full min-w-0 min-h-0 mt0">
 			{#if $game.endGame?.revealed}
 				<FinaleDisplay
@@ -446,7 +439,7 @@
 		</section>
 
 		<aside
-			class={`pointer-events-none absolute inset-y-0 right-0 z-10 w-[min(30rem,38vw)] max-w-full p-3 transition duration-300 ease-out ${
+			class={`scoreboard-overlay pointer-events-none absolute inset-y-0 right-0 z-10 w-[min(30rem,calc(38*var(--stage-vw)))] max-w-full p-3 transition duration-300 ease-out ${
 				$game.scoreboardVisible
 					? 'translate-x-0 scale-100 opacity-100'
 					: 'translate-x-[calc(100%+1rem)] scale-[0.98] opacity-0'
@@ -459,6 +452,29 @@
 			{/if}
 		</aside>
 	</div>
+{/snippet}
+
+{#if presentation.profile}
+	<!-- Prebuilt games render at a fixed design size so every display shows the same picture. -->
+	<GameStage>
+		{#if $game.state === 'waiting_for_players'}
+			<AudioControls system={soundSystem} />
+			<div class="stage-lobby absolute inset-4 overflow-hidden rounded-[2rem] border p-4 shadow-xl">
+				{@render lobbyScreen()}
+			</div>
+		{:else}
+			<PresentationDecoration
+				gameType={presentation.gameType}
+				variant={presentation.variant}
+				surface="screen"
+			/>
+			<div class="stage-game">{@render gameScreen()}</div>
+		{/if}
+	</GameStage>
+{:else if $game.state === 'waiting_for_players'}
+	{@render lobbyScreen()}
+{:else}
+	{@render gameScreen()}
 {/if}
 
 <style>
@@ -467,10 +483,12 @@
 	.lobby-room {
 		display: contents;
 	}
+	/* Only styled games split the lobby, and those always render in the fixed stage. */
 	.lobby-split {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
 		align-items: center;
-		gap: clamp(1.5rem, 3vw, 3rem);
+		gap: clamp(1.5rem, calc(3 * var(--stage-vw)), 3rem);
 		width: min(100%, 96rem);
 		min-height: 100%;
 		margin-inline: auto;
@@ -485,13 +503,70 @@
 	}
 	.lobby-roster-title {
 		margin-top: 0.5rem;
-		font-size: clamp(1.25rem, 2vw, 1.75rem);
+		font-size: clamp(1.25rem, calc(2 * var(--stage-vw)), 1.75rem);
 		font-weight: 900;
 	}
-	@media (min-width: 1024px) {
-		.lobby-split {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-		}
+	.stage-lobby {
+		background: var(--party-surface);
+		backdrop-filter: blur(8px);
+	}
+	/* The TV stage: the join code and QR read from the couch; the roster fills its column. */
+	.stage-lobby .lobby-split {
+		gap: 4rem;
+		width: 100%;
+		padding: 1rem 3rem;
+	}
+	.stage-lobby .page-title {
+		font-size: var(--tv-title);
+		line-height: 1.05;
+	}
+	.stage-lobby .page-subtitle {
+		font-size: var(--tv-body);
+	}
+	.stage-lobby .lobby-join-code {
+		font-size: 7rem;
+		line-height: 1;
+	}
+	.stage-lobby .lobby-qr {
+		margin-top: 1rem;
+	}
+	.stage-lobby .lobby-qr img {
+		width: 20rem;
+		height: 20rem;
+	}
+	.stage-lobby .lobby-qr-caption {
+		max-width: 20rem;
+		font-size: var(--tv-caption);
+	}
+	.stage-lobby .lobby-roster-title {
+		font-size: var(--tv-heading);
+	}
+	.stage-lobby .lobby-room > ul {
+		width: 100%;
+		gap: 1.5rem 2rem;
+	}
+	.stage-lobby .lobby-player {
+		width: 9rem;
+	}
+	.stage-lobby .lobby-player :global(.avatar-shell) {
+		width: 6.5rem;
+		height: 6.5rem;
+	}
+	.stage-lobby .lobby-player-name {
+		font-size: var(--tv-body);
+	}
+	.stage-lobby .lobby-player-host {
+		font-size: var(--tv-caption);
+	}
+	.stage-game {
+		height: 100%;
+		padding: var(--tv-safe-y) var(--tv-safe-x);
+	}
+	.stage-game .scoreboard-overlay {
+		width: 42rem;
+	}
+	:global(.game-stage-viewport:has([data-cursor-idle])) {
+		cursor: none;
 	}
 	.host-stage:global([data-cursor-idle]),
 	.host-stage:global([data-cursor-idle]) :global(*) {

@@ -128,7 +128,7 @@
 			</p>
 		</div>
 	{:else if view.matchup}
-		<p class="theme-text-muted">{view.matchup_number} / {view.matchup_count}</p>
+		<p class="drawing-counter theme-text-muted">{view.matchup_number} / {view.matchup_count}</p>
 		<div class="drawing-brief">
 			<div class="drawing-topic">
 				<span class="drawing-topic-label">{$messages.drawingMashup.topic}</span>
@@ -195,7 +195,7 @@
 		grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
 	}
 	.art-frame :global(.drawing-display) {
-		width: min(100%, calc(55dvh * var(--drawing-aspect, 4 / 3)));
+		width: min(100%, calc(55 * var(--stage-vh) * var(--drawing-aspect, 4 / 3)));
 		margin-inline: auto;
 	}
 	.fit > .drawing-artworks {
@@ -224,12 +224,94 @@
 		margin-inline: auto;
 	}
 	.drawing-segment {
-		font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+		font-size: clamp(1.4rem, calc(2.6 * var(--stage-vw)), 2.2rem);
 		font-weight: 900;
 	}
 	.drawing-move-on {
 		color: var(--party-accent-strong);
 		animation: drawing-move-on 700ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+	}
+	/*
+	 * The TV stage: everything reads from across the room. Untagged text inherits the body size;
+	 * the rail of waiting players needs a wider left margin for its larger faces.
+	 */
+	:global(.game-stage) .drawing-stage {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .drawing-stage :global(.text-xl) {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .main-display {
+		padding-left: 6rem;
+	}
+	:global(.game-stage) .main-display.writing-display {
+		padding-right: 6rem;
+	}
+	:global(.game-stage) .drawing-segment {
+		font-size: var(--tv-heading);
+	}
+	:global(.game-stage) .drawing-topic-label {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .drawing-intro-progress {
+		width: 20rem;
+		height: 0.9rem;
+	}
+	:global(.game-stage) .fit .drawing-artwork {
+		gap: 0.5rem;
+		padding: 0.75rem;
+	}
+	:global(.game-stage) .drawing-brief {
+		gap: 2rem;
+	}
+	/*
+	 * Results on the TV: the brief, the point pool and the bonuses form a side column so the
+	 * artwork keeps the full height. The results' own blocks join this grid (display: contents).
+	 */
+	:global(.game-stage) .fit[data-drawing-stage='results'] {
+		display: grid;
+		grid-template-columns: 30rem minmax(0, 1fr);
+		grid-template-rows: auto auto auto auto minmax(0, 1fr);
+		grid-template-areas:
+			'head head'
+			'count label'
+			'brief art'
+			'alloc art'
+			'bonus art';
+		gap: 1rem 2.5rem;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] > header {
+		grid-area: head;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] > .drawing-counter {
+		grid-area: count;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] > .drawing-brief {
+		grid-area: brief;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1rem;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] > :global(.results) {
+		display: contents;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] :global(.results > .reveal-heading) {
+		grid-area: label;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] :global(.results > .artworks) {
+		grid-area: art;
+		min-height: 0;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] :global(.results > .allocation) {
+		grid-area: alloc;
+		text-align: start;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] :global(.results > .bonuses) {
+		grid-area: bonus;
+		flex-direction: column;
+		align-self: start;
+	}
+	:global(.game-stage) .fit[data-drawing-stage='results'] :global(.results > .bonuses > .bonus) {
+		flex: none;
 	}
 	@keyframes drawing-move-on {
 		from {
@@ -283,7 +365,7 @@
 	}
 	.drawing-intro-progress {
 		display: block;
-		width: min(14rem, 50vw);
+		width: min(14rem, calc(50 * var(--stage-vw)));
 		height: 0.6rem;
 		border-radius: 999px;
 		background: var(--party-border);

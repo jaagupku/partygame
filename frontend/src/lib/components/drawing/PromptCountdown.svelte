@@ -37,7 +37,7 @@
 </script>
 
 <div class="prompt-countdown" class:paused>
-	<p class="theme-text-muted text-xl font-bold" aria-hidden="true">
+	<p class="prompt-countdown-label theme-text-muted text-xl font-bold" aria-hidden="true">
 		{paused ? $messages.drawingMashup.paused : $messages.drawingMashup.timeLeft}
 	</p>
 	<p class="sr-only" role="timer" aria-live="off">
@@ -67,13 +67,17 @@
 </div>
 
 <style>
+	/* The TV stage: the label reads from across the room. */
+	:global(.game-stage) .prompt-countdown-label {
+		font-size: var(--tv-subtitle);
+	}
 	.prompt-countdown {
 		text-align: center;
 	}
 	.digits {
 		display: flex;
 		justify-content: center;
-		font-size: clamp(6rem, min(16vw, 25dvh), 14rem);
+		font-size: clamp(6rem, min(calc(16 * var(--stage-vw)), calc(25 * var(--stage-vh))), 14rem);
 		font-weight: 900;
 		font-variant-numeric: tabular-nums;
 		line-height: 1.2;

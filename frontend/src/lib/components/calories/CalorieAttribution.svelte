@@ -3,7 +3,7 @@
 	let { download = false }: { download?: boolean } = $props();
 </script>
 
-<p class="mt-4 text-sm theme-text-muted">
+<p class="calorie-attribution mt-4 text-sm theme-text-muted">
 	<a
 		class="underline"
 		href="https://world.openfoodfacts.org"

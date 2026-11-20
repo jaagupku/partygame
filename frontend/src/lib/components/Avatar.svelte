@@ -69,4 +69,12 @@
 		letter-spacing: 0.08em;
 		color: #0f172a;
 	}
+
+	/* The TV stage: initials grow with the avatar so they read from across the room. */
+	:global(.game-stage) .avatar-shell {
+		container-type: size;
+	}
+	:global(.game-stage) .avatar-fallback {
+		font-size: max(var(--tv-caption), 34cqmin);
+	}
 </style>

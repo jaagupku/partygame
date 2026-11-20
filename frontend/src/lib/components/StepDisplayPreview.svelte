@@ -220,7 +220,7 @@
 		<section class="drawing-reveal-stage question-stage-enter">
 			<div class="question-card-title-row">
 				<h3
-					class="question-card-step-title text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight"
+					class="question-card-step-title text-[clamp(1.8rem,calc(3.4*var(--stage-vw)),3.6rem)] font-extrabold leading-tight"
 				>
 					{step?.title}
 				</h3>
@@ -263,7 +263,7 @@
 		<section class="map-reveal-stage question-stage-enter">
 			<div class="question-card-title-row">
 				<h3
-					class="question-card-step-title text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight"
+					class="question-card-step-title text-[clamp(1.8rem,calc(3.4*var(--stage-vw)),3.6rem)] font-extrabold leading-tight"
 				>
 					{step.title}
 				</h3>
@@ -326,7 +326,9 @@
 			>
 				{$messages.common.correctAnswer}
 			</p>
-			<p class="mt-3 text-center text-[clamp(1.4rem,3vw,2.6rem)] font-extrabold leading-tight">
+			<p
+				class="mt-3 text-center text-[clamp(1.4rem,calc(3*var(--stage-vw)),2.6rem)] font-extrabold leading-tight"
+			>
 				{formatRevealValue(revealedAnswer?.value)}
 			</p>
 		</div>
@@ -338,7 +340,7 @@
 					totalDuration={step?.timer.seconds ?? countdown}
 					paused={phaseLabel !== 'question_active'}
 				/>
-				<p class="theme-text-muted mt-3 text-center text-sm">
+				<p class="timer-note theme-text-muted mt-3 text-center text-sm">
 					{step?.timer.enforced ? $messages.timer.timerEnforced : $messages.timer.timerAdvisory}
 				</p>
 			</div>
@@ -348,7 +350,14 @@
 
 <style>
 	.stage-timer-panel {
-		padding-inline: clamp(0.5rem, 1.1vw, 1.25rem);
+		padding-inline: clamp(0.5rem, calc(1.1 * var(--stage-vw)), 1.25rem);
+	}
+	:global(.game-stage) .stage-timer-panel {
+		padding-inline: 0;
+	}
+	:global(.game-stage) .timer-note {
+		margin-top: 0.4rem;
+		font-size: var(--tv-caption);
 	}
 
 	.question-stage-price {
@@ -368,21 +377,21 @@
 	.map-reveal-stage {
 		display: grid;
 		grid-template-rows: auto minmax(0, 1fr);
-		gap: clamp(0.5rem, 1.2vh, 1rem);
+		gap: clamp(0.5rem, calc(1.2 * var(--stage-vh)), 1rem);
 		height: 100%;
 		min-height: 0;
 		min-width: 0;
-		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+		padding: clamp(0.5rem, calc(1.1 * var(--stage-vw)), 1.25rem);
 	}
 
 	.drawing-reveal-stage {
 		display: grid;
 		grid-template-rows: auto auto minmax(0, 1fr);
-		gap: clamp(0.5rem, 1.2vh, 1rem);
+		gap: clamp(0.5rem, calc(1.2 * var(--stage-vh)), 1rem);
 		height: 100%;
 		min-height: 0;
 		min-width: 0;
-		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+		padding: clamp(0.5rem, calc(1.1 * var(--stage-vw)), 1.25rem);
 	}
 
 	.drawing-gallery {
@@ -390,7 +399,7 @@
 		grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), min(24rem, 100%)));
 		align-content: center;
 		justify-content: center;
-		gap: clamp(0.65rem, 1.5vw, 1.2rem);
+		gap: clamp(0.65rem, calc(1.5 * var(--stage-vw)), 1.2rem);
 		min-height: 0;
 		overflow: hidden;
 	}
@@ -401,12 +410,12 @@
 		border: 1px solid var(--party-soft-primary-border);
 		border-radius: 0.75rem;
 		background: var(--party-soft-primary-bg);
-		padding: clamp(0.65rem, 1.1vw, 0.95rem);
+		padding: clamp(0.65rem, calc(1.1 * var(--stage-vw)), 0.95rem);
 		color: var(--party-ink);
 	}
 
 	.drawing-vote-rubric p {
-		font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+		font-size: clamp(0.7rem, calc(0.9 * var(--stage-vw)), 0.85rem);
 		font-weight: 950;
 		text-transform: uppercase;
 		letter-spacing: 0.12em;
@@ -414,7 +423,7 @@
 	}
 
 	.drawing-vote-rubric strong {
-		font-size: clamp(1rem, 1.45vw, 1.35rem);
+		font-size: clamp(1rem, calc(1.45 * var(--stage-vw)), 1.35rem);
 		line-height: 1.2;
 		overflow-wrap: anywhere;
 	}
@@ -426,7 +435,7 @@
 		border: 1px solid var(--party-border);
 		border-radius: 1rem;
 		background: color-mix(in srgb, var(--party-surface-strong), transparent 8%);
-		padding: clamp(0.55rem, 1vw, 0.85rem);
+		padding: clamp(0.55rem, calc(1 * var(--stage-vw)), 0.85rem);
 		box-shadow: 0 8px 20px rgb(15 23 42 / 0.1);
 	}
 
@@ -443,7 +452,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
-		font-size: clamp(0.82rem, 1.15vw, 1rem);
+		font-size: clamp(0.82rem, calc(1.15 * var(--stage-vw)), 1rem);
 		font-weight: 950;
 		color: var(--party-ink);
 	}
@@ -452,7 +461,7 @@
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: clamp(0.75rem, 2vw, 1.5rem);
+		gap: clamp(0.75rem, calc(2 * var(--stage-vw)), 1.5rem);
 		min-width: 0;
 	}
 
@@ -522,7 +531,7 @@
 
 	.buzzer-winner-impact {
 		position: relative;
-		min-width: min(18rem, 38vw);
+		min-width: min(18rem, calc(38 * var(--stage-vw)));
 		box-shadow: 0 18px 36px color-mix(in srgb, var(--party-warm), transparent 86%);
 		animation: buzzer-winner-impact 520ms cubic-bezier(0.2, 0.95, 0.25, 1.25) both;
 	}

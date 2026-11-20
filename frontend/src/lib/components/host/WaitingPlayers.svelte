@@ -5,7 +5,14 @@
 	import { messages } from '#lib/i18n.js';
 	import { waitingPlayers } from '#lib/waiting-players.js';
 
-	let { gameState }: { gameState: HostGameState } = $props();
+	let {
+		gameState,
+		large = false
+	}: {
+		gameState: HostGameState;
+		/** The TV stage: larger faces that read from across the room. */
+		large?: boolean;
+	} = $props();
 	const waiting = $derived(waitingPlayers(gameState));
 	let phaseKey = $state('');
 	let slots = $state<string[]>([]);
@@ -22,7 +29,8 @@
 			if (additions.length) slots = [...slots, ...additions];
 		}
 	});
-	const size = $derived(slots.length * 56 - 8 <= height ? 48 : 32);
+	const roomy = $derived(large ? 72 : 48);
+	const size = $derived(slots.length * (roomy + 8) - 8 <= height ? roomy : large ? 48 : 32);
 	const rows = $derived(Math.max(1, Math.floor((height + 8) / (size + 8))));
 	const columns = $derived(Math.max(1, Math.ceil(slots.length / rows)));
 	const width = $derived(columns * (size + 8) + 8);

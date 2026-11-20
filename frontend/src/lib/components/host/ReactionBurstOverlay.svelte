@@ -65,7 +65,7 @@
 
 		100% {
 			opacity: 0;
-			transform: translate(calc(-50% + var(--reaction-drift-x)), -120vh)
+			transform: translate(calc(-50% + var(--reaction-drift-x)), calc(-120 * var(--stage-vh)))
 				rotate(calc(var(--reaction-rotation) + 18deg)) scale(1.12);
 		}
 	}

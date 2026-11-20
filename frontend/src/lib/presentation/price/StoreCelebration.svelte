@@ -21,7 +21,7 @@
 	}
 	img {
 		position: absolute;
-		width: clamp(5rem, 12vw, 12rem);
+		width: clamp(5rem, calc(12 * var(--stage-vw)), 12rem);
 		bottom: 1rem;
 		left: 1rem;
 		transform: rotate(-12deg);
@@ -54,7 +54,7 @@
 			opacity: 1;
 		}
 		to {
-			transform: translateY(65vh) rotate(var(--tilt));
+			transform: translateY(calc(65 * var(--stage-vh))) rotate(var(--tilt));
 			opacity: 0;
 		}
 	}

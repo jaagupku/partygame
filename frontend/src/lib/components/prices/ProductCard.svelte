@@ -26,24 +26,46 @@
 			onerror={() => (failed = true)}
 		/>
 	{/if}
-	<p class="text-center text-lg font-bold leading-snug">{product.title}</p>
+	<p class="product-title text-center text-lg font-bold leading-snug">{product.title}</p>
 	{#if 'basis' in product}<p class="nutrition-basis font-bold">
 			{$messages.calorieGame[product.basis === '100ml' ? 'per100ml' : 'per100g']}
 		</p>{/if}
 	{#if product.detail && !product.title.includes(product.detail)}<p
-			class="theme-text-muted text-center text-sm"
+			class="product-detail theme-text-muted text-center text-sm"
 		>
 			{product.detail}
-		</p>{/if}
+		</p>{:else if stage}<p class="product-detail" aria-hidden="true"></p>{/if}
 </div>
 
 <style>
 	.product-card-stage img,
 	.product-card-stage > div {
-		height: var(--product-image-height, clamp(12rem, 36vh, 28rem));
+		height: var(--product-image-height, clamp(12rem, calc(36 * var(--stage-vh)), 28rem));
 		flex-shrink: 0;
 	}
 	.product-card-stage > p {
-		font-size: clamp(1.1rem, 1.5vw, 1.65rem);
+		font-size: clamp(1.1rem, calc(1.5 * var(--stage-vw)), 1.65rem);
+	}
+	/* The TV stage: read from across the room; long titles and details keep to two lines.
+	   (An empty detail line lets side-by-side cards reserve equal room, so their images align.) */
+	:global(.game-stage) .product-card-stage > p {
+		flex-shrink: 0;
+		font-size: var(--tv-body);
+		line-height: 1.2;
+	}
+	:global(.game-stage) .product-card-stage > .product-title {
+		font-size: var(--tv-subtitle);
+		line-height: 1.15;
+	}
+	:global(.game-stage) .product-card-stage > .product-title,
+	:global(.game-stage) .product-card-stage > .product-detail {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		overflow: hidden;
+	}
+	:global(.game-stage) .product-card-stage > .product-detail:empty {
+		display: none;
 	}
 </style>

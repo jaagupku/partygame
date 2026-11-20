@@ -4,7 +4,71 @@
 @import './lib/presentation/calorie/calorie.css';
 @import './lib/presentation/drawing/drawing.css';
 
+/*
+ * The main display of the prebuilt games renders in a fixed-size stage (lib/stage/GameStage.svelte).
+ * Inside it the wide layout always applies, whatever the real window size is.
+ */
+@custom-variant sm {
+	@media (width >= 40rem) {
+		@slot;
+	}
+	&:where(.game-stage *) {
+		@slot;
+	}
+}
+@custom-variant md {
+	@media (width >= 48rem) {
+		@slot;
+	}
+	&:where(.game-stage *) {
+		@slot;
+	}
+}
+@custom-variant lg {
+	@media (width >= 64rem) {
+		@slot;
+	}
+	&:where(.game-stage *) {
+		@slot;
+	}
+}
+@custom-variant xl {
+	@media (width >= 80rem) {
+		@slot;
+	}
+	&:where(.game-stage *) {
+		@slot;
+	}
+}
+@custom-variant 2xl {
+	@media (width >= 96rem) {
+		@slot;
+	}
+	&:where(.game-stage *) {
+		@slot;
+	}
+}
+
+/*
+ * The main display is watched on a TV from across the room. Inside the fixed stage every size is
+ * authored for 1920x1080 design pixels and nothing reads smaller than --tv-caption.
+ */
+.game-stage {
+	--tv-caption: 1.375rem;
+	--tv-body: 1.75rem;
+	--tv-subtitle: 2.25rem;
+	--tv-heading: 3rem;
+	--tv-title: 4.5rem;
+	--tv-display: 8rem;
+	/* Overscan-safe margin: TVs may crop the outer edge of the picture. */
+	--tv-safe-x: 4rem;
+	--tv-safe-y: 2.5rem;
+}
+
 :root {
+	/* 1% of the layout area: the viewport here, the fixed design size inside .game-stage. */
+	--stage-vw: 1vw;
+	--stage-vh: 1dvh;
 	--party-bg-a: #f8fff1;
 	--party-bg-b: #ddf2ff;
 	--party-bg-c: #fff4db;
@@ -204,6 +268,24 @@
 		height: 100%;
 		max-width: none;
 		padding: clamp(0.5rem, 1vw, 1.25rem);
+		border: 0;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		backdrop-filter: none;
+	}
+
+	/* The fixed stage owns the whole window; the game background shows around it. */
+	.app-shell-host-game:has(.game-stage-viewport) {
+		height: 100dvh;
+		min-height: 100dvh;
+		padding: 0;
+	}
+
+	.page-panel-host-game:has(.game-stage-viewport) {
+		height: 100%;
+		max-width: none;
+		padding: 0;
 		border: 0;
 		border-radius: 0;
 		background: transparent;

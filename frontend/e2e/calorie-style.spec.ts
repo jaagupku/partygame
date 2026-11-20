@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectStageInvariant, expectStageReadable } from './stage';
 
 test.use({ actionTimeout: 10_000 });
 
@@ -164,6 +165,16 @@ test('bundled audio plays from Create; personal sounds default on; studio reveal
 		await expect(phone.locator('img[src^="/presentation/calorie/"]')).toHaveCount(0);
 		await expect(page.getByRole('heading', { name: "Today's class", exact: true })).toBeVisible();
 		await page.screenshot({ path: info.outputPath('lobby-roster.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.stage-lobby',
+			'.lobby-join .page-title',
+			'.lobby-join img',
+			'.studio-welcome img',
+			'.lobby-room > ul',
+			'.lobby-room > ul li',
+			'[data-presentation-audio]'
+		]);
 		await host.getByRole('button', { name: 'Start Game', exact: true }).click();
 		for (const device of [page, host, phone])
 			await expect(device.locator('[data-presentation-audio]')).toHaveCount(0);
@@ -173,6 +184,14 @@ test('bundled audio plays from Create; personal sounds default on; studio reveal
 		await expect(page.locator('.studio-coach')).toBeVisible();
 		await page.setViewportSize({ width: 1280, height: 720 });
 		await page.screenshot({ path: info.outputPath('round-1280.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.host-stage',
+			'.question-card-step-title',
+			'.question-card-points-badge',
+			'.studio-coach img',
+			'.product-card img'
+		]);
 		await phone.screenshot({ path: info.outputPath('round-phone.png'), fullPage: true });
 		await phone.locator('input[inputmode="numeric"]').fill('250');
 		expect((await audio(phone)).starts).toHaveLength(0);
@@ -194,6 +213,14 @@ test('bundled audio plays from Create; personal sounds default on; studio reveal
 			expect(await appearance(page, '.guess-reveal-value')).toEqual(reveal);
 		}
 		await page.screenshot({ path: info.outputPath('reveal.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.calorie-reveal',
+			'.studio-coach img',
+			'.product-card img',
+			'.guess-reveal-amount',
+			'.guess-result'
+		]);
 		await page.setViewportSize({ width: 2007, height: 1256 });
 		await expect(phone.locator('.studio-coach')).toHaveCount(0);
 		await phone.screenshot({ path: info.outputPath('reveal-phone.png'), fullPage: true });
@@ -228,6 +255,14 @@ test('bundled audio plays from Create; personal sounds default on; studio reveal
 		await changeMode(page, 'light');
 		expect(await appearance(page, '.podium-card.place-1')).toEqual(podium);
 		await page.screenshot({ path: info.outputPath('winner.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.finale-header .page-title',
+			'.podium',
+			'.podium-card',
+			'.podium-card .avatar-shell',
+			'.podium-coach img'
+		]);
 		await expect(phone.locator('.studio-coach')).toHaveCount(0);
 		await expect(phone.getByText('Klassi parim!', { exact: true })).toBeVisible();
 		await phone.screenshot({ path: info.outputPath('completion-phone.png'), fullPage: true });
@@ -235,6 +270,8 @@ test('bundled audio plays from Create; personal sounds default on; studio reveal
 		await host.getByRole('button', { name: 'Next Finale Stage', exact: true }).click();
 		await expect(page.locator('.finale-shell .scoreboard-card .price-score-unit')).toBeVisible();
 		await page.screenshot({ path: info.outputPath('standings.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, ['.finale-shell .scoreboard-card', '.scoreboard-card li']);
 		// Decode every authored cue in a real browser, checking data and exact durations.
 		const decoded = await page.evaluate(async () => {
 			const context = new AudioContext();

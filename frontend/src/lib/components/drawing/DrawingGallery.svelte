@@ -64,7 +64,7 @@
 <aside class="card stack-md gallery-card" aria-label={$messages.drawingMashup.gallery}>
 	<h2 class="text-xl font-bold">{$messages.drawingMashup.gallery} · {index + 1}/{items.length}</h2>
 	{#if item}
-		<h3 class="text-xl font-bold">{drawingText(item.topic, 'topic', language)}</h3>
+		<h3 class="gallery-topic text-xl font-bold">{drawingText(item.topic, 'topic', language)}</h3>
 		<p>{$messages.drawingMashup.criterion}: {drawingText(item.criterion, 'criterion', language)}</p>
 		{#if value}<div class="gallery-image"><DrawingDisplay drawing={value} animate /></div>{:else}<p
 				role="status"
@@ -76,7 +76,8 @@
 			{$messages.drawingMashup.points} · {$messages.drawingMashup.voteCount(item.vote_count)}
 		</p>
 	{/if}
-	<div class="flex flex-wrap gap-2">
+	<!-- For a host with a mouse; on the TV stage they hide while the cursor is idle. -->
+	<div class="gallery-controls flex flex-wrap gap-2">
 		<button class="btn btn-ghost" onclick={() => move(-1)}
 			>{$messages.drawingMashup.previous}</button
 		>
@@ -104,11 +105,38 @@
 	}
 	/* Each drawing keeps its own shape (landscape or portrait) within the height budget. */
 	.gallery-image :global(canvas) {
-		width: min(100%, calc(55dvh * var(--drawing-aspect, 4 / 3)));
+		width: min(100%, calc(55 * var(--stage-vh) * var(--drawing-aspect, 4 / 3)));
 		margin-inline: auto;
 	}
+	/* The TV stage: the drawing takes the height the captions leave, nothing scrolls. */
+	:global(.game-stage) .gallery-card {
+		overflow: hidden;
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .gallery-topic {
+		font-size: var(--tv-subtitle);
+	}
+	:global(.game-stage) .gallery-image {
+		flex: 1 1 0;
+		container-type: size;
+		display: grid;
+		align-content: center;
+	}
+	:global(.game-stage) .gallery-image :global(canvas) {
+		width: min(100cqw, calc(100cqh * var(--drawing-aspect, 4 / 3)));
+	}
+	:global(.game-stage) .gallery-controls :global(.btn) {
+		font-size: var(--tv-caption);
+	}
+	/* Faded rather than removed: moving the mouse to click wakes the cursor and shows them. */
+	:global(.game-stage) .gallery-controls {
+		transition: opacity 200ms ease-out;
+	}
+	:global(.game-stage [data-cursor-idle]) .gallery-controls {
+		opacity: 0;
+	}
 	@media (max-width: 760px) {
-		.gallery-card {
+		.gallery-card:not(:global(.game-stage *)) {
 			height: max-content;
 			overflow: visible;
 		}

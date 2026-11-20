@@ -98,8 +98,10 @@
 	style:--timer-progress={`${progressPercent}%`}
 >
 	<div class="flex items-center justify-between gap-4">
-		<div class="min-w-0">
-			<p class={`text-[0.65rem] font-black uppercase tracking-[0.2em] ${toneClasses.label}`}>
+		<div class="timer-readout min-w-0">
+			<p
+				class={`timer-label text-[0.65rem] font-black uppercase tracking-[0.2em] ${toneClasses.label}`}
+			>
 				{$messages.timer.timeRemaining}
 			</p>
 			<p class={`mt-1 font-black leading-none tracking-[-0.04em] ${toneClasses.time}`}>
@@ -152,6 +154,32 @@
 		color: var(--party-ink);
 	}
 
+	/* The TV stage: readable from across the room. */
+	:global(.game-stage) .timer-readout {
+		display: flex;
+		align-items: baseline;
+		gap: 1.25rem;
+	}
+	:global(.game-stage) .timer-readout > p {
+		margin: 0;
+	}
+	:global(.game-stage) .timer-label {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .timer-time {
+		font-size: var(--tv-heading);
+	}
+	:global(.game-stage) .timer-count {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .timer-dot {
+		width: 1rem;
+		height: 1rem;
+	}
+	:global(.game-stage) .timer-track {
+		height: 0.75rem;
+	}
+
 	.timer-count {
 		color: var(--party-subtle);
 	}
@@ -161,7 +189,7 @@
 	}
 
 	.timer-panel p:last-child {
-		font-size: clamp(1.6rem, 4vw, 2.8rem);
+		font-size: clamp(1.6rem, calc(4 * var(--stage-vw)), 2.8rem);
 	}
 
 	.timer-urgent .timer-dot {

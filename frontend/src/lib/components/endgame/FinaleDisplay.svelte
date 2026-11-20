@@ -394,7 +394,7 @@
 	.podium-name,
 	.stat-winners {
 		margin-top: 0.9rem;
-		font-size: clamp(1.8rem, 4vw, 3rem);
+		font-size: clamp(1.8rem, calc(4 * var(--stage-vw)), 3rem);
 		font-weight: 900;
 		line-height: 1;
 		color: var(--party-ink);
@@ -402,7 +402,7 @@
 
 	.stat-emoji {
 		margin-top: 0.7rem;
-		font-size: clamp(3rem, 8vw, 5.5rem);
+		font-size: clamp(3rem, calc(8 * var(--stage-vw)), 5.5rem);
 		line-height: 1;
 		filter: drop-shadow(0 14px 20px rgb(15 23 42 / 0.18));
 	}
@@ -436,7 +436,7 @@
 		flex-direction: column;
 		gap: 1.1rem;
 		min-width: 0;
-		padding: clamp(1.25rem, 2.5vw, 2.5rem);
+		padding: clamp(1.25rem, calc(2.5 * var(--stage-vw)), 2.5rem);
 		animation: lift-in 450ms ease-out both;
 		animation-delay: var(--reveal-delay, 0ms);
 		background:
@@ -451,7 +451,7 @@
 
 	.stat-value {
 		margin: 0;
-		font-size: clamp(3rem, 6vw, 5.5rem);
+		font-size: clamp(3rem, calc(6 * var(--stage-vw)), 5.5rem);
 		font-weight: 900;
 		line-height: 1;
 		color: color-mix(in srgb, var(--party-primary), var(--party-ink) 70%);
@@ -471,7 +471,7 @@
 		font-size: 3.5rem;
 	}
 	.stat-winners {
-		font-size: clamp(1.5rem, 2.8vw, 2.6rem);
+		font-size: clamp(1.5rem, calc(2.8 * var(--stage-vw)), 2.6rem);
 		line-height: 1.1;
 		overflow-wrap: anywhere;
 	}
@@ -508,8 +508,9 @@
 		grid-template-rows: minmax(0, 1fr);
 		overflow: auto;
 	}
+	/* Narrow rules never apply inside the fixed stage, whatever the window size. */
 	@media (max-width: 760px) {
-		.scoreboard-with-gallery {
+		.scoreboard-with-gallery:not(:global(.game-stage *)) {
 			grid-template-columns: minmax(0, 1fr);
 			grid-template-rows: minmax(240px, auto) max-content;
 			align-content: start;
@@ -529,10 +530,10 @@
 		color: var(--party-subtle);
 	}
 	@media (max-width: 760px) {
-		.stats-grid {
+		.stats-grid:not(:global(.game-stage *)) {
 			grid-template-columns: 1fr;
 		}
-		.stat-identity {
+		.stat-identity:not(:global(.game-stage *)) {
 			min-height: 0;
 		}
 	}
@@ -540,6 +541,120 @@
 		display: grid;
 		place-items: center;
 		text-align: center;
+	}
+
+	/*
+	 * The TV stage: a real podium (2nd | 1st | 3rd) and sizes that read from across the room.
+	 * Quiz finales render outside the stage and keep the rules above.
+	 */
+	:global(.game-stage) .finale-shell {
+		gap: 1.5rem;
+	}
+	:global(.game-stage) .finale-header {
+		align-items: center;
+	}
+	:global(.game-stage) .finale-header .page-title {
+		font-size: var(--tv-title);
+		line-height: 1.05;
+	}
+	:global(.game-stage) .finale-header .page-subtitle {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .podium {
+		padding: 2rem;
+	}
+	:global(.game-stage) .podium-stack {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-areas: 'second first third';
+		align-items: end;
+		gap: 2rem;
+		width: 100%;
+		height: 100%;
+	}
+	:global(.game-stage) .podium-row.place-1 {
+		grid-area: first;
+	}
+	:global(.game-stage) .podium-row.place-2 {
+		grid-area: second;
+	}
+	:global(.game-stage) .podium-row.place-3 {
+		grid-area: third;
+	}
+	:global(.game-stage) .podium-card {
+		width: min(100%, 24rem);
+		padding: 1.75rem;
+	}
+	:global(.game-stage) .podium-card :global(.avatar-shell) {
+		width: 9rem;
+		height: 9rem;
+	}
+	:global(.game-stage) .podium-place,
+	:global(.game-stage) .stat-label {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .podium-name {
+		font-size: var(--tv-heading);
+		overflow-wrap: anywhere;
+	}
+	:global(.game-stage) .podium-score {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .stats-grid {
+		overflow: hidden;
+		gap: 2rem;
+	}
+	:global(.game-stage) .stat-card {
+		padding: 2.5rem;
+	}
+	:global(.game-stage) .stat-avatars :global(.avatar-shell) {
+		width: 6rem;
+		height: 6rem;
+	}
+	:global(.game-stage) .stat-winners {
+		font-size: var(--tv-heading);
+	}
+	:global(.game-stage) .stat-value {
+		font-size: 6rem;
+	}
+	:global(.game-stage) .stat-tie,
+	:global(.game-stage) .stat-unit,
+	:global(.game-stage) .stat-description {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .stat-supporting {
+		font-size: var(--tv-caption);
+	}
+	/* Standings: a centred board with the highlights as a row of cards beneath. */
+	:global(.game-stage) .scoreboard-with-recap {
+		gap: 1.5rem;
+	}
+	/* The board is as tall as its rows (up to the full height), centred with its highlights. */
+	:global(.game-stage) .scoreboard-with-recap:not(.scoreboard-with-gallery) {
+		grid-template-rows: fit-content(100%) auto;
+		align-content: center;
+		width: min(100%, 76rem);
+		justify-self: center;
+	}
+	:global(.game-stage) .scoreboard-with-gallery {
+		gap: 2rem;
+		overflow: hidden;
+	}
+	:global(.game-stage) .highlights-recap {
+		display: grid;
+		grid-auto-columns: minmax(0, 1fr);
+		grid-auto-flow: column;
+		gap: 1.5rem;
+	}
+	:global(.game-stage) .highlights-recap p {
+		gap: 0.4rem;
+		padding: 1rem 1.25rem;
+		border: 1px solid var(--party-border);
+		border-radius: 1rem;
+		background: var(--party-surface-strong);
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .highlights-recap strong {
+		font-size: var(--tv-body);
 	}
 
 	@keyframes lift-in {
@@ -554,7 +669,7 @@
 	}
 
 	@media (max-width: 640px) {
-		.finale-header {
+		.finale-header:not(:global(.game-stage *)) {
 			flex-direction: column;
 		}
 	}

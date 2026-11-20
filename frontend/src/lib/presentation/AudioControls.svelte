@@ -64,10 +64,18 @@
 		right: 0.75rem;
 		z-index: 40;
 		padding: 0.65rem;
-		max-width: min(20rem, calc(100vw - 1.5rem));
+		max-width: min(20rem, calc(100 * var(--stage-vw) - 1.5rem));
 		font-size: 0.875rem;
 		background: var(--party-surface-strong);
 		backdrop-filter: blur(16px);
+	}
+	/* The TV stage: the sound menu reads from across the room too. */
+	:global(.game-stage) .presentation-audio {
+		top: 1.25rem;
+		right: 1.25rem;
+		padding: 0.75rem 1.1rem;
+		max-width: 28rem;
+		font-size: var(--tv-caption);
 	}
 	.presentation-audio.phone {
 		position: relative;

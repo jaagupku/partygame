@@ -197,7 +197,7 @@
 		}
 	}
 	.art-frame :global(.drawing-display) {
-		width: min(100%, calc(55dvh * var(--drawing-aspect, 4 / 3)));
+		width: min(100%, calc(55 * var(--stage-vh) * var(--drawing-aspect, 4 / 3)));
 		margin-inline: auto;
 	}
 	.fit {
@@ -220,7 +220,7 @@
 	}
 	.fit .point-total {
 		margin: 0;
-		font-size: clamp(1.5rem, 2.2vw, 2.4rem);
+		font-size: clamp(1.5rem, calc(2.2 * var(--stage-vw)), 2.4rem);
 	}
 	.fit .art-frame {
 		flex: 1 1 0;
@@ -316,7 +316,7 @@
 		height: 0.8rem;
 	}
 	.point-total {
-		font-size: clamp(1.8rem, 3vw, 3rem);
+		font-size: clamp(1.8rem, calc(3 * var(--stage-vw)), 3rem);
 		font-weight: 900;
 		font-variant-numeric: tabular-nums;
 		margin: 0.35rem 0 0;
@@ -352,6 +352,34 @@
 	}
 	.bonus .theme-text-muted {
 		font-size: 0.8rem;
+	}
+	/* The TV stage: votes, points and bonuses read from across the room. */
+	:global(.game-stage) .reveal-label {
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .art-letter {
+		width: 2.75rem;
+		height: 2.75rem;
+	}
+	:global(.game-stage) .winner-label,
+	:global(.game-stage) .voter,
+	:global(.game-stage) .award .theme-text-muted,
+	:global(.game-stage) .bonus .theme-text-muted,
+	:global(.game-stage) .point-total span {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .voter-list {
+		min-height: 3rem;
+	}
+	:global(.game-stage) .fit .point-total {
+		font-size: var(--tv-heading);
+	}
+	:global(.game-stage) .fit .artwork {
+		gap: 0.5rem;
+		padding: 0.75rem;
+	}
+	:global(.game-stage) .bonus {
+		padding: 0.75rem 1.25rem;
 	}
 	@keyframes vote-land {
 		from {

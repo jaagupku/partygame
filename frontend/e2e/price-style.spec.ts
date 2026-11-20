@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectStageInvariant, expectStageReadable } from './stage';
 
 test.use({ actionTimeout: 10_000 });
 
@@ -144,6 +145,16 @@ test('bundled audio plays from Create; personal sounds default on; checkout keep
 		await expect(phone.locator('[data-presentation-audio]')).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Shoppers', exact: true })).toBeVisible();
 		await page.screenshot({ path: info.outputPath('lobby-roster.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.stage-lobby',
+			'.lobby-join .page-title',
+			'.lobby-join img',
+			'.store-welcome img',
+			'.lobby-room > ul',
+			'.lobby-room > ul li',
+			'[data-presentation-audio]'
+		]);
 		await host.getByRole('button', { name: 'Start Game', exact: true }).click();
 		for (const device of [page, host, phone])
 			await expect(device.locator('[data-presentation-audio]')).toHaveCount(0);
@@ -166,6 +177,17 @@ test('bundled audio plays from Create; personal sounds default on; checkout keep
 			expect(await appearance(page, '.guess-reveal-value')).toEqual(reveal);
 		}
 		await page.screenshot({ path: info.outputPath('checkout.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.host-stage',
+			'.question-card-step-title',
+			'.question-card-points-badge',
+			'.product-card img',
+			'.price-receipt',
+			'.guess-reveal-amount',
+			'.guess-result',
+			'.store-corner'
+		]);
 		await phone.screenshot({ path: info.outputPath('checkout-phone.png'), fullPage: true });
 		for (let question = 1; question < 5; question++) {
 			await host.getByRole('button', { name: /^Next question/ }).click();
@@ -189,11 +211,21 @@ test('bundled audio plays from Create; personal sounds default on; checkout keep
 		await changeMode(page, 'light');
 		expect(await appearance(page, '.podium-card.place-1')).toEqual(podium);
 		await page.screenshot({ path: info.outputPath('winner.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.finale-header .page-title',
+			'.podium',
+			'.podium-card',
+			'.podium-card .avatar-shell',
+			'.podium-name'
+		]);
 		await phone.screenshot({ path: info.outputPath('final-receipt-phone.png'), fullPage: true });
 		await host.getByRole('button', { name: 'Next Finale Stage', exact: true }).click();
 		await host.getByRole('button', { name: 'Next Finale Stage', exact: true }).click();
 		await expect(page.locator('.finale-shell .scoreboard-card .price-score-unit')).toBeVisible();
 		await page.screenshot({ path: info.outputPath('standings.png') });
+		await expectStageReadable(page);
+		await expectStageInvariant(page, ['.finale-shell .scoreboard-card', '.scoreboard-card li']);
 		// Decode every authored cue in a real browser, checking data and exact durations.
 		const decoded = await page.evaluate(async () => {
 			const context = new AudioContext();

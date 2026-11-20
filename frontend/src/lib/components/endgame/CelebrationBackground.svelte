@@ -344,7 +344,8 @@
 			transform: translate3d(0, 0, 0) rotate(0deg);
 		}
 		100% {
-			transform: translate3d(var(--confetti-drift), 115vh, 0) rotate(var(--confetti-spin));
+			transform: translate3d(var(--confetti-drift), calc(115 * var(--stage-vh)), 0)
+				rotate(var(--confetti-spin));
 		}
 	}
 

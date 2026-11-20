@@ -91,7 +91,7 @@
 			{#if showCoach}<Coach
 					pose={!coachReady ? 'thinking' : reaction === 'close' ? 'celebrate' : 'reveal'}
 					message={coachReady ? $messages.calorieStudio[reaction] : ''}
-				/>{:else}<p class="font-bold">{$messages.calorieStudio[reaction]}</p>{/if}
+				/>{:else}<p class="calorie-reaction font-bold">{$messages.calorieStudio[reaction]}</p>{/if}
 			<GuessReveal
 				values={choice && compare ? [] : values}
 				label={$messages.calorieGame.correctCalories}

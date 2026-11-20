@@ -91,7 +91,7 @@
 		transform-origin: center bottom;
 	}
 	.outgoing {
-		--product-image-height: clamp(8rem, 18vh, 14rem);
+		--product-image-height: clamp(8rem, calc(18 * var(--stage-vh)), 14rem);
 		position: absolute;
 		inset: 0;
 		display: grid;
@@ -141,6 +141,10 @@
 		.comparison {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+	}
+	/* The fixed stage always uses the wide layout, whatever the window size. */
+	:global(.game-stage) .comparison {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 	@keyframes product-depart {
 		0% {

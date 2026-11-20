@@ -65,6 +65,18 @@
 				{answer}
 				{animate}
 			/>
+			<!-- The TV can't open details: the stage shows where each price came from as plain text. -->
+			<ul class="price-source-lines">
+				{#each step.price_reveal as item}
+					<li>
+						{$messages.priceGame.retailers[
+							item.retailer as keyof typeof $messages.priceGame.retailers
+						]} · {$messages.priceGame.captured}: {new Date(item.captured_at).toLocaleDateString(
+							$locale
+						)}
+					</li>
+				{/each}
+			</ul>
 			<details class="price-product-details">
 				<summary>{$messages.priceGame.productDetails}</summary>
 				<div class="grid gap-3 pt-3 sm:grid-cols-2">
@@ -98,5 +110,24 @@
 	.price-product-details summary {
 		cursor: pointer;
 		width: fit-content;
+	}
+	.price-source-lines {
+		display: none;
+	}
+	:global(.game-stage) .price-product-details {
+		display: none;
+	}
+	:global(.game-stage) .price-source-lines {
+		display: grid;
+		gap: 0.25rem;
+		margin: auto 0 0;
+		padding: 0;
+		list-style: none;
+		font-size: var(--tv-caption);
+		opacity: 0.75;
+	}
+	:global(.game-stage) .price-source-lines li {
+		border: 0;
+		padding: 0;
 	}
 </style>

@@ -2,9 +2,10 @@
 @scope ([data-presentation='price_guessing']) to ([data-presentation]:not([data-presentation='price_guessing'])) {
 	:scope {
 		color: var(--party-ink);
-		--store-corner-width: clamp(3rem, 7vw, 7rem);
 	}
-	:scope:is(body) {
+	/* The stage paints the same background, so the pattern scales with the picture. */
+	:scope:is(body),
+	:scope .game-stage {
 		background: repeating-linear-gradient(90deg, #183e3a04 0 1px, transparent 1px 48px), #f8f1df;
 	}
 	:scope.card {
@@ -71,7 +72,7 @@
 		background: transparent;
 	}
 	:scope .store-setup > .store-window img {
-		height: clamp(8rem, 18vw, 14rem);
+		height: clamp(8rem, calc(18 * var(--stage-vw)), 14rem);
 	}
 	:scope .store-department {
 		background: #fffdf7;
@@ -99,11 +100,11 @@
 		width: min(32rem, 90%);
 		height: auto;
 		margin: auto;
-		max-height: 20vh;
+		max-height: calc(20 * var(--stage-vh));
 	}
 	:scope .lobby-room .store-welcome img {
 		width: min(40rem, 100%);
-		max-height: 32vh;
+		max-height: calc(32 * var(--stage-vh));
 	}
 	:scope .lobby-room > ul {
 		width: min(100%, 44rem);
@@ -121,7 +122,7 @@
 		position: fixed;
 		right: 1rem;
 		bottom: 11rem;
-		width: var(--store-corner-width);
+		width: clamp(3rem, calc(7 * var(--stage-vw)), 7rem);
 		opacity: 0.12;
 		pointer-events: none;
 		z-index: -1;
@@ -278,21 +279,23 @@
 		background: transparent;
 		box-shadow: none;
 	}
-	@media (min-width: 1024px) {
-		:scope .finale-shell .podium-card.place-1 {
-			width: min(100%, 22rem);
-		}
-		:scope .finale-shell .podium-card.place-1 .avatar-shell {
-			width: 10rem;
-			height: 10rem;
-		}
-		:scope .finale-shell .podium-card.place-1 .podium-score {
-			font-size: 1.25rem;
-		}
+	/* The finale only renders in the fixed stage, which is always wide. */
+	:scope .finale-shell .podium-card.place-1 {
+		width: min(100%, 28rem);
+	}
+	:scope .finale-shell .podium-card.place-1 .avatar-shell {
+		width: 13rem;
+		height: 13rem;
+	}
+	:scope .finale-shell .podium-card.place-1 .podium-score {
+		font-size: var(--tv-subtitle);
 	}
 	:scope .store-finale-thanks {
 		font-weight: 800;
 		color: #17665b;
+	}
+	:scope .game-stage .store-finale-thanks {
+		font-size: var(--tv-body);
 	}
 	:scope .finale-shell .podium {
 		background: #f0e7cf;
@@ -315,23 +318,39 @@
 		border-bottom: 5px dashed #c6b68c;
 		border-radius: 0.25rem;
 	}
-	@media (max-width: 639px) {
-		:scope .store-window img {
-			height: 8rem;
-		}
-		:scope .store-welcome img {
-			max-height: 7rem;
-		}
-		:scope .price-receipt {
-			padding: 0.65rem;
-		}
-		:scope .price-stage-products > .product-display {
-			padding: 0.5rem;
-		}
-		:scope .price-shelf-label {
-			padding: 0.35rem 0.5rem;
-			font-size: 0.75rem;
-		}
+	/* The TV stage: sizes for viewing distance across the room. */
+	:scope .game-stage .store-eyebrow,
+	:scope .game-stage .price-receipt .guess-reveal-label {
+		font-size: var(--tv-caption);
+	}
+	:scope .game-stage .price-receipt {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		padding: 1.25rem 1.5rem;
+	}
+	:scope .game-stage .price-receipt > * {
+		margin: 0;
+	}
+	:scope .game-stage .price-receipt > .price-source-lines {
+		margin-top: auto;
+	}
+	:scope .game-stage .price-stage-products > .product-display {
+		padding: 1.25rem;
+	}
+	:scope .game-stage .price-shelf-label {
+		flex-shrink: 0;
+		padding: 0.4rem 1.25rem;
+		font-size: var(--tv-body);
+	}
+	:scope .game-stage .price-shelf-label strong {
+		font-size: var(--tv-heading);
+	}
+	:scope .game-stage .choice-card {
+		padding: 1.25rem;
+	}
+	:scope .game-stage .choice-ribbon {
+		font-size: var(--tv-body);
 	}
 	/* Phone answer verdicts use the authored palette instead of generic green/red. */
 	:scope .answer-result-border.answer-result-border-correct {
@@ -358,6 +377,27 @@
 		:scope *::after {
 			animation: none !important;
 			transition: none !important;
+		}
+	}
+}
+/* Phone-sized rules stop at the fixed main-display stage, which always keeps the wide layout. */
+@scope ([data-presentation='price_guessing']) to (.game-stage, [data-presentation]:not([data-presentation='price_guessing'])) {
+	@media (max-width: 639px) {
+		:scope .store-window img {
+			height: 8rem;
+		}
+		:scope .store-welcome img {
+			max-height: 7rem;
+		}
+		:scope .price-receipt {
+			padding: 0.65rem;
+		}
+		:scope .price-stage-products > .product-display {
+			padding: 0.5rem;
+		}
+		:scope .price-shelf-label {
+			padding: 0.35rem 0.5rem;
+			font-size: 0.75rem;
 		}
 	}
 }

@@ -122,7 +122,7 @@
 			<h3
 				class={`question-card-step-title ${
 					stageVariant
-						? 'text-[clamp(1.8rem,3.4vw,3.6rem)] font-extrabold leading-tight'
+						? 'text-[clamp(1.8rem,calc(3.4*var(--stage-vw)),3.6rem)] font-extrabold leading-tight'
 						: 'text-3xl font-extrabold'
 				}`}
 			>
@@ -290,16 +290,20 @@
 	.question-card-stage {
 		display: grid;
 		grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
-		gap: clamp(0.35rem, 0.8vh, 0.75rem);
+		gap: clamp(0.35rem, calc(0.8 * var(--stage-vh)), 0.75rem);
 		height: 100%;
 		min-height: 0;
 		min-width: 0;
-		padding: clamp(0.5rem, 1.1vw, 1.25rem);
+		padding: clamp(0.5rem, calc(1.1 * var(--stage-vw)), 1.25rem);
 	}
 
 	.question-card-stage.question-card-price-stage {
 		/* Leave room for the product title, details, shelf label and spacing. */
-		--product-image-height: clamp(7rem, min(48dvh, calc(100cqh - 15rem)), 44rem);
+		--product-image-height: clamp(
+			7rem,
+			min(calc(48 * var(--stage-vh)), calc(100cqh - 15rem)),
+			44rem
+		);
 		grid-template-rows: auto minmax(0, 1fr);
 	}
 	.price-stage-content {
@@ -322,11 +326,101 @@
 		margin-inline: auto;
 	}
 	.question-card-stage.question-card-price-reveal {
-		--product-image-height: clamp(8rem, 18vh, 14rem);
+		--product-image-height: clamp(8rem, calc(18 * var(--stage-vh)), 14rem);
 	}
+
+	/*
+	 * The TV stage (1920x1080, watched from across the room). Nothing scrolls: product images take
+	 * whatever height the text leaves, and the reveal puts the receipt in its own column.
+	 */
+	:global(.game-stage) .question-card-stage {
+		gap: 1.25rem;
+		padding: 0;
+	}
+	:global(.game-stage) .question-card-step-title {
+		font-size: var(--tv-title);
+		line-height: 1.05;
+	}
+	:global(.game-stage) .points-badge-stage {
+		margin-top: 0.6rem;
+		padding: 0.6rem 1.1rem;
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .price-stage-content {
+		display: block;
+		overflow: hidden;
+	}
+	:global(.game-stage) .price-stage-inner {
+		display: grid;
+		grid-template-rows: minmax(0, 1fr);
+		height: 100%;
+		margin: 0 auto;
+		padding-block: 0;
+	}
+	:global(.game-stage) .price-stage-inner > :global(*) {
+		min-width: 0;
+		min-height: 0;
+	}
+	:global(.game-stage) .price-stage-inner :global(.price-transition),
+	:global(.game-stage) .price-stage-inner :global(.price-transition > .incoming) {
+		height: 100%;
+	}
+	:global(.game-stage) .price-stage-inner :global(.outgoing) {
+		--product-image-height: 24rem;
+	}
+	:global(.game-stage) .price-stage-products {
+		grid-template-rows: minmax(0, 1fr);
+		align-items: stretch;
+		gap: 2rem;
+		height: 100%;
+	}
+	:global(.game-stage) .price-stage-single {
+		max-width: 64rem;
+	}
+	:global(.game-stage) .price-stage-products > .product-display {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+	:global(.game-stage) .price-stage-products :global(.product-card) {
+		flex: 1;
+		min-height: 0;
+	}
+	/* Side by side, both cards reserve two lines of title and detail so their images line up. */
+	:global(.game-stage) .price-stage-products:not(.price-stage-single) :global(.product-title) {
+		min-height: 2.3em;
+	}
+	:global(.game-stage) .price-stage-products:not(.price-stage-single) :global(.product-detail) {
+		display: -webkit-box;
+		min-height: 2.4em;
+	}
+	/* The image grows into the height the title and labels leave. */
+	:global(.game-stage) .price-stage-products :global(.product-card-stage > img),
+	:global(.game-stage) .price-stage-products :global(.product-card-stage > div) {
+		flex: 1 1 0;
+		height: auto;
+		min-height: 0;
+	}
+	/* Reveal: products (or the compare trays) on the left, the receipt in a column on the right. */
+	:global(.game-stage) .question-card-price-reveal .price-stage-inner {
+		grid-template-columns: minmax(0, 1fr) 40rem;
+		gap: 2rem;
+		max-width: none;
+	}
+	:global(.game-stage) .question-card-price-reveal .price-stage-inner > :global(*) {
+		grid-row: 1;
+		grid-column: 1;
+	}
+	:global(.game-stage) .question-card-price-reveal .price-stage-inner > :global(.price-receipt),
+	:global(.game-stage) .question-card-price-reveal .price-stage-inner > :global(.calorie-reveal) {
+		grid-column: 2;
+		margin-top: 0;
+		overflow: hidden;
+	}
+	/* Narrow rules are for phones; the fixed stage always keeps the wide layout. */
 	@media (max-width: 639px) {
-		.question-card-stage.question-card-price-stage {
-			--product-image-height: clamp(7rem, 18vh, 12rem);
+		.question-card-stage.question-card-price-stage:not(:global(.game-stage *)) {
+			--product-image-height: clamp(7rem, calc(18 * var(--stage-vh)), 12rem);
 		}
 	}
 
@@ -356,7 +450,7 @@
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: clamp(0.75rem, 2vw, 1.5rem);
+		gap: clamp(0.75rem, calc(2 * var(--stage-vw)), 1.5rem);
 		min-width: 0;
 	}
 
@@ -381,7 +475,7 @@
 
 	.points-badge-stage {
 		margin-top: 0.35rem;
-		font-size: clamp(0.9rem, 1.2vw, 1.15rem);
+		font-size: clamp(0.9rem, calc(1.2 * var(--stage-vw)), 1.15rem);
 		padding: 0.65rem 0.9rem;
 	}
 

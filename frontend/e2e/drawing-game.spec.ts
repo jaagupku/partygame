@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Browser, type BrowserContext } from '@playwright/test';
+import { expectStageInvariant, expectStageReadable } from './stage';
 
 test.use({ actionTimeout: 10_000 });
 
@@ -218,8 +219,9 @@ for (const count of [3, 5]) {
 					await game.pages[0].getByRole('button', { name: 'Close', exact: true }).click();
 					await expect(reveal).toHaveAttribute('data-reveal-stage', 'revealSummary');
 					// Every card fits on the shared display, which cannot scroll.
+					// The scaled stage lands on fractional pixels, so allow for rounding.
 					for (const box of await page.locator('.results .artwork, .results .bonus').all())
-						await expect(box).toBeInViewport({ ratio: 1 });
+						await expect(box).toBeInViewport({ ratio: 0.99 });
 					await expect(game.pages[1].locator('[data-reveal-stage]')).toHaveAttribute(
 						'data-reveal-stage',
 						'revealSummary'
@@ -279,18 +281,26 @@ for (const count of [3, 5]) {
 			await page.evaluate(async () => {
 				if (document.fullscreenElement) await document.exitFullscreen();
 			});
+			// The fixed stage only scales: every window keeps the gallery beside the standings.
+			await expectStageReadable(page);
+			await expectStageInvariant(page, [
+				'.scoreboard-with-gallery',
+				'.gallery-card',
+				'.gallery-card canvas'
+			]);
 			await page.setViewportSize({ width: 390, height: 844 });
+			await expect
+				.poll(async () => {
+					const box = (await gallery.boundingBox())!;
+					return box.x + box.width;
+				})
+				.toBeLessThanOrEqual(390);
 			const narrowGallery = await gallery.boundingBox();
 			const narrowStandings = await page
 				.getByRole('heading', { name: 'Full final scoreboard', exact: true })
 				.boundingBox();
-			expect(narrowGallery!.y).toBeGreaterThan(narrowStandings!.y);
-			expect(narrowGallery!.x + narrowGallery!.width).toBeLessThanOrEqual(390);
-			await expect
-				.poll(async () => (await gallery.locator('canvas').boundingBox())?.height ?? 0)
-				.toBeGreaterThan(150);
-			await gallery.locator('canvas').scrollIntoViewIfNeeded();
-			await page.screenshot({ path: info.outputPath('gallery-mobile.png'), fullPage: true });
+			expect(narrowGallery!.x).toBeGreaterThan(narrowStandings!.x);
+			await page.screenshot({ path: info.outputPath('gallery-narrow.png') });
 			await game.pages[0].getByRole('button', { name: 'Play again', exact: true }).click();
 			await expect(game.pages[0].getByLabel('Writing time (seconds)')).toHaveValue('90');
 			const continued = game.pages[0].waitForResponse((r) => r.url().endsWith('/continue'));
@@ -390,6 +400,13 @@ test('main writing countdown is centered, animated, and respects reduced motion'
 			expect(Math.abs(box!.y + box!.height / 2 - stage!.y - stage!.height / 2)).toBeLessThan(3);
 			await expect(page.locator('.writing-status')).toBeInViewport();
 		}
+		await expectStageReadable(page);
+		await expectStageInvariant(page, [
+			'.writing-display',
+			'.drawing-phase-title',
+			'.prompt-countdown',
+			'.writing-status'
+		]);
 		await page.setViewportSize({ width: 1920, height: 1080 });
 		await expect.poll(() => page.locator('.flip-in').count()).toBeGreaterThan(0);
 		await expect.poll(() => page.locator('.digits.pulse').count(), { timeout: 12_000 }).toBe(1);

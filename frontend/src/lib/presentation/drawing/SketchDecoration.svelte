@@ -44,7 +44,7 @@
 	.sketch-welcome img {
 		display: block;
 		width: 100%;
-		height: clamp(7rem, 16vw, 11rem);
+		height: clamp(7rem, calc(16 * var(--stage-vw)), 11rem);
 		object-fit: contain;
 	}
 	.sketch-welcome {
@@ -52,13 +52,13 @@
 		margin: 0 auto 1rem;
 	}
 	.sketch-welcome img {
-		height: clamp(9rem, 28vh, 18rem);
+		height: clamp(9rem, calc(28 * var(--stage-vh)), 18rem);
 	}
 	.sketch-eyebrow {
 		margin: 0 0 0.25rem;
 		color: #f26b5b;
 		font-family: var(--presentation-heading-font);
-		font-size: clamp(1.6rem, 3vw, 2.4rem);
+		font-size: clamp(1.6rem, calc(3 * var(--stage-vw)), 2.4rem);
 		font-weight: 700;
 		text-align: center;
 		transform: rotate(-2deg);
@@ -72,7 +72,7 @@
 	}
 	.sketch-doodle {
 		position: absolute;
-		width: clamp(7rem, 16vw, 14rem);
+		width: clamp(7rem, calc(16 * var(--stage-vw)), 14rem);
 		fill: none;
 		stroke: #2a4a9b;
 		stroke-width: 4;
@@ -107,24 +107,24 @@
 	.sketch-spot {
 		position: absolute;
 		top: -20%;
-		width: 45vw;
+		width: calc(45 * var(--stage-vw));
 		height: 140%;
 		background: linear-gradient(to bottom, #fff6c855, transparent 80%);
 		clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%);
 	}
 	.sketch-spot-left {
-		left: -8vw;
+		left: calc(-8 * var(--stage-vw));
 		transform: rotate(-18deg);
 	}
 	.sketch-spot-right {
-		right: -8vw;
+		right: calc(-8 * var(--stage-vw));
 		transform: rotate(18deg);
 	}
 	.sketch-twist {
 		position: absolute;
 		right: 1.5rem;
 		bottom: 1.5rem;
-		width: clamp(6rem, 12vw, 12rem);
+		width: clamp(6rem, calc(12 * var(--stage-vw)), 12rem);
 		opacity: 0;
 		transform: rotate(12deg) scale(0.3);
 		transition:

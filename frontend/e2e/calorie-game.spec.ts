@@ -168,8 +168,16 @@ for (const mode of ['guess', 'compare', 'mixed'] as const) {
 					if (document.fullscreenElement) await document.exitFullscreen();
 				});
 				await page.setViewportSize({ width: 1280, height: 720 });
-				const result = await page.locator('.calorie-reveal .guess-result').first().boundingBox();
-				expect(result!.y + result!.height).toBeLessThan(720);
+				// The stage rescales a frame after the window does.
+				await expect
+					.poll(async () => {
+						const result = await page
+							.locator('.calorie-reveal .guess-result')
+							.first()
+							.boundingBox();
+						return result!.y + result!.height;
+					})
+					.toBeLessThan(720);
 				await page.screenshot({ path: testInfo.outputPath('reveal-1280.png') });
 
 				await phone.reload();

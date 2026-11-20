@@ -55,6 +55,9 @@
 		count <= 8 ? 'h-16 w-16' : count <= 16 ? 'h-12 w-12' : 'h-9 w-9';
 	const lineupSize = (count: number) =>
 		count <= 8 ? 'h-20 w-20' : count <= 16 ? 'h-14 w-14' : 'h-10 w-10';
+	// The TV stage sizes faces for viewing distance (rem, read by the stage styles).
+	const trayFace = (count: number) => (count <= 8 ? 6 : count <= 16 ? 4.5 : 3.5);
+	const lineupFace = (count: number) => (count <= 8 ? 5 : count <= 16 ? 4 : 3);
 	const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 	/** Avatar centre and width, so the hop lines up faces rather than name labels. */
@@ -80,6 +83,8 @@
 		const hop = choiceHopMs(movers.length);
 		const popStagger = Math.min(50, 300 / Math.max(1, results.length - 1));
 		const animations: Animation[] = [];
+		// Rects are in screen pixels; the hop is applied in layout pixels (the main display is scaled).
+		const zoom = root.offsetWidth ? root.getBoundingClientRect().width / root.offsetWidth || 1 : 1;
 		const play = (element: Element, keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
 			if (typeof element.animate === 'function')
 				animations.push(element.animate(keyframes, options));
@@ -104,8 +109,8 @@
 			if (!element || !slot) return;
 			const from = face(slot);
 			const to = face(element);
-			const dx = from.x - to.x;
-			const dy = from.y - to.y;
+			const dx = (from.x - to.x) / zoom;
+			const dy = (from.y - to.y) / zoom;
 			const scale = to.width ? from.width / to.width : 1;
 			// Scale around the face so the hop lands it exactly on its seat.
 			const shell = element.querySelector<HTMLElement>('.avatar-shell');
@@ -179,7 +184,7 @@
 <div class="choice-reveal" class:choice-revealed={revealed} bind:this={root}>
 	{#if lineup.length}
 		<div class="choice-lineup">
-			<ul class="choice-lineup-row">
+			<ul class="choice-lineup-row" style:--face={`${lineupFace(lineup.length)}rem`}>
 				{#each lineup as result (result.player_id)}
 					{#if missing.has(result.player_id)}
 						<li
@@ -212,7 +217,7 @@
 			class:choice-wrong={revealed && !correct}
 			aria-label={product.title}
 		>
-			<ul class="choice-tray">
+			<ul class="choice-tray" style:--face={`${trayFace(chosen.length)}rem`}>
 				{#each chosen as result (result.player_id)}
 					<li class="choice-player" data-player={result.player_id}>
 						{@render person(result, avatarSize(chosen.length), chosen.length <= 10)}
@@ -234,7 +239,7 @@
 	.choice-reveal {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 1rem clamp(1rem, 4vw, 4rem);
+		gap: 1rem clamp(1rem, calc(4 * var(--stage-vw)), 4rem);
 	}
 	.choice-lineup {
 		grid-column: 1 / -1;
@@ -346,7 +351,7 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.choice-value strong {
-		font-size: clamp(2rem, 4vw, 4rem);
+		font-size: clamp(2rem, calc(4 * var(--stage-vw)), 4rem);
 		font-weight: 900;
 		line-height: 1.1;
 	}
@@ -367,8 +372,71 @@
 			opacity 250ms ease-out,
 			filter 250ms ease-out;
 	}
+	/* The TV stage: trays and cards fill the column; the card image takes the height left over. */
+	:global(.game-stage) .choice-reveal {
+		grid-template-rows: auto auto minmax(0, 1fr);
+		gap: 1rem 2rem;
+		height: 100%;
+	}
+	:global(.game-stage) .choice-reveal:not(:has(> .choice-lineup)) {
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+	:global(.game-stage) .choice-lineup-row {
+		max-width: 100%;
+		gap: 1rem;
+	}
+	:global(.game-stage) .choice-reveal :global(.avatar-shell) {
+		width: var(--face);
+		height: var(--face);
+	}
+	:global(.game-stage) .choice-player,
+	:global(.game-stage) .choice-slot {
+		max-width: 9rem;
+	}
+	:global(.game-stage) .choice-player-name,
+	:global(.game-stage) .choice-pool-label {
+		font-size: var(--tv-caption);
+	}
+	:global(.game-stage) .choice-tray {
+		min-height: 7.5rem;
+		gap: 0.75rem;
+	}
+	:global(.game-stage) .choice-card {
+		min-height: 0;
+	}
+	:global(.game-stage) .choice-card > :global(.product-card) {
+		flex: 1;
+		min-height: 0;
+	}
+	:global(.game-stage) .choice-card :global(.product-card-stage > img),
+	:global(.game-stage) .choice-card :global(.product-card-stage > div) {
+		flex: 1 1 0;
+		height: auto;
+		min-height: 0;
+	}
+	/* The reveal is about the price: equal two-line titles keep the images aligned, details give way. */
+	:global(.game-stage) .choice-card :global(.product-title) {
+		min-height: 2.3em;
+	}
+	:global(.game-stage) .choice-card :global(.product-detail) {
+		display: none;
+	}
+	:global(.game-stage) .choice-ribbon {
+		align-self: center;
+		font-size: var(--tv-body);
+	}
+	:global(.game-stage) .choice-value {
+		flex-shrink: 0;
+	}
+	:global(.game-stage) .choice-value strong {
+		font-size: 5rem;
+		line-height: 1;
+	}
+	:global(.game-stage) .choice-value span {
+		font-size: var(--tv-body);
+	}
 	@media (max-width: 639px) {
-		.choice-reveal {
+		.choice-reveal:not(:global(.game-stage *)) {
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}

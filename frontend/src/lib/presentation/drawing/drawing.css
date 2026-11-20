@@ -3,13 +3,16 @@
 	:scope {
 		color: var(--party-ink);
 	}
-	:scope:is(body) {
+	/* The stage paints the same background, so the pattern scales with the picture. */
+	:scope:is(body),
+	:scope .game-stage {
 		background:
 			linear-gradient(90deg, transparent 3.2rem, #f26b5b40 3.2rem 3.3rem, transparent 3.3rem),
 			repeating-linear-gradient(0deg, #2a4a9b14 0 1px, transparent 1px 2rem), #fbfaf5;
 		transition: background-color 600ms ease-out;
 	}
-	:scope[data-presentation-variant='judging']:is(body) {
+	:scope[data-presentation-variant='judging']:is(body),
+	:scope[data-presentation-variant='judging'] .game-stage {
 		background: #3b1470;
 	}
 	:scope.card {
@@ -32,10 +35,10 @@
 	}
 	:scope .page-title {
 		color: #1d2b53;
-		font-size: clamp(2.6rem, 6vw, 4rem);
+		font-size: clamp(2.6rem, calc(6 * var(--stage-vw)), 4rem);
 	}
 	:scope .drawing-phase-title {
-		font-size: clamp(2rem, 3.6vw, 3rem);
+		font-size: clamp(2rem, calc(3.6 * var(--stage-vw)), 3rem);
 		line-height: 1;
 	}
 	:scope .btn-primary {
@@ -88,7 +91,7 @@
 	}
 	:scope .lobby-roster-title {
 		color: #f26b5b;
-		font-size: clamp(2rem, 3vw, 2.6rem);
+		font-size: clamp(2rem, calc(3 * var(--stage-vw)), 2.6rem);
 	}
 
 	/* Writing: the existing countdown on a sketchbook prompt card. */
@@ -183,7 +186,7 @@
 		& .drawing-criterion-text {
 			font-family: 'Barlow Condensed', 'Nunito', sans-serif;
 			font-weight: 800;
-			font-size: clamp(1.3rem, 2.4vw, 2.1rem);
+			font-size: clamp(1.3rem, calc(2.4 * var(--stage-vw)), 2.1rem);
 		}
 		& .drawing-twist-burst {
 			background: #ff7a59;
@@ -260,6 +263,7 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		:scope:is(body),
+		:scope .game-stage,
 		:scope .drawing-stage .card,
 		:scope .drawing-criterion,
 		:scope .drawing-phase-title {
